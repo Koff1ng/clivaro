@@ -56,6 +56,20 @@ export async function getPrismaForRequest(request?: Request, session?: any) {
         databaseUrl: tenant.databaseUrl
       })
 
+      const isPostgresEnv = (process.env.DATABASE_URL || '').startsWith('postgresql://')
+      const isFileTenantDb = tenant.databaseUrl?.startsWith('file:')
+
+      // If running on Postgres and tenant DB is a local sqlite file, fall back to master DB.
+      // This avoids crashes in production when tenants still have sqlite URLs.
+      if (isPostgresEnv && isFileTenantDb) {
+        console.warn('[getPrismaForRequest] Tenant DB is sqlite but env is postgres; using master DB', {
+          tenantId: tenant.id,
+          slug: tenant.slug,
+          databaseUrl: tenant.databaseUrl,
+        })
+        return prisma
+      }
+
       const tenantPrisma = getTenantPrisma(tenant.databaseUrl)
       console.log('[getPrismaForRequest] Cliente Prisma del tenant obtenido correctamente')
       return tenantPrisma
