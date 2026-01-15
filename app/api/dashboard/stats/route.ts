@@ -69,6 +69,46 @@ export async function GET(request: Request) {
       'salesMonth'
     )
 
+    // Ganancia del mes (sin impuestos): (subtotal - costo) agregado
+    const profitMonth = await withRetry(async () => {
+      const invoices = await prisma.invoice.findMany({
+        where: {
+          status: { in: ['PAGADA', 'PAID', 'EN_COBRANZA', 'PARCIAL', 'PARTIAL'] },
+          createdAt: { gte: monthStart },
+        },
+        select: {
+          subtotal: true,
+          total: true,
+          tax: true,
+          items: {
+            select: {
+              quantity: true,
+              product: {
+                select: { cost: true },
+              },
+            },
+          },
+        },
+      })
+
+      const subtotalWithoutTaxes = invoices.reduce((sum, inv) => {
+        if (typeof inv.subtotal === 'number') return sum + inv.subtotal
+        return sum + ((inv.total || 0) - (inv.tax || 0))
+      }, 0)
+
+      const costOfGoodsSold = invoices.reduce((sum, inv) => {
+        return (
+          sum +
+          inv.items.reduce((itemSum, item) => {
+            const cost = item.product?.cost || 0
+            return itemSum + item.quantity * cost
+          }, 0)
+        )
+      }, 0)
+
+      return subtotalWithoutTaxes - costOfGoodsSold
+    }, 'profitMonth')
+
     const totalProducts = await withRetry(
       () =>
         prisma.product.count({
@@ -131,6 +171,7 @@ export async function GET(request: Request) {
     return NextResponse.json({
       salesToday: salesToday._sum.total || 0,
       salesMonth: salesMonth._sum.total || 0,
+      profitMonth,
       totalProducts,
       lowStockCount,
       inCollection,

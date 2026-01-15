@@ -43,13 +43,13 @@ export function DashboardStats() {
   const stats = data || {
     salesToday: 0,
     salesMonth: 0,
+    profitMonth: 0,
     totalProducts: 0,
     lowStockCount: 0,
     inCollection: 0,
   }
 
-  // Calcular ganancias (ventas del mes - costos estimados)
-  const earnings = stats.salesMonth * 0.75 // Estimación del 75% de ganancia
+  const earnings = stats.profitMonth || 0
   // En cobranza viene directamente del API (suma de facturas pendientes)
   const inCollection = stats.inCollection || 0
 
