@@ -81,6 +81,21 @@ export async function POST(
     const body = await request.json()
     const { planId, startDate, endDate, trialEndDate, status, autoRenew } = body
 
+    if (!planId) {
+      return NextResponse.json(
+        { error: 'planId is required' },
+        { status: 400 }
+      )
+    }
+
+    const planExists = await prisma.plan.findUnique({ where: { id: planId }, select: { id: true } })
+    if (!planExists) {
+      return NextResponse.json(
+        { error: 'Plan no encontrado. Recargue la página y seleccione un plan válido.' },
+        { status: 400 }
+      )
+    }
+
     // Cancelar suscripciones activas anteriores
     await prisma.subscription.updateMany({
       where: {

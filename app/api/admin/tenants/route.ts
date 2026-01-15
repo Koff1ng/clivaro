@@ -4,6 +4,7 @@ import { prisma } from '@/lib/db'
 import { initializeTenantDatabase } from '@/lib/initialize-tenant'
 import { logger } from '@/lib/logger'
 import * as path from 'path'
+import { prisma as masterPrisma } from '@/lib/db'
 
 export async function GET(request: Request) {
   try {
@@ -183,6 +184,64 @@ export async function POST(request: Request) {
         slug
       )
       logger.info('Tenant database initialized', { tenantId: tenant.id })
+
+      // Ensure default plans exist and assign a default Starter subscription if none
+      const plansCount = await masterPrisma.plan.count()
+      if (plansCount === 0) {
+        await masterPrisma.plan.createMany({
+          data: [
+            {
+              name: 'Starter',
+              description: 'Perfecto para pequeños negocios que están comenzando',
+              price: 49900,
+              currency: 'COP',
+              interval: 'monthly',
+              features: JSON.stringify([
+                'Hasta 2 usuarios incluidos',
+                'Gestión de productos ilimitados',
+                'Punto de Venta (POS)',
+                'Control de inventario básico',
+                'Facturación electrónica',
+                'Clientes y proveedores',
+                'Reportes básicos',
+                'Dashboard con KPIs',
+              ]),
+              active: true,
+            },
+            {
+              name: 'Business',
+              description: 'Ideal para negocios en crecimiento',
+              price: 79900,
+              currency: 'COP',
+              interval: 'monthly',
+              features: JSON.stringify(['Todas las funcionalidades de Starter', 'CRM completo', 'Marketing campaigns', 'Multi-almacén']),
+              active: true,
+            },
+            {
+              name: 'Enterprise',
+              description: 'Para negocios grandes que necesitan todo',
+              price: 149900,
+              currency: 'COP',
+              interval: 'monthly',
+              features: JSON.stringify(['Todas las funcionalidades de Business', 'Soporte 24/7', 'Integraciones avanzadas']),
+              active: true,
+            },
+          ],
+        })
+      }
+
+      const starter = await masterPrisma.plan.findUnique({ where: { name: 'Starter' } })
+      if (starter) {
+        await masterPrisma.subscription.create({
+          data: {
+            tenantId: tenant.id,
+            planId: starter.id,
+            status: 'active',
+            startDate: new Date(),
+            autoRenew: true,
+          },
+        })
+      }
 
       return NextResponse.json(
         {

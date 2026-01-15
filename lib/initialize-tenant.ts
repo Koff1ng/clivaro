@@ -518,7 +518,8 @@ async function seedTenantData(tenantPrisma: PrismaClient, tenantName: string) {
       update: {},
       create: {
         username: 'admin',
-        email: `admin@${tenantName.toLowerCase().replace(/\s+/g, '-')}.local`,
+        // Use a consistent email so super admin can share credentials patterns across tenants
+        email: 'admin@local',
         password: hashedPassword,
         name: 'Administrador',
         active: true,
