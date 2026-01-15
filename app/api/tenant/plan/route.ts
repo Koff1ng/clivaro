@@ -49,6 +49,8 @@ export async function GET(request: Request) {
         endDate: true,
         trialEndDate: true,
         createdAt: true,
+        mercadoPagoPaymentMethod: true,
+        mercadoPagoStatus: true,
         plan: {
           select: {
             id: true,
@@ -120,6 +122,24 @@ export async function GET(request: Request) {
                         previousSubscription.planId !== subscription.planId &&
                         isRecentChange
 
+    // Calcular la fecha del próximo pago
+    const getNextPaymentDate = () => {
+      if (!subscription.endDate) return null
+      
+      const endDate = new Date(subscription.endDate)
+      const now = new Date()
+      
+      // Si la suscripción ya expiró, el próximo pago es ahora
+      if (endDate <= now) {
+        return now
+      }
+      
+      // Si está activa, el próximo pago es cuando expire
+      return endDate
+    }
+
+    const nextPaymentDate = getNextPaymentDate()
+
     return NextResponse.json({
       plan: subscription.plan,
       subscription: {
@@ -129,6 +149,9 @@ export async function GET(request: Request) {
         endDate: subscription.endDate,
         trialEndDate: subscription.trialEndDate,
         createdAt: subscription.createdAt,
+        mercadoPagoPaymentMethod: subscription.mercadoPagoPaymentMethod,
+        mercadoPagoStatus: subscription.mercadoPagoStatus,
+        nextPaymentDate: nextPaymentDate?.toISOString() || null,
       },
       features: subscription.plan.features ? JSON.parse(subscription.plan.features) : [],
       previousPlan: previousSubscription && planChanged ? {

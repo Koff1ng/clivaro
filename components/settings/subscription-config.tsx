@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
-import { CreditCard, Calendar, Clock, AlertCircle } from 'lucide-react'
+import { CreditCard, Calendar, Clock, AlertCircle, CreditCard as CardIcon } from 'lucide-react'
 import { cn, formatCurrency } from '@/lib/utils'
 import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
@@ -134,6 +134,51 @@ export function SubscriptionConfig({ settings, onSave, isLoading }: Subscription
                 </>
               )}
             </div>
+            
+            {/* Información de Próximo Pago y Método de Pago */}
+            {subscription && subscription.status === 'active' && (
+              <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800 space-y-3">
+                <h5 className="font-semibold text-blue-900 dark:text-blue-100 flex items-center gap-2">
+                  <Calendar className="h-4 w-4" />
+                  Información de Pago
+                </h5>
+                
+                {subscription.nextPaymentDate && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-blue-800 dark:text-blue-200">Próximo pago:</span>
+                    <span className="text-sm font-semibold text-blue-900 dark:text-blue-100">
+                      {new Date(subscription.nextPaymentDate).toLocaleDateString('es-ES', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                      })}
+                    </span>
+                  </div>
+                )}
+                
+                {subscription.mercadoPagoPaymentMethod && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-blue-800 dark:text-blue-200">Método de pago:</span>
+                    <div className="flex items-center gap-2">
+                      <CardIcon className="h-4 w-4 text-blue-600" />
+                      <span className="text-sm font-semibold text-blue-900 dark:text-blue-100 capitalize">
+                        {subscription.mercadoPagoPaymentMethod === 'credit_card' ? 'Tarjeta de Crédito' :
+                         subscription.mercadoPagoPaymentMethod === 'debit_card' ? 'Tarjeta de Débito' :
+                         subscription.mercadoPagoPaymentMethod === 'ticket' ? 'Ticket' :
+                         subscription.mercadoPagoPaymentMethod === 'bank_transfer' ? 'Transferencia Bancaria' :
+                         subscription.mercadoPagoPaymentMethod}
+                      </span>
+                    </div>
+                  </div>
+                )}
+                
+                {!subscription.mercadoPagoPaymentMethod && (
+                  <div className="text-sm text-blue-700 dark:text-blue-300 italic">
+                    No hay método de pago guardado. Se solicitará al realizar el próximo pago.
+                  </div>
+                )}
+              </div>
+            )}
             {subscription?.status === 'trial' && subscription?.trialEndDate && (
               <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
                 <p className="text-sm text-blue-900 dark:text-blue-100">
