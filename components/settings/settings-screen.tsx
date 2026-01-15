@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Users, Receipt, CreditCard, Settings as SettingsIcon, Loader2 } from 'lucide-react'
-import { useToast } from '@/hooks/use-toast'
+import { useToast } from '@/components/ui/toast'
 import { UsersConfig } from './users-config'
 import { ElectronicBillingConfig } from './electronic-billing-config'
 import { SubscriptionConfig } from './subscription-config'
@@ -43,17 +43,10 @@ export function SettingsScreen() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['settings'] })
-      toast({
-        title: 'Configuración actualizada',
-        description: 'Los cambios se han guardado exitosamente',
-      })
+      toast('Configuración actualizada exitosamente', 'success')
     },
     onError: (error: any) => {
-      toast({
-        title: 'Error',
-        description: error.message || 'No se pudo actualizar la configuración',
-        variant: 'destructive',
-      })
+      toast(error.message || 'No se pudo actualizar la configuración', 'error')
     },
   })
 
