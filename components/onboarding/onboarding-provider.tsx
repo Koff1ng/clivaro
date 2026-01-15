@@ -5,9 +5,18 @@ import { useQuery } from '@tanstack/react-query'
 import { WelcomeOnboarding } from './welcome-onboarding'
 
 async function checkOnboarding() {
-  const res = await fetch('/api/onboarding')
-  if (!res.ok) throw new Error('Failed to check onboarding')
-  return res.json()
+  try {
+    const res = await fetch('/api/onboarding')
+    if (!res.ok) {
+      // Si hay error, retornar un objeto por defecto en lugar de lanzar error
+      return { needsOnboarding: false, settings: null, plan: null }
+    }
+    return res.json()
+  } catch (error) {
+    console.error('Error checking onboarding:', error)
+    // Retornar un objeto por defecto en lugar de lanzar error
+    return { needsOnboarding: false, settings: null, plan: null }
+  }
 }
 
 export function OnboardingProvider({ children }: { children: React.ReactNode }) {

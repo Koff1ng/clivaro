@@ -6,21 +6,29 @@ import { Sparkles, Sun, Moon } from 'lucide-react'
 import { useSession } from 'next-auth/react'
 
 async function fetchOnboardingData() {
-  const res = await fetch('/api/onboarding')
-  if (!res.ok) return null
-  return res.json()
+  try {
+    const res = await fetch('/api/onboarding')
+    if (!res.ok) return null
+    return res.json()
+  } catch (error) {
+    console.error('Error fetching onboarding data:', error)
+    return null
+  }
 }
 
 export function DashboardGreeting() {
   const { data: session } = useSession()
-  const { data: onboardingData } = useQuery({
+  const { data: onboardingData, error } = useQuery({
     queryKey: ['onboarding-status'],
     queryFn: fetchOnboardingData,
     staleTime: 5 * 60 * 1000,
+    retry: 1,
+    retryOnMount: false,
   })
 
+  // Si hay error o no hay datos, usar valores por defecto
   const userName = onboardingData?.settings?.onboardingUserName || session?.user?.name || 'Usuario'
-  const companyName = onboardingData?.settings?.onboardingCompanyName
+  const companyName = onboardingData?.settings?.onboardingCompanyName || null
 
   const getGreeting = () => {
     const hour = new Date().getHours()
