@@ -156,25 +156,24 @@ export async function GET(request: Request) {
       )
 
       const lowStockCount = await withRetry(async () => {
-      const levels = await prisma.stockLevel.findMany({
-        where: {
-          product: {
-            active: true,
-            trackStock: true,
+        const levels = await prisma.stockLevel.findMany({
+          where: {
+            product: {
+              active: true,
+              trackStock: true,
+            },
+            minStock: {
+              gt: 0, // Solo niveles con minStock configurado (mayor que 0)
+            },
           },
-          minStock: {
-            not: null,
-            gt: 0, // Solo niveles con minStock configurado
+          select: {
+            quantity: true,
+            minStock: true,
           },
-        },
-        select: {
-          quantity: true,
-          minStock: true,
-        },
-      })
+        })
         return levels.reduce((count, level) => {
-          // Verificar que minStock no sea null y que quantity sea menor o igual
-          return (level.minStock != null && level.minStock > 0 && level.quantity <= level.minStock) ? count + 1 : count
+          // Verificar que minStock sea mayor que 0 y que quantity sea menor o igual
+          return (level.minStock > 0 && level.quantity <= level.minStock) ? count + 1 : count
         }, 0)
       }, 'lowStockCount')
 
