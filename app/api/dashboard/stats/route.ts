@@ -109,6 +109,41 @@ export async function GET(request: Request) {
       return subtotalWithoutTaxes - costOfGoodsSold
     }, 'profitMonth')
 
+    // Número de ventas = número de facturas pagadas en el turno activo
+    const salesCount = await withRetry(async () => {
+      // Buscar turno activo
+      const activeShift = await prisma.cashShift.findFirst({
+        where: {
+          status: 'OPEN',
+        },
+        select: {
+          id: true,
+          openedAt: true,
+          userId: true,
+        },
+      })
+
+      if (!activeShift) {
+        // Si no hay turno activo, retornar 0
+        return 0
+      }
+
+      // Contar facturas pagadas creadas durante el turno activo
+      const paidInvoicesCount = await prisma.invoice.count({
+        where: {
+          createdAt: {
+            gte: activeShift.openedAt,
+          },
+          createdById: activeShift.userId,
+          status: {
+            in: ['PAGADA', 'PAID'], // Solo facturas completamente pagadas
+          },
+        },
+      })
+
+      return paidInvoicesCount
+    }, 'salesCount')
+
     const totalProducts = await withRetry(
       () =>
         prisma.product.count({
@@ -172,6 +207,7 @@ export async function GET(request: Request) {
       salesToday: salesToday._sum.total || 0,
       salesMonth: salesMonth._sum.total || 0,
       profitMonth,
+      salesCount, // Número de facturas pagadas en el turno activo
       totalProducts,
       lowStockCount,
       inCollection,

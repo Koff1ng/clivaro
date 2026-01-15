@@ -44,6 +44,7 @@ export function DashboardStats() {
     salesToday: 0,
     salesMonth: 0,
     profitMonth: 0,
+    salesCount: 0,
     totalProducts: 0,
     lowStockCount: 0,
     inCollection: 0,
@@ -95,7 +96,7 @@ export function DashboardStats() {
           <Package className="h-5 w-5 text-yellow-600" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{stats.totalProducts}</div>
+          <div className="text-2xl font-bold">{stats.salesCount || 0}</div>
         </CardContent>
       </Card>
     </div>
