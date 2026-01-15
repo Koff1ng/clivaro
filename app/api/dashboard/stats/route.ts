@@ -45,11 +45,8 @@ export async function GET(request: Request) {
       () =>
         prisma.invoice.aggregate({
           where: {
-            status: { in: ['PAGADA', 'PAID'] }, // Compatibilidad con estados antiguos y nuevos
-            OR: [
-              { issuedAt: { gte: today } },
-              { issuedAt: null, createdAt: { gte: today } },
-            ],
+            status: { in: ['PAGADA', 'PAID', 'EN_COBRANZA', 'PARCIAL', 'PARTIAL'] }, // Compatibilidad con estados antiguos y nuevos
+            createdAt: { gte: today },
           },
           _sum: {
             total: true,
@@ -62,11 +59,8 @@ export async function GET(request: Request) {
       () =>
         prisma.invoice.aggregate({
           where: {
-            status: { in: ['PAGADA', 'PAID'] }, // Compatibilidad con estados antiguos y nuevos
-            OR: [
-              { issuedAt: { gte: monthStart } },
-              { issuedAt: null, createdAt: { gte: monthStart } },
-            ],
+            status: { in: ['PAGADA', 'PAID', 'EN_COBRANZA', 'PARCIAL', 'PARTIAL'] }, // Compatibilidad con estados antiguos y nuevos
+            createdAt: { gte: monthStart },
           },
           _sum: {
             total: true,
