@@ -11,6 +11,7 @@ import { Last30DaysChartLazy, ProductCategoriesLazy } from '@/components/dashboa
 import { PageHeader } from '@/components/ui/page-header'
 import { PageHeaderBadges } from '@/components/ui/page-header-badges'
 import { LayoutDashboard } from 'lucide-react'
+import { DashboardGreeting } from '@/components/dashboard/greeting'
 
 export default async function DashboardPage() {
   const session = await getServerSession(authOptions)
@@ -37,6 +38,10 @@ export default async function DashboardPage() {
           breadcrumbs={[{ label: 'Inicio', href: '/dashboard' }, { label: 'Dashboard' }]}
           badges={<PageHeaderBadges />}
         />
+        
+        {/* Saludo Personalizado */}
+        <DashboardGreeting />
+        
         {/* Cards de métricas - 4 columnas */}
         <Suspense fallback={<div className="grid gap-4 md:grid-cols-4"><div className="h-24 bg-gray-100 animate-pulse rounded" /><div className="h-24 bg-gray-100 animate-pulse rounded" /><div className="h-24 bg-gray-100 animate-pulse rounded" /><div className="h-24 bg-gray-100 animate-pulse rounded" /></div>}>
           <DashboardStats />

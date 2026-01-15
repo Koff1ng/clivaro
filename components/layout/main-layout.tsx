@@ -6,6 +6,7 @@ import { useEffect } from 'react'
 import { Sidebar } from './sidebar'
 import { Header } from './header'
 import { SidebarProvider } from '@/lib/sidebar-context'
+import { OnboardingProvider } from '@/components/onboarding/onboarding-provider'
 
 function LayoutContent({ children }: { children: React.ReactNode }) {
   return (
@@ -47,7 +48,9 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <SidebarProvider>
-      <LayoutContent>{children}</LayoutContent>
+      <OnboardingProvider>
+        <LayoutContent>{children}</LayoutContent>
+      </OnboardingProvider>
     </SidebarProvider>
   )
 }

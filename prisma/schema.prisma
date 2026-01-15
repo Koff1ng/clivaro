@@ -760,6 +760,10 @@ model TenantSettings {
   purchaseOrderNumberFormat String? @default("000000")
   // Configuraciones adicionales (JSON para flexibilidad)
   customSettings        String?    // JSON string con configuraciones personalizadas
+  // Onboarding
+  onboardingCompleted   Boolean?    @default(false)
+  onboardingUserName    String?     // Nombre del usuario recopilado en onboarding
+  onboardingCompanyName String?    // Nombre de la empresa recopilado en onboarding
   createdAt             DateTime    @default(now())
   updatedAt             DateTime    @updatedAt
   tenant                Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
