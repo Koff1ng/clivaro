@@ -203,8 +203,8 @@ export async function GET(request: Request) {
         }
       }
 
-        return totalInCollection
-      }, 'inCollection')
+      return totalInCollection
+    }, 'inCollection')
 
       const duration = Date.now() - startTime
       logger.apiResponse('GET', '/api/dashboard/stats', 200, duration)
