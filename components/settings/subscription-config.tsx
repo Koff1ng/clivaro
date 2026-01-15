@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
-import { CreditCard, Calendar, Clock, AlertCircle, CreditCard as CardIcon } from 'lucide-react'
+import { CreditCard, Calendar, Clock, AlertCircle } from 'lucide-react'
 import { cn, formatCurrency } from '@/lib/utils'
 import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
@@ -160,7 +160,7 @@ export function SubscriptionConfig({ settings, onSave, isLoading }: Subscription
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-blue-800 dark:text-blue-200">Método de pago:</span>
                     <div className="flex items-center gap-2">
-                      <CardIcon className="h-4 w-4 text-blue-600" />
+                      <CreditCard className="h-4 w-4 text-blue-600" />
                       <span className="text-sm font-semibold text-blue-900 dark:text-blue-100 capitalize">
                         {subscription.mercadoPagoPaymentMethod === 'credit_card' ? 'Tarjeta de Crédito' :
                          subscription.mercadoPagoPaymentMethod === 'debit_card' ? 'Tarjeta de Débito' :
