@@ -1,0 +1,304 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@keyframes slide-in {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slide-out {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+
+@keyframes fade-out {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+}
+
+@keyframes slide-up-out {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+    max-height: 200px;
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-20px);
+    max-height: 0;
+    margin-bottom: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+}
+
+@keyframes drawCheck {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes spin-slow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin-slow {
+  animation: spin-slow 3s linear infinite;
+}
+
+.animate-slide-in {
+  animation: slide-in 0.3s ease-out;
+}
+
+.animate-slide-out {
+  animation: slide-out 0.3s ease-out forwards;
+}
+
+.animate-fade-out {
+  animation: fade-out 0.4s ease-out forwards;
+}
+
+.animate-slide-up-out {
+  animation: slide-up-out 0.5s ease-out forwards;
+}
+
+@layer base {
+  :root {
+    /* Clivaro Brand Colors - Light Mode */
+    --background: 0 0% 100%;
+    --foreground: 222 47% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+    /* Primary: Azul oscuro del logo (Cliv) */
+    --primary: 217 91% 60%;
+    --primary-foreground: 0 0% 100%;
+    /* Secondary: Teal/Verde azulado del gradiente */
+    --secondary: 180 60% 50%;
+    --secondary-foreground: 0 0% 100%;
+    /* Muted: Tonos suaves */
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;
+    /* Accent: Naranja del mango de la lupa */
+    --accent: 25 95% 53%;
+    --accent-foreground: 0 0% 100%;
+    /* Destructive: Rojo del gradiente */
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    /* Ring: Azul primario */
+    --ring: 217 91% 60%;
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    /* Clivaro Brand Colors - Dark Mode */
+    --background: 222 47% 11%;
+    --foreground: 210 40% 98%;
+    --card: 222 47% 11%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222 47% 11%;
+    --popover-foreground: 210 40% 98%;
+    /* Primary: Azul más brillante para dark mode */
+    --primary: 217 91% 65%;
+    --primary-foreground: 222 47% 11%;
+    /* Secondary: Teal más brillante */
+    --secondary: 180 60% 55%;
+    --secondary-foreground: 222 47% 11%;
+    /* Muted: Tonos oscuros */
+    --muted: 217 33% 18%;
+    --muted-foreground: 215 20% 65%;
+    /* Accent: Naranja más brillante */
+    --accent: 25 95% 58%;
+    --accent-foreground: 222 47% 11%;
+    /* Destructive: Rojo más suave */
+    --destructive: 0 63% 50%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 217 33% 18%;
+    --input: 217 33% 18%;
+    /* Ring: Azul más claro para dark mode */
+    --ring: 217 91% 65%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Estilos personalizados para scrollbars */
+/* Webkit (Chrome, Safari, Edge) */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Modo claro - scrollbar claro (blanco/gris claro) */
+::-webkit-scrollbar-thumb {
+  background: #e5e7eb; /* Gris claro */
+  border-radius: 5px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #d1d5db; /* Gris más oscuro al hover */
+  background-clip: padding-box;
+}
+
+/* Modo oscuro - scrollbar oscuro */
+.dark ::-webkit-scrollbar-thumb {
+  background: #374151; /* Gris oscuro */
+  background-clip: padding-box;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #4b5563; /* Gris más claro al hover */
+  background-clip: padding-box;
+}
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #e5e7eb transparent; /* Gris claro para modo claro */
+}
+
+.dark * {
+  scrollbar-color: #374151 transparent; /* Gris oscuro para modo oscuro */
+}
+
+/* Estilos de impresión para contenido tipo tirilla (ticket). 
+   Nota: el tamaño de página (80mm) se aplica dinámicamente al imprimir (ver InvoiceDetails). */
+@media print {
+  .thermal-ticket {
+    width: 80mm;
+    max-width: 80mm;
+    padding: 6px 4px;
+    font-size: 10px;
+    line-height: 1.2;
+    box-sizing: border-box;
+    margin: 0;
+  }
+
+  .thermal-ticket h1,
+  .thermal-ticket h2,
+  .thermal-ticket h3,
+  .thermal-ticket h4 {
+    margin: 0 0 2px 0;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.2;
+  }
+
+  .thermal-ticket table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 10px;
+  }
+
+  .thermal-ticket th,
+  .thermal-ticket td {
+    padding: 1px 0;
+    font-size: 10px;
+    line-height: 1.2;
+  }
+
+  .thermal-ticket .text-right {
+    text-align: right;
+  }
+
+  .thermal-ticket .text-center {
+    text-align: center;
+  }
+
+  .thermal-ticket .border-b {
+    border-bottom-width: 1px;
+    padding-bottom: 4px;
+    margin-bottom: 4px;
+  }
+
+  .thermal-ticket .border-dashed {
+    border-style: dashed;
+  }
+
+  /* Asegurar que el contenido no se desborde */
+  .thermal-ticket * {
+    max-width: 100%;
+    word-wrap: break-word;
+  }
+
+  /* Ocultar elementos que no son parte de la tirilla */
+  .no-print {
+    display: none !important;
+  }
+}
+
+@keyframes blob {
+  0%, 100% {
+    transform: translate(0, 0) scale(1);
+  }
+  33% {
+    transform: translate(30px, -50px) scale(1.1);
+  }
+  66% {
+    transform: translate(-20px, 20px) scale(0.9);
+  }
+}
+
+.animate-blob {
+  animation: blob 7s infinite;
+}
+
+.animation-delay-2000 {
+  animation-delay: 2s;
+}
+
+.animation-delay-4000 {
+  animation-delay: 4s;
+}
+
+/* Utilidades de impresión */
+@media print {
+  .print\\:hidden {
+    display: none !important;
+  }
+  
+  .print\\:block {
+    display: block !important;
+  }
+}
+

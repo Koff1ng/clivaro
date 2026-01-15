@@ -1,0 +1,101 @@
+# Sistema Multi-Tenant - Guía de Acceso
+
+## ¿Cómo accede un tenant a su aplicación?
+
+### Flujo de Acceso
+
+1. **Página Inicial (`/`)**
+   - El usuario ingresa el **identificador (slug)** de su empresa
+   - Ejemplo: `mi-empresa`, `ferreteria-central`, etc.
+   - El sistema verifica que el tenant existe y está activo
+
+2. **Página de Login (`/login/[tenantSlug]`)**
+   - Una vez verificado el tenant, el usuario es redirigido a `/login/mi-empresa`
+   - Aquí ingresa sus credenciales (usuario/email y contraseña)
+   - El sistema autentica al usuario usando la **base de datos específica del tenant**
+
+3. **Dashboard**
+   - Una vez autenticado, el usuario accede a su dashboard
+   - Todos los datos provienen de la base de datos del tenant
+
+### Arquitectura
+
+#### Base de Datos Maestra
+- Almacena: `Tenant`, `Plan`, `Subscription`
+- Usada por: Super administradores
+- Ubicación: `prisma/dev.db` (SQLite)
+
+#### Bases de Datos por Tenant
+- Cada tenant tiene su propia base de datos
+- URL almacenada en: `Tenant.databaseUrl`
+- Ejemplo: `file:./tenants/tenant-1.db`
+
+### Identificación del Tenant
+
+El sistema identifica el tenant de tres formas:
+
+1. **URL Path**: `/login/mi-empresa` → slug = `mi-empresa`
+2. **Header HTTP**: `X-Tenant-Slug: mi-empresa`
+3. **Sesión del Usuario**: Una vez autenticado, el `tenantId` se guarda en la sesión JWT
+
+### Autenticación
+
+- **Super Admin**: Usa la base de datos maestra
+- **Usuarios de Tenant**: Usan la base de datos del tenant especificada en `Tenant.databaseUrl`
+
+### Crear un Nuevo Tenant
+
+1. Desde el Panel Admin (`/admin/tenants`), crear un nuevo tenant
+2. Especificar:
+   - Nombre de la empresa
+   - Slug único (ej: `mi-empresa`)
+   - URL de la base de datos (ej: `file:./tenants/mi-empresa.db`)
+3. Asignar un plan y crear la suscripción
+4. Inicializar la base de datos del tenant (ejecutar migraciones Prisma)
+
+### Inicialización Automática
+
+Cuando se crea un nuevo tenant desde el Panel Admin (`/admin/tenants`), el sistema automáticamente:
+
+1. ✅ Crea la base de datos del tenant
+2. ✅ Ejecuta las migraciones Prisma
+3. ✅ Crea permisos y roles (ADMIN, MANAGER, CASHIER, SALES, WAREHOUSE)
+4. ✅ Crea un usuario administrador por defecto
+5. ✅ Crea un almacén principal
+
+**Credenciales por Defecto:**
+- **Usuario**: `admin`
+- **Contraseña**: `Admin123!`
+
+⚠️ **IMPORTANTE**: El sistema mostrará estas credenciales al crear el tenant. El usuario debe cambiar la contraseña después del primer inicio de sesión.
+
+### Inicialización Manual (Opcional)
+
+Si necesitas inicializar manualmente una base de datos de tenant:
+
+```bash
+# 1. Crear el archivo de base de datos (si no existe)
+# 2. Ejecutar migraciones en la BD del tenant
+DATABASE_URL="file:./tenants/mi-empresa.db" npx prisma migrate deploy
+
+# 3. Usar la función de inicialización
+# (Ver lib/initialize-tenant.ts)
+```
+
+### Ejemplo de Uso
+
+1. **Cliente accede a**: `https://clivaro.com/`
+2. **Ingresa slug**: `ferreteria-central`
+3. **Sistema verifica** que existe y está activo
+4. **Redirige a**: `/login/ferreteria-central`
+5. **Usuario ingresa credenciales**
+6. **Sistema autentica** usando `ferreteria-central.db`
+7. **Usuario accede** a su dashboard con sus datos
+
+### Notas Importantes
+
+- Cada tenant tiene **completamente aislados** sus datos
+- Los super admins pueden acceder a la BD maestra para gestionar tenants
+- El slug del tenant debe ser único y URL-friendly (solo letras, números y guiones)
+- Las bases de datos de los tenants pueden estar en diferentes ubicaciones (local, servidor, cloud)
+
