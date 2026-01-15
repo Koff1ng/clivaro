@@ -4,13 +4,13 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Users, Receipt, CreditCard, Settings as SettingsIcon, Loader2, Wallet } from 'lucide-react'
+import { Users, Receipt, CreditCard, Settings as SettingsIcon, Loader2 } from 'lucide-react'
 import { useToast } from '@/components/ui/toast'
+import { useSession } from 'next-auth/react'
 import { UsersConfig } from './users-config'
 import { ElectronicBillingConfig } from './electronic-billing-config'
 import { SubscriptionConfig } from './subscription-config'
 import { GeneralConfig } from './general-config'
-import { MercadoPagoConfig } from './mercadopago-config'
 
 async function fetchSettings() {
   const res = await fetch('/api/settings')
