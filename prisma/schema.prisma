@@ -478,13 +478,25 @@ model Payment {
   id          String   @id @default(cuid())
   invoiceId   String
   amount      Float
-  method      String
+  method      String   // CASH, CARD, TRANSFER, MERCADOPAGO
   reference   String?
   notes       String?
+  // Mercado Pago fields
+  mercadoPagoPaymentId String?  @unique // ID del pago en Mercado Pago
+  mercadoPagoPreferenceId String? // ID de la preferencia de pago
+  mercadoPagoStatus     String?  // approved, pending, rejected, cancelled, refunded, charged_back
+  mercadoPagoStatusDetail String? // Detalle del estado
+  mercadoPagoPaymentMethod String? // credit_card, debit_card, ticket, bank_transfer, etc.
+  mercadoPagoTransactionId String? // ID de la transacción
+  mercadoPagoResponse   String? // JSON con respuesta completa de MP
   createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
   createdById String?
   invoice     Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
   createdBy   User?    @relation("PaymentCreatedBy", fields: [createdById], references: [id])
+  
+  @@index([mercadoPagoPaymentId])
+  @@index([mercadoPagoPreferenceId])
 }
 
 model Return {
@@ -764,6 +776,11 @@ model TenantSettings {
   onboardingCompleted   Boolean?    @default(false)
   onboardingUserName    String?     // Nombre del usuario recopilado en onboarding
   onboardingCompanyName String?    // Nombre de la empresa recopilado en onboarding
+  // Mercado Pago
+  mercadoPagoAccessToken String?    // Access Token de Mercado Pago
+  mercadoPagoPublicKey   String?    // Public Key de Mercado Pago
+  mercadoPagoEnabled     Boolean?   @default(false) // Habilitar pagos con Mercado Pago
+  mercadoPagoWebhookUrl  String?    // URL del webhook configurado en MP
   createdAt             DateTime    @default(now())
   updatedAt             DateTime    @updatedAt
   tenant                Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)

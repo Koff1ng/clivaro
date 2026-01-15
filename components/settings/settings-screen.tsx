@@ -4,12 +4,13 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Users, Receipt, CreditCard, Settings as SettingsIcon, Loader2 } from 'lucide-react'
+import { Users, Receipt, CreditCard, Settings as SettingsIcon, Loader2, Wallet } from 'lucide-react'
 import { useToast } from '@/components/ui/toast'
 import { UsersConfig } from './users-config'
 import { ElectronicBillingConfig } from './electronic-billing-config'
 import { SubscriptionConfig } from './subscription-config'
 import { GeneralConfig } from './general-config'
+import { MercadoPagoConfig } from './mercadopago-config'
 
 async function fetchSettings() {
   const res = await fetch('/api/settings')
@@ -85,7 +86,7 @@ export function SettingsScreen() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="users" className="flex items-center gap-2">
             <Users className="h-4 w-4" />
             Usuarios
@@ -93,6 +94,10 @@ export function SettingsScreen() {
           <TabsTrigger value="billing" className="flex items-center gap-2">
             <Receipt className="h-4 w-4" />
             Facturación Electrónica
+          </TabsTrigger>
+          <TabsTrigger value="payments" className="flex items-center gap-2">
+            <Wallet className="h-4 w-4" />
+            Pagos
           </TabsTrigger>
           <TabsTrigger value="subscription" className="flex items-center gap-2">
             <CreditCard className="h-4 w-4" />
@@ -110,6 +115,14 @@ export function SettingsScreen() {
 
         <TabsContent value="billing" className="space-y-4">
           <ElectronicBillingConfig
+            settings={settings}
+            onSave={(data) => updateSettingsMutation.mutate(data)}
+            isLoading={updateSettingsMutation.isPending}
+          />
+        </TabsContent>
+
+        <TabsContent value="payments" className="space-y-4">
+          <MercadoPagoConfig
             settings={settings}
             onSave={(data) => updateSettingsMutation.mutate(data)}
             isLoading={updateSettingsMutation.isPending}
