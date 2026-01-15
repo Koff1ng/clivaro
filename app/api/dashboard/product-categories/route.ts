@@ -44,9 +44,19 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ categories: result }, { status: 200 })
   } catch (error: any) {
-    logger.error('Error dashboard product-categories', error, { endpoint: '/api/dashboard/product-categories', method: 'GET' })
+    logger.error('Error dashboard product-categories', error, { 
+      endpoint: '/api/dashboard/product-categories', 
+      method: 'GET',
+      errorMessage: error?.message,
+      errorCode: error?.code,
+      errorName: error?.name,
+    })
     return NextResponse.json(
-      { error: 'Failed to fetch product categories', details: error?.message || String(error) },
+      { 
+        error: 'Failed to fetch product categories', 
+        details: error?.message || String(error),
+        code: error?.code || 'UNKNOWN_ERROR',
+      },
       { status: 500 }
     )
   }

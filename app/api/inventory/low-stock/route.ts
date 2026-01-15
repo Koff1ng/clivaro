@@ -31,9 +31,9 @@ export async function GET(request: Request) {
       },
     })
 
-    // Filter where quantity <= minStock
+    // Filter where quantity <= minStock (solo si minStock está configurado)
     const lowStockItems = allStockLevels.filter(item => 
-      item.quantity <= item.minStock
+      item.minStock != null && item.minStock > 0 && item.quantity <= item.minStock
     ).slice(0, 20)
 
     const result = lowStockItems.map(item => ({
@@ -46,9 +46,19 @@ export async function GET(request: Request) {
 
     return NextResponse.json(result)
   } catch (error: any) {
-    logger.error('Error fetching low stock', error, { endpoint: '/api/inventory/low-stock', method: 'GET' })
+    logger.error('Error fetching low stock', error, { 
+      endpoint: '/api/inventory/low-stock', 
+      method: 'GET',
+      errorMessage: error?.message,
+      errorCode: error?.code,
+      errorName: error?.name,
+    })
     return NextResponse.json(
-      { error: 'Failed to fetch low stock', details: error?.message || String(error) },
+      { 
+        error: 'Failed to fetch low stock', 
+        details: error?.message || String(error),
+        code: error?.code || 'UNKNOWN_ERROR',
+      },
       { status: 500 }
     )
   }

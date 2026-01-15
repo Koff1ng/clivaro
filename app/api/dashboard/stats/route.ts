@@ -9,14 +9,15 @@ export async function GET(request: Request) {
   const startTime = Date.now()
   logger.apiRequest('GET', '/api/dashboard/stats')
   
-  const session = await requirePermission(request as any, PERMISSIONS.VIEW_REPORTS)
-  
-  if (session instanceof NextResponse) {
-    return session
-  }
+  try {
+    const session = await requirePermission(request as any, PERMISSIONS.VIEW_REPORTS)
+    
+    if (session instanceof NextResponse) {
+      return session
+    }
 
-  // Obtener el cliente Prisma correcto (tenant o master según el usuario)
-  const prisma = await getPrismaForRequest(request, session)
+    // Obtener el cliente Prisma correcto (tenant o master según el usuario)
+    const prisma = await getPrismaForRequest(request, session)
 
   const withRetry = async <T,>(fn: () => Promise<T>, label: string, retries = 2): Promise<T> => {
     let lastError: unknown
@@ -161,6 +162,10 @@ export async function GET(request: Request) {
             active: true,
             trackStock: true,
           },
+          minStock: {
+            not: null,
+            gt: 0, // Solo niveles con minStock configurado
+          },
         },
         select: {
           quantity: true,
@@ -168,7 +173,8 @@ export async function GET(request: Request) {
         },
       })
       return levels.reduce((count, level) => {
-        return level.quantity <= level.minStock ? count + 1 : count
+        // Verificar que minStock no sea null y que quantity sea menor o igual
+        return (level.minStock != null && level.minStock > 0 && level.quantity <= level.minStock) ? count + 1 : count
       }, 0)
     }, 'lowStockCount')
 
@@ -213,12 +219,21 @@ export async function GET(request: Request) {
       inCollection,
     })
   } catch (error: any) {
+    const duration = Date.now() - startTime
     logger.error('Error fetching dashboard stats', error, {
       endpoint: '/api/dashboard/stats',
       method: 'GET',
+      duration,
+      errorMessage: error?.message,
+      errorCode: error?.code,
+      errorName: error?.name,
     })
     return NextResponse.json(
-      { error: 'Failed to fetch stats', details: error?.message || String(error) },
+      { 
+        error: 'Failed to fetch stats', 
+        details: error?.message || String(error),
+        code: error?.code || 'UNKNOWN_ERROR',
+      },
       { status: 500 }
     )
   }

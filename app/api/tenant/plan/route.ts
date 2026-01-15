@@ -35,13 +35,31 @@ export async function GET(request: Request) {
     }
 
     // Obtener la suscripción activa del tenant
+    // Usar select en lugar de include para evitar problemas con campos nuevos no migrados
     const subscription = await prisma.subscription.findFirst({
       where: {
         tenantId: tenantId,
         status: 'active',
       },
-      include: {
-        plan: true,
+      select: {
+        id: true,
+        status: true,
+        startDate: true,
+        endDate: true,
+        trialEndDate: true,
+        createdAt: true,
+        plan: {
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            price: true,
+            currency: true,
+            interval: true,
+            features: true,
+            active: true,
+          },
+        },
       },
       orderBy: {
         createdAt: 'desc',
@@ -75,8 +93,16 @@ export async function GET(request: Request) {
         tenantId: tenantId,
         status: 'cancelled',
       },
-      include: {
-        plan: true,
+      select: {
+        id: true,
+        planId: true,
+        plan: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        updatedAt: true,
       },
       orderBy: {
         updatedAt: 'desc',
@@ -113,7 +139,11 @@ export async function GET(request: Request) {
   } catch (error: any) {
     console.error('Error fetching tenant plan:', error)
     return NextResponse.json(
-      { error: error.message || 'Error al obtener el plan' },
+      { 
+        error: error.message || 'Error al obtener el plan',
+        details: error?.message || String(error),
+        code: error?.code || 'UNKNOWN_ERROR',
+      },
       { status: 500 }
     )
   }

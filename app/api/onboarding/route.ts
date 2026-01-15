@@ -185,31 +185,55 @@ export async function GET(request: Request) {
       )
     }
 
-    const settings = await prisma.tenantSettings.findUnique({
-      where: { tenantId: user.tenantId }
-    })
+    try {
+      const settings = await prisma.tenantSettings.findUnique({
+        where: { tenantId: user.tenantId }
+      })
 
-    // Obtener el plan del tenant
-    const subscription = await prisma.subscription.findFirst({
-      where: {
+      // Obtener el plan del tenant (con manejo de errores)
+      let subscription = null
+      try {
+        subscription = await prisma.subscription.findFirst({
+          where: {
+            tenantId: user.tenantId,
+            status: 'active',
+          },
+          include: {
+            plan: true,
+          },
+          orderBy: {
+            createdAt: 'desc',
+          },
+        })
+      } catch (subError: any) {
+        // Si hay error al obtener suscripción (posiblemente campos nuevos no migrados), continuar sin plan
+        logger.warn('Error fetching subscription in onboarding check', {
+          tenantId: user.tenantId,
+          error: subError?.message || String(subError),
+        })
+      }
+
+      const needsOnboarding = !settings?.onboardingCompleted
+
+      return NextResponse.json({
+        needsOnboarding,
+        settings: settings || null,
+        plan: subscription?.plan || null,
+      })
+    } catch (settingsError: any) {
+      // Si hay error al obtener settings (posiblemente campos nuevos no migrados), asumir que necesita onboarding
+      logger.warn('Error fetching settings in onboarding check', {
         tenantId: user.tenantId,
-        status: 'active',
-      },
-      include: {
-        plan: true,
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-    })
-
-    const needsOnboarding = !settings?.onboardingCompleted
-
-    return NextResponse.json({
-      needsOnboarding,
-      settings: settings || null,
-      plan: subscription?.plan || null,
-    })
+        error: settingsError?.message || String(settingsError),
+      })
+      
+      // Retornar que necesita onboarding si no se pueden obtener los settings
+      return NextResponse.json({
+        needsOnboarding: true,
+        settings: null,
+        plan: null,
+      })
+    }
   } catch (error: any) {
     logger.error('Error checking onboarding status', error, {
       endpoint: '/api/onboarding',

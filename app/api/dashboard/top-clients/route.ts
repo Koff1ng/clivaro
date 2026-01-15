@@ -43,9 +43,19 @@ export async function GET(request: Request) {
 
     return NextResponse.json(clientsWithTotal)
   } catch (error: any) {
-    logger.error('Error fetching top clients', error, { endpoint: '/api/dashboard/top-clients', method: 'GET' })
+    logger.error('Error fetching top clients', error, { 
+      endpoint: '/api/dashboard/top-clients', 
+      method: 'GET',
+      errorMessage: error?.message,
+      errorCode: error?.code,
+      errorName: error?.name,
+    })
     return NextResponse.json(
-      { error: 'Failed to fetch top clients', details: error?.message || String(error) },
+      { 
+        error: 'Failed to fetch top clients', 
+        details: error?.message || String(error),
+        code: error?.code || 'UNKNOWN_ERROR',
+      },
       { status: 500 }
     )
   }

@@ -354,9 +354,19 @@ export async function GET(request: Request) {
       total: activities.length,
     })
   } catch (error: any) {
-    logger.error('Error fetching activity feed', error, { endpoint: '/api/activity-feed', method: 'GET' })
+    logger.error('Error fetching activity feed', error, { 
+      endpoint: '/api/activity-feed', 
+      method: 'GET',
+      errorMessage: error?.message,
+      errorCode: error?.code,
+      errorName: error?.name,
+    })
     return NextResponse.json(
-      { error: 'Failed to fetch activity feed', details: error?.message || String(error) },
+      { 
+        error: 'Failed to fetch activity feed', 
+        details: error?.message || String(error),
+        code: error?.code || 'UNKNOWN_ERROR',
+      },
       { status: 500 }
     )
   }

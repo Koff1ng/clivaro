@@ -56,9 +56,19 @@ export async function GET(request: Request) {
 
     return NextResponse.json(days)
   } catch (error: any) {
-    logger.error('Error fetching last 30 days', error, { endpoint: '/api/dashboard/last-30-days', method: 'GET' })
+    logger.error('Error fetching last 30 days', error, { 
+      endpoint: '/api/dashboard/last-30-days', 
+      method: 'GET',
+      errorMessage: error?.message,
+      errorCode: error?.code,
+      errorName: error?.name,
+    })
     return NextResponse.json(
-      { error: 'Failed to fetch last 30 days data', details: error?.message || String(error) },
+      { 
+        error: 'Failed to fetch last 30 days data', 
+        details: error?.message || String(error),
+        code: error?.code || 'UNKNOWN_ERROR',
+      },
       { status: 500 }
     )
   }
