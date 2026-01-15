@@ -53,6 +53,12 @@ export async function GET(request: Request) {
       )
     }
 
+    const envUrl = process.env.DATABASE_URL || ''
+    const isPostgresEnv = envUrl.startsWith('postgresql://') || envUrl.startsWith('postgres://')
+    const tenantDbUrl = tenant.databaseUrl || ''
+    const isTenantPostgres = tenantDbUrl.startsWith('postgresql://') || tenantDbUrl.startsWith('postgres://')
+    const isTenantSqlite = tenantDbUrl.startsWith('file:')
+
     // No exponer la databaseUrl completa por seguridad
     return NextResponse.json({
       tenant: {
@@ -60,7 +66,8 @@ export async function GET(request: Request) {
         name: tenant.name,
         slug: tenant.slug,
         active: tenant.active,
-      }
+      },
+      dbMode: isTenantPostgres ? 'postgres' : isTenantSqlite ? (isPostgresEnv ? 'legacy_sqlite' : 'sqlite') : 'unknown',
     })
   } catch (error) {
     logger.error('Error verifying tenant', error, { endpoint: '/api/tenants/verify', method: 'GET' })

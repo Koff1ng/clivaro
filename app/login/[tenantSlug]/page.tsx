@@ -36,10 +36,16 @@ export default function TenantLoginPage() {
           return
         }
 
-        const { tenant } = await response.json()
+        const { tenant, dbMode } = await response.json()
         
         if (!tenant.active) {
           setError('Su cuenta está inactiva. Contacte al administrador.')
+          setVerifying(false)
+          return
+        }
+
+        if (dbMode === 'legacy_sqlite') {
+          setError('Esta empresa aún no está configurada en producción. Contacte al administrador para migrarla.')
           setVerifying(false)
           return
         }

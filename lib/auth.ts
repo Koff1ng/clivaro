@@ -48,6 +48,16 @@ export const authOptions: NextAuthOptions = {
             return null
           }
 
+          const envUrl = process.env.DATABASE_URL || ''
+          const isPostgresEnv = envUrl.startsWith('postgresql://') || envUrl.startsWith('postgres://')
+          if (isPostgresEnv && tenant.databaseUrl?.startsWith('file:')) {
+            console.log('[AUTH] Tenant usa SQLite en producción (no soportado). Debe migrarse:', {
+              tenantId: tenant.id,
+              slug: credentials.tenantSlug,
+            })
+            return null
+          }
+
           console.log(`[AUTH] Tenant encontrado: ${tenant.id}, Database URL: ${tenant.databaseUrl}`)
           tenantId = tenant.id
           // Obtener cliente Prisma del tenant
