@@ -133,27 +133,37 @@ export async function POST(request: Request) {
         orderBy: { createdAt: 'asc' },
       })
       if (warehouse) {
-        await prisma.stockLevel.upsert({
+        // Prisma does not allow `null` in compound-unique `where` for upsert in some generated types.
+        // Use findFirst + update/create to safely handle variantId = null.
+        const existing = await prisma.stockLevel.findFirst({
           where: {
-            warehouseId_productId_variantId: {
-              warehouseId: warehouse.id,
-              productId: product.id,
-              variantId: null,
-            },
-          },
-          update: {
-            minStock: data.minStock ?? 0,
-            maxStock: data.maxStock ?? 0,
-          },
-          create: {
             warehouseId: warehouse.id,
             productId: product.id,
             variantId: null,
-            quantity: 0,
-            minStock: data.minStock ?? 0,
-            maxStock: data.maxStock ?? 0,
           },
+          select: { id: true },
         })
+
+        if (existing) {
+          await prisma.stockLevel.update({
+            where: { id: existing.id },
+            data: {
+              minStock: data.minStock ?? 0,
+              maxStock: data.maxStock ?? 0,
+            },
+          })
+        } else {
+          await prisma.stockLevel.create({
+            data: {
+              warehouseId: warehouse.id,
+              productId: product.id,
+              variantId: null,
+              quantity: 0,
+              minStock: data.minStock ?? 0,
+              maxStock: data.maxStock ?? 0,
+            },
+          })
+        }
       }
     }
 
