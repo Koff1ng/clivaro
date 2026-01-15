@@ -90,11 +90,11 @@ export async function GET(
       const updatedPayment = await tenantPrisma.payment.update({
         where: { id: payment.id },
         data: {
-          mercadoPagoPaymentId: paymentInfo.id.toString(),
+          mercadoPagoPaymentId: paymentInfo.id ? paymentInfo.id.toString() : paymentId,
           mercadoPagoStatus: paymentInfo.status,
           mercadoPagoStatusDetail: paymentInfo.statusDetail,
           mercadoPagoPaymentMethod: paymentInfo.paymentMethodId,
-          mercadoPagoTransactionId: paymentInfo.id.toString(),
+          mercadoPagoTransactionId: paymentInfo.id ? paymentInfo.id.toString() : paymentId,
           mercadoPagoResponse: JSON.stringify(paymentInfo),
           updatedAt: new Date(),
         },
@@ -139,7 +139,7 @@ export async function GET(
       })
     } catch (error: any) {
       // Si hay error al obtener de MP, devolver el estado local
-      logger.warn('Error getting payment info from Mercado Pago', error, {
+      logger.error('Error getting payment info from Mercado Pago', error, {
         paymentId: payment.id,
       })
       

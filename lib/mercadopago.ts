@@ -1,7 +1,7 @@
-import { MercadoPagoConfig, Preference, Payment } from 'mercadopago'
+import { MercadoPagoConfig as MercadoPagoSDKConfig, Preference, Payment } from 'mercadopago'
 import { logger } from './logger'
 
-export interface MercadoPagoConfig {
+export interface MercadoPagoCredentials {
   accessToken: string
   publicKey?: string
 }
@@ -37,7 +37,7 @@ export interface PaymentNotification {
  * Inicializa el cliente de Mercado Pago
  */
 export function initMercadoPagoClient(accessToken: string) {
-  const client = new MercadoPagoConfig({ accessToken })
+  const client = new MercadoPagoSDKConfig({ accessToken })
   return {
     preference: new Preference(client),
     payment: new Payment(client),
@@ -57,6 +57,7 @@ export async function createPaymentPreference(
     const preferenceData = {
       items: [
         {
+          id: params.subscriptionId || params.invoiceId || 'item-1',
           title: params.title,
           description: params.description || '',
           quantity: 1,
@@ -113,19 +114,19 @@ export async function getPaymentInfo(
     const paymentInfo = await payment.get({ id: paymentId })
 
     return {
-      id: paymentInfo.id,
-      status: paymentInfo.status,
-      statusDetail: paymentInfo.status_detail,
-      paymentMethodId: paymentInfo.payment_method_id,
-      paymentTypeId: paymentInfo.payment_type_id,
-      transactionAmount: paymentInfo.transaction_amount,
-      currencyId: paymentInfo.currency_id,
-      dateCreated: paymentInfo.date_created,
-      dateApproved: paymentInfo.date_approved,
-      dateLastUpdated: paymentInfo.date_last_updated,
-      externalReference: paymentInfo.external_reference,
-      payer: paymentInfo.payer,
-      metadata: paymentInfo.metadata,
+      id: paymentInfo.id || null,
+      status: paymentInfo.status || null,
+      statusDetail: paymentInfo.status_detail || null,
+      paymentMethodId: paymentInfo.payment_method_id || null,
+      paymentTypeId: paymentInfo.payment_type_id || null,
+      transactionAmount: paymentInfo.transaction_amount || null,
+      currencyId: paymentInfo.currency_id || null,
+      dateCreated: paymentInfo.date_created || null,
+      dateApproved: paymentInfo.date_approved || null,
+      dateLastUpdated: paymentInfo.date_last_updated || null,
+      externalReference: paymentInfo.external_reference || null,
+      payer: paymentInfo.payer || null,
+      metadata: paymentInfo.metadata || null,
     }
   } catch (error: any) {
     logger.error('Error getting Mercado Pago payment info', error, {

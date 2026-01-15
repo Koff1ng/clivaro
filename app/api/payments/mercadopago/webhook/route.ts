@@ -69,11 +69,11 @@ export async function POST(request: Request) {
 
         // Actualizar la suscripción con la información de Mercado Pago
         const updateData: any = {
-          mercadoPagoPaymentId: paymentInfo.id.toString(),
+          mercadoPagoPaymentId: paymentInfo.id ? paymentInfo.id.toString() : paymentId,
           mercadoPagoStatus: paymentInfo.status,
           mercadoPagoStatusDetail: paymentInfo.statusDetail,
           mercadoPagoPaymentMethod: paymentInfo.paymentMethodId,
-          mercadoPagoTransactionId: paymentInfo.id.toString(),
+          mercadoPagoTransactionId: paymentInfo.id ? paymentInfo.id.toString() : paymentId,
           mercadoPagoResponse: JSON.stringify(paymentInfo),
           updatedAt: new Date(),
         }
@@ -132,11 +132,11 @@ export async function POST(request: Request) {
         await tenantPrisma.payment.update({
           where: { id: payment.id },
           data: {
-            mercadoPagoPaymentId: paymentInfo.id.toString(),
+            mercadoPagoPaymentId: paymentInfo.id ? paymentInfo.id.toString() : paymentId,
             mercadoPagoStatus: paymentInfo.status,
             mercadoPagoStatusDetail: paymentInfo.statusDetail,
             mercadoPagoPaymentMethod: paymentInfo.paymentMethodId,
-            mercadoPagoTransactionId: paymentInfo.id.toString(),
+            mercadoPagoTransactionId: paymentInfo.id ? paymentInfo.id.toString() : paymentId,
             mercadoPagoResponse: JSON.stringify(paymentInfo),
             updatedAt: new Date(),
           },

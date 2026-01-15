@@ -5,13 +5,12 @@ import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { CreditCard, Calendar, Clock, AlertCircle } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { cn, formatCurrency } from '@/lib/utils'
 import { useQuery } from '@tanstack/react-query'
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useToast } from '@/components/ui/toast'
 import { PaySubscriptionButton } from '@/components/subscriptions/pay-subscription-button'
-import { formatCurrency } from '@/lib/utils'
 
 interface SubscriptionConfigProps {
   settings: any
