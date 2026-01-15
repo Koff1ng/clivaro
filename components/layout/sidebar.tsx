@@ -29,7 +29,6 @@ import {
   Shield,
 } from 'lucide-react'
 import { Logo } from '@/components/ui/logo'
-import { ThemeToggle } from '@/components/theme/theme-toggle'
 import { useSidebar } from '@/lib/sidebar-context'
 import { Button } from '@/components/ui/button'
 import { useTenantPlan } from '@/lib/hooks/use-plan-features'
@@ -84,7 +83,36 @@ export function Sidebar() {
     }
   }, [])
 
-  // Marcar feature como visitada cuando se navega a ella
+  // Marcar feature como visitada cuando se hace click en ella
+  const handleFeatureClick = (feature: string) => {
+    if (!isNewFeature(feature as any)) return
+    
+    const featureKey = feature
+    const now = Date.now()
+    
+    // Si no está visitada, marcar timestamp de click
+    if (!visitedFeatures[featureKey]) {
+      const updated = { ...visitedFeatures, [featureKey]: now }
+      setVisitedFeatures(updated)
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('visited-new-features', JSON.stringify(updated))
+      }
+      
+      // Después de 1 minuto, marcar como permanentemente visitada
+      setTimeout(() => {
+        setVisitedFeatures(prev => {
+          const newVisited = { ...prev }
+          // Mantener el timestamp para indicar que fue visitada permanentemente
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('visited-new-features', JSON.stringify(newVisited))
+          }
+          return newVisited
+        })
+      }, 60 * 1000) // 1 minuto
+    }
+  }
+
+  // Marcar feature como visitada cuando se navega a ella (fallback)
   useEffect(() => {
     if (!pathname || !newFeatures || newFeatures.length === 0) return
 
@@ -95,31 +123,22 @@ export function Sidebar() {
     })
 
     if (currentFeature?.planFeature) {
-      const featureKey = currentFeature.planFeature
-      const now = Date.now()
-      
-      // Si no está visitada, marcar como visitada
-      if (!visitedFeatures[featureKey]) {
-        const updated = { ...visitedFeatures, [featureKey]: now }
-        setVisitedFeatures(updated)
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('visited-new-features', JSON.stringify(updated))
-        }
-      }
+      handleFeatureClick(currentFeature.planFeature)
     }
-  }, [pathname, newFeatures, visitedFeatures, isNewFeature])
-
-  // Ya no necesitamos limpiar etiquetas después de un tiempo
-  // Las features visitadas permanecen marcadas permanentemente
-  // (se pueden limpiar manualmente desde localStorage si es necesario)
+  }, [pathname, newFeatures, isNewFeature])
 
   // Función para verificar si una feature debe mostrar la etiqueta "NUEVO"
   const shouldShowNewBadge = (feature: string) => {
     if (!isNewFeature(feature as any)) return false
     
-    // Si la feature ha sido visitada, no mostrar el badge
-    // El badge desaparece inmediatamente después de visitar la función
-    return !visitedFeatures[feature]
+    const visitTime = visitedFeatures[feature]
+    if (!visitTime) return true // No ha sido visitada, mostrar
+    
+    // Si fue visitada hace menos de 1 minuto, aún mostrar el badge
+    // Después de 1 minuto, desaparecer permanentemente
+    const now = Date.now()
+    const timeSinceClick = now - visitTime
+    return timeSinceClick < 60 * 1000 // Mostrar solo si pasó menos de 1 minuto
   }
 
   const filteredMenuItems = menuItems.filter(item => {
@@ -202,6 +221,12 @@ export function Sidebar() {
                 key={item.href}
                 href={item.href}
                 prefetch
+                onClick={() => {
+                  // Si tiene badge "NUEVO", marcar como visitada al hacer click
+                  if (item.planFeature && shouldShowNewBadge(item.planFeature)) {
+                    handleFeatureClick(item.planFeature)
+                  }
+                }}
                 className={cn(
                   'flex items-center gap-3 rounded-lg text-sm font-medium transition-colors relative group',
                   isActive
@@ -264,9 +289,6 @@ export function Sidebar() {
           'border-t space-y-2 transition-opacity duration-300',
           isOpen ? 'opacity-100 p-4' : 'opacity-0 md:opacity-100 p-2'
         )}>
-          <div className={cn('flex items-center', !isOpen && 'md:justify-center')}>
-            <ThemeToggle />
-          </div>
           {isOpen && (
             <div className="px-3 text-sm text-muted-foreground">
               {session?.user?.name}

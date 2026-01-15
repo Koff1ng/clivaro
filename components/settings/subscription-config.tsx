@@ -1,23 +1,18 @@
 'use client'
 
-import { useForm } from 'react-hook-form'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
-import { CreditCard, Loader2 } from 'lucide-react'
+import { Label } from '@/components/ui/label'
+import { CreditCard, Calendar, Clock } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import { useQuery } from '@tanstack/react-query'
-
-interface SubscriptionFormData {
-  subscriptionTrialDays: number
-  subscriptionGracePeriodDays: number
-  subscriptionAutoRenew: boolean
-}
+import { useState, useEffect } from 'react'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useToast } from '@/components/ui/toast'
 
 interface SubscriptionConfigProps {
   settings: any
-  onSave: (data: Partial<SubscriptionFormData>) => void
+  onSave: (data: any) => void
   isLoading: boolean
 }
 
@@ -28,27 +23,56 @@ async function fetchSubscription() {
 }
 
 export function SubscriptionConfig({ settings, onSave, isLoading }: SubscriptionConfigProps) {
+  const { toast } = useToast()
+  const queryClient = useQueryClient()
+  const [autoRenew, setAutoRenew] = useState(settings?.subscriptionAutoRenew ?? true)
+
   const { data: subscriptionData } = useQuery({
     queryKey: ['tenant-plan'],
     queryFn: fetchSubscription,
   })
 
-  const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm<SubscriptionFormData>({
-    defaultValues: {
-      subscriptionTrialDays: settings?.subscriptionTrialDays || 14,
-      subscriptionGracePeriodDays: settings?.subscriptionGracePeriodDays || 7,
-      subscriptionAutoRenew: settings?.subscriptionAutoRenew ?? true,
-    }
+  const updateAutoRenewMutation = useMutation({
+    mutationFn: async (value: boolean) => {
+      onSave({ subscriptionAutoRenew: value })
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['settings'] })
+      toast('Configuración actualizada', 'success')
+    },
+    onError: (error: any) => {
+      toast(error.message || 'Error al actualizar', 'error')
+    },
   })
-
-  const autoRenew = watch('subscriptionAutoRenew')
-
-  const onSubmit = (data: SubscriptionFormData) => {
-    onSave(data)
-  }
 
   const plan = subscriptionData?.plan
   const subscription = subscriptionData?.subscription
+
+  // Calcular días restantes
+  const getRemainingDays = () => {
+    if (!subscription) return null
+
+    const now = new Date()
+    let targetDate: Date | null = null
+    let label = ''
+
+    if (subscription.status === 'trial' && subscription.trialEndDate) {
+      targetDate = new Date(subscription.trialEndDate)
+      label = 'días restantes de prueba'
+    } else if (subscription.endDate) {
+      targetDate = new Date(subscription.endDate)
+      label = 'días restantes de suscripción'
+    }
+
+    if (!targetDate) return null
+
+    const diffTime = targetDate.getTime() - now.getTime()
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+
+    return { days: diffDays, label }
+  }
+
+  const remainingDays = getRemainingDays()
 
   return (
     <Card>
@@ -64,8 +88,11 @@ export function SubscriptionConfig({ settings, onSave, isLoading }: Subscription
       <CardContent className="space-y-6">
         {/* Información de la Suscripción Actual */}
         {plan && (
-          <div className="p-4 bg-muted rounded-lg space-y-2">
-            <h4 className="font-semibold">Suscripción Actual</h4>
+          <div className="p-4 bg-muted rounded-lg space-y-4">
+            <h4 className="font-semibold flex items-center gap-2">
+              <CreditCard className="h-5 w-5" />
+              Suscripción Actual
+            </h4>
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
                 <span className="text-muted-foreground">Plan:</span>
@@ -78,64 +105,53 @@ export function SubscriptionConfig({ settings, onSave, isLoading }: Subscription
                     <span className="ml-2 font-medium capitalize">{subscription.status}</span>
                   </div>
                   {subscription.endDate && (
-                    <div>
-                      <span className="text-muted-foreground">Vence:</span>
-                      <span className="ml-2 font-medium">
-                        {new Date(subscription.endDate).toLocaleDateString('es-ES')}
-                      </span>
+                    <div className="flex items-center gap-2">
+                      <Calendar className="h-4 w-4 text-muted-foreground" />
+                      <div>
+                        <span className="text-muted-foreground">Vence:</span>
+                        <span className="ml-2 font-medium">
+                          {new Date(subscription.endDate).toLocaleDateString('es-ES')}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                  {remainingDays && (
+                    <div className="flex items-center gap-2">
+                      <Clock className="h-4 w-4 text-muted-foreground" />
+                      <div>
+                        <span className="text-muted-foreground">{remainingDays.label}:</span>
+                        <span className={cn(
+                          "ml-2 font-bold",
+                          remainingDays.days <= 7 ? "text-red-600" : remainingDays.days <= 30 ? "text-orange-600" : "text-green-600"
+                        )}>
+                          {remainingDays.days} {remainingDays.days === 1 ? 'día' : 'días'}
+                        </span>
+                      </div>
                     </div>
                   )}
                 </>
               )}
             </div>
+            {subscription?.status === 'trial' && subscription?.trialEndDate && (
+              <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                <p className="text-sm text-blue-900 dark:text-blue-100">
+                  <strong>Período de Prueba:</strong> Tu prueba gratuita finaliza el{' '}
+                  {new Date(subscription.trialEndDate).toLocaleDateString('es-ES', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                  })}
+                </p>
+              </div>
+            )}
           </div>
         )}
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-          {/* Días de Prueba */}
-          <div className="space-y-2">
-            <Label htmlFor="subscriptionTrialDays">Días de Prueba Gratuita</Label>
-            <Input
-              id="subscriptionTrialDays"
-              type="number"
-              min="0"
-              max="90"
-              {...register('subscriptionTrialDays', {
-                required: 'Los días de prueba son requeridos',
-                min: { value: 0, message: 'Debe ser mayor o igual a 0' },
-                max: { value: 90, message: 'No puede exceder 90 días' },
-                valueAsNumber: true,
-              })}
-            />
-            <p className="text-sm text-muted-foreground">
-              Número de días de prueba gratuita para nuevos usuarios
+        <div className="space-y-4 pt-4 border-t">
+          <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800">
+            <p className="text-sm text-yellow-900 dark:text-yellow-100">
+              <strong>Nota:</strong> Los tiempos de prueba y período de gracia solo pueden ser modificados por el administrador del sistema.
             </p>
-            {errors.subscriptionTrialDays && (
-              <p className="text-sm text-destructive">{errors.subscriptionTrialDays.message}</p>
-            )}
-          </div>
-
-          {/* Período de Gracia */}
-          <div className="space-y-2">
-            <Label htmlFor="subscriptionGracePeriodDays">Días de Período de Gracia</Label>
-            <Input
-              id="subscriptionGracePeriodDays"
-              type="number"
-              min="0"
-              max="30"
-              {...register('subscriptionGracePeriodDays', {
-                required: 'Los días de gracia son requeridos',
-                min: { value: 0, message: 'Debe ser mayor o igual a 0' },
-                max: { value: 30, message: 'No puede exceder 30 días' },
-                valueAsNumber: true,
-              })}
-            />
-            <p className="text-sm text-muted-foreground">
-              Días adicionales después de la expiración antes de suspender el acceso
-            </p>
-            {errors.subscriptionGracePeriodDays && (
-              <p className="text-sm text-destructive">{errors.subscriptionGracePeriodDays.message}</p>
-            )}
           </div>
 
           {/* Renovación Automática */}
@@ -151,23 +167,14 @@ export function SubscriptionConfig({ settings, onSave, isLoading }: Subscription
             <Switch
               id="subscriptionAutoRenew"
               checked={autoRenew}
-              onCheckedChange={(checked) => setValue('subscriptionAutoRenew', checked)}
+              onCheckedChange={(checked) => {
+                setAutoRenew(checked)
+                updateAutoRenewMutation.mutate(checked)
+              }}
+              disabled={updateAutoRenewMutation.isPending}
             />
           </div>
-
-          <div className="flex justify-end pt-4 border-t">
-            <Button type="submit" disabled={isLoading}>
-              {isLoading ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Guardando...
-                </>
-              ) : (
-                'Guardar Configuración'
-              )}
-            </Button>
-          </div>
-        </form>
+        </div>
       </CardContent>
     </Card>
   )

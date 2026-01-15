@@ -4,6 +4,7 @@ import { useSession } from 'next-auth/react'
 import { useSidebar } from '@/lib/sidebar-context'
 import { Button } from '@/components/ui/button'
 import { Menu, Bell, User } from 'lucide-react'
+import { ThemeToggle } from '@/components/theme/theme-toggle'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -164,8 +165,11 @@ export function Header() {
           </Button>
         </div>
 
-        {/* Right side: Notifications and User */}
+        {/* Right side: Theme Toggle, Notifications and User */}
         <div className="flex items-center gap-3">
+          {/* Theme Toggle */}
+          <ThemeToggle />
+          
           {/* Notifications */}
           <DropdownMenu open={isDropdownOpen} onOpenChange={handleDropdownOpenChange}>
             <DropdownMenuTrigger asChild>
