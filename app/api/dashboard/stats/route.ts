@@ -19,59 +19,59 @@ export async function GET(request: Request) {
     // Obtener el cliente Prisma correcto (tenant o master según el usuario)
     const prisma = await getPrismaForRequest(request, session)
 
-  const withRetry = async <T,>(fn: () => Promise<T>, label: string, retries = 2): Promise<T> => {
-    let lastError: unknown
-    for (let attempt = 0; attempt <= retries; attempt++) {
-      try {
-        return await fn()
-      } catch (error) {
-        lastError = error
-        logger.warn(`Retrying dashboard stats query: ${label}`, {
-          attempt,
-          error: (error as any)?.message || error,
-        })
-        if (attempt < retries) {
-          await new Promise(resolve => setTimeout(resolve, 250 * (attempt + 1)))
+    const withRetry = async <T,>(fn: () => Promise<T>, label: string, retries = 2): Promise<T> => {
+      let lastError: unknown
+      for (let attempt = 0; attempt <= retries; attempt++) {
+        try {
+          return await fn()
+        } catch (error) {
+          lastError = error
+          logger.warn(`Retrying dashboard stats query: ${label}`, {
+            attempt,
+            error: (error as any)?.message || error,
+          })
+          if (attempt < retries) {
+            await new Promise(resolve => setTimeout(resolve, 250 * (attempt + 1)))
+          }
         }
       }
+      throw lastError
     }
-    throw lastError
-  }
 
-  try {
-    const today = startOfDay(new Date())
-    const monthStart = startOfMonth(new Date())
+    try {
+      const today = startOfDay(new Date())
+      const monthStart = startOfMonth(new Date())
 
-    const salesToday = await withRetry(
-      () =>
-        prisma.invoice.aggregate({
-          where: {
-            status: { in: ['PAGADA', 'PAID', 'EN_COBRANZA', 'PARCIAL', 'PARTIAL'] }, // Compatibilidad con estados antiguos y nuevos
-            createdAt: { gte: today },
-          },
-          _sum: {
-            total: true,
-          },
-        }),
-      'salesToday'
-    )
+      const salesToday = await withRetry(
+        () =>
+          prisma.invoice.aggregate({
+            where: {
+              status: { in: ['PAGADA', 'PAID', 'EN_COBRANZA', 'PARCIAL', 'PARTIAL'] }, // Compatibilidad con estados antiguos y nuevos
+              createdAt: { gte: today },
+            },
+            _sum: {
+              total: true,
+            },
+          }),
+        'salesToday'
+      )
 
-    const salesMonth = await withRetry(
-      () =>
-        prisma.invoice.aggregate({
-          where: {
-            status: { in: ['PAGADA', 'PAID', 'EN_COBRANZA', 'PARCIAL', 'PARTIAL'] }, // Compatibilidad con estados antiguos y nuevos
-            createdAt: { gte: monthStart },
-          },
-          _sum: {
-            total: true,
-          },
-        }),
-      'salesMonth'
-    )
+      const salesMonth = await withRetry(
+        () =>
+          prisma.invoice.aggregate({
+            where: {
+              status: { in: ['PAGADA', 'PAID', 'EN_COBRANZA', 'PARCIAL', 'PARTIAL'] }, // Compatibilidad con estados antiguos y nuevos
+              createdAt: { gte: monthStart },
+            },
+            _sum: {
+              total: true,
+            },
+          }),
+        'salesMonth'
+      )
 
-    // Ganancia del mes (sin impuestos): (subtotal - costo) agregado
-    const profitMonth = await withRetry(async () => {
+      // Ganancia del mes (sin impuestos): (subtotal - costo) agregado
+      const profitMonth = await withRetry(async () => {
       const invoices = await prisma.invoice.findMany({
         where: {
           status: { in: ['PAGADA', 'PAID', 'EN_COBRANZA', 'PARCIAL', 'PARTIAL'] },
@@ -107,11 +107,11 @@ export async function GET(request: Request) {
         )
       }, 0)
 
-      return subtotalWithoutTaxes - costOfGoodsSold
-    }, 'profitMonth')
+        return subtotalWithoutTaxes - costOfGoodsSold
+      }, 'profitMonth')
 
-    // Número de ventas = número de facturas pagadas en el turno activo
-    const salesCount = await withRetry(async () => {
+      // Número de ventas = número de facturas pagadas en el turno activo
+      const salesCount = await withRetry(async () => {
       // Buscar turno activo
       const activeShift = await prisma.cashShift.findFirst({
         where: {
@@ -142,20 +142,20 @@ export async function GET(request: Request) {
         },
       })
 
-      return paidInvoicesCount
-    }, 'salesCount')
+        return paidInvoicesCount
+      }, 'salesCount')
 
-    const totalProducts = await withRetry(
-      () =>
-        prisma.product.count({
-          where: {
-            active: true,
-          },
-        }),
-      'totalProducts'
-    )
+      const totalProducts = await withRetry(
+        () =>
+          prisma.product.count({
+            where: {
+              active: true,
+            },
+          }),
+        'totalProducts'
+      )
 
-    const lowStockCount = await withRetry(async () => {
+      const lowStockCount = await withRetry(async () => {
       const levels = await prisma.stockLevel.findMany({
         where: {
           product: {
@@ -172,13 +172,13 @@ export async function GET(request: Request) {
           minStock: true,
         },
       })
-      return levels.reduce((count, level) => {
-        // Verificar que minStock no sea null y que quantity sea menor o igual
-        return (level.minStock != null && level.minStock > 0 && level.quantity <= level.minStock) ? count + 1 : count
-      }, 0)
-    }, 'lowStockCount')
+        return levels.reduce((count, level) => {
+          // Verificar que minStock no sea null y que quantity sea menor o igual
+          return (level.minStock != null && level.minStock > 0 && level.quantity <= level.minStock) ? count + 1 : count
+        }, 0)
+      }, 'lowStockCount')
 
-    const inCollection = await withRetry(async () => {
+      const inCollection = await withRetry(async () => {
       const unpaidInvoices = await prisma.invoice.findMany({
         where: {
           status: {
@@ -203,24 +203,43 @@ export async function GET(request: Request) {
         }
       }
 
-      return totalInCollection
-    }, 'inCollection')
+        return totalInCollection
+      }, 'inCollection')
 
-    const duration = Date.now() - startTime
-    logger.apiResponse('GET', '/api/dashboard/stats', 200, duration)
+      const duration = Date.now() - startTime
+      logger.apiResponse('GET', '/api/dashboard/stats', 200, duration)
 
-    return NextResponse.json({
-      salesToday: salesToday._sum.total || 0,
-      salesMonth: salesMonth._sum.total || 0,
-      profitMonth,
-      salesCount, // Número de facturas pagadas en el turno activo
-      totalProducts,
-      lowStockCount,
-      inCollection,
-    })
+      return NextResponse.json({
+        salesToday: salesToday._sum.total || 0,
+        salesMonth: salesMonth._sum.total || 0,
+        profitMonth,
+        salesCount, // Número de facturas pagadas en el turno activo
+        totalProducts,
+        lowStockCount,
+        inCollection,
+      })
+    } catch (error: any) {
+      const duration = Date.now() - startTime
+      logger.error('Error fetching dashboard stats', error, {
+        endpoint: '/api/dashboard/stats',
+        method: 'GET',
+        duration,
+        errorMessage: error?.message,
+        errorCode: error?.code,
+        errorName: error?.name,
+      })
+      return NextResponse.json(
+        { 
+          error: 'Failed to fetch stats', 
+          details: error?.message || String(error),
+          code: error?.code || 'UNKNOWN_ERROR',
+        },
+        { status: 500 }
+      )
+    }
   } catch (error: any) {
     const duration = Date.now() - startTime
-    logger.error('Error fetching dashboard stats', error, {
+    logger.error('Error in dashboard stats endpoint', error, {
       endpoint: '/api/dashboard/stats',
       method: 'GET',
       duration,
