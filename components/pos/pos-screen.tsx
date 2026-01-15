@@ -1306,9 +1306,9 @@ export function POSScreen() {
 
       <div className="flex-1 flex overflow-hidden">
         {/* Left Panel - Products */}
-        <div className="w-2/3 flex flex-col border-r bg-white">
+        <div className="w-2/3 flex flex-col border-r bg-background">
           {/* Search Bar */}
-          <div className="p-4 border-b bg-white">
+          <div className="p-4 border-b bg-background">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
               <Input
@@ -1350,7 +1350,7 @@ export function POSScreen() {
           <div className="flex-1 overflow-y-auto p-4">
             {productsIsError ? (
               <div className="text-center text-gray-500 py-12 space-y-3">
-                <div className="font-medium text-gray-700">No se pudieron cargar los productos</div>
+                <div className="font-medium text-foreground">No se pudieron cargar los productos</div>
                 <div className="text-sm text-gray-500">
                   {(productsError as any)?.message || 'Intenta nuevamente'}
                 </div>
@@ -1402,12 +1402,12 @@ export function POSScreen() {
         </div>
 
         {/* Right Panel - Cart & Payment */}
-        <div className="w-1/3 flex flex-col bg-white min-h-0">
+        <div className="w-1/3 flex flex-col bg-background min-h-0">
           {/* Customer Selection - Compact */}
           <div className="p-2 border-b flex items-center justify-between">
             <div className="flex items-center gap-2 flex-1 min-w-0">
               <User className="h-4 w-4 text-gray-400 flex-shrink-0" />
-              <span className="text-sm text-gray-700 truncate">
+              <span className="text-sm text-muted-foreground truncate">
                 {selectedCustomer ? selectedCustomer.name : 'Cliente General'}
               </span>
             </div>
@@ -1489,7 +1489,7 @@ export function POSScreen() {
                     <div
                       key={item.productId}
                       className={[
-                        'border rounded-lg p-3 bg-white shadow-sm hover:shadow transition-shadow',
+                        'border rounded-lg p-3 bg-background shadow-sm hover:shadow transition-shadow',
                         hasStockConflict ? 'border-red-300 bg-red-50/40' : '',
                       ].join(' ')}
                     >
@@ -1501,7 +1501,7 @@ export function POSScreen() {
                             {formatCurrency(item.unitPrice)} c/u
                           </div>
                           {hasStockConflict && (
-                            <div className="mt-2 rounded-md border border-red-200 bg-white p-2">
+                            <div className="mt-2 rounded-md border border-red-200 bg-background p-2">
                               <div className="text-xs font-semibold text-red-700">Conflicto: stock insuficiente</div>
                               <div className="text-xs text-red-700 mt-0.5">
                                 Disponible: <span className="font-semibold">{typeof availableNow === 'number' ? availableNow : conflict?.available ?? '—'}</span>{' '}

@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/toast'
 import { DatePicker } from '@/components/ui/date-picker'
+import { toDateInputValue } from '@/lib/utils'
 
 const leadSchema = z.object({
   name: z.string().min(1, 'El nombre es requerido'),
@@ -58,7 +59,7 @@ export function LeadForm({ lead, users, onSuccess }: { lead: any; users: any[]; 
       setValue('stage', lead.stage || 'NEW')
       setValue('expectedRevenue', lead.expectedRevenue || 0)
       setValue('probability', lead.probability || 0)
-      setValue('expectedCloseDate', lead.expectedCloseDate ? new Date(lead.expectedCloseDate).toISOString().split('T')[0] : null)
+      setValue('expectedCloseDate', lead.expectedCloseDate ? toDateInputValue(lead.expectedCloseDate) : null)
       setValue('assignedToId', lead.assignedToId || null)
       setValue('notes', lead.notes || '')
     }

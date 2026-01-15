@@ -9,10 +9,10 @@ export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(() => new QueryClient({
     defaultOptions: {
       queries: {
-        staleTime: 5 * 60 * 1000, // 5 minutes - data stays fresh longer
+        staleTime: 30 * 1000, // 30s - prefer real-time data on section entry
         gcTime: 10 * 60 * 1000, // 10 minutes - cache time (formerly cacheTime)
-        refetchOnWindowFocus: false,
-        refetchOnMount: false, // Don't refetch on mount if data is fresh
+        refetchOnWindowFocus: true,
+        refetchOnMount: 'always', // Always refetch when entering a section
         retry: 1, // Reduce retries for faster failure
       },
     },

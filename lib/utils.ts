@@ -40,3 +40,33 @@ export function formatDateTime(date: Date | string | null | undefined): string {
   }).format(d)
 }
 
+/**
+ * Convert a Date/ISO string into an <input type="date"> value (YYYY-MM-DD) using local time.
+ * Avoids the common off-by-one bug caused by UTC conversions (toISOString).
+ */
+export function toDateInputValue(date: Date | string | null | undefined): string {
+  if (!date) return ''
+  const d = typeof date === 'string' ? new Date(date) : date
+  if (Number.isNaN(d.getTime())) return ''
+
+  const yyyy = d.getFullYear()
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  const dd = String(d.getDate()).padStart(2, '0')
+  return `${yyyy}-${mm}-${dd}`
+}
+
+/**
+ * Convert a YYYY-MM-DD date-only string to an ISO timestamp anchored at local noon.
+ * Noon avoids DST edge cases and prevents the date from shifting when parsed/stored.
+ */
+export function dateInputToIso(dateOnly: string | null | undefined): string | null {
+  if (!dateOnly) return null
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateOnly)
+  if (!m) return null
+  const y = Number(m[1])
+  const mo = Number(m[2]) - 1
+  const d = Number(m[3])
+  const localNoon = new Date(y, mo, d, 12, 0, 0, 0)
+  return localNoon.toISOString()
+}
+

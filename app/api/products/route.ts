@@ -16,6 +16,8 @@ const createProductSchema = z.object({
   price: z.number().min(0),
   taxRate: z.number().min(0).max(100),
   trackStock: z.boolean().default(true),
+  minStock: z.number().min(0).optional().default(0),
+  maxStock: z.number().min(0).optional().nullable(),
   description: z.string().optional().nullable(),
 })
 
@@ -123,6 +125,37 @@ export async function POST(request: Request) {
         createdById: (session.user as any).id,
       },
     })
+
+    // Create/update stock settings for default warehouse
+    if (data.trackStock) {
+      const warehouse = await prisma.warehouse.findFirst({
+        where: { active: true },
+        orderBy: { createdAt: 'asc' },
+      })
+      if (warehouse) {
+        await prisma.stockLevel.upsert({
+          where: {
+            warehouseId_productId_variantId: {
+              warehouseId: warehouse.id,
+              productId: product.id,
+              variantId: null,
+            },
+          },
+          update: {
+            minStock: data.minStock ?? 0,
+            maxStock: data.maxStock ?? 0,
+          },
+          create: {
+            warehouseId: warehouse.id,
+            productId: product.id,
+            variantId: null,
+            quantity: 0,
+            minStock: data.minStock ?? 0,
+            maxStock: data.maxStock ?? 0,
+          },
+        })
+      }
+    }
 
     return NextResponse.json(product, { status: 201 })
   } catch (error) {

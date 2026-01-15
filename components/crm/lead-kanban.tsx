@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { formatCurrency } from '@/lib/utils'
+import { dateInputToIso, formatCurrency, toDateInputValue } from '@/lib/utils'
 import { Eye, Edit, User } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -476,11 +476,11 @@ export function LeadKanban({
                 <Label>Fecha cierre esperada</Label>
                 <Input
                   type="date"
-                  value={editingLead.expectedCloseDate ? new Date(editingLead.expectedCloseDate).toISOString().slice(0, 10) : ''}
+                  value={editingLead.expectedCloseDate ? toDateInputValue(editingLead.expectedCloseDate) : ''}
                   onChange={(e) =>
                     setEditingLead({
                       ...editingLead,
-                      expectedCloseDate: e.target.value ? new Date(e.target.value).toISOString() : null,
+                      expectedCloseDate: e.target.value ? dateInputToIso(e.target.value) : null,
                     })
                   }
                 />

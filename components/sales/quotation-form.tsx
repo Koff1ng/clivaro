@@ -12,7 +12,7 @@ import { Label } from '@/components/ui/label'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { DatePicker } from '@/components/ui/date-picker'
 import { SearchableSelect } from '@/components/ui/searchable-select'
-import { formatCurrency } from '@/lib/utils'
+import { formatCurrency, toDateInputValue } from '@/lib/utils'
 import { useToast } from '@/components/ui/toast'
 import { useDebounce } from '@/lib/hooks/use-debounce'
 import { Plus, Trash2 } from 'lucide-react'
@@ -109,7 +109,7 @@ export function QuotationForm({ quotation, customers, onSuccess }: { quotation: 
       setValue('customerId', quotation.customerId)
       setValue('leadId', quotation.leadId || '')
       setValue('discount', quotation.discount || 0)
-      setValue('validUntil', quotation.validUntil ? new Date(quotation.validUntil).toISOString().split('T')[0] : '')
+      setValue('validUntil', quotation.validUntil ? toDateInputValue(quotation.validUntil) : '')
       setValue('notes', quotation.notes || '')
       setCreateNewCustomer(false)
       if (quotation.items && quotation.items.length > 0) {

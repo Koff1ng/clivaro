@@ -12,6 +12,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover'
 import { Calendar } from '@/components/ui/calendar'
+import { dateInputToIso } from '@/lib/utils'
 
 interface DatePickerProps {
   value?: string | Date | null
@@ -36,7 +37,14 @@ export function DatePicker({
     if (!value) return undefined
     if (value instanceof Date) return value
     if (typeof value === 'string') {
-      // Try to parse the date string
+      // If it's a date-only value (YYYY-MM-DD), parse it as local date (avoid UTC shift)
+      if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+        const iso = dateInputToIso(value)
+        if (!iso) return undefined
+        const parsed = new Date(iso)
+        return isNaN(parsed.getTime()) ? undefined : parsed
+      }
+      // Otherwise try to parse as ISO/DateTime
       const parsed = new Date(value)
       return isNaN(parsed.getTime()) ? undefined : parsed
     }

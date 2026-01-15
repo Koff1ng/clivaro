@@ -3,6 +3,7 @@ import { requirePermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
 import { getPrismaForRequest } from '@/lib/get-tenant-prisma'
 import { z } from 'zod'
+import { parseDateOnlyToDate } from '@/lib/date-only'
 
 const updateLeadSchema = z.object({
   name: z.string().min(1).optional(),
@@ -136,7 +137,7 @@ export async function PUT(
       phone: data.phone !== undefined ? (data.phone || null) : undefined,
       company: data.company !== undefined ? (data.company || null) : undefined,
       source: data.source !== undefined ? (data.source || null) : undefined,
-      expectedCloseDate: data.expectedCloseDate ? new Date(data.expectedCloseDate) : undefined,
+      expectedCloseDate: data.expectedCloseDate !== undefined ? parseDateOnlyToDate(data.expectedCloseDate) : undefined,
       assignedToId: data.assignedToId !== undefined ? data.assignedToId : undefined,
       notes: data.notes !== undefined ? (data.notes || null) : undefined,
     }

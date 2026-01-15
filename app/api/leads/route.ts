@@ -5,6 +5,7 @@ import { getPrismaForRequest } from '@/lib/get-tenant-prisma'
 import { requirePlanFeature } from '@/lib/plan-middleware'
 import { logger } from '@/lib/logger'
 import { z } from 'zod'
+import { parseDateOnlyToDate } from '@/lib/date-only'
 
 const createLeadSchema = z.object({
   name: z.string().min(1),
@@ -142,7 +143,7 @@ export async function POST(request: Request) {
           value: data.expectedRevenue || data.value || 0,
           expectedRevenue: data.expectedRevenue || data.value || 0,
           probability: data.probability || 0,
-          expectedCloseDate: data.expectedCloseDate ? new Date(data.expectedCloseDate) : null,
+          expectedCloseDate: parseDateOnlyToDate(data.expectedCloseDate),
           assignedToId: data.assignedToId || null,
           notes: data.notes || null,
           createdById: (session.user as any).id,

@@ -19,6 +19,8 @@ const productSchema = z.object({
   unitOfMeasure: z.enum(['UNIT', 'BOX', 'METER', 'KILO', 'LITER']).default('UNIT'),
   taxRate: z.number().min(0).max(100).default(19),
   trackStock: z.boolean().default(true),
+  minStock: z.number().min(0, 'El mínimo debe ser mayor o igual a 0').default(0),
+  maxStock: z.number().min(0, 'El máximo debe ser mayor o igual a 0').optional(),
 })
 
 type ProductFormData = z.infer<typeof productSchema>
@@ -40,6 +42,7 @@ export function ProductQuickCreate({
       unitOfMeasure: 'UNIT',
       taxRate: 19,
       trackStock: true,
+      minStock: 0,
     },
   })
 
@@ -159,6 +162,35 @@ export function ProductQuickCreate({
                 />
                 {errors.taxRate && (
                   <p className="text-sm text-red-500">{errors.taxRate.message}</p>
+                )}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="minStock">Stock mínimo *</Label>
+                <Input
+                  id="minStock"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  {...register('minStock', { valueAsNumber: true })}
+                />
+                {errors.minStock && (
+                  <p className="text-sm text-red-500">{errors.minStock.message}</p>
+                )}
+              </div>
+              <div>
+                <Label htmlFor="maxStock">Stock máximo (opcional)</Label>
+                <Input
+                  id="maxStock"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  {...register('maxStock', { valueAsNumber: true })}
+                />
+                {errors.maxStock && (
+                  <p className="text-sm text-red-500">{errors.maxStock.message}</p>
                 )}
               </div>
             </div>

@@ -13,6 +13,7 @@ import { DatePicker } from '@/components/ui/date-picker'
 import { useToast } from '@/components/ui/toast'
 import { useDebounce } from '@/lib/hooks/use-debounce'
 import { formatCurrency } from '@/lib/utils'
+import { toDateInputValue } from '@/lib/utils'
 import { Plus, Trash2 } from 'lucide-react'
 import { ProductQuickCreate } from './product-quick-create'
 
@@ -120,7 +121,7 @@ export function PurchaseOrderForm({ order, onSuccess }: { order?: any; onSuccess
     if (order) {
       setValue('supplierId', order.supplierId)
       setValue('discount', order.discount || 0)
-      setValue('expectedDate', order.expectedDate ? new Date(order.expectedDate).toISOString().split('T')[0] : '')
+      setValue('expectedDate', order.expectedDate ? toDateInputValue(order.expectedDate) : '')
       setValue('notes', order.notes || '')
       if (order.items && order.items.length > 0) {
         setValue('items', order.items.map((item: any) => ({
@@ -303,15 +304,29 @@ export function PurchaseOrderForm({ order, onSuccess }: { order?: any; onSuccess
                 return (
                   <TableRow key={field.id}>
                     <TableCell>
-                      <select
-                        {...register(`items.${index}.productId`)}
-                        className="flex h-9 w-full rounded-md border border-input bg-background px-2 py-1 text-sm"
-                      >
-                        <option value="">Seleccionar</option>
-                        {products.map((p: any) => (
-                          <option key={p.id} value={p.id}>{p.name} ({p.sku})</option>
-                        ))}
-                      </select>
+                      {(() => {
+                        const fieldProps = register(`items.${index}.productId`)
+                        return (
+                          <select
+                            {...fieldProps}
+                            onChange={(e) => {
+                              fieldProps.onChange(e)
+                              const selectedId = e.target.value
+                              const selected = products.find((p: any) => p.id === selectedId)
+                              if (selected) {
+                                setValue(`items.${index}.unitCost`, Number(selected.cost || 0))
+                                setValue(`items.${index}.taxRate`, Number(selected.taxRate || 19))
+                              }
+                            }}
+                            className="flex h-9 w-full rounded-md border border-input bg-background px-2 py-1 text-sm"
+                          >
+                            <option value="">Seleccionar</option>
+                            {products.map((p: any) => (
+                              <option key={p.id} value={p.id}>{p.name} ({p.sku})</option>
+                            ))}
+                          </select>
+                        )
+                      })()}
                       {errors.items?.[index]?.productId && (
                         <p className="text-xs text-red-500">{errors.items[index]?.productId?.message}</p>
                       )}

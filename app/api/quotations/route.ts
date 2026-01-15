@@ -5,6 +5,7 @@ import { getPrismaForRequest } from '@/lib/get-tenant-prisma'
 import { requirePlanFeature } from '@/lib/plan-middleware'
 import { z } from 'zod'
 import { toDecimal } from '@/lib/numbers'
+import { parseDateOnlyToDate } from '@/lib/date-only'
 
 const createQuotationSchema = z.object({
   customerId: z.string().optional(),
@@ -219,7 +220,7 @@ export async function POST(request: Request) {
         discount: discount,
         tax: tax,
         total: total,
-        validUntil: data.validUntil ? new Date(data.validUntil) : null,
+        validUntil: parseDateOnlyToDate(data.validUntil),
         notes: data.notes || null,
         createdById: (session.user as any).id,
         items: {

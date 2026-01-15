@@ -3,6 +3,7 @@ import { requirePermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
 import { getPrismaForRequest } from '@/lib/get-tenant-prisma'
 import { logger } from '@/lib/logger'
+import { parseDateOnlyToDate } from '@/lib/date-only'
 import { z } from 'zod'
 
 const updateQuotationSchema = z.object({
@@ -116,7 +117,7 @@ export async function PUT(
       data: {
         ...data,
         notes: data.notes !== undefined ? (data.notes || null) : undefined,
-        validUntil: data.validUntil !== undefined ? (data.validUntil ? new Date(data.validUntil) : null) : undefined,
+        validUntil: data.validUntil !== undefined ? parseDateOnlyToDate(data.validUntil) : undefined,
         updatedById: (session.user as any).id,
       },
     })

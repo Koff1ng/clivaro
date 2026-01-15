@@ -21,6 +21,8 @@ const productSchema = z.object({
   price: z.number().min(0, 'Precio debe ser mayor o igual a 0'),
   taxRate: z.number().min(0).max(100),
   trackStock: z.boolean(),
+  minStock: z.number().min(0, 'Mínimo debe ser mayor o igual a 0'),
+  maxStock: z.number().min(0, 'Máximo debe ser mayor o igual a 0').optional(),
   description: z.string().optional(),
 })
 
@@ -42,6 +44,9 @@ export function ProductForm({ product, onSuccess }: { product?: any; onSuccess: 
       price: product.price,
       taxRate: product.taxRate,
       trackStock: product.trackStock,
+      // Use first stockLevel if present, else defaults
+      minStock: product.stockLevels?.[0]?.minStock ?? 0,
+      maxStock: product.stockLevels?.[0]?.maxStock ?? undefined,
       description: product.description || '',
     } : {
       unitOfMeasure: 'UNIT',
@@ -49,6 +54,7 @@ export function ProductForm({ product, onSuccess }: { product?: any; onSuccess: 
       price: 0,
       taxRate: 0,
       trackStock: true,
+      minStock: 0,
     },
   })
 
@@ -174,6 +180,33 @@ export function ProductForm({ product, onSuccess }: { product?: any; onSuccess: 
           {errors.taxRate && <p className="text-sm text-red-500">{errors.taxRate.message}</p>}
         </div>
       </div>
+
+      {trackStock && (
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <Label htmlFor="minStock">Stock mínimo *</Label>
+            <Input
+              id="minStock"
+              type="number"
+              step="0.01"
+              min="0"
+              {...register('minStock', { valueAsNumber: true })}
+            />
+            {errors.minStock && <p className="text-sm text-red-500">{errors.minStock.message}</p>}
+          </div>
+          <div>
+            <Label htmlFor="maxStock">Stock máximo (opcional)</Label>
+            <Input
+              id="maxStock"
+              type="number"
+              step="0.01"
+              min="0"
+              {...register('maxStock', { valueAsNumber: true })}
+            />
+            {errors.maxStock && <p className="text-sm text-red-500">{errors.maxStock.message}</p>}
+          </div>
+        </div>
+      )}
 
       <div>
         <label className="flex items-center gap-2">

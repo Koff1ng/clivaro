@@ -3,6 +3,7 @@ import { requirePermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
 import { getPrismaForRequest } from '@/lib/get-tenant-prisma'
 import { z } from 'zod'
+import { parseDateOnlyToDate } from '@/lib/date-only'
 import { toDecimal } from '@/lib/numbers'
 
 const updatePurchaseOrderSchema = z.object({
@@ -148,7 +149,7 @@ export async function PUT(
     }
 
     if (data.expectedDate !== undefined) {
-      updateData.expectedDate = data.expectedDate ? new Date(data.expectedDate) : null
+      updateData.expectedDate = parseDateOnlyToDate(data.expectedDate)
     }
 
     if (data.items && data.items.length > 0) {
