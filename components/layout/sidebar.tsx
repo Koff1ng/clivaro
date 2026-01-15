@@ -50,6 +50,7 @@ const menuItems = [
   { href: '/pos', label: 'Punto de Venta', icon: ShoppingCart, permission: 'manage_sales', planFeature: 'pos' },
   { href: '/cash/shifts', label: 'Caja', icon: Wallet, permission: ['manage_cash', 'manage_sales'], planFeature: 'manageCash' },
   { href: '/admin/users', label: 'Usuarios', icon: UserCog, permission: 'manage_users', planFeature: 'manageUsers' },
+  { href: '/settings', label: 'Configuración', icon: Settings, permission: 'manage_users', planFeature: 'manageUsers' },
 ]
 
 export function Sidebar() {

@@ -692,6 +692,7 @@ model Tenant {
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
   subscriptions Subscription[]
+  settings    TenantSettings?
 }
 
 model Plan {
@@ -721,4 +722,47 @@ model Subscription {
   updatedAt     DateTime  @updatedAt
   tenant        Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   plan          Plan      @relation(fields: [planId], references: [id])
+}
+
+model TenantSettings {
+  id                    String    @id @default(cuid())
+  tenantId              String    @unique
+  // Facturación Electrónica
+  electronicBillingProvider String? // "FEG" | "CUSTOM" | "DIAN_DIRECT"
+  electronicBillingApiUrl   String?
+  electronicBillingApiKey   String?
+  companyNit            String?
+  companyName            String?
+  companyAddress         String?
+  companyPhone           String?
+  companyEmail           String?
+  billingResolutionNumber String?
+  billingResolutionPrefix String?
+  billingResolutionFrom   String?
+  billingResolutionTo     String?
+  billingResolutionValidFrom DateTime?
+  billingResolutionValidTo   DateTime?
+  // Suscripciones
+  subscriptionTrialDays Int?      @default(14) // Días de prueba
+  subscriptionGracePeriodDays Int? @default(7)  // Días de gracia después de expiración
+  subscriptionAutoRenew  Boolean?  @default(true)
+  // Configuraciones Generales
+  timezone              String?    @default("America/Bogota")
+  currency              String?    @default("COP")
+  dateFormat            String?    @default("DD/MM/YYYY")
+  timeFormat            String?    @default("24h") // "12h" | "24h"
+  language              String?    @default("es")
+  invoicePrefix         String?    @default("FV")
+  invoiceNumberFormat   String?    @default("000000")
+  quotationPrefix       String?    @default("COT")
+  quotationNumberFormat String?    @default("000000")
+  purchaseOrderPrefix   String?    @default("OC")
+  purchaseOrderNumberFormat String? @default("000000")
+  // Configuraciones adicionales (JSON para flexibilidad)
+  customSettings        String?    // JSON string con configuraciones personalizadas
+  createdAt             DateTime    @default(now())
+  updatedAt             DateTime    @updatedAt
+  tenant                Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  @@index([tenantId])
 }
