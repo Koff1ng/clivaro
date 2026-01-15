@@ -2,8 +2,17 @@ import { PrismaClient } from '@prisma/client'
 import * as path from 'path'
 import * as fs from 'fs'
 
-// Cache de clientes Prisma por tenant
-const tenantClients = new Map<string, PrismaClient>()
+// Cache de clientes Prisma por tenant usando globalThis para persistir en serverless
+const globalForTenantClients = globalThis as unknown as {
+  tenantClients: Map<string, PrismaClient> | undefined
+}
+
+const tenantClients = globalForTenantClients.tenantClients ?? new Map<string, PrismaClient>()
+
+// Persistir cache en globalThis para reutilizar en serverless
+if (!globalForTenantClients.tenantClients) {
+  globalForTenantClients.tenantClients = tenantClients
+}
 
 /**
  * Normaliza la URL de la base de datos, convirtiendo rutas relativas a absolutas
@@ -61,6 +70,7 @@ export function getTenantPrisma(databaseUrl: string): PrismaClient {
           url: key,
         },
       },
+      log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
     })
     tenantClients.set(key, client)
     return client
@@ -99,6 +109,7 @@ export function getTenantPrisma(databaseUrl: string): PrismaClient {
         url: normalizedUrl,
       },
     },
+    log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
   })
 
   // Guardar en cache usando la URL original para consistencia

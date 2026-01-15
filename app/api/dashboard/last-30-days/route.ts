@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server'
 import { requireAnyPermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
 import { getPrismaForRequest } from '@/lib/get-tenant-prisma'
+import { logger } from '@/lib/logger'
+
+export const dynamic = 'force-dynamic'
 
 export async function GET(request: Request) {
   const session = await requireAnyPermission(request as any, [PERMISSIONS.VIEW_REPORTS, PERMISSIONS.MANAGE_SALES])
@@ -52,10 +55,10 @@ export async function GET(request: Request) {
     }
 
     return NextResponse.json(days)
-  } catch (error) {
-    console.error('Error fetching last 30 days:', error)
+  } catch (error: any) {
+    logger.error('Error fetching last 30 days', error, { endpoint: '/api/dashboard/last-30-days', method: 'GET' })
     return NextResponse.json(
-      { error: 'Failed to fetch last 30 days data' },
+      { error: 'Failed to fetch last 30 days data', details: error?.message || String(error) },
       { status: 500 }
     )
   }

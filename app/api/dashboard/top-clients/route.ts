@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server'
 import { requireAnyPermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
 import { getPrismaForRequest } from '@/lib/get-tenant-prisma'
+import { logger } from '@/lib/logger'
+
+export const dynamic = 'force-dynamic'
 
 export async function GET(request: Request) {
   const session = await requireAnyPermission(request as any, [PERMISSIONS.VIEW_REPORTS, PERMISSIONS.MANAGE_SALES])
@@ -39,10 +42,10 @@ export async function GET(request: Request) {
       .slice(0, 5)
 
     return NextResponse.json(clientsWithTotal)
-  } catch (error) {
-    console.error('Error fetching top clients:', error)
+  } catch (error: any) {
+    logger.error('Error fetching top clients', error, { endpoint: '/api/dashboard/top-clients', method: 'GET' })
     return NextResponse.json(
-      { error: 'Failed to fetch top clients' },
+      { error: 'Failed to fetch top clients', details: error?.message || String(error) },
       { status: 500 }
     )
   }

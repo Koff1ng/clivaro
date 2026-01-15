@@ -4,6 +4,8 @@ import { PERMISSIONS } from '@/lib/permissions'
 import { getPrismaForRequest } from '@/lib/get-tenant-prisma'
 import { logger } from '@/lib/logger'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET(request: Request) {
   const session = await requireAnyPermission(request as any, [PERMISSIONS.VIEW_REPORTS, PERMISSIONS.MANAGE_INVENTORY, PERMISSIONS.MANAGE_SALES])
   if (session instanceof NextResponse) return session
@@ -43,7 +45,10 @@ export async function GET(request: Request) {
     return NextResponse.json({ categories: result }, { status: 200 })
   } catch (error: any) {
     logger.error('Error dashboard product-categories', error, { endpoint: '/api/dashboard/product-categories', method: 'GET' })
-    return NextResponse.json({ error: error?.message || 'Failed to fetch product categories', code: 'SERVER_ERROR' }, { status: 500 })
+    return NextResponse.json(
+      { error: 'Failed to fetch product categories', details: error?.message || String(error) },
+      { status: 500 }
+    )
   }
 }
 

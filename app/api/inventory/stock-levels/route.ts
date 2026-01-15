@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server'
 import { requireAnyPermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
 import { getPrismaForRequest } from '@/lib/get-tenant-prisma'
+import { logger } from '@/lib/logger'
+
+export const dynamic = 'force-dynamic'
 
 export async function GET(request: Request) {
   // Permitir acceso con MANAGE_INVENTORY o VIEW_REPORTS (para dashboard)
@@ -178,10 +181,10 @@ export async function GET(request: Request) {
         totalPages: Math.ceil(total / limit),
       },
     })
-  } catch (error) {
-    console.error('Error fetching stock levels:', error)
+  } catch (error: any) {
+    logger.error('Error fetching stock levels', error, { endpoint: '/api/inventory/stock-levels', method: 'GET' })
     return NextResponse.json(
-      { error: 'Failed to fetch stock levels' },
+      { error: 'Failed to fetch stock levels', details: error?.message || String(error) },
       { status: 500 }
     )
   }

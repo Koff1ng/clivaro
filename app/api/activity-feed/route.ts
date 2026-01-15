@@ -4,6 +4,8 @@ import { PERMISSIONS } from '@/lib/permissions'
 import { getPrismaForRequest } from '@/lib/get-tenant-prisma'
 import { logger } from '@/lib/logger'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET(request: Request) {
   // Permitir acceso con VIEW_REPORTS o MANAGE_CRM
   const session = await requireAnyPermission(request as any, [PERMISSIONS.VIEW_REPORTS, PERMISSIONS.MANAGE_CRM])
@@ -351,10 +353,10 @@ export async function GET(request: Request) {
       activities: activities.slice(0, limit),
       total: activities.length,
     })
-  } catch (error) {
+  } catch (error: any) {
     logger.error('Error fetching activity feed', error, { endpoint: '/api/activity-feed', method: 'GET' })
     return NextResponse.json(
-      { error: 'Failed to fetch activity feed' },
+      { error: 'Failed to fetch activity feed', details: error?.message || String(error) },
       { status: 500 }
     )
   }

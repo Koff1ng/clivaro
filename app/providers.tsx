@@ -9,10 +9,12 @@ export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(() => new QueryClient({
     defaultOptions: {
       queries: {
-        staleTime: 30 * 1000, // 30s - prefer real-time data on section entry
-        gcTime: 10 * 60 * 1000, // 10 minutes - cache time (formerly cacheTime)
+        // Keep data reasonably fresh without causing a burst of refetches that can saturate Supabase pooler.
+        staleTime: 30 * 1000, // 30s - reduced from 60s for better freshness
+        gcTime: 5 * 60 * 1000, // 5 minutes - reduced cache time
         refetchOnWindowFocus: true,
-        refetchOnMount: 'always', // Always refetch when entering a section
+        // Only refetch on mount if data is stale (prevents burst of requests on dashboard load)
+        refetchOnMount: false, // Changed from true to prevent connection pool saturation
         retry: 1, // Reduce retries for faster failure
       },
     },

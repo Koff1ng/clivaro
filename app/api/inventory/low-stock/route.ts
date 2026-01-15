@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server'
 import { requireAnyPermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
 import { getPrismaForRequest } from '@/lib/get-tenant-prisma'
+import { logger } from '@/lib/logger'
+
+export const dynamic = 'force-dynamic'
 
 export async function GET(request: Request) {
   // Permitir acceso con MANAGE_INVENTORY o VIEW_REPORTS (para dashboard)
@@ -42,10 +45,10 @@ export async function GET(request: Request) {
     }))
 
     return NextResponse.json(result)
-  } catch (error) {
-    console.error('Error fetching low stock:', error)
+  } catch (error: any) {
+    logger.error('Error fetching low stock', error, { endpoint: '/api/inventory/low-stock', method: 'GET' })
     return NextResponse.json(
-      { error: 'Failed to fetch low stock' },
+      { error: 'Failed to fetch low stock', details: error?.message || String(error) },
       { status: 500 }
     )
   }
