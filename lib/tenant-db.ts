@@ -53,17 +53,40 @@ function normalizeDatabaseUrl(databaseUrl: string): string {
 }
 
 /**
+ * Añade connection_limit a URLs de PostgreSQL para limitar el pool
+ */
+function addConnectionLimit(url: string): string {
+  if (!url.startsWith('postgresql://') && !url.startsWith('postgres://')) {
+    return url
+  }
+  
+  // Si ya tiene connection_limit, no hacer nada
+  if (url.includes('connection_limit=')) {
+    return url
+  }
+  
+  // Añadir connection_limit=1 para usar solo 1 conexión del pool de Supabase
+  const separator = url.includes('?') ? '&' : '?'
+  return `${url}${separator}connection_limit=1`
+}
+
+/**
  * Obtiene el cliente Prisma para un tenant específico
  * Crea una nueva conexión si no existe
  */
 export function getTenantPrisma(databaseUrl: string): PrismaClient {
   // Postgres tenants (Supabase) should not run any filesystem checks
   if (databaseUrl.startsWith('postgresql://') || databaseUrl.startsWith('postgres://')) {
-    const key = databaseUrl.trim()
+    // Normalizar URL añadiendo connection_limit si es necesario
+    const normalizedUrl = addConnectionLimit(databaseUrl.trim())
+    const key = normalizedUrl
+    
+    // Si ya existe, retornarlo inmediatamente
     if (tenantClients.has(key)) {
       return tenantClients.get(key)!
     }
 
+    // Crear nuevo cliente (con connection_limit=1 para limitar el pool)
     const client = new PrismaClient({
       datasources: {
         db: {
@@ -72,7 +95,17 @@ export function getTenantPrisma(databaseUrl: string): PrismaClient {
       },
       log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
     })
-    tenantClients.set(key, client)
+    
+    // Double-check: verificar una vez más antes de guardar (evita race conditions)
+    if (!tenantClients.has(key)) {
+      tenantClients.set(key, client)
+    } else {
+      // Si otro thread creó uno mientras tanto, usar ese y desconectar este
+      const existing = tenantClients.get(key)!
+      client.$disconnect().catch(() => {}) // Desconectar en background
+      return existing
+    }
+    
     return client
   }
 

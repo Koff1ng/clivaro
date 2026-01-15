@@ -71,34 +71,59 @@ export const authOptions: NextAuthOptions = {
           // Try to find user by username first, then by email
           console.log(`[AUTH] Buscando usuario: ${credentials.username}`)
           let user: any = null
-          try {
-            user = await tenantPrisma.user.findFirst({
-              where: {
-                OR: [
-                  { username: credentials.username },
-                  { email: credentials.username }
-                ]
-              },
-              include: {
-                userRoles: {
-                  include: {
-                    role: {
-                      include: {
-                        rolePermissions: {
-                          include: {
-                            permission: true
+          
+          // Retry con backoff exponencial para manejar límites de conexión
+          const maxRetries = 3
+          let lastError: any = null
+          
+          for (let attempt = 0; attempt < maxRetries; attempt++) {
+            try {
+              user = await tenantPrisma.user.findFirst({
+                where: {
+                  OR: [
+                    { username: credentials.username },
+                    { email: credentials.username }
+                  ]
+                },
+                include: {
+                  userRoles: {
+                    include: {
+                      role: {
+                        include: {
+                          rolePermissions: {
+                            include: {
+                              permission: true
+                            }
                           }
                         }
                       }
                     }
                   }
                 }
+              })
+              break // Éxito, salir del loop
+            } catch (dbError: any) {
+              lastError = dbError
+              const errorMessage = dbError?.message || String(dbError)
+              
+              // Si es error de límite de conexiones, esperar y reintentar
+              if (errorMessage.includes('MaxClientsInSessionMode') || errorMessage.includes('max clients reached')) {
+                if (attempt < maxRetries - 1) {
+                  const delay = Math.min(1000 * Math.pow(2, attempt), 5000) // Backoff exponencial, max 5s
+                  console.warn(`[AUTH] Límite de conexiones alcanzado, reintentando en ${delay}ms (intento ${attempt + 1}/${maxRetries})`)
+                  await new Promise(resolve => setTimeout(resolve, delay))
+                  continue
+                }
               }
-            })
-          } catch (dbError: any) {
-            // Most common causes: schema not initialized, wrong schema/search_path, or connectivity issues
-            console.error('[AUTH] Error consultando BD del tenant:', dbError?.message || dbError)
-            throw new Error(`TENANT_DB_ERROR: ${dbError?.message || 'No se pudo consultar la BD del tenant'}`)
+              
+              // Otros errores o último intento fallido
+              console.error('[AUTH] Error consultando BD del tenant:', errorMessage)
+              throw new Error(`TENANT_DB_ERROR: ${errorMessage}`)
+            }
+          }
+          
+          if (!user && lastError) {
+            throw new Error(`TENANT_DB_ERROR: ${lastError?.message || 'No se pudo consultar la BD del tenant'}`)
           }
 
           if (!user) {
