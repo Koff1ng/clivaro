@@ -12,7 +12,7 @@ const validateSchema = z.object({
 
 /**
  * POST /api/payments/mercadopago/validate
- * Valida las credenciales de Mercado Pago
+ * Valida las credenciales de Mercado Pago (solo para super admin)
  */
 export async function POST(request: Request) {
   try {
@@ -20,6 +20,16 @@ export async function POST(request: Request) {
     
     if (session instanceof NextResponse) {
       return session
+    }
+
+    const user = session.user as any
+    
+    // Solo super admin puede validar credenciales
+    if (!user.isSuperAdmin) {
+      return NextResponse.json(
+        { error: 'No autorizado. Solo administradores pueden validar credenciales.' },
+        { status: 403 }
+      )
     }
 
     const body = await request.json()

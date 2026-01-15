@@ -41,15 +41,13 @@ export async function GET(
       )
     }
 
-    // Obtener configuración de Mercado Pago
-    const settings = await prisma.tenantSettings.findUnique({
-      where: { tenantId: user.tenantId },
-    })
-
-    if (!settings?.mercadoPagoEnabled || !settings?.mercadoPagoAccessToken) {
+    // Usar credenciales globales de Mercado Pago (Clivaro)
+    const mercadoPagoAccessToken = process.env.MERCADOPAGO_ACCESS_TOKEN
+    
+    if (!mercadoPagoAccessToken) {
       return NextResponse.json(
-        { error: 'Mercado Pago no está configurado' },
-        { status: 400 }
+        { error: 'Mercado Pago no está configurado. Contacta al administrador.' },
+        { status: 500 }
       )
     }
 
@@ -81,7 +79,7 @@ export async function GET(
       const mpPaymentId = payment.mercadoPagoPaymentId || payment.mercadoPagoPreferenceId!
       const paymentInfo = await getPaymentInfo(
         {
-          accessToken: settings.mercadoPagoAccessToken!,
+          accessToken: mercadoPagoAccessToken,
         },
         mpPaymentId
       )

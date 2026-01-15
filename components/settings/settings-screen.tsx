@@ -21,7 +21,10 @@ async function fetchSettings() {
 export function SettingsScreen() {
   const { toast } = useToast()
   const queryClient = useQueryClient()
+  const { data: session } = useSession()
   const [activeTab, setActiveTab] = useState('users')
+  
+  const isSuperAdmin = (session?.user as any)?.isSuperAdmin || false
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['settings'],
@@ -86,7 +89,7 @@ export function SettingsScreen() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className={isSuperAdmin ? "grid w-full grid-cols-5" : "grid w-full grid-cols-4"}>
           <TabsTrigger value="users" className="flex items-center gap-2">
             <Users className="h-4 w-4" />
             Usuarios
@@ -95,10 +98,12 @@ export function SettingsScreen() {
             <Receipt className="h-4 w-4" />
             Facturación Electrónica
           </TabsTrigger>
-          <TabsTrigger value="payments" className="flex items-center gap-2">
-            <Wallet className="h-4 w-4" />
-            Pagos
-          </TabsTrigger>
+          {isSuperAdmin && (
+            <TabsTrigger value="payments" className="flex items-center gap-2">
+              <CreditCard className="h-4 w-4" />
+              Mercado Pago
+            </TabsTrigger>
+          )}
           <TabsTrigger value="subscription" className="flex items-center gap-2">
             <CreditCard className="h-4 w-4" />
             Suscripción
@@ -121,13 +126,41 @@ export function SettingsScreen() {
           />
         </TabsContent>
 
-        <TabsContent value="payments" className="space-y-4">
-          <MercadoPagoConfig
-            settings={settings}
-            onSave={(data) => updateSettingsMutation.mutate(data)}
-            isLoading={updateSettingsMutation.isPending}
-          />
-        </TabsContent>
+        {isSuperAdmin && (
+          <TabsContent value="payments" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Mercado Pago - Configuración Global</CardTitle>
+                <CardDescription>
+                  Las credenciales de Mercado Pago se configuran mediante variables de entorno.
+                  Los tenants no tienen acceso a esta configuración ya que los pagos se procesan
+                  directamente a Clivaro.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                    <p className="text-sm text-blue-900 dark:text-blue-100 mb-2">
+                      <strong>Variables de entorno requeridas:</strong>
+                    </p>
+                    <ul className="text-sm text-blue-800 dark:text-blue-200 space-y-1 list-disc list-inside">
+                      <li><code>MERCADOPAGO_ACCESS_TOKEN</code> - Token de acceso de Mercado Pago</li>
+                      <li><code>MERCADOPAGO_PUBLIC_KEY</code> - Clave pública de Mercado Pago (opcional)</li>
+                    </ul>
+                  </div>
+                  <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+                    <p className="text-sm text-green-900 dark:text-green-100">
+                      <strong>Estado:</strong> {process.env.NEXT_PUBLIC_MERCADOPAGO_ACCESS_TOKEN ? '✅ Configurado' : '⚠️ No configurado'}
+                    </p>
+                    <p className="text-xs text-green-800 dark:text-green-200 mt-1">
+                      Las credenciales se cargan desde las variables de entorno del servidor.
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
 
         <TabsContent value="subscription" className="space-y-4">
           <SubscriptionConfig

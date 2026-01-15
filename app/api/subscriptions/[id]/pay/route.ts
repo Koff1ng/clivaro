@@ -69,11 +69,14 @@ export async function POST(
       )
     }
 
-    // Verificar que Mercado Pago está configurado
-    if (!subscription.tenant.settings?.mercadoPagoEnabled || !subscription.tenant.settings?.mercadoPagoAccessToken) {
+    // Verificar que Mercado Pago está configurado (usando credenciales globales de Clivaro)
+    const mercadoPagoAccessToken = process.env.MERCADOPAGO_ACCESS_TOKEN
+    const mercadoPagoPublicKey = process.env.MERCADOPAGO_PUBLIC_KEY
+    
+    if (!mercadoPagoAccessToken) {
       return NextResponse.json(
-        { error: 'Mercado Pago no está configurado para este tenant' },
-        { status: 400 }
+        { error: 'Mercado Pago no está configurado. Contacta al administrador.' },
+        { status: 500 }
       )
     }
 
@@ -99,8 +102,8 @@ export async function POST(
 
     const preference = await createPaymentPreference(
       {
-        accessToken: subscription.tenant.settings.mercadoPagoAccessToken!,
-        publicKey: subscription.tenant.settings.mercadoPagoPublicKey || undefined,
+        accessToken: mercadoPagoAccessToken,
+        publicKey: mercadoPagoPublicKey || undefined,
       },
       {
         title: `Suscripción ${subscription.plan.name}`,
@@ -143,7 +146,7 @@ export async function POST(
       preferenceId: preference.preferenceId,
       initPoint: preference.initPoint,
       sandboxInitPoint: preference.sandboxInitPoint,
-      publicKey: subscription.tenant.settings.mercadoPagoPublicKey,
+      publicKey: mercadoPagoPublicKey || undefined,
     })
   } catch (error: any) {
     logger.error('Error creating Mercado Pago subscription payment', error, {
