@@ -57,8 +57,17 @@ async function initializePostgresTenant(databaseUrl: string, tenantSlug: string)
       .map(stmt => stmt.trim())
       .filter(stmt => stmt.length > 0 && !stmt.startsWith('--'))
 
-    for (const stmt of statements) {
-      await tenantPrisma.$executeRawUnsafe(stmt)
+    for (let i = 0; i < statements.length; i++) {
+      const stmt = statements[i]
+      try {
+        await tenantPrisma.$executeRawUnsafe(stmt)
+      } catch (error: any) {
+        const preview = stmt.length > 300 ? `${stmt.slice(0, 300)}...` : stmt
+        throw new Error(
+          `Fallo en SQL (stmt ${i + 1}/${statements.length}): ${preview}\n` +
+          `Error: ${error?.message || error}`
+        )
+      }
     }
   } catch (error: any) {
     throw new Error(`Error creando esquema del tenant en Postgres: ${error?.message || error}`)
