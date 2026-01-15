@@ -11,7 +11,8 @@ export interface CreatePreferenceParams {
   description?: string
   amount: number
   currency?: string
-  invoiceId: string
+  subscriptionId?: string
+  invoiceId?: string
   customerEmail?: string
   customerName?: string
   backUrls?: {
@@ -69,7 +70,7 @@ export async function createPaymentPreference(
       },
       back_urls: params.backUrls || {},
       auto_return: params.autoReturn || 'approved',
-      external_reference: params.externalReference || params.invoiceId,
+      external_reference: params.externalReference || params.subscriptionId || params.invoiceId,
       notification_url: params.backUrls?.success
         ? `${params.backUrls.success.replace('/success', '')}/api/payments/mercadopago/webhook`
         : undefined,

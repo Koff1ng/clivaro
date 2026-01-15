@@ -44,9 +44,69 @@ export async function POST(request: Request) {
         continue
       }
 
+      // Primero buscar en suscripciones (prioridad)
+      const subscription = await prisma.subscription.findFirst({
+        where: {
+          tenantId: tenant.id,
+          OR: [
+            { mercadoPagoPaymentId: paymentId },
+            { mercadoPagoPreferenceId: paymentId },
+          ],
+        },
+        include: {
+          plan: true,
+        },
+      })
+
+      if (subscription) {
+        // Obtener información actualizada del pago desde Mercado Pago
+        const paymentInfo = await getPaymentInfo(
+          {
+            accessToken: tenant.settings.mercadoPagoAccessToken!,
+          },
+          paymentId
+        )
+
+        // Actualizar la suscripción con la información de Mercado Pago
+        const updateData: any = {
+          mercadoPagoPaymentId: paymentInfo.id.toString(),
+          mercadoPagoStatus: paymentInfo.status,
+          mercadoPagoStatusDetail: paymentInfo.statusDetail,
+          mercadoPagoPaymentMethod: paymentInfo.paymentMethodId,
+          mercadoPagoTransactionId: paymentInfo.id.toString(),
+          mercadoPagoResponse: JSON.stringify(paymentInfo),
+          updatedAt: new Date(),
+        }
+
+        // Si el pago fue aprobado, activar la suscripción
+        if (paymentInfo.status === 'approved') {
+          const now = new Date()
+          const interval = subscription.plan.interval === 'annual' ? 365 : 30
+          const endDate = new Date(now)
+          endDate.setDate(endDate.getDate() + interval)
+
+          updateData.status = 'active'
+          updateData.startDate = now
+          updateData.endDate = endDate
+        }
+
+        await prisma.subscription.update({
+          where: { id: subscription.id },
+          data: updateData,
+        })
+
+        logger.info('Subscription updated from Mercado Pago payment', {
+          subscriptionId: subscription.id,
+          status: paymentInfo.status,
+          amount: subscription.plan.price,
+        })
+
+        return NextResponse.json({ received: true, processed: true, type: 'subscription' })
+      }
+
+      // Si no es una suscripción, buscar en pagos de facturas (legacy, mantener por compatibilidad)
       const tenantPrisma = getTenantPrisma(tenant.databaseUrl)
       
-      // Buscar pago por preference_id primero (puede que aún no tenga payment_id)
       const payment = await tenantPrisma.payment.findFirst({
         where: {
           OR: [
@@ -120,7 +180,7 @@ export async function POST(request: Request) {
           })
         }
 
-        return NextResponse.json({ received: true, processed: true })
+        return NextResponse.json({ received: true, processed: true, type: 'invoice' })
       }
     }
 

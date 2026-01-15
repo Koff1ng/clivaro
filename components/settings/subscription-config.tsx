@@ -3,12 +3,15 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
-import { CreditCard, Calendar, Clock } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { CreditCard, Calendar, Clock, AlertCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useQuery } from '@tanstack/react-query'
 import { useState, useEffect } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useToast } from '@/components/ui/toast'
+import { PaySubscriptionButton } from '@/components/subscriptions/pay-subscription-button'
+import { formatCurrency } from '@/lib/utils'
 
 interface SubscriptionConfigProps {
   settings: any
@@ -142,6 +145,57 @@ export function SubscriptionConfig({ settings, onSave, isLoading }: Subscription
                     day: 'numeric'
                   })}
                 </p>
+              </div>
+            )}
+            
+            {/* Botón de pago para suscripciones expiradas o pendientes */}
+            {subscription && (
+              <div className="mt-4 space-y-2">
+                {(subscription.status === 'expired' || 
+                  subscription.status === 'pending_payment' || 
+                  (subscription.status === 'trial' && subscription.trialEndDate && new Date(subscription.trialEndDate) < new Date()) ||
+                  !subscription) && plan && (
+                  <div className="p-4 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-200 dark:border-orange-800">
+                    <div className="flex items-start gap-3">
+                      <AlertCircle className="h-5 w-5 text-orange-600 mt-0.5" />
+                      <div className="flex-1">
+                        <p className="text-sm font-semibold text-orange-900 dark:text-orange-100 mb-1">
+                          {subscription?.status === 'expired' ? 'Suscripción Expirada' : 
+                           subscription?.status === 'pending_payment' ? 'Pago Pendiente' :
+                           'Suscripción Requerida'}
+                        </p>
+                        <p className="text-sm text-orange-800 dark:text-orange-200 mb-3">
+                          {subscription?.status === 'expired' 
+                            ? 'Tu suscripción ha expirado. Renueva ahora para continuar usando el servicio.'
+                            : subscription?.status === 'pending_payment'
+                            ? 'Tienes un pago pendiente. Completa el pago para activar tu suscripción.'
+                            : 'Activa tu suscripción para comenzar a usar el servicio.'}
+                        </p>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm text-orange-900 dark:text-orange-100">
+                              <span className="font-semibold">Monto a pagar:</span>{' '}
+                              <span className="text-lg font-bold">{formatCurrency(plan.price)}</span>
+                            </p>
+                            <p className="text-xs text-orange-700 dark:text-orange-300 mt-1">
+                              {plan.interval === 'monthly' ? 'Pago mensual' : 'Pago anual'}
+                            </p>
+                          </div>
+                          {subscription && (
+                            <PaySubscriptionButton
+                              subscriptionId={subscription.id}
+                              planName={plan.name}
+                              amount={plan.price}
+                              onPaymentCreated={() => {
+                                queryClient.invalidateQueries({ queryKey: ['tenant-plan'] })
+                              }}
+                            />
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
