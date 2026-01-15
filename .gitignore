@@ -37,9 +37,13 @@ next-env.d.ts
 
 # prisma
 /prisma/migrations
+/prisma/dev.db
 
 # tenant sqlite databases
 /tenants/*.db
+
+# uploaded assets
+/public/uploads/
 
 # playwright
 /test-results/
