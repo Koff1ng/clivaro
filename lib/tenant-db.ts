@@ -48,6 +48,24 @@ function normalizeDatabaseUrl(databaseUrl: string): string {
  * Crea una nueva conexión si no existe
  */
 export function getTenantPrisma(databaseUrl: string): PrismaClient {
+  // Postgres tenants (Supabase) should not run any filesystem checks
+  if (databaseUrl.startsWith('postgresql://') || databaseUrl.startsWith('postgres://')) {
+    const key = databaseUrl.trim()
+    if (tenantClients.has(key)) {
+      return tenantClients.get(key)!
+    }
+
+    const client = new PrismaClient({
+      datasources: {
+        db: {
+          url: key,
+        },
+      },
+    })
+    tenantClients.set(key, client)
+    return client
+  }
+
   // Normalizar la URL (convertir ruta relativa a absoluta)
   const normalizedUrl = normalizeDatabaseUrl(databaseUrl)
   
