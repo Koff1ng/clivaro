@@ -43,6 +43,7 @@ export async function GET(request: Request) {
       },
       select: {
         id: true,
+        planId: true,
         status: true,
         startDate: true,
         endDate: true,
