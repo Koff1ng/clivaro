@@ -18,93 +18,118 @@ export async function GET(request: Request) {
   // Obtener el cliente Prisma correcto (tenant o master según el usuario)
   const prisma = await getPrismaForRequest(request, session)
 
+  const withRetry = async <T,>(fn: () => Promise<T>, label: string, retries = 2): Promise<T> => {
+    let lastError: unknown
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      try {
+        return await fn()
+      } catch (error) {
+        lastError = error
+        logger.warn(`Retrying dashboard stats query: ${label}`, {
+          attempt,
+          error: (error as any)?.message || error,
+        })
+        if (attempt < retries) {
+          await new Promise(resolve => setTimeout(resolve, 250 * (attempt + 1)))
+        }
+      }
+    }
+    throw lastError
+  }
+
   try {
     const today = startOfDay(new Date())
     const monthStart = startOfMonth(new Date())
 
-    // Optimize: Run all queries in parallel
-    const [salesToday, salesMonth, totalProducts, lowStockCount, inCollection] = await Promise.all([
-      // Sales today (use issuedAt when present, fallback to createdAt)
-      prisma.invoice.aggregate({
-        where: {
-          status: { in: ['PAGADA', 'PAID'] }, // Compatibilidad con estados antiguos y nuevos
-          OR: [
-            { issuedAt: { gte: today } },
-            { issuedAt: null, createdAt: { gte: today } },
-          ],
-        },
-        _sum: {
-          total: true,
-        },
-      }),
-      // Sales this month (use issuedAt when present, fallback to createdAt)
-      prisma.invoice.aggregate({
-        where: {
-          status: { in: ['PAGADA', 'PAID'] }, // Compatibilidad con estados antiguos y nuevos
-          OR: [
-            { issuedAt: { gte: monthStart } },
-            { issuedAt: null, createdAt: { gte: monthStart } },
-          ],
-        },
-        _sum: {
-          total: true,
-        },
-      }),
-      // Total products
-      prisma.product.count({
-        where: {
-          active: true,
-        },
-      }),
-      // Low stock count (portable across DBs)
-      (async () => {
-        const levels = await prisma.stockLevel.findMany({
+    const salesToday = await withRetry(
+      () =>
+        prisma.invoice.aggregate({
           where: {
-            product: {
-              active: true,
-              trackStock: true,
-            },
+            status: { in: ['PAGADA', 'PAID'] }, // Compatibilidad con estados antiguos y nuevos
+            OR: [
+              { issuedAt: { gte: today } },
+              { issuedAt: null, createdAt: { gte: today } },
+            ],
           },
-          select: {
-            quantity: true,
-            minStock: true,
+          _sum: {
+            total: true,
           },
-        })
-        return levels.reduce((count, level) => {
-          return level.quantity <= level.minStock ? count + 1 : count
-        }, 0)
-      })(),
-      // En Cobranza: Suma de facturas pendientes de pago
-      (async () => {
-        // Obtener todas las facturas que no están completamente pagadas
-        const unpaidInvoices = await prisma.invoice.findMany({
-          where: {
-            status: { 
-              notIn: ['PAGADA', 'PAID', 'ANULADA', 'VOID'] // Excluir pagadas y anuladas (compatibilidad con estados antiguos y nuevos)
-            },
-          },
-          include: {
-            payments: {
-              select: {
-                amount: true,
-              },
-            },
-          },
-        })
+        }),
+      'salesToday'
+    )
 
-        // Calcular el monto pendiente de cada factura
-        let totalInCollection = 0
-        for (const invoice of unpaidInvoices) {
-          const totalPaid = invoice.payments.reduce((sum, payment) => sum + payment.amount, 0)
-          const pending = invoice.total - totalPaid
-          if (pending > 0) {
-            totalInCollection += pending
-          }
+    const salesMonth = await withRetry(
+      () =>
+        prisma.invoice.aggregate({
+          where: {
+            status: { in: ['PAGADA', 'PAID'] }, // Compatibilidad con estados antiguos y nuevos
+            OR: [
+              { issuedAt: { gte: monthStart } },
+              { issuedAt: null, createdAt: { gte: monthStart } },
+            ],
+          },
+          _sum: {
+            total: true,
+          },
+        }),
+      'salesMonth'
+    )
+
+    const totalProducts = await withRetry(
+      () =>
+        prisma.product.count({
+          where: {
+            active: true,
+          },
+        }),
+      'totalProducts'
+    )
+
+    const lowStockCount = await withRetry(async () => {
+      const levels = await prisma.stockLevel.findMany({
+        where: {
+          product: {
+            active: true,
+            trackStock: true,
+          },
+        },
+        select: {
+          quantity: true,
+          minStock: true,
+        },
+      })
+      return levels.reduce((count, level) => {
+        return level.quantity <= level.minStock ? count + 1 : count
+      }, 0)
+    }, 'lowStockCount')
+
+    const inCollection = await withRetry(async () => {
+      const unpaidInvoices = await prisma.invoice.findMany({
+        where: {
+          status: {
+            notIn: ['PAGADA', 'PAID', 'ANULADA', 'VOID'], // Compatibilidad con estados antiguos y nuevos
+          },
+        },
+        include: {
+          payments: {
+            select: {
+              amount: true,
+            },
+          },
+        },
+      })
+
+      let totalInCollection = 0
+      for (const invoice of unpaidInvoices) {
+        const totalPaid = invoice.payments.reduce((sum, payment) => sum + payment.amount, 0)
+        const pending = invoice.total - totalPaid
+        if (pending > 0) {
+          totalInCollection += pending
         }
+      }
 
-        return totalInCollection
-      })(),
-    ])
+      return totalInCollection
+    }, 'inCollection')
 
     const duration = Date.now() - startTime
     logger.apiResponse('GET', '/api/dashboard/stats', 200, duration)
@@ -116,13 +141,13 @@ export async function GET(request: Request) {
       lowStockCount,
       inCollection,
     })
-  } catch (error) {
+  } catch (error: any) {
     logger.error('Error fetching dashboard stats', error, {
       endpoint: '/api/dashboard/stats',
       method: 'GET',
     })
     return NextResponse.json(
-      { error: 'Failed to fetch stats' },
+      { error: 'Failed to fetch stats', details: error?.message || String(error) },
       { status: 500 }
     )
   }
