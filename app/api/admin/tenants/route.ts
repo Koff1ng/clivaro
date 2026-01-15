@@ -108,10 +108,35 @@ export async function POST(request: Request) {
       )
     }
 
+    const isPostgresEnv =
+      (process.env.DATABASE_URL || '').startsWith('postgresql://') ||
+      (process.env.DATABASE_URL || '').startsWith('postgres://')
+
+    const toSchemaName = (value: string) => `tenant_${value.toLowerCase().replace(/[^a-z0-9_]/g, '_')}`
+    const withSchemaParam = (value: string, schema: string) => {
+      try {
+        const url = new URL(value)
+        url.searchParams.set('schema', schema)
+        return url.toString()
+      } catch {
+        const separator = value.includes('?') ? '&' : '?'
+        return `${value}${separator}schema=${encodeURIComponent(schema)}`
+      }
+    }
+
     // Generar ruta automática si no se proporciona
     // Usar separadores de ruta correctos para el sistema operativo
     let finalDatabaseUrl = databaseUrl
-    if (!finalDatabaseUrl || finalDatabaseUrl.trim() === '') {
+    if (isPostgresEnv) {
+      const baseUrl = process.env.DATABASE_URL
+      if (!baseUrl) {
+        return NextResponse.json(
+          { error: 'DATABASE_URL no está configurada para Postgres' },
+          { status: 500 }
+        )
+      }
+      finalDatabaseUrl = withSchemaParam(baseUrl, toSchemaName(slug))
+    } else if (!finalDatabaseUrl || finalDatabaseUrl.trim() === '') {
       const defaultPath = path.join('tenants', `${slug}.db`)
       // Normalizar para usar / en lugar de \ para compatibilidad
       finalDatabaseUrl = `file:./${defaultPath.replace(/\\/g, '/')}`
@@ -154,7 +179,8 @@ export async function POST(request: Request) {
       logger.info('Initializing tenant database', { tenantId: tenant.id })
       const { adminUsername, adminPassword } = await initializeTenantDatabase(
         finalDatabaseUrl,
-        name
+        name,
+        slug
       )
       logger.info('Tenant database initialized', { tenantId: tenant.id })
 
@@ -187,7 +213,7 @@ export async function POST(request: Request) {
         { 
           error: 'Error al inicializar la base de datos del tenant',
           details: errorMessage,
-          suggestion: 'Verifique que la ruta de la base de datos sea válida y que tenga permisos de escritura.'
+          suggestion: 'Verifique la configuración de DATABASE_URL o la ruta de la base de datos.'
         },
         { status: 500 }
       )

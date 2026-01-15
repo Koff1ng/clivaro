@@ -4,13 +4,81 @@ import { execSync } from 'child_process'
 import * as fs from 'fs'
 import * as path from 'path'
 
+function getTenantSchemaName(tenantSlug: string): string {
+  const safeSlug = tenantSlug.toLowerCase().replace(/[^a-z0-9_]/g, '_')
+  return `tenant_${safeSlug}`
+}
+
+function withSchemaParam(databaseUrl: string, schema: string): string {
+  try {
+    const url = new URL(databaseUrl)
+    url.searchParams.set('schema', schema)
+    return url.toString()
+  } catch {
+    const separator = databaseUrl.includes('?') ? '&' : '?'
+    return `${databaseUrl}${separator}schema=${encodeURIComponent(schema)}`
+  }
+}
+
+function stripSchemaParam(databaseUrl: string): string {
+  try {
+    const url = new URL(databaseUrl)
+    url.searchParams.delete('schema')
+    return url.toString()
+  } catch {
+    return databaseUrl.replace(/([?&])schema=[^&]+(&|$)/, '$1').replace(/[?&]$/, '')
+  }
+}
+
+async function initializePostgresTenant(databaseUrl: string, tenantSlug: string) {
+  const baseUrl = stripSchemaParam(databaseUrl)
+  const schemaName = getTenantSchemaName(tenantSlug)
+  const schemaUrl = withSchemaParam(baseUrl, schemaName)
+
+  const adminPrisma = new PrismaClient({
+    datasources: { db: { url: baseUrl } },
+  })
+
+  try {
+    await adminPrisma.$executeRawUnsafe(`CREATE SCHEMA IF NOT EXISTS "${schemaName}"`)
+  } finally {
+    await adminPrisma.$disconnect()
+  }
+
+  const tenantPrisma = new PrismaClient({
+    datasources: { db: { url: schemaUrl } },
+  })
+
+  try {
+    const sqlPath = path.join(process.cwd(), 'prisma', 'supabase-init.sql')
+    const sql = fs.readFileSync(sqlPath, 'utf-8')
+    const statements = sql
+      .split(/;\s*\n/)
+      .map(stmt => stmt.trim())
+      .filter(stmt => stmt.length > 0 && !stmt.startsWith('--'))
+
+    for (const stmt of statements) {
+      await tenantPrisma.$executeRawUnsafe(stmt)
+    }
+  } catch (error: any) {
+    throw new Error(`Error creando esquema del tenant en Postgres: ${error?.message || error}`)
+  }
+
+  return { tenantPrisma }
+}
+
 /**
  * Inicializa la base de datos de un tenant recién creado
  * Crea: permisos, roles, usuario admin por defecto, almacén principal
  */
-export async function initializeTenantDatabase(databaseUrl: string, tenantName: string) {
+export async function initializeTenantDatabase(databaseUrl: string, tenantName: string, tenantSlug: string) {
   console.log(`Inicializando base de datos para tenant: ${tenantName}`)
   console.log(`Database URL: ${databaseUrl}`)
+
+  if (databaseUrl.startsWith('postgresql://') || databaseUrl.startsWith('postgres://')) {
+    const { tenantPrisma } = await initializePostgresTenant(databaseUrl, tenantSlug)
+    return await seedTenantData(tenantPrisma, tenantName)
+  }
 
   // Extraer la ruta del archivo de la URL
   let dbPath = databaseUrl.replace(/^file:/, '').trim()
@@ -248,9 +316,11 @@ export async function initializeTenantDatabase(databaseUrl: string, tenantName: 
       },
     },
   })
+  return await seedTenantData(tenantPrisma, tenantName)
+}
 
+async function seedTenantData(tenantPrisma: PrismaClient, tenantName: string) {
   try {
-    // 1. Crear permisos
     const permissions = [
       { name: 'manage_users', description: 'Manage users and roles' },
       { name: 'manage_products', description: 'Manage products catalog' },
@@ -274,7 +344,6 @@ export async function initializeTenantDatabase(databaseUrl: string, tenantName: 
     }
     console.log('✓ Permisos creados')
 
-    // 2. Crear roles
     const adminRole = await tenantPrisma.role.upsert({
       where: { name: 'ADMIN' },
       update: {},
@@ -321,11 +390,9 @@ export async function initializeTenantDatabase(databaseUrl: string, tenantName: 
     })
     console.log('✓ Roles creados')
 
-    // 3. Asignar permisos a roles
     const allPermissions = await tenantPrisma.permission.findMany()
     const permissionMap = new Map(allPermissions.map(p => [p.name, p.id]))
 
-    // ADMIN: todos los permisos
     for (const perm of allPermissions) {
       await tenantPrisma.rolePermission.upsert({
         where: {
@@ -342,7 +409,6 @@ export async function initializeTenantDatabase(databaseUrl: string, tenantName: 
       })
     }
 
-    // MANAGER: todos excepto manage_users
     const managerPermissions = allPermissions.filter(p => p.name !== 'manage_users')
     for (const perm of managerPermissions) {
       await tenantPrisma.rolePermission.upsert({
@@ -360,7 +426,6 @@ export async function initializeTenantDatabase(databaseUrl: string, tenantName: 
       })
     }
 
-    // CASHIER: manage_sales, manage_cash, manage_crm, view_reports, apply_discounts (mostrador)
     const cashierPerms = ['manage_sales', 'manage_cash', 'manage_crm', 'view_reports', 'apply_discounts']
     for (const permName of cashierPerms) {
       const permId = permissionMap.get(permName)
@@ -381,7 +446,6 @@ export async function initializeTenantDatabase(databaseUrl: string, tenantName: 
       }
     }
 
-    // SALES: manage_sales, manage_crm, view_reports
     const salesPerms = ['manage_sales', 'manage_crm', 'view_reports']
     for (const permName of salesPerms) {
       const permId = permissionMap.get(permName)
@@ -402,7 +466,6 @@ export async function initializeTenantDatabase(databaseUrl: string, tenantName: 
       }
     }
 
-    // WAREHOUSE: manage_inventory, manage_purchases, manage_products
     const warehousePerms = ['manage_inventory', 'manage_purchases', 'manage_products']
     for (const permName of warehousePerms) {
       const permId = permissionMap.get(permName)
@@ -424,7 +487,6 @@ export async function initializeTenantDatabase(databaseUrl: string, tenantName: 
     }
     console.log('✓ Permisos asignados a roles')
 
-    // 4. Crear usuario admin por defecto
     const defaultPassword = 'Admin123!'
     const hashedPassword = await bcrypt.hash(defaultPassword, 10)
 
@@ -441,7 +503,6 @@ export async function initializeTenantDatabase(databaseUrl: string, tenantName: 
     })
     console.log('✓ Usuario admin creado')
 
-    // 5. Asignar rol ADMIN al usuario
     await tenantPrisma.userRole.upsert({
       where: {
         userId_roleId: {
@@ -457,8 +518,7 @@ export async function initializeTenantDatabase(databaseUrl: string, tenantName: 
     })
     console.log('✓ Rol ADMIN asignado al usuario')
 
-    // 6. Crear almacén principal
-    const warehouse = await tenantPrisma.warehouse.upsert({
+    await tenantPrisma.warehouse.upsert({
       where: { name: 'Almacén Principal' },
       update: {},
       create: {

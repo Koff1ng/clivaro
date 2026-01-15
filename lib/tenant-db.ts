@@ -9,6 +9,9 @@ const tenantClients = new Map<string, PrismaClient>()
  * Normaliza la URL de la base de datos, convirtiendo rutas relativas a absolutas
  */
 function normalizeDatabaseUrl(databaseUrl: string): string {
+  if (databaseUrl.startsWith('postgresql://') || databaseUrl.startsWith('postgres://')) {
+    return databaseUrl
+  }
   // Si ya es una ruta absoluta (comienza con file:/ y tiene ruta absoluta), retornarla
   if (databaseUrl.startsWith('file:/') && path.isAbsolute(databaseUrl.replace('file:', '').replace(/^\/+/, ''))) {
     return databaseUrl
