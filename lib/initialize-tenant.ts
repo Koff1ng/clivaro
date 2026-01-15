@@ -51,11 +51,25 @@ async function initializePostgresTenant(databaseUrl: string, tenantSlug: string)
 
   try {
     const sqlPath = path.join(process.cwd(), 'prisma', 'supabase-init.sql')
-    const sql = fs.readFileSync(sqlPath, 'utf-8')
-    const statements = sql
-      .split(/;\s*\n/)
+    const sqlBuf = fs.readFileSync(sqlPath)
+    // PowerShell redirection can write UTF-16LE; detect BOM / NUL bytes and decode accordingly.
+    const looksUtf16Le =
+      (sqlBuf.length >= 2 && sqlBuf[0] === 0xff && sqlBuf[1] === 0xfe) ||
+      sqlBuf.slice(0, Math.min(sqlBuf.length, 200)).includes(0x00)
+
+    const sqlRaw = looksUtf16Le ? sqlBuf.toString('utf16le') : sqlBuf.toString('utf8')
+
+    // Remove BOM and normalize line endings
+    const sql = sqlRaw.replace(/^\uFEFF/, '').replace(/\r\n/g, '\n')
+
+    // Remove full-line comments to avoid dropping statements that start with "-- CreateTable"
+    const sqlNoComments = sql.replace(/^\s*--.*$/gm, '').trim()
+
+    // Naive split by semicolon is OK for Prisma diff output (DDL only).
+    const statements = sqlNoComments
+      .split(';')
       .map(stmt => stmt.trim())
-      .filter(stmt => stmt.length > 0 && !stmt.startsWith('--'))
+      .filter(Boolean)
 
     for (let i = 0; i < statements.length; i++) {
       const stmt = statements[i]
