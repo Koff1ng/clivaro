@@ -81,7 +81,9 @@ export default function TenantLoginPage() {
       })
 
       if (result?.error) {
-        setError('Credenciales inválidas. Verifique su usuario y contraseña.')
+        // Show actionable error from CredentialsProvider when available
+        const msg = typeof result.error === 'string' ? result.error : 'Credenciales inválidas.'
+        setError(msg)
         setLoading(false)
       } else if (result?.ok) {
         // Wait a bit to ensure session is fully established

@@ -14,122 +14,142 @@ export const authOptions: NextAuthOptions = {
         tenantSlug: { label: 'Tenant Slug', type: 'text' }
       },
       async authorize(credentials) {
-        console.log('[AUTH] authorize llamado con:', {
-          username: credentials?.username,
-          hasPassword: !!credentials?.password,
-          tenantSlug: credentials?.tenantSlug,
-          allKeys: Object.keys(credentials || {})
-        })
-
-        if (!credentials?.username || !credentials?.password) {
-          console.log('[AUTH] Credenciales incompletas')
-          return null
-        }
-
-        // Si es super admin, usar la BD maestra
-        // Si tiene tenantSlug, usar la BD del tenant
-        let tenantPrisma = prisma
-        let tenantId: string | null = null
-
-        if (credentials.tenantSlug) {
-          console.log(`[AUTH] Buscando tenant con slug: ${credentials.tenantSlug}`)
-          // Obtener tenant de la BD maestra
-          const tenant = await prisma.tenant.findUnique({
-            where: { slug: credentials.tenantSlug },
-            select: {
-              id: true,
-              databaseUrl: true,
-              active: true,
-            }
+        try {
+          console.log('[AUTH] authorize llamado con:', {
+            username: credentials?.username,
+            hasPassword: !!credentials?.password,
+            tenantSlug: credentials?.tenantSlug,
+            allKeys: Object.keys(credentials || {})
           })
 
-          if (!tenant || !tenant.active) {
-            console.log(`[AUTH] Tenant no encontrado o inactivo: ${credentials.tenantSlug}`)
+          if (!credentials?.username || !credentials?.password) {
+            console.log('[AUTH] Credenciales incompletas')
             return null
           }
 
-          const envUrl = process.env.DATABASE_URL || ''
-          const isPostgresEnv = envUrl.startsWith('postgresql://') || envUrl.startsWith('postgres://')
-          if (isPostgresEnv && tenant.databaseUrl?.startsWith('file:')) {
-            console.log('[AUTH] Tenant usa SQLite en producción (no soportado). Debe migrarse:', {
-              tenantId: tenant.id,
-              slug: credentials.tenantSlug,
+          // Si es super admin, usar la BD maestra
+          // Si tiene tenantSlug, usar la BD del tenant
+          let tenantPrisma = prisma
+          let tenantId: string | null = null
+
+          if (credentials.tenantSlug) {
+            console.log(`[AUTH] Buscando tenant con slug: ${credentials.tenantSlug}`)
+            // Obtener tenant de la BD maestra
+            const tenant = await prisma.tenant.findUnique({
+              where: { slug: credentials.tenantSlug },
+              select: {
+                id: true,
+                databaseUrl: true,
+                active: true,
+              }
             })
-            return null
+
+            if (!tenant || !tenant.active) {
+              console.log(`[AUTH] Tenant no encontrado o inactivo: ${credentials.tenantSlug}`)
+              return null
+            }
+
+            const envUrl = process.env.DATABASE_URL || ''
+            const isPostgresEnv = envUrl.startsWith('postgresql://') || envUrl.startsWith('postgres://')
+            if (isPostgresEnv && tenant.databaseUrl?.startsWith('file:')) {
+              console.log('[AUTH] Tenant usa SQLite en producción (no soportado). Debe migrarse:', {
+                tenantId: tenant.id,
+                slug: credentials.tenantSlug,
+              })
+              throw new Error('TENANT_NOT_READY: Este tenant aún no está configurado en producción.')
+            }
+
+            console.log(`[AUTH] Tenant encontrado: ${tenant.id}, Database URL: ${tenant.databaseUrl}`)
+            tenantId = tenant.id
+            // Obtener cliente Prisma del tenant
+            tenantPrisma = getTenantPrisma(tenant.databaseUrl)
+            console.log(`[AUTH] Usando BD del tenant`)
+          } else {
+            console.log(`[AUTH] No hay tenantSlug, usando BD maestra`)
           }
 
-          console.log(`[AUTH] Tenant encontrado: ${tenant.id}, Database URL: ${tenant.databaseUrl}`)
-          tenantId = tenant.id
-          // Obtener cliente Prisma del tenant
-          tenantPrisma = getTenantPrisma(tenant.databaseUrl)
-          console.log(`[AUTH] Usando BD del tenant`)
-        } else {
-          console.log(`[AUTH] No hay tenantSlug, usando BD maestra`)
-        }
-
-        // Try to find user by username first, then by email
-        console.log(`[AUTH] Buscando usuario: ${credentials.username}`)
-        const user = await tenantPrisma.user.findFirst({
-          where: {
-            OR: [
-              { username: credentials.username },
-              { email: credentials.username }
-            ]
-          },
-          include: {
-            userRoles: {
+          // Try to find user by username first, then by email
+          console.log(`[AUTH] Buscando usuario: ${credentials.username}`)
+          let user: any = null
+          try {
+            user = await tenantPrisma.user.findFirst({
+              where: {
+                OR: [
+                  { username: credentials.username },
+                  { email: credentials.username }
+                ]
+              },
               include: {
-                role: {
+                userRoles: {
                   include: {
-                    rolePermissions: {
+                    role: {
                       include: {
-                        permission: true
+                        rolePermissions: {
+                          include: {
+                            permission: true
+                          }
+                        }
                       }
                     }
                   }
                 }
               }
-            }
+            })
+          } catch (dbError: any) {
+            // Most common causes: schema not initialized, wrong schema/search_path, or connectivity issues
+            console.error('[AUTH] Error consultando BD del tenant:', dbError?.message || dbError)
+            throw new Error(`TENANT_DB_ERROR: ${dbError?.message || 'No se pudo consultar la BD del tenant'}`)
           }
-        })
 
-        if (!user) {
-          console.log(`[AUTH] Usuario no encontrado: ${credentials.username}`)
-          return null
-        }
+          if (!user) {
+            console.log(`[AUTH] Usuario no encontrado: ${credentials.username}`)
+            // Provide an actionable message for tenant logins
+            if (credentials.tenantSlug) {
+              throw new Error('INVALID_CREDENTIALS: Usuario o contraseña incorrectos para esta empresa.')
+            }
+            return null
+          }
 
-        if (!user.active) {
-          console.log(`[AUTH] Usuario inactivo: ${credentials.username}`)
-          return null
-        }
+          if (!user.active) {
+            console.log(`[AUTH] Usuario inactivo: ${credentials.username}`)
+            throw new Error('USER_INACTIVE: Usuario inactivo.')
+          }
 
-        console.log(`[AUTH] Usuario encontrado: ${user.username}, verificando contraseña...`)
-        const isValid = await bcrypt.compare(credentials.password, user.password)
+          console.log(`[AUTH] Usuario encontrado: ${user.username}, verificando contraseña...`)
+          const isValid = await bcrypt.compare(credentials.password, user.password)
 
-        if (!isValid) {
-          console.log(`[AUTH] Contraseña inválida para usuario: ${credentials.username}`)
-          return null
-        }
+          if (!isValid) {
+            console.log(`[AUTH] Contraseña inválida para usuario: ${credentials.username}`)
+            if (credentials.tenantSlug) {
+              throw new Error('INVALID_CREDENTIALS: Usuario o contraseña incorrectos para esta empresa.')
+            }
+            return null
+          }
 
-        console.log(`[AUTH] Autenticación exitosa para: ${user.username}`)
+          console.log(`[AUTH] Autenticación exitosa para: ${user.username}`)
 
-        // Extract permissions
-        const permissions = new Set<string>()
-        user.userRoles.forEach(userRole => {
-          userRole.role.rolePermissions.forEach(rp => {
-            permissions.add(rp.permission.name)
+          // Extract permissions
+          const permissions = new Set<string>()
+          user.userRoles.forEach((userRole: any) => {
+            userRole.role.rolePermissions.forEach((rp: any) => {
+              permissions.add(rp.permission.name)
+            })
           })
-        })
 
-        return {
-          id: user.id,
-          email: user.email || '',
-          username: user.username,
-          name: user.name,
-          permissions: Array.from(permissions),
-          roles: user.userRoles.map(ur => ur.role.name),
-          isSuperAdmin: user.isSuperAdmin || false,
-          tenantId: tenantId || undefined
+          return {
+            id: user.id,
+            email: user.email || '',
+            username: user.username,
+            name: user.name,
+            permissions: Array.from(permissions),
+            roles: user.userRoles.map((ur: any) => ur.role.name),
+            isSuperAdmin: user.isSuperAdmin || false,
+            tenantId: tenantId || undefined
+          }
+        } catch (error: any) {
+          // NextAuth will surface this string in result.error when redirect: false
+          console.error('[AUTH] authorize failed:', error?.message || error)
+          throw error
         }
       }
     })
