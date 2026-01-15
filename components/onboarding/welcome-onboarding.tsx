@@ -11,9 +11,21 @@ import { useToast } from '@/components/ui/toast'
 
 interface WelcomeOnboardingProps {
   onComplete: () => void
+  planName?: string | null
 }
 
-async function completeOnboarding(data: { userName: string; companyName: string }) {
+async function fetchOnboardingData() {
+  const res = await fetch('/api/onboarding')
+  if (!res.ok) throw new Error('Failed to fetch onboarding data')
+  return res.json()
+}
+
+async function completeOnboarding(data: { 
+  userName: string
+  companyName: string
+  newUsername?: string
+  newPassword?: string
+}) {
   const res = await fetch('/api/onboarding', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -26,12 +38,15 @@ async function completeOnboarding(data: { userName: string; companyName: string 
   return res.json()
 }
 
-export function WelcomeOnboarding({ onComplete }: WelcomeOnboardingProps) {
+export function WelcomeOnboarding({ onComplete, planName }: WelcomeOnboardingProps) {
   const { toast } = useToast()
   const queryClient = useQueryClient()
   const [step, setStep] = useState(0)
   const [userName, setUserName] = useState('')
   const [companyName, setCompanyName] = useState('')
+  const [newUsername, setNewUsername] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
 
   const completeMutation = useMutation({
     mutationFn: completeOnboarding,
@@ -49,7 +64,7 @@ export function WelcomeOnboarding({ onComplete }: WelcomeOnboardingProps) {
   const steps = [
     {
       title: 'Bienvenido a',
-      subtitle: 'Clivaro Super Pro',
+      subtitle: planName ? `Clivaro ${planName}` : 'Clivaro Super Pro',
       description: 'Tu sistema de gestión empresarial todo-en-uno',
       showInput: false,
     },
@@ -69,6 +84,14 @@ export function WelcomeOnboarding({ onComplete }: WelcomeOnboardingProps) {
       inputType: 'companyName',
       placeholder: 'Ingresa el nombre de tu empresa',
     },
+    {
+      title: 'Configura tus credenciales',
+      subtitle: '',
+      description: 'Por seguridad, cambia tu usuario y contraseña por defecto',
+      showInput: true,
+      inputType: 'credentials',
+      placeholder: '',
+    },
   ]
 
   const currentStep = steps[step]
@@ -82,11 +105,31 @@ export function WelcomeOnboarding({ onComplete }: WelcomeOnboardingProps) {
       toast('Por favor ingresa el nombre de tu empresa', 'warning')
       return
     }
+    if (step === 3) {
+      // Validar credenciales
+      if (!newUsername.trim() || newUsername.length < 3) {
+        toast('El usuario debe tener al menos 3 caracteres', 'warning')
+        return
+      }
+      if (!newPassword || newPassword.length < 8) {
+        toast('La contraseña debe tener al menos 8 caracteres', 'warning')
+        return
+      }
+      if (newPassword !== confirmPassword) {
+        toast('Las contraseñas no coinciden', 'warning')
+        return
+      }
+      // Último paso, completar onboarding
+      completeMutation.mutate({ 
+        userName, 
+        companyName,
+        newUsername,
+        newPassword,
+      })
+      return
+    }
     if (step < steps.length - 1) {
       setStep(step + 1)
-    } else {
-      // Último paso, completar onboarding
-      completeMutation.mutate({ userName, companyName })
     }
   }
 
@@ -152,7 +195,7 @@ export function WelcomeOnboarding({ onComplete }: WelcomeOnboardingProps) {
               </motion.p>
 
               {/* Input Field */}
-              {currentStep.showInput && (
+              {currentStep.showInput && currentStep.inputType !== 'credentials' && (
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -178,6 +221,67 @@ export function WelcomeOnboarding({ onComplete }: WelcomeOnboardingProps) {
                     className="text-lg h-14 text-center"
                     autoFocus
                   />
+                </motion.div>
+              )}
+
+              {/* Credentials Input Fields */}
+              {currentStep.showInput && currentStep.inputType === 'credentials' && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.4 }}
+                  className="pt-4 space-y-4"
+                >
+                  <div className="space-y-2">
+                    <Label htmlFor="newUsername" className="text-left">Nuevo Usuario</Label>
+                    <Input
+                      id="newUsername"
+                      type="text"
+                      placeholder="Ingresa tu nuevo usuario"
+                      value={newUsername}
+                      onChange={(e) => setNewUsername(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          handleNext()
+                        }
+                      }}
+                      className="text-lg h-12"
+                      autoFocus
+                    />
+                    <p className="text-xs text-muted-foreground text-left">
+                      Mínimo 3 caracteres
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="newPassword" className="text-left">Nueva Contraseña</Label>
+                    <Input
+                      id="newPassword"
+                      type="password"
+                      placeholder="Ingresa tu nueva contraseña"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      className="text-lg h-12"
+                    />
+                    <p className="text-xs text-muted-foreground text-left">
+                      Mínimo 8 caracteres
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="confirmPassword" className="text-left">Confirmar Contraseña</Label>
+                    <Input
+                      id="confirmPassword"
+                      type="password"
+                      placeholder="Confirma tu contraseña"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          handleNext()
+                        }
+                      }}
+                      className="text-lg h-12"
+                    />
+                  </div>
                 </motion.div>
               )}
             </div>

@@ -1,15 +1,18 @@
 import { NextResponse } from 'next/server'
-import { requirePermission } from '@/lib/api-middleware'
-import { PERMISSIONS } from '@/lib/permissions'
+import { requireAuth } from '@/lib/api-middleware'
 import { prisma } from '@/lib/db'
 import { logger } from '@/lib/logger'
 import { z } from 'zod'
+import { getTenantPrisma } from '@/lib/tenant-db'
+import bcrypt from 'bcryptjs'
 
 export const dynamic = 'force-dynamic'
 
 const onboardingSchema = z.object({
   userName: z.string().min(1, 'El nombre es requerido'),
   companyName: z.string().min(1, 'El nombre de la empresa es requerido'),
+  newUsername: z.string().min(3, 'El usuario debe tener al menos 3 caracteres').optional(),
+  newPassword: z.string().min(8, 'La contraseña debe tener al menos 8 caracteres').optional(),
 })
 
 /**
@@ -18,7 +21,7 @@ const onboardingSchema = z.object({
  */
 export async function POST(request: Request) {
   try {
-    const session = await requirePermission(request as any, PERMISSIONS.MANAGE_USERS)
+    const session = await requireAuth(request)
     
     if (session instanceof NextResponse) {
       return session
@@ -44,6 +47,57 @@ export async function POST(request: Request) {
     const body = await request.json()
     const validatedData = onboardingSchema.parse(body)
 
+    // Obtener tenant para acceder a su BD
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: user.tenantId },
+    })
+
+    if (!tenant) {
+      return NextResponse.json(
+        { error: 'Tenant no encontrado' },
+        { status: 404 }
+      )
+    }
+
+    // Si se proporcionaron nuevas credenciales, actualizar el admin
+    if (validatedData.newUsername || validatedData.newPassword) {
+      const tenantPrisma = getTenantPrisma(tenant.databaseUrl)
+      
+      // Buscar el usuario admin actual
+      const adminUser = await tenantPrisma.user.findUnique({
+        where: { username: 'admin' },
+      })
+
+      if (adminUser) {
+        const updateData: any = {}
+        
+        if (validatedData.newUsername) {
+          // Verificar que el nuevo username no exista
+          const existingUser = await tenantPrisma.user.findUnique({
+            where: { username: validatedData.newUsername },
+          })
+          
+          if (existingUser && existingUser.id !== adminUser.id) {
+            return NextResponse.json(
+              { error: 'El nombre de usuario ya está en uso' },
+              { status: 400 }
+            )
+          }
+          
+          updateData.username = validatedData.newUsername
+        }
+        
+        if (validatedData.newPassword) {
+          updateData.password = await bcrypt.hash(validatedData.newPassword, 10)
+        }
+        
+        await tenantPrisma.user.update({
+          where: { id: adminUser.id },
+          data: updateData,
+        })
+      }
+    }
+
     // Actualizar o crear TenantSettings con los datos del onboarding
     const settings = await prisma.tenantSettings.upsert({
       where: { tenantId: user.tenantId },
@@ -61,11 +115,7 @@ export async function POST(request: Request) {
     })
 
     // También actualizar el nombre del tenant si no está configurado
-    const tenant = await prisma.tenant.findUnique({
-      where: { id: user.tenantId },
-    })
-
-    if (tenant && (!tenant.name || tenant.name === 'Nuevo Tenant')) {
+    if (!tenant.name || tenant.name === 'Nuevo Tenant') {
       await prisma.tenant.update({
         where: { id: user.tenantId },
         data: {
@@ -78,6 +128,7 @@ export async function POST(request: Request) {
       tenantId: user.tenantId,
       userName: validatedData.userName,
       companyName: validatedData.companyName,
+      credentialsChanged: !!(validatedData.newUsername || validatedData.newPassword),
     })
 
     return NextResponse.json({
@@ -110,7 +161,7 @@ export async function POST(request: Request) {
  */
 export async function GET(request: Request) {
   try {
-    const session = await requirePermission(request as any, PERMISSIONS.MANAGE_USERS)
+    const session = await requireAuth(request)
     
     if (session instanceof NextResponse) {
       return session
@@ -122,7 +173,8 @@ export async function GET(request: Request) {
     if (user.isSuperAdmin) {
       return NextResponse.json({
         needsOnboarding: false,
-        settings: null
+        settings: null,
+        plan: null,
       })
     }
 
@@ -137,11 +189,26 @@ export async function GET(request: Request) {
       where: { tenantId: user.tenantId }
     })
 
+    // Obtener el plan del tenant
+    const subscription = await prisma.subscription.findFirst({
+      where: {
+        tenantId: user.tenantId,
+        status: 'active',
+      },
+      include: {
+        plan: true,
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    })
+
     const needsOnboarding = !settings?.onboardingCompleted
 
     return NextResponse.json({
       needsOnboarding,
-      settings: settings || null
+      settings: settings || null,
+      plan: subscription?.plan || null,
     })
   } catch (error: any) {
     logger.error('Error checking onboarding status', error, {

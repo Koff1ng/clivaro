@@ -37,6 +37,7 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
     <>
       {showOnboarding && (
         <WelcomeOnboarding
+          planName={data?.plan?.name}
           onComplete={() => {
             setShowOnboarding(false)
             // Invalidar query para refrescar
