@@ -16,6 +16,15 @@ export async function GET(request: Request) {
     }
 
     const user = session.user as any
+    if (user.isSuperAdmin) {
+      return NextResponse.json({
+        plan: null,
+        subscription: null,
+        features: null,
+        isSuperAdmin: true,
+      })
+    }
+
     const tenantId = user.tenantId
 
     if (!tenantId) {

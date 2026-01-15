@@ -24,25 +24,27 @@ export async function GET(request: Request) {
 
     // Optimize: Run all queries in parallel
     const [salesToday, salesMonth, totalProducts, lowStockCount, inCollection] = await Promise.all([
-      // Sales today
-      prisma.invoice.aggregate({
-      where: {
-        status: { in: ['PAGADA', 'PAID'] }, // Compatibilidad con estados antiguos y nuevos
-        issuedAt: {
-          gte: today,
-        },
-      },
-      _sum: {
-        total: true,
-      },
-    }),
-      // Sales this month
+      // Sales today (use issuedAt when present, fallback to createdAt)
       prisma.invoice.aggregate({
         where: {
           status: { in: ['PAGADA', 'PAID'] }, // Compatibilidad con estados antiguos y nuevos
-          issuedAt: {
-            gte: monthStart,
-          },
+          OR: [
+            { issuedAt: { gte: today } },
+            { issuedAt: null, createdAt: { gte: today } },
+          ],
+        },
+        _sum: {
+          total: true,
+        },
+      }),
+      // Sales this month (use issuedAt when present, fallback to createdAt)
+      prisma.invoice.aggregate({
+        where: {
+          status: { in: ['PAGADA', 'PAID'] }, // Compatibilidad con estados antiguos y nuevos
+          OR: [
+            { issuedAt: { gte: monthStart } },
+            { issuedAt: null, createdAt: { gte: monthStart } },
+          ],
         },
         _sum: {
           total: true,
@@ -54,17 +56,23 @@ export async function GET(request: Request) {
           active: true,
         },
       }),
-      // Low stock count - Compare quantity with minStock using raw query
+      // Low stock count (portable across DBs)
       (async () => {
-        const result = await prisma.$queryRaw<Array<{ count: bigint }>>`
-          SELECT COUNT(*) as count
-          FROM StockLevel sl
-          INNER JOIN Product p ON sl.productId = p.id
-          WHERE p.active = 1 
-            AND p.trackStock = 1
-            AND sl.quantity <= sl.minStock
-        `
-        return Number(result[0]?.count || 0)
+        const levels = await prisma.stockLevel.findMany({
+          where: {
+            product: {
+              active: true,
+              trackStock: true,
+            },
+          },
+          select: {
+            quantity: true,
+            minStock: true,
+          },
+        })
+        return levels.reduce((count, level) => {
+          return level.quantity <= level.minStock ? count + 1 : count
+        }, 0)
       })(),
       // En Cobranza: Suma de facturas pendientes de pago
       (async () => {

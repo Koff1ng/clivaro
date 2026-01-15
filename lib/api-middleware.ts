@@ -195,8 +195,15 @@ export async function requirePermission(
     )
   }
   
+  // Super admin bypasses tenant checks and permission checks
+  if (user.isSuperAdmin) {
+    const duration = Date.now() - startTime
+    logger.apiResponse(request.method, path, 200, duration, { userId: user.id, superAdmin: true })
+    return session
+  }
+
   // Verificar que usuarios de tenant tengan tenantId
-  if (!user.isSuperAdmin && !user.tenantId) {
+  if (!user.tenantId) {
     logger.warn('Invalid session - missing tenantId', {
       userId: user.id,
       path,
@@ -322,11 +329,18 @@ export async function requireAnyPermission(
     )
   }
   
+  // Super admin bypasses tenant checks and permission checks
+  if (user.isSuperAdmin) {
+    const duration = Date.now() - startTime
+    logger.apiResponse(request.method, path, 200, duration, { userId: user.id, superAdmin: true })
+    return session
+  }
+
   // Get the correct Prisma client (master or tenant)
   const db = await getPrismaForRequest(request, session)
-  
+
   // Verificar que usuarios de tenant tengan tenantId
-  if (!user.isSuperAdmin && !user.tenantId) {
+  if (!user.tenantId) {
     logger.warn('Invalid session - missing tenantId', {
       userId: user.id,
       path,
