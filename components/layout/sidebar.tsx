@@ -69,18 +69,13 @@ export function Sidebar() {
       if (stored) {
         try {
           const parsed = JSON.parse(stored)
-          // Limpiar entradas que ya pasaron los 3 minutos
-          const now = Date.now()
-          const filtered: Record<string, number> = {}
+          // Las features visitadas se guardan permanentemente hasta que se limpien manualmente
+          // Convertir a un objeto simple de strings (sin timestamps, solo marcar como visitadas)
+          const visited: Record<string, number> = {}
           Object.keys(parsed).forEach((key) => {
-            if (now - parsed[key] < 3 * 60 * 1000) { // 3 minutos
-              filtered[key] = parsed[key]
-            }
+            visited[key] = Date.now() // Mantener timestamp para compatibilidad
           })
-          setVisitedFeatures(filtered)
-          if (Object.keys(filtered).length !== Object.keys(parsed).length) {
-            localStorage.setItem('visited-new-features', JSON.stringify(filtered))
-          }
+          setVisitedFeatures(visited)
         } catch (e) {
           // Ignorar errores de parseo
         }
@@ -113,54 +108,17 @@ export function Sidebar() {
     }
   }, [pathname, newFeatures, visitedFeatures, isNewFeature])
 
-  // Limpiar etiquetas después de 3 minutos de visitar una función
-  useEffect(() => {
-    if (Object.keys(visitedFeatures).length === 0) return
-
-    const interval = setInterval(() => {
-      const now = Date.now()
-      const updated: Record<string, number> = {}
-      let hasChanges = false
-
-      Object.keys(visitedFeatures).forEach((key) => {
-        const visitTime = visitedFeatures[key]
-        const timeSinceVisit = now - visitTime
-        
-        // Mantener solo las que aún no han pasado los 3 minutos
-        if (timeSinceVisit < 3 * 60 * 1000) {
-          updated[key] = visitTime
-        } else {
-          hasChanges = true
-        }
-      })
-
-      if (hasChanges) {
-        setVisitedFeatures(updated)
-        if (typeof window !== 'undefined') {
-          if (Object.keys(updated).length === 0) {
-            localStorage.removeItem('visited-new-features')
-          } else {
-            localStorage.setItem('visited-new-features', JSON.stringify(updated))
-          }
-        }
-      }
-    }, 10000) // Verificar cada 10 segundos
-
-    return () => clearInterval(interval)
-  }, [visitedFeatures])
+  // Ya no necesitamos limpiar etiquetas después de un tiempo
+  // Las features visitadas permanecen marcadas permanentemente
+  // (se pueden limpiar manualmente desde localStorage si es necesario)
 
   // Función para verificar si una feature debe mostrar la etiqueta "NUEVO"
   const shouldShowNewBadge = (feature: string) => {
     if (!isNewFeature(feature as any)) return false
     
-    const visitTime = visitedFeatures[feature]
-    if (!visitTime) return true // No ha sido visitada, mostrar
-    
-    const now = Date.now()
-    const timeSinceVisit = now - visitTime
-    
-    // Mostrar solo si han pasado menos de 3 minutos desde la visita
-    return timeSinceVisit < 3 * 60 * 1000
+    // Si la feature ha sido visitada, no mostrar el badge
+    // El badge desaparece inmediatamente después de visitar la función
+    return !visitedFeatures[feature]
   }
 
   const filteredMenuItems = menuItems.filter(item => {
