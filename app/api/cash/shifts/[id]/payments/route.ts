@@ -5,7 +5,7 @@ import { getPrismaForRequest } from '@/lib/get-tenant-prisma'
 
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: { id: string } | Promise<{ id: string }> }
 ) {
   const session = await requireAnyPermission(request as any, [PERMISSIONS.MANAGE_CASH, PERMISSIONS.MANAGE_SALES])
   
@@ -17,9 +17,10 @@ export async function GET(
   const prisma = await getPrismaForRequest(request, session)
 
   try {
+    const resolvedParams = await params
     // Get shift
     const shift = await prisma.cashShift.findUnique({
-      where: { id: params.id },
+      where: { id: resolvedParams.id },
     })
 
     if (!shift) {
