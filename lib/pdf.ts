@@ -532,41 +532,77 @@ export async function generateInvoicePDF(invoice: InvoicePDFData): Promise<Buffe
   try {
     // Configuración para Vercel (serverless)
     const isVercel = process.env.VERCEL === '1'
-    const executablePath = isVercel 
-      ? await chromium.executablePath()
-      : undefined
+    let executablePath: string | undefined
+    let chromiumArgs: string[] = []
     
-    const chromiumArgs = isVercel ? chromium.args || [] : []
+    if (isVercel) {
+      try {
+        executablePath = await chromium.executablePath()
+        chromiumArgs = chromium.args || []
+      } catch (chromiumError: any) {
+        console.error('Error getting chromium executable path:', chromiumError)
+        throw new Error(`Error configurando Chromium para Vercel: ${chromiumError?.message || 'Error desconocido'}`)
+      }
+    }
+    
     const args = isVercel 
       ? [...chromiumArgs, '--hide-scrollbars', '--disable-web-security']
       : ['--no-sandbox', '--disable-setuid-sandbox']
     
-    browser = await puppeteer.launch({
-      headless: true,
-      args,
-      executablePath,
-    })
-    
-    const page = await browser.newPage()
-    await page.setContent(html, { waitUntil: 'networkidle0' })
-    
-    const pdf = await page.pdf({
-      format: 'A4',
-      printBackground: true,
-      margin: {
-        top: '20mm',
-        right: '15mm',
-        bottom: '20mm',
-        left: '15mm',
-      },
-    })
-    
-    await browser.close()
-    return Buffer.from(pdf)
-  } catch (error) {
-    if (browser) {
-      await browser.close()
+    try {
+      browser = await puppeteer.launch({
+        headless: true,
+        args,
+        executablePath,
+        timeout: 30000, // 30 segundos timeout
+      })
+    } catch (launchError: any) {
+      console.error('Error launching Puppeteer:', launchError)
+      throw new Error(`Error al iniciar Puppeteer: ${launchError?.message || 'Error desconocido'}`)
     }
+    
+    try {
+      const page = await browser.newPage()
+      
+      // Timeout para setContent
+      await Promise.race([
+        page.setContent(html, { waitUntil: 'networkidle0' }),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Timeout al cargar contenido HTML')), 20000)
+        )
+      ])
+      
+      // Timeout para generar PDF
+      const pdf = await Promise.race([
+        page.pdf({
+          format: 'A4',
+          printBackground: true,
+          margin: {
+            top: '20mm',
+            right: '15mm',
+            bottom: '20mm',
+            left: '15mm',
+          },
+        }),
+        new Promise<never>((_, reject) => 
+          setTimeout(() => reject(new Error('Timeout al generar PDF')), 30000)
+        )
+      ])
+      
+      await browser.close()
+      return Buffer.from(pdf)
+    } catch (pageError: any) {
+      if (browser) {
+        await browser.close().catch(() => {}) // Ignorar errores al cerrar
+      }
+      console.error('Error en proceso de generación de PDF:', pageError)
+      throw new Error(`Error al generar PDF: ${pageError?.message || 'Error desconocido'}`)
+    }
+  } catch (error: any) {
+    if (browser) {
+      await browser.close().catch(() => {}) // Ignorar errores al cerrar
+    }
+    console.error('Error general en generateInvoicePDF:', error)
     throw error
   }
 }
