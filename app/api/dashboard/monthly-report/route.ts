@@ -31,26 +31,6 @@ export async function GET(request: Request) {
           lte: monthEnd,
         },
       },
-      include: {
-        items: {
-          include: {
-            product: {
-              select: {
-                id: true,
-                name: true,
-                cost: true,
-                price: true,
-              },
-            },
-          },
-        },
-        payments: {
-          select: {
-            method: true,
-            amount: true,
-          },
-        },
-      },
       select: {
         id: true,
         number: true,
@@ -62,7 +42,11 @@ export async function GET(request: Request) {
         createdAt: true,
         status: true,
         items: {
-          include: {
+          select: {
+            id: true,
+            productId: true,
+            quantity: true,
+            subtotal: true,
             product: {
               select: {
                 id: true,
