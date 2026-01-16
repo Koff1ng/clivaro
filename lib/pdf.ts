@@ -301,6 +301,39 @@ export async function generateInvoicePDF(invoice: InvoicePDFData): Promise<Buffe
   const companyEmail = process.env.COMPANY_EMAIL || process.env.NEXT_PUBLIC_COMPANY_EMAIL || ''
   const companyNit = process.env.COMPANY_NIT || process.env.NEXT_PUBLIC_COMPANY_TAX_ID || ''
 
+  let browser
+  try {
+    // Configuración para Vercel (serverless)
+    const isVercel = process.env.VERCEL === '1'
+    let executablePath: string | undefined
+    let chromiumArgs: string[] = []
+    
+    if (isVercel) {
+      try {
+        executablePath = await chromium.executablePath()
+        chromiumArgs = chromium.args || []
+      } catch (chromiumError: any) {
+        console.error('Error getting chromium executable path:', chromiumError)
+        throw new Error(`Error configurando Chromium para Vercel: ${chromiumError?.message || 'Error desconocido'}`)
+      }
+    }
+    
+    const args = isVercel 
+      ? [...chromiumArgs, '--hide-scrollbars', '--disable-web-security']
+      : ['--no-sandbox', '--disable-setuid-sandbox']
+    
+    try {
+      browser = await puppeteer.launch({
+        headless: true,
+        args,
+        executablePath,
+        timeout: 30000, // 30 segundos timeout
+      })
+    } catch (launchError: any) {
+      console.error('Error launching Puppeteer:', launchError)
+      throw new Error(`Error al iniciar Puppeteer: ${launchError?.message || 'Error desconocido'}`)
+    }
+
   const html = `
     <!DOCTYPE html>
     <html>
