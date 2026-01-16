@@ -146,7 +146,12 @@ export async function POST(request: Request) {
         })
 
         // Asegurar que minStock y maxStock sean números válidos
-        const minStock = data.minStock !== undefined && !isNaN(Number(data.minStock)) ? Number(data.minStock) : 0
+        // minStock es requerido si trackStock es true
+        const minStock = data.minStock !== undefined && data.minStock !== null && !isNaN(Number(data.minStock)) 
+          ? Number(data.minStock) 
+          : 0 // Default a 0 si no se proporciona
+        
+        // maxStock es opcional: si está vacío, undefined o null, usar 0 (sin máximo configurado)
         const maxStock = data.maxStock !== undefined && data.maxStock !== null && !isNaN(Number(data.maxStock)) && Number(data.maxStock) > 0 
           ? Number(data.maxStock) 
           : 0 // 0 significa sin máximo configurado
