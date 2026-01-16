@@ -50,7 +50,22 @@ export function InvoiceDetails({ invoice }: { invoice: any }) {
   }
 
   const handlePrintNormal = () => {
-    window.print()
+    // Mostrar solo la vista normal para impresión
+    const thermalEl = document.getElementById('invoice-thermal-print')
+    const normalEl = document.getElementById('invoice-normal-print')
+    const mainContent = document.querySelector('.print\\:hidden')
+    
+    if (thermalEl) thermalEl.classList.add('hidden')
+    if (normalEl) normalEl.classList.remove('hidden')
+    
+    setTimeout(() => {
+      window.print()
+      // Restaurar después de imprimir
+      setTimeout(() => {
+        if (thermalEl) thermalEl.classList.remove('hidden')
+        if (normalEl) normalEl.classList.add('hidden')
+      }, 500)
+    }, 100)
   }
 
   const handleDownloadPDF = async () => {
@@ -77,23 +92,9 @@ export function InvoiceDetails({ invoice }: { invoice: any }) {
   const handlePrintOption = (type: 'thermal' | 'normal') => {
     setPrintType(type)
     if (type === 'thermal') {
-      // Mostrar solo la vista térmica y ocultar la normal
-      const thermalEl = document.getElementById('invoice-thermal-print')
-      const normalEl = document.getElementById('invoice-normal-print')
-      if (thermalEl) thermalEl.classList.remove('hidden')
-      if (normalEl) normalEl.classList.add('hidden')
-      setTimeout(() => {
-        handlePrintThermal()
-      }, 100)
+      handlePrintThermal()
     } else {
-      // Mostrar solo la vista normal y ocultar la térmica
-      const thermalEl = document.getElementById('invoice-thermal-print')
-      const normalEl = document.getElementById('invoice-normal-print')
-      if (normalEl) normalEl.classList.remove('hidden')
-      if (thermalEl) thermalEl.classList.add('hidden')
-      setTimeout(() => {
-        handlePrintNormal()
-      }, 100)
+      handlePrintNormal()
     }
   }
   
