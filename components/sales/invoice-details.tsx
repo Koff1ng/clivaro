@@ -292,9 +292,16 @@ export function InvoiceDetails({ invoice }: { invoice: any }) {
 
   return (
     <>
-      {/* Vista para impresión - oculta en pantalla */}
+      {/* Vista para impresión térmica - oculta en pantalla */}
       <div id="invoice-thermal-print" className="hidden print:block">
         <InvoicePrint invoice={invoice} />
+      </div>
+
+      {/* Vista para impresión normal - oculta en pantalla */}
+      <div id="invoice-normal-print" className="hidden">
+        <div className="p-8 max-w-4xl mx-auto print:block">
+          <InvoicePrint invoice={invoice} />
+        </div>
       </div>
 
       {/* Vista normal en pantalla */}
