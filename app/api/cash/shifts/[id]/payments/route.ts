@@ -40,7 +40,13 @@ export async function GET(
         // excluir anuladas del resumen operativo
         status: { notIn: ['ANULADA', 'VOID'] as any },
       },
-      include: {
+      select: {
+        id: true,
+        number: true,
+        subtotal: true,
+        discount: true,
+        tax: true,
+        total: true,
         payments: {
           select: {
             id: true,
@@ -61,10 +67,6 @@ export async function GET(
             },
           },
         },
-        subtotal: true,
-        discount: true,
-        tax: true,
-        total: true,
       },
     })
 
