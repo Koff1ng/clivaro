@@ -51,6 +51,35 @@ export async function GET(request: Request) {
           },
         },
       },
+      select: {
+        id: true,
+        number: true,
+        subtotal: true,
+        discount: true,
+        tax: true,
+        total: true,
+        issuedAt: true,
+        createdAt: true,
+        status: true,
+        items: {
+          include: {
+            product: {
+              select: {
+                id: true,
+                name: true,
+                cost: true,
+                price: true,
+              },
+            },
+          },
+        },
+        payments: {
+          select: {
+            method: true,
+            amount: true,
+          },
+        },
+      },
     })
 
     // Calcular totales

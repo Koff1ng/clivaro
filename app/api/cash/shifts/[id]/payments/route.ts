@@ -54,8 +54,17 @@ export async function GET(
             quantity: true,
             unitPrice: true,
             discount: true,
+            product: {
+              select: {
+                cost: true,
+              },
+            },
           },
         },
+        subtotal: true,
+        discount: true,
+        tax: true,
+        total: true,
       },
     })
 
