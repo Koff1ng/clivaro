@@ -180,7 +180,7 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json(product, { status: 201 })
-  } catch (error) {
+  } catch (error: any) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: 'Validation error', details: error.errors },
@@ -189,15 +189,35 @@ export async function POST(request: Request) {
     }
     
     // Log detailed error information
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    const errorMessage = error instanceof Error ? error.message : String(error)
     const errorStack = error instanceof Error ? error.stack : undefined
     const errorName = error instanceof Error ? error.name : 'Unknown'
+    const errorCode = error?.code || error?.meta?.code || undefined
+    
+    // Check for Prisma unique constraint violations
+    if (error?.code === 'P2002') {
+      const target = error?.meta?.target
+      let field = 'campo'
+      if (Array.isArray(target)) {
+        field = target[0] || 'campo'
+      }
+      return NextResponse.json(
+        { 
+          error: 'Error de validación',
+          details: `Ya existe un producto con este ${field === 'sku' ? 'SKU' : field === 'barcode' ? 'código de barras' : field}`,
+          code: errorCode,
+        },
+        { status: 400 }
+      )
+    }
     
     console.error('Error creating product:', {
       error: errorMessage,
       name: errorName,
+      code: errorCode,
       stack: errorStack,
       body: requestBody,
+      prismaError: error,
     })
     
     return NextResponse.json(
@@ -205,6 +225,7 @@ export async function POST(request: Request) {
         error: 'Failed to create product',
         details: errorMessage,
         name: errorName,
+        code: errorCode,
       },
       { status: 500 }
     )

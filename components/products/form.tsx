@@ -98,7 +98,8 @@ export function ProductForm({ product, onSuccess }: { product?: any; onSuccess: 
 
       if (!res.ok) {
         const error = await res.json()
-        throw new Error(error.error || 'Error al guardar producto')
+        const errorMessage = error.details || error.error || 'Error al guardar producto'
+        throw new Error(errorMessage)
       }
 
       onSuccess()
