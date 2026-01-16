@@ -16,8 +16,8 @@ const createProductSchema = z.object({
   price: z.number().min(0),
   taxRate: z.number().min(0).max(100),
   trackStock: z.boolean().default(true),
-  minStock: z.number().min(0).optional().default(0),
-  maxStock: z.number().min(0).optional().nullable(),
+  minStock: z.union([z.number().min(0), z.undefined()]).optional(),
+  maxStock: z.union([z.number().min(0), z.null(), z.undefined()]).optional().nullable(),
   description: z.string().optional().nullable(),
 })
 
@@ -108,9 +108,10 @@ export async function POST(request: Request) {
   // Obtener el cliente Prisma correcto (tenant o master según el usuario)
   const prisma = await getPrismaForRequest(request, session)
 
+  let requestBody: any = null
   try {
-    const body = await request.json()
-    const data = createProductSchema.parse(body)
+    requestBody = await request.json()
+    const data = createProductSchema.parse(requestBody)
 
     const product = await prisma.product.create({
       data: {
@@ -181,9 +182,25 @@ export async function POST(request: Request) {
         { status: 400 }
       )
     }
-    console.error('Error creating product:', error)
+    
+    // Log detailed error information
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    const errorStack = error instanceof Error ? error.stack : undefined
+    const errorName = error instanceof Error ? error.name : 'Unknown'
+    
+    console.error('Error creating product:', {
+      error: errorMessage,
+      name: errorName,
+      stack: errorStack,
+      body: requestBody,
+    })
+    
     return NextResponse.json(
-      { error: 'Failed to create product' },
+      { 
+        error: 'Failed to create product',
+        details: errorMessage,
+        name: errorName,
+      },
       { status: 500 }
     )
   }
