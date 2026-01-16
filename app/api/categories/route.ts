@@ -77,10 +77,26 @@ export async function POST(request: Request) {
       )
     }
 
-    // La categoría se crea automáticamente cuando se asigna a un producto
-    // Solo retornamos éxito
+    // Crear un producto temporal para "guardar" la categoría en el sistema
+    // Este producto será invisible (activo: false) y solo servirá para persistir la categoría
+    // Se puede eliminar después si no se usa, pero por ahora lo dejamos como referencia
+    const tempProduct = await prisma.product.create({
+      data: {
+        sku: `CAT-TEMP-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+        name: `[Categoría: ${data.name}]`,
+        category: data.name,
+        unitOfMeasure: 'UNIT',
+        cost: 0,
+        price: 0,
+        taxRate: 0,
+        trackStock: false,
+        active: false, // Producto invisible, solo para persistir la categoría
+        createdById: (session.user as any).id,
+      },
+    })
+
     return NextResponse.json({ 
-      message: 'Categoría lista para usar',
+      message: 'Categoría creada exitosamente',
       name: data.name 
     }, { status: 201 })
   } catch (error) {
