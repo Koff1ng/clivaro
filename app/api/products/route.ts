@@ -113,16 +113,19 @@ export async function POST(request: Request) {
     requestBody = await request.json()
     const data = createProductSchema.parse(requestBody)
 
+    // Extraer minStock y maxStock antes de crear el producto (no son campos del modelo Product)
+    const { minStock, maxStock, ...productData } = data
+
     const product = await prisma.product.create({
       data: {
-        ...data,
-        cost: data.cost,
-        price: data.price,
-        taxRate: data.taxRate,
-        barcode: data.barcode || null,
-        brand: data.brand || null,
-        category: data.category && data.category.trim() !== '' ? data.category.trim() : null,
-        description: data.description || null,
+        ...productData,
+        cost: productData.cost,
+        price: productData.price,
+        taxRate: productData.taxRate,
+        barcode: productData.barcode || null,
+        brand: productData.brand || null,
+        category: productData.category && productData.category.trim() !== '' ? productData.category.trim() : null,
+        description: productData.description || null,
         createdById: (session.user as any).id,
       },
     })
@@ -147,21 +150,21 @@ export async function POST(request: Request) {
 
         // Asegurar que minStock y maxStock sean números válidos
         // minStock es requerido si trackStock es true
-        const minStock = data.minStock !== undefined && data.minStock !== null && !isNaN(Number(data.minStock)) 
-          ? Number(data.minStock) 
+        const minStockValue = minStock !== undefined && minStock !== null && !isNaN(Number(minStock)) 
+          ? Number(minStock) 
           : 0 // Default a 0 si no se proporciona
         
         // maxStock es opcional: si está vacío, undefined o null, usar 0 (sin máximo configurado)
-        const maxStock = data.maxStock !== undefined && data.maxStock !== null && !isNaN(Number(data.maxStock)) && Number(data.maxStock) > 0 
-          ? Number(data.maxStock) 
+        const maxStockValue = maxStock !== undefined && maxStock !== null && !isNaN(Number(maxStock)) && Number(maxStock) > 0 
+          ? Number(maxStock) 
           : 0 // 0 significa sin máximo configurado
 
         if (existing) {
           await prisma.stockLevel.update({
             where: { id: existing.id },
             data: {
-              minStock,
-              maxStock,
+              minStock: minStockValue,
+              maxStock: maxStockValue,
             },
           })
         } else {
@@ -171,8 +174,8 @@ export async function POST(request: Request) {
               productId: product.id,
               variantId: null,
               quantity: 0,
-              minStock,
-              maxStock,
+              minStock: minStockValue,
+              maxStock: maxStockValue,
             },
           })
         }
