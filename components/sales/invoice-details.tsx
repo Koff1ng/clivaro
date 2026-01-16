@@ -7,10 +7,18 @@ import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { useToast } from '@/components/ui/toast'
-import { FileText, Mail, Phone, MapPin, QrCode, Download, CheckCircle, XCircle, Clock, Printer, Ban } from 'lucide-react'
+import { FileText, Mail, Phone, MapPin, QrCode, Download, CheckCircle, XCircle, Clock, Printer, Ban, MoreVertical, FileDown } from 'lucide-react'
 import { InvoicePrint } from './invoice-print'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useThermalPrint } from '@/lib/hooks/use-thermal-print'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 
 export function InvoiceDetails({ invoice }: { invoice: any }) {
   const { toast } = useToast()
@@ -28,6 +36,8 @@ export function InvoiceDetails({ invoice }: { invoice: any }) {
   const [warehouses, setWarehouses] = useState<any[]>([])
   const [warehouseId, setWarehouseId] = useState<string>('')
   const [returnQty, setReturnQty] = useState<Record<string, number>>({})
+  const [showPrintDialog, setShowPrintDialog] = useState(false)
+  const [printType, setPrintType] = useState<'thermal' | 'normal'>('thermal')
 
   const { print } = useThermalPrint({ targetId: 'invoice-thermal-print', styleId: 'thermal-print-style-invoice', widthMm: 80 })
 
@@ -36,6 +46,54 @@ export function InvoiceDetails({ invoice }: { invoice: any }) {
       print()
     } catch {
       toast('No se pudo iniciar la impresión', 'error')
+    }
+  }
+
+  const handlePrintNormal = () => {
+    window.print()
+  }
+
+  const handleDownloadPDF = async () => {
+    try {
+      const res = await fetch(`/api/invoices/${invoice.id}/pdf`)
+      if (!res.ok) {
+        throw new Error('Error al generar PDF')
+      }
+      const blob = await res.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `Factura-${invoice.number}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+      toast('PDF descargado exitosamente', 'success')
+    } catch (error: any) {
+      toast(error.message || 'Error al descargar PDF', 'error')
+    }
+  }
+
+  const handlePrintOption = (type: 'thermal' | 'normal') => {
+    setPrintType(type)
+    if (type === 'thermal') {
+      // Mostrar solo la vista térmica y ocultar la normal
+      const thermalEl = document.getElementById('invoice-thermal-print')
+      const normalEl = document.getElementById('invoice-normal-print')
+      if (thermalEl) thermalEl.classList.remove('hidden')
+      if (normalEl) normalEl.classList.add('hidden')
+      setTimeout(() => {
+        handlePrintThermal()
+      }, 100)
+    } else {
+      // Mostrar solo la vista normal y ocultar la térmica
+      const thermalEl = document.getElementById('invoice-thermal-print')
+      const normalEl = document.getElementById('invoice-normal-print')
+      if (normalEl) normalEl.classList.remove('hidden')
+      if (thermalEl) thermalEl.classList.add('hidden')
+      setTimeout(() => {
+        handlePrintNormal()
+      }, 100)
     }
   }
   
@@ -245,59 +303,78 @@ export function InvoiceDetails({ invoice }: { invoice: any }) {
             )}
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
+          {/* Botones principales */}
           <Button
             variant="destructive"
             onClick={() => setShowVoidDialog(true)}
             disabled={isVoided || blockedByDian}
             title={blockedByDian ? 'Si está enviada/aceptada por DIAN, debe hacerse Nota Crédito' : 'Anular factura'}
+            size="sm"
           >
             <Ban className="h-4 w-4 mr-2" />
-            Anular / Devolver
+            Anular
           </Button>
+          
           <Button
             variant="outline"
             onClick={() => setShowPartialReturn(true)}
             disabled={isVoided || blockedByDian || !hasItems}
             title={blockedByDian ? 'Si está enviada/aceptada por DIAN, debe hacerse Nota Crédito' : 'Devolver parcialmente items'}
+            size="sm"
           >
-            Devolución parcial
+            Devolución
           </Button>
-          <Button
-            variant="outline"
-            onClick={() => setShowTicketPreview(true)}
-          >
-            Vista previa
-          </Button>
-          <Button
-            variant="outline"
-            onClick={handlePrintThermal}
-          >
-            <Printer className="h-4 w-4 mr-2" />
-            Imprimir
-          </Button>
-          {(!invoice.electronicStatus || invoice.electronicStatus === 'PENDING') && (
-            <Button
-              onClick={() => {
-                if (confirm('¿Enviar esta factura a facturación electrónica DIAN?')) {
-                  sendElectronicMutation.mutate()
-                }
-              }}
-              disabled={sendElectronicMutation.isPending}
-            >
-              <QrCode className="h-4 w-4 mr-2" />
-              Enviar a Facturación Electrónica
-            </Button>
-          )}
-          {invoice.qrCode && (
-            <Button
-              variant="outline"
-              onClick={() => window.open(invoice.qrCode, '_blank')}
-            >
-              <Download className="h-4 w-4 mr-2" />
-              Ver QR DIAN
-            </Button>
-          )}
+
+          {/* Menú de acciones */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm">
+                <MoreVertical className="h-4 w-4 mr-2" />
+                Más acciones
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel>Imprimir</DropdownMenuLabel>
+              <DropdownMenuItem onClick={() => handlePrintOption('thermal')}>
+                <Printer className="h-4 w-4 mr-2" />
+                Tirilla (80mm)
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handlePrintOption('normal')}>
+                <Printer className="h-4 w-4 mr-2" />
+                Hoja normal (A4)
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => setShowTicketPreview(true)}>
+                <FileText className="h-4 w-4 mr-2" />
+                Vista previa
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleDownloadPDF}>
+                <FileDown className="h-4 w-4 mr-2" />
+                Descargar PDF
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              {(!invoice.electronicStatus || invoice.electronicStatus === 'PENDING') && (
+                <DropdownMenuItem
+                  onClick={() => {
+                    if (confirm('¿Enviar esta factura a facturación electrónica DIAN?')) {
+                      sendElectronicMutation.mutate()
+                    }
+                  }}
+                  disabled={sendElectronicMutation.isPending}
+                >
+                  <QrCode className="h-4 w-4 mr-2" />
+                  Enviar a Facturación Electrónica
+                </DropdownMenuItem>
+              )}
+              {invoice.qrCode && (
+                <DropdownMenuItem onClick={() => window.open(invoice.qrCode, '_blank')}>
+                  <Download className="h-4 w-4 mr-2" />
+                  Ver QR DIAN
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
