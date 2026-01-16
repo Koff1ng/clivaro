@@ -102,8 +102,24 @@ export async function GET(
     })
   } catch (error: any) {
     console.error('Error generating invoice PDF:', error)
+    const errorMessage = error?.message || 'Error desconocido al generar PDF'
+    const errorStack = error?.stack || ''
+    
+    // Log detallado para debugging
+    console.error('PDF Generation Error Details:', {
+      message: errorMessage,
+      stack: errorStack,
+      name: error?.name,
+      code: error?.code,
+    })
+    
     return NextResponse.json(
-      { error: 'Error al generar PDF', details: error.message },
+      { 
+        error: 'Error al generar PDF', 
+        details: errorMessage,
+        // Solo incluir stack en desarrollo
+        ...(process.env.NODE_ENV === 'development' && { stack: errorStack })
+      },
       { status: 500 }
     )
   }

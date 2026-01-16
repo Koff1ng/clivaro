@@ -222,11 +222,14 @@ export async function generateQuotationPDF(quotation: QuotationPDFData): Promise
       ? await chromium.executablePath()
       : undefined
     
+    const chromiumArgs = isVercel ? chromium.args || [] : []
+    const args = isVercel 
+      ? [...chromiumArgs, '--hide-scrollbars', '--disable-web-security']
+      : ['--no-sandbox', '--disable-setuid-sandbox']
+    
     browser = await puppeteer.launch({
       headless: true,
-      args: isVercel 
-        ? [...chromium.args, '--hide-scrollbars', '--disable-web-security']
-        : ['--no-sandbox', '--disable-setuid-sandbox'],
+      args,
       executablePath,
     })
     
@@ -500,11 +503,14 @@ export async function generateInvoicePDF(invoice: InvoicePDFData): Promise<Buffe
       ? await chromium.executablePath()
       : undefined
     
+    const chromiumArgs = isVercel ? chromium.args || [] : []
+    const args = isVercel 
+      ? [...chromiumArgs, '--hide-scrollbars', '--disable-web-security']
+      : ['--no-sandbox', '--disable-setuid-sandbox']
+    
     browser = await puppeteer.launch({
       headless: true,
-      args: isVercel 
-        ? [...chromium.args, '--hide-scrollbars', '--disable-web-security']
-        : ['--no-sandbox', '--disable-setuid-sandbox'],
+      args,
       executablePath,
     })
     
