@@ -53,17 +53,28 @@ export function InvoiceDetails({ invoice }: { invoice: any }) {
     // Mostrar solo la vista normal para impresión
     const thermalEl = document.getElementById('invoice-thermal-print')
     const normalEl = document.getElementById('invoice-normal-print')
-    const mainContent = document.querySelector('.print\\:hidden')
     
-    if (thermalEl) thermalEl.classList.add('hidden')
-    if (normalEl) normalEl.classList.remove('hidden')
+    if (thermalEl) {
+      thermalEl.classList.add('hidden')
+      thermalEl.classList.remove('print:block')
+    }
+    if (normalEl) {
+      normalEl.classList.remove('hidden')
+      normalEl.classList.add('print:block')
+    }
     
     setTimeout(() => {
       window.print()
       // Restaurar después de imprimir
       setTimeout(() => {
-        if (thermalEl) thermalEl.classList.remove('hidden')
-        if (normalEl) normalEl.classList.add('hidden')
+        if (thermalEl) {
+          thermalEl.classList.remove('hidden')
+          thermalEl.classList.add('print:block')
+        }
+        if (normalEl) {
+          normalEl.classList.add('hidden')
+          normalEl.classList.remove('print:block')
+        }
       }, 500)
     }, 100)
   }
