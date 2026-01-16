@@ -1,4 +1,5 @@
-import puppeteer from 'puppeteer'
+import puppeteer from 'puppeteer-core'
+import chromium from '@sparticuz/chromium'
 import { formatCurrency, formatDate } from './utils'
 
 export interface QuotationPDFData {
@@ -215,9 +216,18 @@ export async function generateQuotationPDF(quotation: QuotationPDFData): Promise
 
   let browser
   try {
+    // Configuración para Vercel (serverless)
+    const isVercel = process.env.VERCEL === '1'
+    const executablePath = isVercel 
+      ? await chromium.executablePath()
+      : undefined
+    
     browser = await puppeteer.launch({
       headless: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox'],
+      args: isVercel 
+        ? [...chromium.args, '--hide-scrollbars', '--disable-web-security']
+        : ['--no-sandbox', '--disable-setuid-sandbox'],
+      executablePath,
     })
     
     const page = await browser.newPage()
@@ -484,9 +494,18 @@ export async function generateInvoicePDF(invoice: InvoicePDFData): Promise<Buffe
 
   let browser
   try {
+    // Configuración para Vercel (serverless)
+    const isVercel = process.env.VERCEL === '1'
+    const executablePath = isVercel 
+      ? await chromium.executablePath()
+      : undefined
+    
     browser = await puppeteer.launch({
       headless: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox'],
+      args: isVercel 
+        ? [...chromium.args, '--hide-scrollbars', '--disable-web-security']
+        : ['--no-sandbox', '--disable-setuid-sandbox'],
+      executablePath,
     })
     
     const page = await browser.newPage()
