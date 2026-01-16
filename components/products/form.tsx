@@ -75,9 +75,11 @@ export function ProductForm({ product, onSuccess }: { product?: any; onSuccess: 
       
       // Solo incluir minStock y maxStock si trackStock está activado
       if (data.trackStock) {
-        payload.minStock = data.minStock !== undefined && !isNaN(data.minStock) ? Number(data.minStock) : 0
+        payload.minStock = data.minStock !== undefined && data.minStock !== null && !isNaN(Number(data.minStock)) 
+          ? Number(data.minStock) 
+          : 0
         // maxStock es opcional: si está vacío, undefined o NaN, enviar 0 (sin máximo)
-        if (data.maxStock !== undefined && data.maxStock !== null && data.maxStock !== '' && !isNaN(Number(data.maxStock))) {
+        if (data.maxStock !== undefined && data.maxStock !== null && !isNaN(Number(data.maxStock)) && Number(data.maxStock) > 0) {
           payload.maxStock = Number(data.maxStock)
         } else {
           payload.maxStock = 0 // 0 significa sin máximo configurado
