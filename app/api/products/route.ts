@@ -144,12 +144,18 @@ export async function POST(request: Request) {
           select: { id: true },
         })
 
+        // Asegurar que minStock y maxStock sean números válidos
+        const minStock = data.minStock !== undefined && !isNaN(Number(data.minStock)) ? Number(data.minStock) : 0
+        const maxStock = data.maxStock !== undefined && data.maxStock !== null && !isNaN(Number(data.maxStock)) && Number(data.maxStock) > 0 
+          ? Number(data.maxStock) 
+          : 0 // 0 significa sin máximo configurado
+
         if (existing) {
           await prisma.stockLevel.update({
             where: { id: existing.id },
             data: {
-              minStock: data.minStock ?? 0,
-              maxStock: data.maxStock ?? 0,
+              minStock,
+              maxStock,
             },
           })
         } else {
@@ -159,8 +165,8 @@ export async function POST(request: Request) {
               productId: product.id,
               variantId: null,
               quantity: 0,
-              minStock: data.minStock ?? 0,
-              maxStock: data.maxStock ?? 0,
+              minStock,
+              maxStock,
             },
           })
         }

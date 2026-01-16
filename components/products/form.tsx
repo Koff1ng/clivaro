@@ -21,8 +21,12 @@ const productSchema = z.object({
   price: z.number().min(0, 'Precio debe ser mayor o igual a 0'),
   taxRate: z.number().min(0).max(100),
   trackStock: z.boolean(),
-  minStock: z.number().min(0, 'Mínimo debe ser mayor o igual a 0'),
-  maxStock: z.number().min(0, 'Máximo debe ser mayor o igual a 0').optional(),
+  minStock: z.number().min(0, 'Mínimo debe ser mayor o igual a 0').optional(),
+  maxStock: z.union([z.number().min(0, 'Máximo debe ser mayor o igual a 0'), z.nan(), z.string()]).optional().transform((val) => {
+    if (typeof val === 'string' && val.trim() === '') return undefined
+    if (typeof val === 'number' && isNaN(val)) return undefined
+    return typeof val === 'number' ? val : undefined
+  }),
   description: z.string().optional(),
 })
 
@@ -67,9 +71,25 @@ export function ProductForm({ product, onSuccess }: { product?: any; onSuccess: 
       const method = product ? 'PATCH' : 'POST'
       
       // Asegurar que category se envíe correctamente
-      const payload = {
+      // Manejar minStock y maxStock correctamente
+      const payload: any = {
         ...data,
         category: data.category && data.category.trim() !== '' ? data.category.trim() : null,
+      }
+      
+      // Solo incluir minStock y maxStock si trackStock está activado
+      if (data.trackStock) {
+        payload.minStock = data.minStock !== undefined && !isNaN(data.minStock) ? Number(data.minStock) : 0
+        // maxStock es opcional: si está vacío, undefined o NaN, enviar 0 (sin máximo)
+        if (data.maxStock !== undefined && data.maxStock !== null && data.maxStock !== '' && !isNaN(Number(data.maxStock))) {
+          payload.maxStock = Number(data.maxStock)
+        } else {
+          payload.maxStock = 0 // 0 significa sin máximo configurado
+        }
+      } else {
+        // Si no se controla stock, no enviar estos campos
+        delete payload.minStock
+        delete payload.maxStock
       }
       
       const res = await fetch(url, {
