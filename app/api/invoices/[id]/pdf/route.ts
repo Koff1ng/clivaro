@@ -94,7 +94,7 @@ export async function GET(
       status: invoice.status,
     })
 
-    return new NextResponse(pdfBuffer, {
+    return new NextResponse(pdfBuffer.buffer, {
       headers: {
         'Content-Type': 'application/pdf',
         'Content-Disposition': `attachment; filename="Factura-${invoice.number}.pdf"`,
