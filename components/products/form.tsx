@@ -22,11 +22,7 @@ const productSchema = z.object({
   taxRate: z.number().min(0).max(100),
   trackStock: z.boolean(),
   minStock: z.number().min(0, 'Mínimo debe ser mayor o igual a 0').optional(),
-  maxStock: z.union([z.number().min(0, 'Máximo debe ser mayor o igual a 0'), z.nan(), z.string()]).optional().transform((val) => {
-    if (typeof val === 'string' && val.trim() === '') return undefined
-    if (typeof val === 'number' && isNaN(val)) return undefined
-    return typeof val === 'number' ? val : undefined
-  }),
+  maxStock: z.number().min(0, 'Máximo debe ser mayor o igual a 0').optional().nullable(),
   description: z.string().optional(),
 })
 
@@ -221,7 +217,14 @@ export function ProductForm({ product, onSuccess }: { product?: any; onSuccess: 
               type="number"
               step="0.01"
               min="0"
-              {...register('maxStock', { valueAsNumber: true })}
+              {...register('maxStock', { 
+                valueAsNumber: true,
+                setValueAs: (v) => {
+                  if (v === '' || v === null || v === undefined) return undefined
+                  const num = Number(v)
+                  return isNaN(num) ? undefined : num
+                }
+              })}
             />
             {errors.maxStock && <p className="text-sm text-red-500">{errors.maxStock.message}</p>}
           </div>
