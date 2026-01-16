@@ -97,6 +97,24 @@ export async function GET(
 
     const totalDiscounts = discountsByInvoice.reduce((sum: number, d: any) => sum + d.discountTotal, 0)
 
+    // Calcular ganancias del turno: (ingresos sin impuestos - descuentos - costos)
+    const profit = invoices.reduce((sum: number, inv: any) => {
+      // Subtotal sin impuestos = subtotal - descuento de factura
+      const invoiceSubtotal = typeof inv.subtotal === 'number' ? inv.subtotal : 0
+      const invoiceDiscount = typeof inv.discount === 'number' ? inv.discount : 0
+      const subtotalWithoutTaxes = invoiceSubtotal > 0 
+        ? invoiceSubtotal - invoiceDiscount 
+        : (inv.total || 0) - (inv.tax || 0) - invoiceDiscount
+      
+      // Costo de productos vendidos en esta factura
+      const invoiceCost = (inv.items || []).reduce((itemSum: number, item: any) => {
+        const productCost = item.product?.cost || 0
+        return itemSum + (Number(item.quantity || 0) * productCost)
+      }, 0)
+      
+      return sum + (subtotalWithoutTaxes - invoiceCost)
+    }, 0)
+
     return NextResponse.json({
       payments,
       totalsByMethod,
@@ -105,6 +123,7 @@ export async function GET(
         total: totalDiscounts,
         byInvoice: discountsByInvoice.sort((a: any, b: any) => b.discountTotal - a.discountTotal).slice(0, 20),
       },
+      profit, // Ganancia del turno
     })
   } catch (error) {
     console.error('Error fetching shift payments:', error)

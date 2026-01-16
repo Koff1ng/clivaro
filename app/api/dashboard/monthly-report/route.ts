@@ -68,15 +68,21 @@ export async function GET(request: Request) {
       return sum + invoiceCost
     }, 0)
 
-    // Subtotal sin impuestos (preferir subtotal real si existe, fallback a total - impuestos)
+    // Subtotal sin impuestos = subtotal de items - descuento de factura
+    // El subtotal de items ya incluye los descuentos de cada item
     const subtotalWithoutTaxes = invoices.reduce((sum, inv) => {
-      const sub = (inv as any).subtotal
-      if (typeof sub === 'number') return sum + sub
-      return sum + ((inv.total || 0) - (inv.tax || 0))
+      const invoiceSubtotal = typeof inv.subtotal === 'number' ? inv.subtotal : 0
+      const invoiceDiscount = typeof inv.discount === 'number' ? inv.discount : 0
+      // Si no hay subtotal, calcularlo como total - tax
+      if (invoiceSubtotal === 0) {
+        const calculatedSubtotal = (inv.total || 0) - (inv.tax || 0)
+        return sum + calculatedSubtotal - invoiceDiscount
+      }
+      return sum + invoiceSubtotal - invoiceDiscount
     }, 0)
 
-    // Ganancia = (precio_venta_sin_impuestos - costo) por ítem, agregada al mes
-    // Es decir: subtotal_sin_impuestos - costo_de_mercancía_vendida
+    // Ganancia bruta = (precio_venta_sin_impuestos - descuentos - costos)
+    // Fórmula: (subtotal - descuento_factura) - costo_de_mercancía_vendida
     const grossProfit = subtotalWithoutTaxes - costOfGoodsSold
 
     // Ganancia neta (por ahora igual a ganancia bruta; no incluye gastos operativos)

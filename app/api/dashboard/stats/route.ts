@@ -70,7 +70,8 @@ export async function GET(request: Request) {
         'salesMonth'
       )
 
-      // Ganancia del mes (sin impuestos): (subtotal - costo) agregado
+      // Ganancia del mes: (precio_venta_sin_impuestos - descuentos - costos)
+      // Fórmula: (subtotal - descuento_factura) - costos_de_productos_vendidos
       const profitMonth = await withRetry(async () => {
       const invoices = await prisma.invoice.findMany({
         where: {
@@ -79,6 +80,7 @@ export async function GET(request: Request) {
         },
         select: {
           subtotal: true,
+          discount: true, // Descuento a nivel de factura
           total: true,
           tax: true,
           items: {
@@ -92,11 +94,20 @@ export async function GET(request: Request) {
         },
       })
 
+      // Subtotal sin impuestos = subtotal de items - descuento de factura
+      // El subtotal de items ya incluye los descuentos de cada item
       const subtotalWithoutTaxes = invoices.reduce((sum, inv) => {
-        if (typeof inv.subtotal === 'number') return sum + inv.subtotal
-        return sum + ((inv.total || 0) - (inv.tax || 0))
+        const invoiceSubtotal = typeof inv.subtotal === 'number' ? inv.subtotal : 0
+        const invoiceDiscount = typeof inv.discount === 'number' ? inv.discount : 0
+        // Si no hay subtotal, calcularlo como total - tax
+        if (invoiceSubtotal === 0) {
+          const calculatedSubtotal = (inv.total || 0) - (inv.tax || 0)
+          return sum + calculatedSubtotal - invoiceDiscount
+        }
+        return sum + invoiceSubtotal - invoiceDiscount
       }, 0)
 
+      // Costo de productos vendidos = suma de (cantidad * costo_unitario) por cada item
       const costOfGoodsSold = invoices.reduce((sum, inv) => {
         return (
           sum +
@@ -107,6 +118,7 @@ export async function GET(request: Request) {
         )
       }, 0)
 
+        // Ganancia = ingresos sin impuestos (después de descuentos) - costos
         return subtotalWithoutTaxes - costOfGoodsSold
       }, 'profitMonth')
 
