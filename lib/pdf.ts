@@ -563,17 +563,15 @@ export async function generateInvoicePDF(invoice: InvoicePDFData): Promise<Buffe
       await browser.close()
       return Buffer.from(pdf)
     } catch (pageError: any) {
-      const browserToClose = browser
-      if (browserToClose) {
-        await browserToClose.close().catch(() => {}) // Ignorar errores al cerrar
+      if (browser) {
+        await (browser as Browser).close().catch(() => {}) // Ignorar errores al cerrar
       }
       console.error('Error en proceso de generación de PDF:', pageError)
       throw new Error(`Error al generar PDF: ${pageError?.message || 'Error desconocido'}`)
     }
   } catch (error: any) {
-    const browserToClose = browser
-    if (browserToClose) {
-      await browserToClose.close().catch(() => {}) // Ignorar errores al cerrar
+    if (browser) {
+      await (browser as Browser).close().catch(() => {}) // Ignorar errores al cerrar
     }
     console.error('Error general en generateInvoicePDF:', error)
     throw error
