@@ -15,6 +15,28 @@ const nextConfig = {
   // Optimización de bundle
   swcMinify: true, // Usar SWC para minificación (más rápido que Terser)
   
+  // Configuración de webpack para excluir puppeteer-core del procesamiento
+  webpack: (config, { isServer }) => {
+    if (isServer) {
+      // Excluir puppeteer-core y sus dependencias del procesamiento de webpack
+      config.externals = config.externals || []
+      config.externals.push({
+        'puppeteer-core': 'commonjs puppeteer-core',
+        '@sparticuz/chromium': 'commonjs @sparticuz/chromium',
+      })
+      
+      // Ignorar módulos problemáticos
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        net: false,
+        tls: false,
+      }
+    }
+    
+    return config
+  },
+  
   // Headers de seguridad y rendimiento
   async headers() {
     return [
