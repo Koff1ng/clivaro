@@ -1,4 +1,4 @@
-import puppeteer from 'puppeteer-core'
+import puppeteer, { Browser } from 'puppeteer-core'
 import chromium from '@sparticuz/chromium'
 import { formatCurrency, formatDate } from './utils'
 
@@ -495,7 +495,7 @@ export async function generateInvoicePDF(invoice: InvoicePDFData): Promise<Buffe
     </html>
   `
 
-  let browser: Awaited<ReturnType<typeof puppeteer.launch>> | null = null
+  let browser: Browser | null = null
   try {
     // Configuración para Vercel (serverless)
     const isVercel = process.env.VERCEL === '1'
