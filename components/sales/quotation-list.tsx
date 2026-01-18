@@ -12,7 +12,15 @@ import { useDebounce } from '@/lib/hooks/use-debounce'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { useToast } from '@/components/ui/toast'
 import { LoadingOverlay } from '@/components/ui/loading-overlay'
-import { Search, Plus, Edit, Trash2, Eye, FileText, Send } from 'lucide-react'
+import { Search, Plus, Edit, Trash2, Eye, FileText, Send, X, Loader2, Filter } from 'lucide-react'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 
 // Lazy load heavy components
 const QuotationForm = dynamic(() => import('./quotation-form').then(mod => ({ default: mod.QuotationForm })), {
@@ -180,11 +188,11 @@ export function QuotationList() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'DRAFT': return 'bg-gray-100 text-gray-800'
-      case 'SENT': return 'bg-blue-100 text-blue-800'
-      case 'ACCEPTED': return 'bg-green-100 text-green-800'
-      case 'EXPIRED': return 'bg-red-100 text-red-800'
-      default: return 'bg-gray-100 text-gray-800'
+      case 'DRAFT': return 'bg-muted text-muted-foreground'
+      case 'SENT': return 'bg-blue-500/10 text-blue-600 dark:text-blue-400'
+      case 'ACCEPTED': return 'bg-green-500/10 text-green-600 dark:text-green-400'
+      case 'EXPIRED': return 'bg-red-500/10 text-red-600 dark:text-red-400'
+      default: return 'bg-muted text-muted-foreground'
     }
   }
 
@@ -202,88 +210,199 @@ export function QuotationList() {
     return data || { quotations: [], pagination: { totalPages: 1 } }
   }, [data])
 
+  const selectedCustomer = useMemo(() => {
+    return customers.find((c: any) => c.id === customerFilter)
+  }, [customers, customerFilter])
+
+  const hasActiveFilters = search || statusFilter || customerFilter
+
+  const clearFilters = useCallback(() => {
+    setSearch('')
+    setStatusFilter('')
+    setCustomerFilter('')
+    setCustomerSearch('')
+    setPage(1)
+  }, [])
+
   return (
     <>
       {sendingQuotationId && <LoadingOverlay message="Enviando cotización..." />}
       <div className="space-y-4">
-      <div className="flex items-center justify-between gap-4">
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+      {/* Search and Filters Bar */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 bg-card rounded-lg border">
+        <div className="relative flex-1 w-full sm:max-w-md">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Buscar cotizaciones..."
+            placeholder="Buscar por número, cliente..."
             value={search}
             onChange={handleSearchChange}
-            className="pl-10"
+            className="pl-10 pr-10"
           />
-        </div>
-        <div className="flex gap-2">
-          <select
-            value={statusFilter}
-            onChange={(e) => {
-              setStatusFilter(e.target.value)
-              setPage(1)
-            }}
-            className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
-          >
-            <option value="">Todos los estados</option>
-            <option value="DRAFT">Borrador</option>
-            <option value="SENT">Enviada</option>
-            <option value="ACCEPTED">Aceptada</option>
-            <option value="EXPIRED">Expirada</option>
-          </select>
-          <div className="relative">
-            <Input
-              type="text"
-              placeholder="Buscar cliente..."
-              value={customerSearch}
-              onChange={(e) => setCustomerSearch(e.target.value)}
-              className="w-48"
-            />
-            <select
-              value={customerFilter}
-              onChange={(e) => {
-                setCustomerFilter(e.target.value)
-                setPage(1)
-              }}
-              className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm mt-2"
+          {search && (
+            <button
+              onClick={() => setSearch('')}
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
             >
-              <option value="">Todos los clientes</option>
-              {customers.slice(0, 50).map((customer: any) => (
-                <option key={customer.id} value={customer.id}>{customer.name}</option>
-              ))}
-            </select>
-          </div>
+              <X className="h-4 w-4" />
+            </button>
+          )}
         </div>
-        <Button onClick={() => {
-          setSelectedQuotation(null)
-          setIsFormOpen(true)
-        }}>
-          <Plus className="h-4 w-4 mr-2" />
-          Nueva Cotización
-        </Button>
+        
+        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+          {/* Status Filter */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="gap-2">
+                <Filter className="h-4 w-4" />
+                {statusFilter ? getStatusLabel(statusFilter) : 'Estado'}
+                {statusFilter && (
+                  <X 
+                    className="h-3 w-3 ml-1" 
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setStatusFilter('')
+                      setPage(1)
+                    }}
+                  />
+                )}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>Filtrar por Estado</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => { setStatusFilter(''); setPage(1) }}>
+                Todos los estados
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => { setStatusFilter('DRAFT'); setPage(1) }}>
+                Borrador
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => { setStatusFilter('SENT'); setPage(1) }}>
+                Enviada
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => { setStatusFilter('ACCEPTED'); setPage(1) }}>
+                Aceptada
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => { setStatusFilter('EXPIRED'); setPage(1) }}>
+                Expirada
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {/* Customer Filter */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="gap-2 min-w-[180px] justify-between">
+                <span className="truncate">
+                  {selectedCustomer ? selectedCustomer.name : 'Cliente'}
+                </span>
+                {customerFilter && (
+                  <X 
+                    className="h-3 w-3 ml-1 flex-shrink-0" 
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setCustomerFilter('')
+                      setCustomerSearch('')
+                      setPage(1)
+                    }}
+                  />
+                )}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-64">
+              <DropdownMenuLabel>Filtrar por Cliente</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <div className="p-2">
+                <Input
+                  placeholder="Buscar cliente..."
+                  value={customerSearch}
+                  onChange={(e) => setCustomerSearch(e.target.value)}
+                  className="w-full"
+                />
+              </div>
+              <div className="max-h-60 overflow-y-auto">
+                <DropdownMenuItem onClick={() => { setCustomerFilter(''); setCustomerSearch(''); setPage(1) }}>
+                  Todos los clientes
+                </DropdownMenuItem>
+                {customers.slice(0, 50).map((customer: any) => (
+                  <DropdownMenuItem
+                    key={customer.id}
+                    onClick={() => {
+                      setCustomerFilter(customer.id)
+                      setCustomerSearch('')
+                      setPage(1)
+                    }}
+                    className={customerFilter === customer.id ? 'bg-accent' : ''}
+                  >
+                    {customer.name}
+                  </DropdownMenuItem>
+                ))}
+                {customers.length === 0 && (
+                  <div className="px-2 py-4 text-sm text-muted-foreground text-center">
+                    {isLoading ? 'Buscando...' : 'No se encontraron clientes'}
+                  </div>
+                )}
+              </div>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {/* Clear Filters */}
+          {hasActiveFilters && (
+            <Button variant="ghost" size="sm" onClick={clearFilters} className="gap-2">
+              <X className="h-4 w-4" />
+              Limpiar
+            </Button>
+          )}
+
+          <Button onClick={() => {
+            setSelectedQuotation(null)
+            setIsFormOpen(true)
+          }} className="gap-2">
+            <Plus className="h-4 w-4" />
+            Nueva Cotización
+          </Button>
+        </div>
       </div>
 
-      <div className="border rounded-lg">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Número</TableHead>
-              <TableHead>Cliente</TableHead>
-              <TableHead>Fecha</TableHead>
-              <TableHead>Válida Hasta</TableHead>
-              <TableHead>Estado</TableHead>
-              <TableHead>Total</TableHead>
-              <TableHead>Acciones</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {quotations.length === 0 ? (
+      {/* Results */}
+      {isLoading && quotations.length === 0 ? (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground mr-2" />
+          <span className="text-muted-foreground">Cargando cotizaciones...</span>
+        </div>
+      ) : (
+        <div className="border rounded-lg">
+          <Table>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={7} className="text-center text-gray-500">
-                  No hay cotizaciones
-                </TableCell>
+                <TableHead>Número</TableHead>
+                <TableHead>Cliente</TableHead>
+                <TableHead>Fecha</TableHead>
+                <TableHead>Válida Hasta</TableHead>
+                <TableHead>Estado</TableHead>
+                <TableHead>Total</TableHead>
+                <TableHead>Acciones</TableHead>
               </TableRow>
-            ) : (
+            </TableHeader>
+            <TableBody>
+              {quotations.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center py-12">
+                    <div className="flex flex-col items-center gap-2">
+                      <FileText className="h-12 w-12 text-muted-foreground/50" />
+                      <p className="text-muted-foreground font-medium">
+                        {hasActiveFilters 
+                          ? 'No se encontraron cotizaciones con los filtros aplicados' 
+                          : 'No hay cotizaciones'}
+                      </p>
+                      {hasActiveFilters && (
+                        <Button variant="outline" size="sm" onClick={clearFilters} className="mt-2">
+                          Limpiar filtros
+                        </Button>
+                      )}
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ) : (
               quotations.map((quotation: any) => (
                 <TableRow key={quotation.id}>
                   <TableCell className="font-medium">{quotation.number}</TableCell>
@@ -352,15 +471,16 @@ export function QuotationList() {
                   </TableCell>
                 </TableRow>
               ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      )}
 
       {pagination.totalPages > 1 && (
-        <div className="flex items-center justify-between">
-          <div className="text-sm text-gray-600">
-            Página {pagination.page} de {pagination.totalPages} ({pagination.total} cotizaciones)
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 bg-card rounded-lg border">
+          <div className="text-sm text-muted-foreground">
+            Mostrando página {pagination.page} de {pagination.totalPages} ({pagination.total} cotizaciones)
           </div>
           <div className="flex gap-2">
             <Button
