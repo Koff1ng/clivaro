@@ -1,16 +1,16 @@
 'use client'
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Switch } from '@/components/ui/switch'
-import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
-import { CreditCard, Calendar, Clock, AlertCircle } from 'lucide-react'
-import { cn, formatCurrency } from '@/lib/utils'
+import { Rocket, Calendar, CheckCircle2, Minus, ExternalLink, Loader2 } from 'lucide-react'
+import { formatCurrency, formatDate } from '@/lib/utils'
 import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useToast } from '@/components/ui/toast'
 import { PaySubscriptionButton } from '@/components/subscriptions/pay-subscription-button'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Badge } from '@/components/ui/badge'
 
 interface SubscriptionConfigProps {
   settings: any
@@ -24,257 +24,309 @@ async function fetchSubscription() {
   return res.json()
 }
 
+async function fetchPaymentHistory() {
+  const res = await fetch('/api/subscriptions/payments')
+  if (!res.ok) throw new Error('Failed to fetch payment history')
+  return res.json()
+}
+
 export function SubscriptionConfig({ settings, onSave, isLoading }: SubscriptionConfigProps) {
   const { toast } = useToast()
   const queryClient = useQueryClient()
-  const [autoRenew, setAutoRenew] = useState(settings?.subscriptionAutoRenew ?? true)
 
-  const { data: subscriptionData } = useQuery({
+  const { data: subscriptionData, isLoading: isLoadingSubscription } = useQuery({
     queryKey: ['tenant-plan'],
     queryFn: fetchSubscription,
   })
 
-  const updateAutoRenewMutation = useMutation({
-    mutationFn: async (value: boolean) => {
-      onSave({ subscriptionAutoRenew: value })
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['settings'] })
-      toast('Configuración actualizada', 'success')
-    },
-    onError: (error: any) => {
-      toast(error.message || 'Error al actualizar', 'error')
-    },
+  const { data: paymentHistory, isLoading: isLoadingPayments } = useQuery({
+    queryKey: ['subscription-payments'],
+    queryFn: fetchPaymentHistory,
   })
 
   const plan = subscriptionData?.plan
   const subscription = subscriptionData?.subscription
+  const payments = paymentHistory?.payments || []
 
-  // Calcular días restantes
-  const getRemainingDays = () => {
-    if (!subscription) return null
-
-    const now = new Date()
-    let targetDate: Date | null = null
-    let label = ''
-
-    if (subscription.status === 'trial' && subscription.trialEndDate) {
-      targetDate = new Date(subscription.trialEndDate)
-      label = 'días restantes de prueba'
-    } else if (subscription.endDate) {
-      targetDate = new Date(subscription.endDate)
-      label = 'días restantes de suscripción'
-    }
-
-    if (!targetDate) return null
-
-    const diffTime = targetDate.getTime() - now.getTime()
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-
-    return { days: diffDays, label }
+  // Calcular fecha de renovación
+  const getRenewalDate = () => {
+    if (!subscription?.endDate) return null
+    return new Date(subscription.endDate)
   }
 
-  const remainingDays = getRemainingDays()
+  // Obtener información de la tarjeta de pago
+  const getPaymentMethodInfo = () => {
+    if (!subscription?.mercadoPagoPaymentMethod) return null
+    
+    const methodMap: Record<string, string> = {
+      'credit_card': 'Tarjeta de Crédito',
+      'debit_card': 'Tarjeta de Débito',
+      'ticket': 'Ticket',
+      'bank_transfer': 'Transferencia Bancaria',
+    }
+    
+    return methodMap[subscription.mercadoPagoPaymentMethod] || subscription.mercadoPagoPaymentMethod
+  }
+
+  const renewalDate = getRenewalDate()
+  const paymentMethod = getPaymentMethodInfo()
+  const nextPaymentDate = subscription?.nextPaymentDate ? new Date(subscription.nextPaymentDate) : null
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'active':
+        return <Badge className="bg-green-500/10 text-green-600 dark:text-green-400">Active</Badge>
+      case 'trial':
+        return <Badge className="bg-blue-500/10 text-blue-600 dark:text-blue-400">Trial</Badge>
+      case 'expired':
+        return <Badge className="bg-red-500/10 text-red-600 dark:text-red-400">Expired</Badge>
+      case 'pending_payment':
+        return <Badge className="bg-orange-500/10 text-orange-600 dark:text-orange-400">Pending</Badge>
+      default:
+        return <Badge>{status}</Badge>
+    }
+  }
+
+  const getPaymentStatusBadge = (status: string) => {
+    if (status === 'Paid') {
+      return (
+        <div className="flex items-center gap-2">
+          <CheckCircle2 className="h-4 w-4 text-green-600" />
+          <span className="text-sm font-medium text-green-600 dark:text-green-400">Paid</span>
+        </div>
+      )
+    }
+    return (
+      <div className="flex items-center gap-2">
+        <Minus className="h-4 w-4 text-orange-600" />
+        <span className="text-sm font-medium text-orange-600 dark:text-orange-400">Pending</span>
+      </div>
+    )
+  }
+
+  if (isLoadingSubscription) {
+    return (
+      <Card>
+        <CardContent className="flex items-center justify-center py-12">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </CardContent>
+      </Card>
+    )
+  }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <CreditCard className="h-5 w-5" />
-          Configuración de Suscripción
-        </CardTitle>
-        <CardDescription>
-          Gestiona los tiempos de prueba, períodos de gracia y renovación automática
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        {/* Información de la Suscripción Actual */}
-        {plan && (
-          <div className="p-4 bg-muted rounded-lg space-y-4">
-            <h4 className="font-semibold flex items-center gap-2">
-              <CreditCard className="h-5 w-5" />
-              Suscripción Actual
-            </h4>
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div>
-                <span className="text-muted-foreground">Plan:</span>
-                <span className="ml-2 font-medium">{plan.name}</span>
-              </div>
-              {subscription && (
-                <>
-                  <div>
-                    <span className="text-muted-foreground">Estado:</span>
-                    <span className="ml-2 font-medium capitalize">{subscription.status}</span>
+    <div className="space-y-6">
+      {/* Subscription Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Subscription</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* Plan Card */}
+          {plan && (
+            <div className="p-6 border rounded-lg bg-card">
+              <div className="flex items-start justify-between">
+                <div className="flex items-start gap-4">
+                  <div className="p-3 bg-primary/10 rounded-lg">
+                    <Rocket className="h-6 w-6 text-primary" />
                   </div>
-                  {subscription.endDate && (
-                    <div className="flex items-center gap-2">
-                      <Calendar className="h-4 w-4 text-muted-foreground" />
-                      <div>
-                        <span className="text-muted-foreground">Vence:</span>
-                        <span className="ml-2 font-medium">
-                          {new Date(subscription.endDate).toLocaleDateString('es-ES')}
+                  <div className="space-y-2">
+                    <div>
+                      <h3 className="text-xl font-bold">{plan.name}</h3>
+                      <div className="flex items-center gap-2 mt-1">
+                        {getStatusBadge(subscription?.status || 'inactive')}
+                        <span className="text-sm text-muted-foreground">
+                          {plan.interval === 'monthly' ? 'Renews monthly' : 'Renews yearly'}
                         </span>
                       </div>
                     </div>
-                  )}
-                  {remainingDays && (
-                    <div className="flex items-center gap-2">
-                      <Clock className="h-4 w-4 text-muted-foreground" />
-                      <div>
-                        <span className="text-muted-foreground">{remainingDays.label}:</span>
-                        <span className={cn(
-                          "ml-2 font-bold",
-                          remainingDays.days <= 7 ? "text-red-600" : remainingDays.days <= 30 ? "text-orange-600" : "text-green-600"
-                        )}>
-                          {remainingDays.days} {remainingDays.days === 1 ? 'día' : 'días'}
-                        </span>
-                      </div>
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
-            
-            {/* Información de Próximo Pago y Método de Pago */}
-            {subscription && subscription.status === 'active' && (
-              <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800 space-y-3">
-                <h5 className="font-semibold text-blue-900 dark:text-blue-100 flex items-center gap-2">
-                  <Calendar className="h-4 w-4" />
-                  Información de Pago
-                </h5>
-                
-                {subscription.nextPaymentDate && (
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-blue-800 dark:text-blue-200">Próximo pago:</span>
-                    <span className="text-sm font-semibold text-blue-900 dark:text-blue-100">
-                      {new Date(subscription.nextPaymentDate).toLocaleDateString('es-ES', {
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric'
-                      })}
-                    </span>
-                  </div>
-                )}
-                
-                {subscription.mercadoPagoPaymentMethod && (
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-blue-800 dark:text-blue-200">Método de pago:</span>
-                    <div className="flex items-center gap-2">
-                      <CreditCard className="h-4 w-4 text-blue-600" />
-                      <span className="text-sm font-semibold text-blue-900 dark:text-blue-100 capitalize">
-                        {subscription.mercadoPagoPaymentMethod === 'credit_card' ? 'Tarjeta de Crédito' :
-                         subscription.mercadoPagoPaymentMethod === 'debit_card' ? 'Tarjeta de Débito' :
-                         subscription.mercadoPagoPaymentMethod === 'ticket' ? 'Ticket' :
-                         subscription.mercadoPagoPaymentMethod === 'bank_transfer' ? 'Transferencia Bancaria' :
-                         subscription.mercadoPagoPaymentMethod}
+                    <div className="text-sm text-muted-foreground">
+                      {formatCurrency(plan.price)} / {plan.interval === 'monthly' ? 'month' : 'year'}
+                      <span className="ml-2">
+                        {plan.interval === 'annual' ? 'Billed yearly' : 'Billed monthly'}
                       </span>
                     </div>
                   </div>
-                )}
-                
-                {!subscription.mercadoPagoPaymentMethod && (
-                  <div className="text-sm text-blue-700 dark:text-blue-300 italic">
-                    No hay método de pago guardado. Se solicitará al realizar el próximo pago.
-                  </div>
-                )}
-              </div>
-            )}
-            {subscription?.status === 'trial' && subscription?.trialEndDate && (
-              <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-                <p className="text-sm text-blue-900 dark:text-blue-100">
-                  <strong>Período de Prueba:</strong> Tu prueba gratuita finaliza el{' '}
-                  {new Date(subscription.trialEndDate).toLocaleDateString('es-ES', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
-                  })}
-                </p>
-              </div>
-            )}
-            
-            {/* Botón de pago para suscripciones expiradas o pendientes */}
-            {subscription && (
-              <div className="mt-4 space-y-2">
-                {(subscription.status === 'expired' || 
-                  subscription.status === 'pending_payment' || 
-                  (subscription.status === 'trial' && subscription.trialEndDate && new Date(subscription.trialEndDate) < new Date()) ||
-                  !subscription) && plan && (
-                  <div className="p-4 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-200 dark:border-orange-800">
-                    <div className="flex items-start gap-3">
-                      <AlertCircle className="h-5 w-5 text-orange-600 mt-0.5" />
-                      <div className="flex-1">
-                        <p className="text-sm font-semibold text-orange-900 dark:text-orange-100 mb-1">
-                          {subscription?.status === 'expired' ? 'Suscripción Expirada' : 
-                           subscription?.status === 'pending_payment' ? 'Pago Pendiente' :
-                           'Suscripción Requerida'}
-                        </p>
-                        <p className="text-sm text-orange-800 dark:text-orange-200 mb-3">
-                          {subscription?.status === 'expired' 
-                            ? 'Tu suscripción ha expirado. Renueva ahora para continuar usando el servicio.'
-                            : subscription?.status === 'pending_payment'
-                            ? 'Tienes un pago pendiente. Completa el pago para activar tu suscripción.'
-                            : 'Activa tu suscripción para comenzar a usar el servicio.'}
-                        </p>
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-sm text-orange-900 dark:text-orange-100">
-                              <span className="font-semibold">Monto a pagar:</span>{' '}
-                              <span className="text-lg font-bold">{formatCurrency(plan.price)}</span>
-                            </p>
-                            <p className="text-xs text-orange-700 dark:text-orange-300 mt-1">
-                              {plan.interval === 'monthly' ? 'Pago mensual' : 'Pago anual'}
-                            </p>
-                          </div>
-                          {subscription && (
-                            <PaySubscriptionButton
-                              subscriptionId={subscription.id}
-                              planName={plan.name}
-                              amount={plan.price}
-                              onPaymentCreated={() => {
-                                queryClient.invalidateQueries({ queryKey: ['tenant-plan'] })
-                              }}
-                            />
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                </div>
+                {subscription?.status !== 'active' && plan && (
+                  <Button variant="outline">
+                    Upgrade
+                  </Button>
                 )}
               </div>
-            )}
-          </div>
-        )}
-
-        <div className="space-y-4 pt-4 border-t">
-          <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800">
-            <p className="text-sm text-yellow-900 dark:text-yellow-100">
-              <strong>Nota:</strong> Los tiempos de prueba y período de gracia solo pueden ser modificados por el administrador del sistema.
-            </p>
-          </div>
-
-          {/* Renovación Automática */}
-          <div className="flex items-center justify-between p-4 border rounded-lg">
-            <div className="space-y-0.5">
-              <Label htmlFor="subscriptionAutoRenew" className="text-base">
-                Renovación Automática
-              </Label>
-              <p className="text-sm text-muted-foreground">
-                Renovar automáticamente la suscripción al finalizar el período
-              </p>
             </div>
-            <Switch
-              id="subscriptionAutoRenew"
-              checked={autoRenew}
-              onCheckedChange={(checked) => {
-                setAutoRenew(checked)
-                updateAutoRenewMutation.mutate(checked)
-              }}
-              disabled={updateAutoRenewMutation.isPending}
-            />
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+          )}
+
+          {/* Subscription Details */}
+          {subscription && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {renewalDate && (
+                <div className="p-4 border rounded-lg">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Calendar className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm font-medium text-muted-foreground">Renewal date</span>
+                  </div>
+                  <p className="text-base font-semibold">
+                    {formatDate(renewalDate.toISOString(), { 
+                      year: 'numeric', 
+                      month: 'long', 
+                      day: 'numeric' 
+                    })}
+                  </p>
+                </div>
+              )}
+
+              <div className="p-4 border rounded-lg">
+                <div className="flex items-center gap-2 mb-2">
+                  <CheckCircle2 className="h-4 w-4 text-green-600" />
+                  <span className="text-sm font-medium text-muted-foreground">Status</span>
+                </div>
+                <div className="text-base font-semibold">
+                  {getStatusBadge(subscription.status)}
+                </div>
+              </div>
+
+              {nextPaymentDate && (
+                <div className="p-4 border rounded-lg">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Minus className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm font-medium text-muted-foreground">Next payment</span>
+                  </div>
+                  <p className="text-base font-semibold">
+                    {formatDate(nextPaymentDate.toISOString(), { 
+                      year: 'numeric', 
+                      month: 'long', 
+                      day: 'numeric' 
+                    })}
+                  </p>
+                  {paymentMethod && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {paymentMethod}
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Manage Subscription Button */}
+          {subscription?.status === 'active' && (
+            <div className="flex justify-center">
+              <Button variant="default" className="w-full sm:w-auto">
+                Manage subscription
+              </Button>
+            </div>
+          )}
+
+          {/* Payment Button for expired/pending subscriptions */}
+          {subscription && (subscription.status === 'expired' || subscription.status === 'pending_payment') && plan && (
+            <div className="p-4 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-200 dark:border-orange-800">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-orange-900 dark:text-orange-100 mb-1">
+                    {subscription.status === 'expired' ? 'Suscripción Expirada' : 'Pago Pendiente'}
+                  </p>
+                  <p className="text-sm text-orange-800 dark:text-orange-200">
+                    Monto a pagar: <span className="font-bold">{formatCurrency(plan.price)}</span>
+                  </p>
+                </div>
+                <PaySubscriptionButton
+                  subscriptionId={subscription.id}
+                  planName={plan.name}
+                  amount={plan.price}
+                  onPaymentCreated={() => {
+                    queryClient.invalidateQueries({ queryKey: ['tenant-plan'] })
+                    queryClient.invalidateQueries({ queryKey: ['subscription-payments'] })
+                  }}
+                />
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Payments History Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Payments history</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {isLoadingPayments ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            </div>
+          ) : payments.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              No hay pagos registrados
+            </div>
+          ) : (
+            <>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Amount</TableHead>
+                    <TableHead>Invoice</TableHead>
+                    <TableHead>Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {payments.slice(0, 10).map((payment: any) => (
+                    <TableRow key={payment.id}>
+                      <TableCell>
+                        {formatDate(payment.date, { 
+                          year: 'numeric', 
+                          month: 'long', 
+                          day: 'numeric' 
+                        })}
+                      </TableCell>
+                      <TableCell className="font-medium">
+                        {formatCurrency(payment.amount, payment.currency)}
+                      </TableCell>
+                      <TableCell>
+                        {payment.mercadoPagoPaymentId ? (
+                          <Button
+                            variant="link"
+                            className="h-auto p-0 text-primary"
+                            onClick={() => {
+                              // Aquí podrías abrir un modal o redirigir a la factura de Mercado Pago
+                              window.open(
+                                `https://www.mercadopago.com/activities/payments/${payment.mercadoPagoPaymentId}`,
+                                '_blank'
+                              )
+                            }}
+                          >
+                            View invoice
+                          </Button>
+                        ) : (
+                          <span className="text-muted-foreground">-</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {getPaymentStatusBadge(payment.status)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+              {payments.length > 10 && (
+                <div className="mt-4 text-center">
+                  <Button
+                    variant="link"
+                    className="text-primary"
+                    onClick={() => {
+                      // Aquí podrías implementar una vista completa de pagos
+                      toast('Función en desarrollo', 'info')
+                    }}
+                  >
+                    View all payments <ExternalLink className="h-4 w-4 ml-1 inline" />
+                  </Button>
+                </div>
+              )}
+            </>
+          )}
+        </CardContent>
+      </Card>
+    </div>
   )
 }
-
