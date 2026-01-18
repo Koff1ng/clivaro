@@ -1609,94 +1609,105 @@ export function POSScreen() {
             </div>
           </div>
 
-          {/* Payment Section - Compact */}
-          <div className="border-t p-2 space-y-2 bg-gray-50 flex-shrink-0">
-            {/* Quick shortcuts hint */}
-            <div className="flex items-center justify-between text-[11px] text-gray-500">
-              <div className="flex items-center gap-1">
-                <Keyboard className="h-3.5 w-3.5" />
-                <span>Ctrl+K buscar · Ctrl+P parkear · F4 cobrar</span>
+          {/* Payment Section - Improved UX */}
+          <div className="border-t bg-gradient-to-b from-gray-50 to-white p-4 flex-shrink-0 space-y-4">
+            {/* Totals - Prominent */}
+            <div className="bg-white rounded-lg border-2 border-blue-200 p-4 space-y-2">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600">Subtotal</span>
+                <span className="text-sm font-medium">{formatCurrency(totals.subtotal)}</span>
               </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600">IVA</span>
+                <span className="text-sm font-medium">{formatCurrency(totals.tax)}</span>
+              </div>
+              <div className="border-t pt-2 mt-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-lg font-bold">Total</span>
+                  <span className="text-2xl font-bold text-blue-600">{formatCurrency(totals.total)}</span>
+                </div>
+              </div>
+              {paymentMode === 'SINGLE' && paymentMethod === 'CASH' && change > 0 && (
+                <div className="flex justify-between items-center pt-2 border-t">
+                  <span className="text-sm font-semibold text-green-600">Cambio</span>
+                  <span className="text-lg font-bold text-green-600">{formatCurrency(change)}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Payment Mode Toggle */}
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-gray-700">Método de Pago</span>
               <Button
                 variant={paymentMode === 'SPLIT' ? 'default' : 'outline'}
                 size="sm"
-                className="h-7 px-2"
+                className="h-8 px-3"
                 onClick={() => setPaymentMode(paymentMode === 'SPLIT' ? 'SINGLE' : 'SPLIT')}
-                title="Pago mixto"
               >
-                Mixto
+                {paymentMode === 'SPLIT' ? 'Mixto' : 'Simple'}
               </Button>
             </div>
 
-            {!canApplyDiscounts && (
-              <div className="flex items-center justify-between text-[11px]">
-                <span className="text-gray-500">
-                  Descuentos: {isOverrideValid ? `autorizado por ${discountOverride?.authorizedName}` : 'requiere autorización'}
-                </span>
-                {isOverrideValid ? (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 px-2"
-                    onClick={() => persistOverride(null)}
-                  >
-                    Quitar
-                  </Button>
-                ) : (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-7 px-2"
-                    onClick={() => setShowDiscountOverrideDialog(true)}
-                  >
-                    Autorizar
-                  </Button>
-                )}
-              </div>
-            )}
-
             {/* Payment Methods */}
             {paymentMode === 'SINGLE' ? (
-              <div>
-                <label className="text-xs font-medium mb-1.5 block">Método de Pago</label>
-                <div className="grid grid-cols-3 gap-1.5">
+              <div className="space-y-3">
+                <div className="grid grid-cols-3 gap-2">
                   <Button
                     variant={paymentMethod === 'CASH' ? 'default' : 'outline'}
                     size="sm"
                     onClick={() => setPaymentMethod('CASH')}
-                    className="flex flex-col items-center gap-0.5 h-12 py-1"
+                    className="flex flex-col items-center gap-1 h-14 py-2"
                   >
-                    <DollarSign className="h-4 w-4" />
-                    <span className="text-xs">Efectivo</span>
+                    <DollarSign className="h-5 w-5" />
+                    <span className="text-xs font-medium">Efectivo</span>
                   </Button>
                   <Button
                     variant={paymentMethod === 'CARD' ? 'default' : 'outline'}
                     size="sm"
                     onClick={() => setPaymentMethod('CARD')}
-                    className="flex flex-col items-center gap-0.5 h-12 py-1"
+                    className="flex flex-col items-center gap-1 h-14 py-2"
                   >
-                    <CreditCard className="h-4 w-4" />
-                    <span className="text-xs">Tarjeta</span>
+                    <CreditCard className="h-5 w-5" />
+                    <span className="text-xs font-medium">Tarjeta</span>
                   </Button>
                   <Button
                     variant={paymentMethod === 'TRANSFER' ? 'default' : 'outline'}
                     size="sm"
                     onClick={() => setPaymentMethod('TRANSFER')}
-                    className="flex flex-col items-center gap-0.5 h-12 py-1"
+                    className="flex flex-col items-center gap-1 h-14 py-2"
                   >
-                    <ArrowLeftRight className="h-4 w-4" />
-                    <span className="text-xs">Transferencia</span>
+                    <ArrowLeftRight className="h-5 w-5" />
+                    <span className="text-xs font-medium">Transferencia</span>
                   </Button>
                 </div>
+                {paymentMethod === 'CASH' && (
+                  <div>
+                    <label className="text-xs font-medium text-gray-700 mb-1.5 block">Efectivo Recibido</label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={cashReceived}
+                      onChange={(e) => setCashReceived(e.target.value)}
+                      placeholder="0.00"
+                      className="h-10 text-base font-semibold"
+                      autoFocus
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          handleCheckout()
+                        }
+                      }}
+                    />
+                  </div>
+                )}
               </div>
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <label className="text-xs font-medium">Pagos (Mixto)</label>
+                  <span className="text-xs font-medium text-gray-700">Pagos Mixtos</span>
                   <Button
                     variant="outline"
                     size="sm"
-                    className="h-7 px-2"
+                    className="h-8 px-2"
                     onClick={() => {
                       setSplitPayments((prev) => [
                         ...prev,
@@ -1704,11 +1715,11 @@ export function POSScreen() {
                       ])
                     }}
                   >
-                    <Plus className="h-3.5 w-3.5 mr-1" />
+                    <Plus className="h-4 w-4 mr-1" />
                     Agregar
                   </Button>
                 </div>
-                <div className="space-y-1.5">
+                <div className="space-y-2">
                   {splitPayments.map((p) => (
                     <div key={p.id} className="flex items-center gap-2">
                       <select
@@ -1717,7 +1728,7 @@ export function POSScreen() {
                           const nextMethod = e.target.value as PaymentMethod
                           setSplitPayments((prev) => prev.map((x) => (x.id === p.id ? { ...x, method: nextMethod } : x)))
                         }}
-                        className="h-8 rounded-md border border-input bg-background px-2 text-xs"
+                        className="h-10 rounded-md border border-input bg-background px-3 text-sm flex-1"
                       >
                         <option value="CASH">Efectivo</option>
                         <option value="CARD">Tarjeta</option>
@@ -1732,12 +1743,12 @@ export function POSScreen() {
                           setSplitPayments((prev) => prev.map((x) => (x.id === p.id ? { ...x, amount: val } : x)))
                         }}
                         placeholder="0.00"
-                        className="h-8 text-sm"
+                        className="h-10 text-sm flex-1"
                       />
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="h-8 w-8 p-0"
+                        className="h-10 w-10 p-0"
                         onClick={() => setSplitPayments((prev) => prev.filter((x) => x.id !== p.id))}
                         disabled={splitPayments.length <= 1}
                         title="Quitar"
@@ -1747,66 +1758,38 @@ export function POSScreen() {
                     </div>
                   ))}
                 </div>
-                <div className="flex justify-between text-xs text-gray-600">
-                  <span>Pagado:</span>
-                  <span className={splitPaid >= totals.total ? 'text-green-600 font-semibold' : ''}>
-                    {formatCurrency(splitPaid)}
-                  </span>
-                </div>
-                {splitPaid < totals.total && (
-                  <div className="flex justify-between text-xs text-orange-600 font-semibold">
-                    <span>Falta:</span>
-                    <span>{formatCurrency(totals.total - splitPaid)}</span>
+                <div className="bg-gray-50 rounded-lg p-3 space-y-1">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">Pagado:</span>
+                    <span className={splitPaid >= totals.total ? 'text-green-600 font-bold' : 'text-orange-600 font-semibold'}>
+                      {formatCurrency(splitPaid)}
+                    </span>
                   </div>
-                )}
-              </div>
-            )}
-
-            {/* Cash Input */}
-            {paymentMode === 'SINGLE' && paymentMethod === 'CASH' && (
-              <div>
-                <label className="text-xs font-medium">Efectivo Recibido</label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  value={cashReceived}
-                  onChange={(e) => setCashReceived(e.target.value)}
-                  placeholder="0.00"
-                  className="h-8 text-sm"
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      handleCheckout()
-                    }
-                  }}
-                />
-              </div>
-            )}
-
-            {/* Totals - Compact */}
-            <div className="space-y-1 border-t pt-2">
-              <div className="flex justify-between text-xs">
-                <span>Subtotal:</span>
-                <span>{formatCurrency(totals.subtotal)}</span>
-              </div>
-              <div className="flex justify-between text-xs">
-                <span>IVA:</span>
-                <span>{formatCurrency(totals.tax)}</span>
-              </div>
-              <div className="flex justify-between text-base font-bold border-t pt-1 mt-1">
-                <span>Total:</span>
-                <span className="text-blue-600">{formatCurrency(totals.total)}</span>
-              </div>
-              {paymentMethod === 'CASH' && change > 0 && (
-                <div className="flex justify-between text-xs text-green-600 font-semibold">
-                  <span>Cambio:</span>
-                  <span>{formatCurrency(change)}</span>
+                  {splitPaid < totals.total && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-orange-600">Falta:</span>
+                      <span className="text-orange-600 font-bold">{formatCurrency(totals.total - splitPaid)}</span>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
+              </div>
+            )}
 
-            {/* Checkout Button - Compact */}
+            {/* Discount Authorization - Only if needed */}
+            {!canApplyDiscounts && !isOverrideValid && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full h-9 text-xs"
+                onClick={() => setShowDiscountOverrideDialog(true)}
+              >
+                Autorizar Descuentos
+              </Button>
+            )}
+
+            {/* Checkout Button - Prominent */}
             <Button
-              className="w-full h-10 text-sm font-semibold"
+              className="w-full h-12 text-base font-bold shadow-lg"
               onClick={handleCheckout}
               disabled={
                 cart.length === 0 ||
@@ -1819,18 +1802,11 @@ export function POSScreen() {
                 'Procesando...'
               ) : (
                 <>
-                  <Check className="h-4 w-4 mr-2" />
+                  <Check className="h-5 w-5 mr-2" />
                   Finalizar Venta
                 </>
               )}
             </Button>
-
-            {/* Shift Info */}
-            {activeShift && (
-              <div className="text-xs text-center text-gray-500 pt-2 border-t">
-                Turno: {formatCurrency(activeShift.expectedCash || 0)}
-              </div>
-            )}
           </div>
         </div>
       </div>
