@@ -336,9 +336,9 @@ export function QuotationList() {
                     {customer.name}
                   </DropdownMenuItem>
                 ))}
-                {customers.length === 0 && (
+                {customers.length === 0 && debouncedCustomerSearch && (
                   <div className="px-2 py-4 text-sm text-muted-foreground text-center">
-                    {isLoading ? 'Buscando...' : 'No se encontraron clientes'}
+                    No se encontraron clientes
                   </div>
                 )}
               </div>
