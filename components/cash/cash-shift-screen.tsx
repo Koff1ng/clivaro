@@ -368,7 +368,7 @@ export function CashShiftScreen() {
         <Card>
           <CardContent className="py-16 text-center">
             <div className="flex flex-col items-center">
-              <div className="rounded-full bg-gray-100 p-6 mb-4">
+              <div className="rounded-full bg-muted p-6 mb-4">
                 <Lock className="h-12 w-12 text-gray-400" />
               </div>
               <h3 className="text-2xl font-bold mb-2">No hay turno de caja abierto</h3>
@@ -436,17 +436,17 @@ export function CashShiftScreen() {
                 </div>
 
                 <div className="grid grid-cols-2 gap-4 mb-6">
-                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border">
+                  <div className="flex items-center justify-between p-3 bg-muted rounded-lg border">
                     <div className="flex items-center gap-2">
                       <TrendingUp className="h-5 w-5 text-green-600" />
-                      <span className="text-sm font-medium text-gray-700">Entradas</span>
+                      <span className="text-sm font-medium text-foreground">Entradas</span>
                     </div>
                     <span className="text-lg font-bold text-green-600">{formatCurrency(totalIn)}</span>
                   </div>
-                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border">
+                  <div className="flex items-center justify-between p-3 bg-muted rounded-lg border">
                     <div className="flex items-center gap-2">
                       <TrendingDown className="h-5 w-5 text-red-600" />
-                      <span className="text-sm font-medium text-gray-700">Salidas</span>
+                      <span className="text-sm font-medium text-foreground">Salidas</span>
                     </div>
                     <span className="text-lg font-bold text-red-600">{formatCurrency(totalOut)}</span>
                   </div>
@@ -455,23 +455,23 @@ export function CashShiftScreen() {
                 {/* Payment Methods Summary - Compact */}
                 {Object.keys(totalsByMethod).length > 0 && (
                   <div className="border-t pt-4">
-                    <div className="text-sm font-semibold mb-3 text-gray-700">Ingresos por Método de Pago</div>
+                    <div className="text-sm font-semibold mb-3 text-foreground">Ingresos por Método de Pago</div>
                     <div className="space-y-2">
                       {Object.entries(totalsByMethod).map(([method, amount]: [string, any]) => {
                         const Icon = getPaymentMethodIcon(method)
                         return (
-                          <div key={method} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border">
+                          <div key={method} className="flex items-center justify-between p-3 bg-muted rounded-lg border">
                             <div className="flex items-center gap-2">
-                              <Icon className="h-4 w-4 text-gray-600" />
+                              <Icon className="h-4 w-4 text-muted-foreground" />
                               <span className="text-sm font-medium">{getPaymentMethodLabel(method)}</span>
                             </div>
                             <span className="text-sm font-bold">{formatCurrency(amount)}</span>
                           </div>
                         )
                       })}
-                      <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg border-2 border-blue-200 mt-2">
-                        <span className="text-sm font-bold text-gray-900">Total Ventas</span>
-                        <span className="text-base font-bold text-blue-600">{formatCurrency(totalPayments)}</span>
+                      <div className="flex items-center justify-between p-3 bg-primary/10 rounded-lg border-2 border-primary/20 mt-2">
+                        <span className="text-sm font-bold text-foreground">Total Ventas</span>
+                        <span className="text-base font-bold text-primary">{formatCurrency(totalPayments)}</span>
                       </div>
                     </div>
                   </div>

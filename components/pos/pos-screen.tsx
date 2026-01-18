@@ -1268,7 +1268,7 @@ export function POSScreen() {
   }
 
   return (
-    <div className="h-[calc(100vh-120px)] flex flex-col bg-gray-50">
+    <div className="h-[calc(100vh-120px)] flex flex-col bg-background">
       {/* Shift Dialog */}
       <Dialog open={showShiftDialog} onOpenChange={(open) => {
         if (!open && !activeShift) {
@@ -1324,7 +1324,7 @@ export function POSScreen() {
           </div>
 
           {/* Categories */}
-          <div className="p-4 border-b bg-gray-50 overflow-x-auto">
+          <div className="p-4 border-b bg-muted/50 overflow-x-auto">
             <div className="flex gap-2">
               <Button
                 variant={selectedCategory === '' ? 'default' : 'outline'}
@@ -1376,7 +1376,7 @@ export function POSScreen() {
                       key={product.id}
                       onClick={() => hasStock && addToCart(product)}
                       disabled={!hasStock}
-                      className={`p-4 border rounded-lg text-left hover:bg-gray-50 transition-colors ${
+                      className={`p-4 border rounded-lg text-left hover:bg-muted transition-colors ${
                         !hasStock ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
                       }`}
                     >
@@ -1423,7 +1423,7 @@ export function POSScreen() {
 
           {/* Cart */}
           <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-            <div className="p-2 border-b bg-gray-50 flex-shrink-0">
+            <div className="p-2 border-b bg-muted/50 flex-shrink-0">
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
                   <ShoppingCart className="h-4 w-4" />
@@ -1610,9 +1610,9 @@ export function POSScreen() {
           </div>
 
           {/* Payment Section - Improved UX */}
-          <div className="border-t bg-gradient-to-b from-gray-50 to-white p-4 flex-shrink-0 space-y-4">
+          <div className="border-t bg-gradient-to-b from-muted/30 to-background p-4 flex-shrink-0 space-y-4">
             {/* Totals - Prominent */}
-            <div className="bg-white rounded-lg border-2 border-blue-200 p-4 space-y-2">
+            <div className="bg-card rounded-lg border-2 border-primary/20 p-4 space-y-2">
               <div className="flex justify-between items-center">
                 <span className="text-sm text-gray-600">Subtotal</span>
                 <span className="text-sm font-medium">{formatCurrency(totals.subtotal)}</span>
@@ -1637,7 +1637,7 @@ export function POSScreen() {
 
             {/* Payment Mode Toggle */}
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-gray-700">Método de Pago</span>
+              <span className="text-sm font-medium text-foreground">Método de Pago</span>
               <Button
                 variant={paymentMode === 'SPLIT' ? 'default' : 'outline'}
                 size="sm"
@@ -1682,7 +1682,7 @@ export function POSScreen() {
                 </div>
                 {paymentMethod === 'CASH' && (
                   <div>
-                    <label className="text-xs font-medium text-gray-700 mb-1.5 block">Efectivo Recibido</label>
+                    <label className="text-xs font-medium text-foreground mb-1.5 block">Efectivo Recibido</label>
                     <Input
                       type="number"
                       step="0.01"
@@ -1703,7 +1703,7 @@ export function POSScreen() {
             ) : (
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-medium text-gray-700">Pagos Mixtos</span>
+                  <span className="text-xs font-medium text-foreground">Pagos Mixtos</span>
                   <Button
                     variant="outline"
                     size="sm"
@@ -1758,7 +1758,7 @@ export function POSScreen() {
                     </div>
                   ))}
                 </div>
-                <div className="bg-gray-50 rounded-lg p-3 space-y-1">
+                <div className="bg-muted rounded-lg p-3 space-y-1">
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">Pagado:</span>
                     <span className={splitPaid >= totals.total ? 'text-green-600 font-bold' : 'text-orange-600 font-semibold'}>
