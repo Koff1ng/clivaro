@@ -530,7 +530,7 @@ export function CashShiftScreen() {
                     {movements.map((movement: any) => (
                       <div
                         key={movement.id}
-                        className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border hover:bg-gray-100 transition-colors"
+                        className="flex items-center justify-between p-3 bg-muted rounded-lg border hover:bg-muted/80 transition-colors"
                       >
                         <div className="flex items-center gap-3">
                           <div
