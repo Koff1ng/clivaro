@@ -167,7 +167,7 @@ export function SubscriptionConfig({ settings, onSave, isLoading }: Subscription
                     <span className="text-sm font-medium text-muted-foreground">Renewal date</span>
                   </div>
                   <p className="text-base font-semibold">
-                    {formatDate(renewalDate.toISOString(), { 
+                    {renewalDate.toLocaleDateString('es-ES', { 
                       year: 'numeric', 
                       month: 'long', 
                       day: 'numeric' 
@@ -193,7 +193,7 @@ export function SubscriptionConfig({ settings, onSave, isLoading }: Subscription
                     <span className="text-sm font-medium text-muted-foreground">Next payment</span>
                   </div>
                   <p className="text-base font-semibold">
-                    {formatDate(nextPaymentDate.toISOString(), { 
+                    {nextPaymentDate.toLocaleDateString('es-ES', { 
                       year: 'numeric', 
                       month: 'long', 
                       day: 'numeric' 
@@ -274,7 +274,7 @@ export function SubscriptionConfig({ settings, onSave, isLoading }: Subscription
                   {payments.slice(0, 10).map((payment: any) => (
                     <TableRow key={payment.id}>
                       <TableCell>
-                        {formatDate(payment.date, { 
+                        {new Date(payment.date).toLocaleDateString('es-ES', { 
                           year: 'numeric', 
                           month: 'long', 
                           day: 'numeric' 
