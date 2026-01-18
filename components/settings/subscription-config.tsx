@@ -9,11 +9,13 @@ import { useState, useEffect } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useToast } from '@/components/ui/toast'
 import { PaySubscriptionButton } from '@/components/subscriptions/pay-subscription-button'
+import { MercadoPagoCardForm } from '@/components/subscriptions/mercado-pago-card-form'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 interface SubscriptionConfigProps {
   settings: any
@@ -48,6 +50,7 @@ export function SubscriptionConfig({ settings, onSave, isLoading }: Subscription
   const { toast } = useToast()
   const queryClient = useQueryClient()
   const [showManageDialog, setShowManageDialog] = useState(false)
+  const [showPaymentDialog, setShowPaymentDialog] = useState(false)
   const [autoRenew, setAutoRenew] = useState(settings?.subscriptionAutoRenew ?? true)
 
   const { data: subscriptionData, isLoading: isLoadingSubscription } = useQuery({
@@ -447,14 +450,25 @@ export function SubscriptionConfig({ settings, onSave, isLoading }: Subscription
             </div>
 
             {/* Payment Method Info */}
-            {paymentMethod && (
-              <div className="p-4 border rounded-lg">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-muted-foreground">Payment Method</span>
+            <div className="p-4 border rounded-lg">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-sm font-medium text-muted-foreground">Payment Method</span>
+                {paymentMethod ? (
                   <span className="text-sm font-medium">{paymentMethod}</span>
-                </div>
+                ) : (
+                  <span className="text-sm text-muted-foreground">No configurado</span>
+                )}
               </div>
-            )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowPaymentDialog(true)}
+                className="w-full"
+              >
+                <CreditCard className="h-4 w-4 mr-2" />
+                {paymentMethod ? 'Actualizar método de pago' : 'Agregar método de pago'}
+              </Button>
+            </div>
 
             {/* Cancel Subscription Warning */}
             <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
@@ -497,6 +511,80 @@ export function SubscriptionConfig({ settings, onSave, isLoading }: Subscription
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowManageDialog(false)}>
               Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Payment Method Dialog */}
+      <Dialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Método de Pago</DialogTitle>
+            <DialogDescription>
+              {paymentMethod 
+                ? 'Actualiza tu método de pago para futuras suscripciones'
+                : 'Agrega un método de pago para procesar tu suscripción'}
+            </DialogDescription>
+          </DialogHeader>
+          
+          {subscription && plan ? (
+            <Tabs defaultValue="card" className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="card">Tarjeta de Crédito/Débito</TabsTrigger>
+                <TabsTrigger value="checkout">Checkout Pro</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="card" className="mt-4">
+                <MercadoPagoCardForm
+                  subscriptionId={subscription.id}
+                  amount={plan.price}
+                  currency={plan.currency || 'COP'}
+                  onPaymentSuccess={() => {
+                    queryClient.invalidateQueries({ queryKey: ['tenant-plan'] })
+                    queryClient.invalidateQueries({ queryKey: ['subscription-payments'] })
+                    setShowPaymentDialog(false)
+                    setShowManageDialog(false)
+                  }}
+                  onPaymentError={(error) => {
+                    console.error('Payment error:', error)
+                  }}
+                />
+              </TabsContent>
+              
+              <TabsContent value="checkout" className="mt-4">
+                <div className="space-y-4">
+                  <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                    <p className="text-sm text-blue-900 dark:text-blue-100 mb-2">
+                      Serás redirigido a Mercado Pago para completar el pago de forma segura.
+                    </p>
+                    <p className="text-sm text-blue-800 dark:text-blue-200">
+                      Monto: <span className="font-bold">{formatCurrency(plan.price)}</span>
+                    </p>
+                  </div>
+                  <PaySubscriptionButton
+                    subscriptionId={subscription.id}
+                    planName={plan.name}
+                    amount={plan.price}
+                    onPaymentCreated={() => {
+                      queryClient.invalidateQueries({ queryKey: ['tenant-plan'] })
+                      queryClient.invalidateQueries({ queryKey: ['subscription-payments'] })
+                      setShowPaymentDialog(false)
+                      setShowManageDialog(false)
+                    }}
+                  />
+                </div>
+              </TabsContent>
+            </Tabs>
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              No hay suscripción activa
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowPaymentDialog(false)}>
+              Cancelar
             </Button>
           </DialogFooter>
         </DialogContent>
