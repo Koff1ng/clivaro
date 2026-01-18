@@ -4,7 +4,7 @@
 
 **Mercado Pago está configurado a nivel global de Clivaro.** Los tenants NO tienen acceso a configurar Mercado Pago, ya que los pagos de suscripciones se procesan directamente a Clivaro, no a los tenants.
 
-## Credenciales de Prueba
+## Credenciales de Prueba (ACTIVAS)
 
 **Access Token:**
 ```
@@ -15,6 +15,8 @@ APP_USR-99700b5b-40f4-46ec-a382-60eb283980bb
 ```
 APP_USR-4561942717623499-011518-f2ce1df59b9b223794ea8c1a33d7f391-3136918603
 ```
+
+> ⚠️ **Nota**: Estas credenciales están configuradas y listas para usar. Asegúrate de configurarlas en Vercel como variables de entorno.
 
 ## Pasos para Configurar (Super Admin / Vercel)
 
