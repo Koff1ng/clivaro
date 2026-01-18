@@ -77,8 +77,8 @@ export function QuotationList() {
     }
   }, [searchParams, isFormOpen])
 
-  // Debounce search to avoid excessive queries
-  const debouncedSearch = useDebounce(search, 500)
+  // Debounce search to avoid excessive queries - reduced for more immediate feedback
+  const debouncedSearch = useDebounce(search, 300)
   
   const [customerSearch, setCustomerSearch] = useState('')
   const debouncedCustomerSearch = useDebounce(customerSearch, 300)
