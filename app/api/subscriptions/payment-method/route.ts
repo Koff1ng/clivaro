@@ -112,11 +112,10 @@ export async function POST(request: Request) {
     }
 
     // Procesar el pago con Mercado Pago
-    const { Payment: MercadoPagoPayment } = await import('mercadopago')
-    const { MercadoPagoConfig } = await import('mercadopago')
+    const { MercadoPagoConfig, Payment } = await import('mercadopago')
     
     const client = new MercadoPagoConfig({ accessToken: mercadoPagoAccessToken })
-    const payment = new MercadoPagoPayment(client)
+    const payment = new Payment(client)
 
     const paymentData = {
       transaction_amount: subscription.plan.price,
