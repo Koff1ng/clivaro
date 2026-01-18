@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Rocket, Calendar, CheckCircle2, Minus, ExternalLink, Loader2, X, AlertTriangle } from 'lucide-react'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { useQuery } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useToast } from '@/components/ui/toast'
 import { PaySubscriptionButton } from '@/components/subscriptions/pay-subscription-button'
@@ -92,11 +92,11 @@ export function SubscriptionConfig({ settings, onSave, isLoading }: Subscription
   })
 
   // Sincronizar autoRenew con la suscripción cuando se carga
-  useState(() => {
+  useEffect(() => {
     if (subscription) {
       setAutoRenew(subscription.autoRenew ?? settings?.subscriptionAutoRenew ?? true)
     }
-  })
+  }, [subscription, settings?.subscriptionAutoRenew])
 
   // Calcular fecha de renovación
   const getRenewalDate = () => {
@@ -386,6 +386,121 @@ export function SubscriptionConfig({ settings, onSave, isLoading }: Subscription
           )}
         </CardContent>
       </Card>
+
+      {/* Manage Subscription Dialog */}
+      <Dialog open={showManageDialog} onOpenChange={setShowManageDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Manage Subscription</DialogTitle>
+            <DialogDescription>
+              Gestiona tu suscripción y configuración de renovación automática
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-6 py-4">
+            {/* Current Plan Info */}
+            {plan && subscription && (
+              <div className="p-4 border rounded-lg bg-muted/50">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium text-muted-foreground">Current Plan</span>
+                  <Badge className="bg-green-500/10 text-green-600 dark:text-green-400">
+                    {plan.name}
+                  </Badge>
+                </div>
+                <div className="text-2xl font-bold">
+                  {formatCurrency(plan.price)}
+                  <span className="text-sm font-normal text-muted-foreground ml-1">
+                    / {plan.interval === 'monthly' ? 'month' : 'year'}
+                  </span>
+                </div>
+                {renewalDate && (
+                  <div className="text-sm text-muted-foreground mt-2">
+                    Renews on {renewalDate.toLocaleDateString('es-ES', { 
+                      year: 'numeric', 
+                      month: 'long', 
+                      day: 'numeric' 
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Auto Renew Toggle */}
+            <div className="flex items-center justify-between p-4 border rounded-lg">
+              <div className="space-y-0.5">
+                <Label htmlFor="autoRenew" className="text-base">
+                  Auto-renewal
+                </Label>
+                <p className="text-sm text-muted-foreground">
+                  Automatically renew your subscription at the end of each billing period
+                </p>
+              </div>
+              <Switch
+                id="autoRenew"
+                checked={autoRenew}
+                onCheckedChange={(checked) => {
+                  setAutoRenew(checked)
+                  updateAutoRenewMutation.mutate(checked)
+                }}
+                disabled={updateAutoRenewMutation.isPending}
+              />
+            </div>
+
+            {/* Payment Method Info */}
+            {paymentMethod && (
+              <div className="p-4 border rounded-lg">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-muted-foreground">Payment Method</span>
+                  <span className="text-sm font-medium">{paymentMethod}</span>
+                </div>
+              </div>
+            )}
+
+            {/* Cancel Subscription Warning */}
+            <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="h-5 w-5 text-red-600 mt-0.5" />
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-red-900 dark:text-red-100 mb-1">
+                    Cancel Subscription
+                  </p>
+                  <p className="text-sm text-red-800 dark:text-red-200 mb-3">
+                    Al cancelar tu suscripción, perderás acceso a todas las funciones premium al finalizar el período actual.
+                  </p>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => {
+                      if (confirm('¿Estás seguro de que deseas cancelar tu suscripción? Esta acción no se puede deshacer.')) {
+                        cancelMutation.mutate(subscription.id)
+                      }
+                    }}
+                    disabled={cancelMutation.isPending}
+                  >
+                    {cancelMutation.isPending ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Cancelando...
+                      </>
+                    ) : (
+                      <>
+                        <X className="h-4 w-4 mr-2" />
+                        Cancel Subscription
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowManageDialog(false)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
