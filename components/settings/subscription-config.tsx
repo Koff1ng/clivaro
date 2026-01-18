@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Rocket, Calendar, CheckCircle2, Minus, ExternalLink, Loader2, X, AlertTriangle } from 'lucide-react'
+import { Rocket, Calendar, CheckCircle2, Minus, ExternalLink, Loader2, X, AlertTriangle, CreditCard } from 'lucide-react'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { useQuery } from '@tanstack/react-query'
 import { useState, useEffect } from 'react'
