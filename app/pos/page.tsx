@@ -14,8 +14,8 @@ export default async function POSPage() {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-gray-50">
-      <div className="bg-white border-b px-6 py-4 flex items-center justify-between">
+    <div className="h-screen flex flex-col bg-background">
+      <div className="bg-card border-b px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Link href="/dashboard">
             <Button variant="ghost" size="sm">
@@ -23,7 +23,7 @@ export default async function POSPage() {
               Volver al Panel
             </Button>
           </Link>
-          <h1 className="text-2xl font-bold">Punto de Venta</h1>
+          <h1 className="text-2xl font-bold text-foreground">Punto de Venta</h1>
         </div>
       </div>
       <POSScreen />
