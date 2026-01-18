@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Rocket, Calendar, CheckCircle2, Minus, ExternalLink, Loader2 } from 'lucide-react'
+import { Rocket, Calendar, CheckCircle2, Minus, ExternalLink, Loader2, X, AlertTriangle } from 'lucide-react'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
@@ -11,6 +11,9 @@ import { useToast } from '@/components/ui/toast'
 import { PaySubscriptionButton } from '@/components/subscriptions/pay-subscription-button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Switch } from '@/components/ui/switch'
+import { Label } from '@/components/ui/label'
 
 interface SubscriptionConfigProps {
   settings: any
@@ -30,9 +33,22 @@ async function fetchPaymentHistory() {
   return res.json()
 }
 
+async function cancelSubscription(subscriptionId: string) {
+  const res = await fetch(`/api/subscriptions/${subscriptionId}/cancel`, {
+    method: 'POST',
+  })
+  if (!res.ok) {
+    const error = await res.json()
+    throw new Error(error.error || 'Error al cancelar la suscripción')
+  }
+  return res.json()
+}
+
 export function SubscriptionConfig({ settings, onSave, isLoading }: SubscriptionConfigProps) {
   const { toast } = useToast()
   const queryClient = useQueryClient()
+  const [showManageDialog, setShowManageDialog] = useState(false)
+  const [autoRenew, setAutoRenew] = useState(settings?.subscriptionAutoRenew ?? true)
 
   const { data: subscriptionData, isLoading: isLoadingSubscription } = useQuery({
     queryKey: ['tenant-plan'],
@@ -47,6 +63,40 @@ export function SubscriptionConfig({ settings, onSave, isLoading }: Subscription
   const plan = subscriptionData?.plan
   const subscription = subscriptionData?.subscription
   const payments = paymentHistory?.payments || []
+
+  const cancelMutation = useMutation({
+    mutationFn: cancelSubscription,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tenant-plan'] })
+      queryClient.invalidateQueries({ queryKey: ['subscription-payments'] })
+      setShowManageDialog(false)
+      toast('Suscripción cancelada exitosamente', 'success')
+    },
+    onError: (error: any) => {
+      toast(error.message || 'Error al cancelar la suscripción', 'error')
+    },
+  })
+
+  const updateAutoRenewMutation = useMutation({
+    mutationFn: async (value: boolean) => {
+      onSave({ subscriptionAutoRenew: value })
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['settings'] })
+      queryClient.invalidateQueries({ queryKey: ['tenant-plan'] })
+      toast('Configuración actualizada', 'success')
+    },
+    onError: (error: any) => {
+      toast(error.message || 'Error al actualizar', 'error')
+    },
+  })
+
+  // Sincronizar autoRenew con la suscripción cuando se carga
+  useState(() => {
+    if (subscription) {
+      setAutoRenew(subscription.autoRenew ?? settings?.subscriptionAutoRenew ?? true)
+    }
+  })
 
   // Calcular fecha de renovación
   const getRenewalDate = () => {
@@ -212,7 +262,11 @@ export function SubscriptionConfig({ settings, onSave, isLoading }: Subscription
           {/* Manage Subscription Button */}
           {subscription?.status === 'active' && (
             <div className="flex justify-center">
-              <Button variant="default" className="w-full sm:w-auto">
+              <Button 
+                variant="default" 
+                className="w-full sm:w-auto"
+                onClick={() => setShowManageDialog(true)}
+              >
                 Manage subscription
               </Button>
             </div>
