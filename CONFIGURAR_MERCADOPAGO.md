@@ -36,7 +36,7 @@ Para recibir notificaciones de pagos en tiempo real:
 
 1. **Obtén la URL del Webhook**:
    ```
-   https://tu-dominio-vercel.com/api/payments/mercadopago/webhook
+   https://clivaro.vercel.app/api/payments/mercadopago/webhook
    ```
    (Reemplaza `tu-dominio-vercel.com` con tu dominio de Vercel)
 
@@ -47,6 +47,10 @@ Para recibir notificaciones de pagos en tiempo real:
    - Pega la URL del webhook
    - Guarda
 
+## Tipo de Integración: Checkout API
+
+Este sistema utiliza **Checkout API** de Mercado Pago, que permite procesar pagos directamente desde la aplicación sin redirigir al usuario a una página externa. El formulario de tarjeta se integra directamente en la interfaz de Clivaro.
+
 ## Probar el Pago de Suscripción (Como Tenant)
 
 Una vez configuradas las credenciales en Vercel:
@@ -55,17 +59,19 @@ Una vez configuradas las credenciales en Vercel:
 
 2. **Ve a Configuración → Suscripción**
 
-3. Si tienes una suscripción pendiente o expirada, verás el botón **"Pagar Suscripción"**
+3. Haz clic en **"Agregar método de pago"** o **"Actualizar método de pago"**
 
-4. Haz clic en el botón para crear un pago de prueba
+4. Se mostrará el formulario de tarjeta integrado (Checkout API)
 
-5. Serás redirigido a Mercado Pago (modo sandbox)
-
-6. **Usa las tarjetas de prueba de Mercado Pago**:
+5. **Usa las tarjetas de prueba de Mercado Pago**:
    - **Tarjeta aprobada**: `5031 7557 3453 0604` (CVV: 123, Fecha: cualquier fecha futura)
    - **Tarjeta rechazada**: `5031 4332 1540 6351` (CVV: 123, Fecha: cualquier fecha futura)
 
-7. Después del pago, serás redirigido de vuelta a la configuración de suscripción
+6. Completa el formulario con los datos de la tarjeta de prueba
+
+7. El pago se procesará directamente sin salir de la aplicación
+
+8. Verás una confirmación de éxito o error según el resultado
 
 ## Notas Importantes
 
@@ -84,14 +90,17 @@ Cuando tengas las credenciales de producción:
 3. Actualiza `MERCADOPAGO_PUBLIC_KEY` con la clave pública de producción (opcional)
 4. **Redeploy** la aplicación
 
-## Flujo del Sistema
+## Flujo del Sistema (Checkout API)
 
 1. **Super Admin** configura las credenciales de Mercado Pago en Vercel (variables de entorno)
 2. **Tenant** ve su suscripción en Configuración → Suscripción
-3. **Tenant** hace clic en "Pagar Suscripción"
-4. Se crea una preferencia de pago usando las credenciales globales de Clivaro
-5. **Tenant** es redirigido a Mercado Pago para completar el pago
-6. Mercado Pago envía webhook a Clivaro
-7. Clivaro actualiza el estado de la suscripción del tenant
-8. **Tenant** ve su información de pago actualizada (método de pago, próximo pago)
+3. **Tenant** hace clic en "Agregar/Actualizar método de pago"
+4. Se muestra el formulario de tarjeta integrado (Checkout API) usando el SDK de Mercado Pago
+5. **Tenant** completa los datos de la tarjeta directamente en la aplicación
+6. El SDK de Mercado Pago genera un token seguro de la tarjeta
+7. El token se envía al backend de Clivaro para procesar el pago
+8. Clivaro procesa el pago usando la API de Mercado Pago con el Access Token
+9. Mercado Pago envía webhook a Clivaro (opcional, para confirmación)
+10. Clivaro actualiza el estado de la suscripción del tenant
+11. **Tenant** ve su información de pago actualizada (método de pago, próximo pago)
 

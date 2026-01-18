@@ -137,10 +137,27 @@ export function MercadoPagoCardForm({
             setIsProcessing(true)
 
             try {
-              const formData = await cardFormInstance.getCardFormData()
+              // Obtener los valores del formulario
+              const cardholderName = (document.getElementById('form-checkout__cardholderName') as HTMLInputElement)?.value
+              const cardholderEmail = (document.getElementById('form-checkout__cardholderEmail') as HTMLInputElement)?.value
+              const identificationType = (document.getElementById('form-checkout__identificationType') as HTMLSelectElement)?.value
+              const identificationNumber = (document.getElementById('form-checkout__identificationNumber') as HTMLInputElement)?.value
+              const installments = (document.getElementById('form-checkout__installments') as HTMLSelectElement)?.value
 
-              if (formData.error) {
-                throw new Error(formData.error.message || 'Error al procesar los datos de la tarjeta')
+              // Crear el token de la tarjeta usando el SDK de Mercado Pago
+              const { token, error: tokenError } = await mp.fields.createCardToken({
+                cardholderName,
+                identificationType,
+                identificationNumber,
+                cardholderEmail,
+              })
+
+              if (tokenError) {
+                throw new Error(tokenError.message || 'Error al procesar los datos de la tarjeta')
+              }
+
+              if (!token) {
+                throw new Error('No se pudo generar el token de la tarjeta')
               }
 
               // Procesar el pago
@@ -149,10 +166,10 @@ export function MercadoPagoCardForm({
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                   subscriptionId,
-                  token: formData.token,
-                  paymentMethodId: formData.payment_method_id,
-                  installments: parseInt(formData.installments || '1'),
-                  issuerId: formData.issuer_id,
+                  token: token.id,
+                  paymentMethodId: token.payment_method_id,
+                  installments: parseInt(installments || '1'),
+                  issuerId: token.issuer_id,
                 }),
               })
 
