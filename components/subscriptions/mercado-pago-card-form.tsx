@@ -80,8 +80,10 @@ export function MercadoPagoCardForm({
   useEffect(() => {
     if (!mp || !publicKey || !formRef.current) return
 
+    let cardFormInstance: any = null
+
     try {
-      const cardFormInstance = mp.cardForm({
+      cardFormInstance = mp.cardForm({
         amount: amount.toString(),
         iframe: true,
         form: {
@@ -135,10 +137,10 @@ export function MercadoPagoCardForm({
             setIsProcessing(true)
 
             try {
-              const { token, error } = await mp.getCardFormData('mp-card-form')
+              const formData = await cardFormInstance.getCardFormData()
 
-              if (error) {
-                throw new Error(error.message || 'Error al procesar los datos de la tarjeta')
+              if (formData.error) {
+                throw new Error(formData.error.message || 'Error al procesar los datos de la tarjeta')
               }
 
               // Procesar el pago
@@ -147,10 +149,10 @@ export function MercadoPagoCardForm({
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                   subscriptionId,
-                  token: token,
-                  paymentMethodId: token.payment_method_id,
-                  installments: parseInt(token.installments || '1'),
-                  issuerId: token.issuer_id,
+                  token: formData.token,
+                  paymentMethodId: formData.payment_method_id,
+                  installments: parseInt(formData.installments || '1'),
+                  issuerId: formData.issuer_id,
                 }),
               })
 
@@ -188,7 +190,13 @@ export function MercadoPagoCardForm({
       console.error('Error initializing card form:', error)
       toast('Error al inicializar el formulario de pago', 'error')
     }
-  }, [mp, publicKey, amount, subscriptionId])
+
+    return () => {
+      if (cardFormInstance && typeof cardFormInstance.unmount === 'function') {
+        cardFormInstance.unmount()
+      }
+    }
+  }, [mp, publicKey, amount, subscriptionId, toast, onPaymentSuccess, onPaymentError])
 
   if (isLoading) {
     return (
