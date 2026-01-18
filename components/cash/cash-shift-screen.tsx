@@ -366,109 +366,112 @@ export function CashShiftScreen() {
 
       {!activeShift ? (
         <Card>
-          <CardContent className="py-12 text-center">
-            <Lock className="h-16 w-16 mx-auto text-gray-400 mb-4" />
-            <h3 className="text-xl font-semibold mb-2">No hay turno de caja abierto</h3>
-            <p className="text-gray-600 mb-4">Abre un turno para comenzar a gestionar la caja</p>
-            <Button onClick={() => setShowOpenDialog(true)} size="lg">
-              <Unlock className="h-5 w-5 mr-2" />
-              Abrir Turno
-            </Button>
+          <CardContent className="py-16 text-center">
+            <div className="flex flex-col items-center">
+              <div className="rounded-full bg-gray-100 p-6 mb-4">
+                <Lock className="h-12 w-12 text-gray-400" />
+              </div>
+              <h3 className="text-2xl font-bold mb-2">No hay turno de caja abierto</h3>
+              <p className="text-gray-600 mb-6 max-w-md">Abre un turno para comenzar a gestionar la caja y registrar transacciones</p>
+              <Button onClick={() => setShowOpenDialog(true)} size="lg" className="px-8">
+                <Unlock className="h-5 w-5 mr-2" />
+                Abrir Turno
+              </Button>
+            </div>
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Current Shift Summary */}
-          <div className="lg:col-span-2 space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center justify-between">
-                  <span>Turno Actual</span>
-                  <span className="text-sm font-normal text-green-600 flex items-center gap-1">
-                    <Clock className="h-4 w-4" />
-                    Abierto
-                  </span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-6">
+          {/* Current Shift Summary - Improved Design */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Main Summary Card */}
+            <Card className="lg:col-span-2">
+              <CardHeader className="pb-4">
+                <div className="flex items-center justify-between">
                   <div>
-                    <div className="text-sm text-gray-600 mb-1">Cajero</div>
-                    <div className="font-semibold flex items-center gap-2">
-                      <User className="h-4 w-4" />
-                      {activeShift.user?.name || 'N/A'}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-sm text-gray-600 mb-1">Abierto el</div>
-                    <div className="font-semibold">
-                      {formatDate(activeShift.openedAt)}
+                    <CardTitle className="text-xl">Turno Actual</CardTitle>
+                    <div className="flex items-center gap-3 mt-2 text-sm text-gray-600">
+                      <div className="flex items-center gap-1.5">
+                        <User className="h-4 w-4" />
+                        <span>{activeShift.user?.name || 'N/A'}</span>
+                      </div>
+                      <span>•</span>
+                      <div className="flex items-center gap-1.5">
+                        <Clock className="h-4 w-4" />
+                        <span>{formatDate(activeShift.openedAt)}</span>
+                      </div>
+                      <span className="ml-2 px-2 py-0.5 bg-green-100 text-green-700 rounded text-xs font-medium">
+                        Abierto
+                      </span>
                     </div>
                   </div>
                 </div>
-
-                <div className="grid grid-cols-3 gap-4 pt-4 border-t">
-                  <div className="text-center">
-                    <div className="text-sm text-gray-600 mb-1">Efectivo Inicial</div>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-3 gap-4 mb-6">
+                  <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-4 border border-blue-200">
+                    <div className="text-xs font-medium text-blue-700 mb-1">Efectivo Inicial</div>
                     <div className="text-2xl font-bold text-blue-600">
                       {formatCurrency(activeShift.startingCash || 0)}
                     </div>
                   </div>
-                  <div className="text-center">
-                    <div className="text-sm text-gray-600 mb-1">Efectivo Esperado</div>
+                  <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-lg p-4 border border-green-200">
+                    <div className="text-xs font-medium text-green-700 mb-1">Efectivo Esperado</div>
                     <div className="text-2xl font-bold text-green-600">
                       {formatCurrency(activeShift.expectedCash || 0)}
                     </div>
                   </div>
-                  <div className="text-center">
-                    <div className="text-sm text-gray-600 mb-1">Movimiento Neto</div>
+                  <div className={`bg-gradient-to-br rounded-lg p-4 border ${
+                    netMovement >= 0 
+                      ? 'from-green-50 to-green-100 border-green-200' 
+                      : 'from-red-50 to-red-100 border-red-200'
+                  }`}>
+                    <div className={`text-xs font-medium mb-1 ${netMovement >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+                      Movimiento Neto
+                    </div>
                     <div className={`text-2xl font-bold ${netMovement >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                       {formatCurrency(netMovement)}
                     </div>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4 pt-4 border-t">
-                  <div>
-                    <div className="text-sm text-gray-600 mb-1 flex items-center gap-1">
-                      <TrendingUp className="h-4 w-4 text-green-600" />
-                      Entradas (Efectivo)
+                <div className="grid grid-cols-2 gap-4 mb-6">
+                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border">
+                    <div className="flex items-center gap-2">
+                      <TrendingUp className="h-5 w-5 text-green-600" />
+                      <span className="text-sm font-medium text-gray-700">Entradas</span>
                     </div>
-                    <div className="text-xl font-semibold text-green-600">
-                      {formatCurrency(totalIn)}
-                    </div>
+                    <span className="text-lg font-bold text-green-600">{formatCurrency(totalIn)}</span>
                   </div>
-                  <div>
-                    <div className="text-sm text-gray-600 mb-1 flex items-center gap-1">
-                      <TrendingDown className="h-4 w-4 text-red-600" />
-                      Salidas (Efectivo)
+                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border">
+                    <div className="flex items-center gap-2">
+                      <TrendingDown className="h-5 w-5 text-red-600" />
+                      <span className="text-sm font-medium text-gray-700">Salidas</span>
                     </div>
-                    <div className="text-xl font-semibold text-red-600">
-                      {formatCurrency(totalOut)}
-                    </div>
+                    <span className="text-lg font-bold text-red-600">{formatCurrency(totalOut)}</span>
                   </div>
                 </div>
 
-                {/* Payment Methods Summary */}
+                {/* Payment Methods Summary - Compact */}
                 {Object.keys(totalsByMethod).length > 0 && (
-                  <div className="pt-4 border-t">
-                    <div className="text-sm font-semibold mb-3">Ingresos por Método de Pago</div>
+                  <div className="border-t pt-4">
+                    <div className="text-sm font-semibold mb-3 text-gray-700">Ingresos por Método de Pago</div>
                     <div className="space-y-2">
                       {Object.entries(totalsByMethod).map(([method, amount]: [string, any]) => {
                         const Icon = getPaymentMethodIcon(method)
                         return (
-                          <div key={method} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                          <div key={method} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border">
                             <div className="flex items-center gap-2">
                               <Icon className="h-4 w-4 text-gray-600" />
                               <span className="text-sm font-medium">{getPaymentMethodLabel(method)}</span>
                             </div>
-                            <span className="text-sm font-semibold">{formatCurrency(amount)}</span>
+                            <span className="text-sm font-bold">{formatCurrency(amount)}</span>
                           </div>
                         )
                       })}
-                      <div className="flex items-center justify-between p-2 bg-blue-50 rounded border-t-2 border-blue-200 mt-2">
-                        <span className="text-sm font-bold">Total Ventas</span>
-                        <span className="text-sm font-bold text-blue-600">{formatCurrency(totalPayments)}</span>
+                      <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg border-2 border-blue-200 mt-2">
+                        <span className="text-sm font-bold text-gray-900">Total Ventas</span>
+                        <span className="text-base font-bold text-blue-600">{formatCurrency(totalPayments)}</span>
                       </div>
                     </div>
                   </div>
@@ -476,62 +479,85 @@ export function CashShiftScreen() {
               </CardContent>
             </Card>
 
+            {/* Quick Stats Sidebar */}
+            <div className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Resumen</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div>
+                    <div className="text-xs text-gray-600 mb-1">Total Ventas</div>
+                    <div className="text-2xl font-bold text-blue-600">{formatCurrency(totalPayments)}</div>
+                  </div>
+                  <div className="border-t pt-4">
+                    <div className="text-xs text-gray-600 mb-2">Movimientos</div>
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600">Entradas</span>
+                        <span className="font-semibold text-green-600">{formatCurrency(totalIn)}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600">Salidas</span>
+                        <span className="font-semibold text-red-600">{formatCurrency(totalOut)}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="border-t pt-4">
+                    <div className="text-xs text-gray-600 mb-1">Pagos Registrados</div>
+                    <div className="text-xl font-bold">{payments.length}</div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+
+          {/* Movements and Payments - Side by Side */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Movements List */}
             <Card>
               <CardHeader>
-                <CardTitle>Movimientos de Efectivo</CardTitle>
+                <CardTitle className="text-lg">Movimientos de Efectivo</CardTitle>
               </CardHeader>
               <CardContent>
                 {movements.length === 0 ? (
-                  <div className="text-center text-gray-500 py-8">
-                    No hay movimientos de efectivo registrados
+                  <div className="text-center text-gray-500 py-12">
+                    <ArrowLeftRight className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+                    <p className="text-sm">No hay movimientos registrados</p>
                   </div>
                 ) : (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Fecha</TableHead>
-                        <TableHead>Tipo</TableHead>
-                        <TableHead>Monto</TableHead>
-                        <TableHead>Razón</TableHead>
-                        <TableHead>Usuario</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {movements.map((movement: any) => (
-                        <TableRow key={movement.id}>
-                          <TableCell className="text-sm">
-                            {formatDate(movement.createdAt)}
-                          </TableCell>
-                          <TableCell>
-                            <span
-                              className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium ${
-                                movement.type === 'IN'
-                                  ? 'bg-green-100 text-green-700'
-                                  : 'bg-red-100 text-red-700'
-                              }`}
-                            >
-                              {movement.type === 'IN' ? (
-                                <TrendingUp className="h-3 w-3" />
-                              ) : (
-                                <TrendingDown className="h-3 w-3" />
-                              )}
-                              {movement.type === 'IN' ? 'Entrada' : 'Salida'}
-                            </span>
-                          </TableCell>
-                          <TableCell className="font-semibold">
-                            {formatCurrency(movement.amount)}
-                          </TableCell>
-                          <TableCell className="text-sm text-gray-600">
-                            {movement.reason || '-'}
-                          </TableCell>
-                          <TableCell className="text-sm">
-                            {movement.createdBy?.name || 'N/A'}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                  <div className="space-y-2">
+                    {movements.map((movement: any) => (
+                      <div
+                        key={movement.id}
+                        className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border hover:bg-gray-100 transition-colors"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div
+                            className={`p-2 rounded ${
+                              movement.type === 'IN'
+                                ? 'bg-green-100 text-green-700'
+                                : 'bg-red-100 text-red-700'
+                            }`}
+                          >
+                            {movement.type === 'IN' ? (
+                              <TrendingUp className="h-4 w-4" />
+                            ) : (
+                              <TrendingDown className="h-4 w-4" />
+                            )}
+                          </div>
+                          <div>
+                            <div className="font-semibold text-sm">
+                              {formatCurrency(movement.amount)}
+                            </div>
+                            <div className="text-xs text-gray-600">
+                              {movement.reason || 'Sin razón'} • {formatDate(movement.createdAt)}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 )}
               </CardContent>
             </Card>
@@ -539,95 +565,41 @@ export function CashShiftScreen() {
             {/* Payments List */}
             <Card>
               <CardHeader>
-                <CardTitle>Pagos del Turno</CardTitle>
+                <CardTitle className="text-lg">Pagos del Turno</CardTitle>
               </CardHeader>
               <CardContent>
                 {payments.length === 0 ? (
-                  <div className="text-center text-gray-500 py-8">
-                    No hay pagos registrados
+                  <div className="text-center text-gray-500 py-12">
+                    <DollarSign className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+                    <p className="text-sm">No hay pagos registrados</p>
                   </div>
                 ) : (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Fecha</TableHead>
-                        <TableHead>Método</TableHead>
-                        <TableHead>Factura</TableHead>
-                        <TableHead>Monto</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {payments.map((payment: any) => {
-                        const Icon = getPaymentMethodIcon(payment.method)
-                        return (
-                          <TableRow key={payment.id}>
-                            <TableCell className="text-sm">
-                              {formatDate(payment.createdAt)}
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex items-center gap-2">
-                                <Icon className="h-4 w-4 text-gray-600" />
-                                <span className="text-sm font-medium">
-                                  {getPaymentMethodLabel(payment.method)}
-                                </span>
+                  <div className="space-y-2">
+                    {payments.map((payment: any) => {
+                      const Icon = getPaymentMethodIcon(payment.method)
+                      return (
+                        <div
+                          key={payment.id}
+                          className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border hover:bg-gray-100 transition-colors"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="p-2 bg-white rounded border">
+                              <Icon className="h-4 w-4 text-gray-600" />
+                            </div>
+                            <div>
+                              <div className="font-semibold text-sm">
+                                {formatCurrency(payment.amount)}
                               </div>
-                            </TableCell>
-                            <TableCell className="text-sm font-mono">
-                              {payment.invoiceNumber || '-'}
-                            </TableCell>
-                            <TableCell className="font-semibold">
-                              {formatCurrency(payment.amount)}
-                            </TableCell>
-                          </TableRow>
-                        )
-                      })}
-                    </TableBody>
-                  </Table>
+                              <div className="text-xs text-gray-600">
+                                {getPaymentMethodLabel(payment.method)} • {payment.invoiceNumber || 'N/A'}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
                 )}
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Quick Actions Sidebar */}
-          <div className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Acciones Rápidas</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                <Button
-                  className="w-full"
-                  variant="outline"
-                  onClick={() => {
-                    setMovementType('IN')
-                    setShowMovementDialog(true)
-                  }}
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Registrar Entrada
-                </Button>
-                <Button
-                  className="w-full"
-                  variant="outline"
-                  onClick={() => {
-                    setMovementType('OUT')
-                    setShowMovementDialog(true)
-                  }}
-                >
-                  <Minus className="h-4 w-4 mr-2" />
-                  Registrar Salida
-                </Button>
-                <Button
-                  className="w-full"
-                  variant="destructive"
-                  onClick={() => {
-                    setCountedCash(activeShift.expectedCash?.toString() || '0')
-                    setShowCloseDialog(true)
-                  }}
-                >
-                  <Lock className="h-4 w-4 mr-2" />
-                  Cerrar Turno
-                </Button>
               </CardContent>
             </Card>
           </div>
