@@ -281,7 +281,12 @@ export function SubscriptionConfig({ settings, onSave, isLoading }: Subscription
                         })}
                       </TableCell>
                       <TableCell className="font-medium">
-                        {formatCurrency(payment.amount, payment.currency)}
+                        {new Intl.NumberFormat('es-CO', {
+                          style: 'currency',
+                          currency: payment.currency || 'COP',
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        }).format(payment.amount)}
                       </TableCell>
                       <TableCell>
                         {payment.mercadoPagoPaymentId ? (
