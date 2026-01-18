@@ -34,7 +34,24 @@ export default function AdminLoginPage() {
       })
 
       if (result?.error) {
-        setError('Credenciales inválidas. Verifique su usuario y contraseña.')
+        // Mostrar mensaje de error más específico
+        const errorMessage = result.error
+        let displayMessage = 'Credenciales inválidas. Verifique su usuario y contraseña.'
+        
+        if (errorMessage.includes('USER_INACTIVE')) {
+          displayMessage = 'Su cuenta está inactiva. Contacte al administrador.'
+        } else if (errorMessage.includes('INVALID_CREDENTIALS')) {
+          displayMessage = 'Usuario o contraseña incorrectos.'
+        } else if (errorMessage.includes('TENANT_DB_ERROR')) {
+          displayMessage = 'Error de conexión con la base de datos. Intente nuevamente.'
+        } else if (errorMessage.includes('TENANT_NOT_READY')) {
+          displayMessage = 'El sistema aún no está completamente configurado.'
+        } else if (errorMessage) {
+          // Mostrar el mensaje de error específico si está disponible
+          displayMessage = errorMessage.replace(/^(INVALID_CREDENTIALS|USER_INACTIVE|TENANT_DB_ERROR|TENANT_NOT_READY):\s*/i, '')
+        }
+        
+        setError(displayMessage)
         setLoading(false)
       } else if (result?.ok) {
         // Wait a bit to ensure session is fully established
