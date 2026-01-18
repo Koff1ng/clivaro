@@ -43,12 +43,6 @@ export const prisma = globalForPrisma.prisma ?? new PrismaClient({
     },
   },
   log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
-  // Configuración adicional para limitar conexiones
-  __internal: {
-    engine: {
-      connection_limit: 1,
-    },
-  } as any,
 })
 
 // Always cache in globalThis to prevent multiple instances in serverless

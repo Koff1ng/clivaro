@@ -103,12 +103,6 @@ export function getTenantPrisma(databaseUrl: string): PrismaClient {
         },
       },
       log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
-      // Configuración adicional para limitar conexiones
-      __internal: {
-        engine: {
-          connection_limit: 1,
-        },
-      } as any,
     })
     
     // Double-check: verificar una vez más antes de guardar (evita race conditions)
