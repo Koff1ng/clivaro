@@ -17,9 +17,18 @@ function addConnectionLimit(url: string): string {
     return url
   }
   
-  // Añadir connection_limit=1 para usar solo 1 conexión del pool de Supabase
+  // Añadir connection_limit=1 y pool_timeout para usar solo 1 conexión del pool de Supabase
   const separator = url.includes('?') ? '&' : '?'
-  return `${url}${separator}connection_limit=1`
+  // Usar connection_limit=1 y pool_timeout=10 para evitar exceder el límite
+  let newUrl = url
+  if (!newUrl.includes('connection_limit=')) {
+    newUrl = `${newUrl}${separator}connection_limit=1`
+  }
+  if (!newUrl.includes('pool_timeout=')) {
+    const sep = newUrl.includes('?') ? '&' : '?'
+    newUrl = `${newUrl}${sep}pool_timeout=10`
+  }
+  return newUrl
 }
 
 // Singleton pattern that works in both dev and production (Vercel serverless)
@@ -34,6 +43,12 @@ export const prisma = globalForPrisma.prisma ?? new PrismaClient({
     },
   },
   log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
+  // Configuración adicional para limitar conexiones
+  __internal: {
+    engine: {
+      connection_limit: 1,
+    },
+  } as any,
 })
 
 // Always cache in globalThis to prevent multiple instances in serverless

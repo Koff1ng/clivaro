@@ -109,10 +109,14 @@ export const authOptions: NextAuthOptions = {
               // Si es error de límite de conexiones, esperar y reintentar
               if (errorMessage.includes('MaxClientsInSessionMode') || errorMessage.includes('max clients reached')) {
                 if (attempt < maxRetries - 1) {
-                  const delay = Math.min(1000 * Math.pow(2, attempt), 5000) // Backoff exponencial, max 5s
+                  // Aumentar el delay para dar tiempo a que se liberen las conexiones
+                  const delay = Math.min(2000 * Math.pow(2, attempt), 10000) // Backoff exponencial, max 10s
                   console.warn(`[AUTH] Límite de conexiones alcanzado, reintentando en ${delay}ms (intento ${attempt + 1}/${maxRetries})`)
                   await new Promise(resolve => setTimeout(resolve, delay))
                   continue
+                } else {
+                  // En el último intento, dar un mensaje más claro
+                  throw new Error('TENANT_DB_ERROR: El sistema está experimentando una alta carga. Por favor, intente nuevamente en unos momentos.')
                 }
               }
               
