@@ -101,7 +101,12 @@ export function MercadoPagoCardForm({
         iframe: true,
         form: {
           id: 'mp-card-form',
-          // NO incluir cardholderName aquí - usamos nuestro input personalizado
+          // Importante: Mercado Pago requiere que se declare cardholderName en la configuración del form.
+          // Usamos nuestro input personalizado con el mismo id, pero el SDK necesita saber que el campo existe.
+          cardholderName: {
+            id: 'form-checkout__cardholderName',
+            placeholder: 'Nombre tal como aparece en la tarjeta',
+          },
           cardholderEmail: {
             id: 'form-checkout__cardholderEmail',
             placeholder: 'email@ejemplo.com',
