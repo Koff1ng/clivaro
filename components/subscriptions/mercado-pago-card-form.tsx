@@ -156,17 +156,37 @@ export function MercadoPagoCardForm({
             setIsProcessing(true)
 
             try {
+              // Obtener los valores del formulario
+              const identificationType = (document.getElementById('form-checkout__identificationType') as HTMLSelectElement)?.value
+              const identificationNumber = (document.getElementById('form-checkout__identificationNumber') as HTMLInputElement)?.value
+              const installments = (document.getElementById('form-checkout__installments') as HTMLSelectElement)?.value
+
+              // Usar el método getCardFormData del CardForm para obtener los datos
+              if (!cardFormRef.current) {
+                throw new Error('El formulario de pago no está inicializado')
+              }
+
+              const formData = cardFormRef.current.getCardFormData()
+
+              // Obtener el nombre del titular desde múltiples fuentes para máxima robustez
+              const domCardholderInput = document.getElementById('form-checkout__cardholderName') as HTMLInputElement | null
+              const nameFromDom = domCardholderInput?.value || ''
+              const nameFromForm = (formData && (formData.cardholderName || formData.cardholder_name)) || ''
+              const nameFromState = cardholderName || ''
+
+              const finalCardholderNameRaw = nameFromDom || nameFromForm || nameFromState
+              const finalCardholderName = finalCardholderNameRaw.trim()
+
               // Validar campos requeridos ANTES de intentar crear el token
-              const trimmedCardholderName = (cardholderName || '').trim()
-              if (!trimmedCardholderName) {
+              if (!finalCardholderName) {
                 toast('Por favor, ingresa el nombre del titular de la tarjeta', 'error')
                 throw new Error('El nombre del titular es requerido. Ingresa el nombre tal como aparece en tu tarjeta.')
               }
-              if (trimmedCardholderName.length < 3) {
+              if (finalCardholderName.length < 3) {
                 toast('El nombre del titular debe tener al menos 3 caracteres', 'error')
                 throw new Error('El nombre del titular debe tener al menos 3 caracteres.')
               }
-              if (trimmedCardholderName.length > 50) {
+              if (finalCardholderName.length > 50) {
                 toast('El nombre del titular no puede exceder 50 caracteres', 'error')
                 throw new Error('El nombre del titular no puede exceder 50 caracteres.')
               }
@@ -179,25 +199,16 @@ export function MercadoPagoCardForm({
                 throw new Error('El teléfono es requerido')
               }
               
-              // Log para debugging
+              // Log de auditoría para depuración en caso de fallo
               console.log('Validating payment with:', {
-                cardholderName: trimmedCardholderName,
+                cardholderNameDom: nameFromDom,
+                cardholderNameForm: nameFromForm,
+                cardholderNameState: nameFromState,
+                finalCardholderName,
                 email: email.trim(),
                 phone: phone.trim(),
                 hasCardForm: !!cardFormRef.current,
               })
-
-              // Obtener los valores del formulario
-              const identificationType = (document.getElementById('form-checkout__identificationType') as HTMLSelectElement)?.value
-              const identificationNumber = (document.getElementById('form-checkout__identificationNumber') as HTMLInputElement)?.value
-              const installments = (document.getElementById('form-checkout__installments') as HTMLSelectElement)?.value
-
-              // Usar el método getCardFormData del CardForm para obtener los datos
-              if (!cardFormRef.current) {
-                throw new Error('El formulario de pago no está inicializado')
-              }
-
-              const formData = cardFormRef.current.getCardFormData()
               
               // Si no hay token en formData, intentar crear el token manualmente
               let token = formData.token
@@ -207,8 +218,8 @@ export function MercadoPagoCardForm({
               if (!token && mp && mp.fields) {
                 // Crear el token manualmente usando el SDK
                 try {
-                  // Usar el nombre tal como lo ingresó el usuario (puede tener mayúsculas, espacios, etc.)
-                  const normalizedCardholderName = cardholderName.trim().toUpperCase()
+                  // Usar el nombre tal como lo ingresó el usuario (normalizado a mayúsculas)
+                  const normalizedCardholderName = finalCardholderName.toUpperCase()
                   
                   const tokenResult = await mp.fields.createCardToken({
                     cardholderName: normalizedCardholderName,
