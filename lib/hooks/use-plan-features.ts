@@ -47,15 +47,33 @@ export function useTenantPlan() {
         }
       }
 
-      const res = await fetch('/api/tenant/plan')
-      if (!res.ok) {
-        throw new Error('Failed to fetch tenant plan')
+      try {
+        const res = await fetch('/api/tenant/plan')
+        if (!res.ok) {
+          // Si hay error, retornar null para que el sidebar muestre elementos basándose solo en permisos
+          console.warn('Failed to fetch tenant plan, using permissions-only mode')
+          return {
+            plan: null,
+            subscription: null,
+            features: null,
+          }
+        }
+        return res.json()
+      } catch (err) {
+        // Si hay error de red o conexión, retornar null para que el sidebar funcione
+        console.warn('Error fetching tenant plan, using permissions-only mode:', err)
+        return {
+          plan: null,
+          subscription: null,
+          features: null,
+        }
       }
-      return res.json()
     },
     enabled: !!session,
     staleTime: 5 * 60 * 1000, // 5 minutos
     gcTime: 10 * 60 * 1000, // 10 minutos
+    retry: 2, // Reintentar 2 veces antes de usar el fallback
+    retryDelay: 2000, // Esperar 2 segundos entre reintentos
   })
 
   const planName = (data?.plan?.name as PlanName) || null
