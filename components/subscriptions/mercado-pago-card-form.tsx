@@ -101,10 +101,7 @@ export function MercadoPagoCardForm({
         iframe: true,
         form: {
           id: 'mp-card-form',
-          cardholderName: {
-            id: 'form-checkout__cardholderName',
-            placeholder: 'Nombre tal como aparece en la tarjeta',
-          },
+          // NO incluir cardholderName aquí - usamos nuestro input personalizado
           cardholderEmail: {
             id: 'form-checkout__cardholderEmail',
             placeholder: 'email@ejemplo.com',
@@ -154,23 +151,36 @@ export function MercadoPagoCardForm({
             setIsProcessing(true)
 
             try {
-              // Validar campos requeridos
-              const trimmedCardholderName = cardholderName.trim()
+              // Validar campos requeridos ANTES de intentar crear el token
+              const trimmedCardholderName = (cardholderName || '').trim()
               if (!trimmedCardholderName) {
+                toast('Por favor, ingresa el nombre del titular de la tarjeta', 'error')
                 throw new Error('El nombre del titular es requerido. Ingresa el nombre tal como aparece en tu tarjeta.')
               }
               if (trimmedCardholderName.length < 3) {
+                toast('El nombre del titular debe tener al menos 3 caracteres', 'error')
                 throw new Error('El nombre del titular debe tener al menos 3 caracteres.')
               }
               if (trimmedCardholderName.length > 50) {
+                toast('El nombre del titular no puede exceder 50 caracteres', 'error')
                 throw new Error('El nombre del titular no puede exceder 50 caracteres.')
               }
               if (!email.trim() || !email.includes('@')) {
+                toast('Por favor, ingresa un email válido', 'error')
                 throw new Error('Un email válido es requerido')
               }
               if (!phone.trim()) {
+                toast('Por favor, ingresa un número de teléfono', 'error')
                 throw new Error('El teléfono es requerido')
               }
+              
+              // Log para debugging
+              console.log('Validating payment with:', {
+                cardholderName: trimmedCardholderName,
+                email: email.trim(),
+                phone: phone.trim(),
+                hasCardForm: !!cardFormRef.current,
+              })
 
               // Obtener los valores del formulario
               const identificationType = (document.getElementById('form-checkout__identificationType') as HTMLSelectElement)?.value
