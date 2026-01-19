@@ -175,17 +175,44 @@ export async function POST(request: Request) {
     try {
       paymentResult = await payment.create({ body: paymentData })
     } catch (mpError: any) {
+      // Error devuelto por la API de Mercado Pago
+      const mpMessage = mpError?.message || String(mpError)
+      const mpStatus = mpError?.status || mpError?.statusCode
+      const mpCode = mpError?.code || 'MERCADOPAGO_ERROR'
+      const mpCause = mpError?.cause
+
       logger.error('Mercado Pago payment creation failed', mpError, {
         subscriptionId: subscription.id,
-        errorMessage: mpError?.message,
-        errorStatus: mpError?.status,
-        errorCause: mpError?.cause,
+        errorMessage: mpMessage,
+        errorStatus: mpStatus,
+        errorCode: mpCode,
+        errorCause: mpCause,
         paymentData: {
           ...paymentData,
           token: token ? `${token.substring(0, 10)}...` : null, // Solo mostrar parte del token por seguridad
         },
       })
-      throw new Error(`Error al procesar el pago con Mercado Pago: ${mpError?.message || String(mpError)}`)
+
+      // Preparar mensaje amigable para el usuario según las causas de MP
+      let userMessage = 'El pago fue rechazado por Mercado Pago. Verifica los datos de la tarjeta o intenta con otro medio de pago.'
+
+      // Si Mercado Pago envía causas detalladas, usarlas
+      if (Array.isArray(mpCause) && mpCause.length > 0) {
+        const first = mpCause[0]
+        if (first?.description) {
+          userMessage = `El pago fue rechazado por Mercado Pago: ${first.description}`
+        }
+      }
+
+      return NextResponse.json(
+        {
+          error: userMessage,
+          code: mpCode,
+          mercadoPagoStatus: mpStatus,
+          cause: Array.isArray(mpCause) ? mpCause : undefined,
+        },
+        { status: 400 }
+      )
     }
 
     // Actualizar la suscripción con la información del pago
@@ -243,46 +270,19 @@ export async function POST(request: Request) {
     const errorMessage = error?.message || String(error)
     const errorCode = error?.code || 'UNKNOWN_ERROR'
     const errorStatus = error?.status || error?.statusCode
-    const errorCause = error?.cause
     
-    logger.error('Error processing Mercado Pago payment', error, {
+    logger.error('Error processing Mercado Pago payment (non-MP error)', error, {
       endpoint: '/api/subscriptions/payment-method',
       method: 'POST',
       errorMessage,
       errorCode,
       errorStatus,
       errorStack: error?.stack,
-      errorCause,
     })
-    
-    // Si es un error de Mercado Pago, intentar extraer causa legible
-    if (errorMessage.includes('Mercado Pago') || Array.isArray(errorCause)) {
-      let userMessage = 'Error al procesar el pago con Mercado Pago'
-      let detailedCause: any = undefined
-      
-      if (Array.isArray(errorCause) && errorCause.length > 0) {
-        detailedCause = errorCause
-        const first = errorCause[0]
-        if (first?.description) {
-          userMessage = `Error al procesar el pago con Mercado Pago: ${first.description}`
-        }
-      }
-      
-      return NextResponse.json(
-        { 
-          error: userMessage,
-          details: process.env.NODE_ENV === 'development' ? errorMessage : undefined,
-          code: errorCode,
-          mercadoPagoStatus: errorStatus,
-          cause: detailedCause,
-        },
-        { status: 400 }
-      )
-    }
     
     return NextResponse.json(
       { 
-        error: 'Error al procesar el pago', 
+        error: 'Error interno al procesar el pago', 
         details: process.env.NODE_ENV === 'development' ? errorMessage : undefined,
         code: errorCode,
       },
