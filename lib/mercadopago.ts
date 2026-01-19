@@ -38,7 +38,9 @@ export interface PaymentNotification {
  * Inicializa el cliente de Mercado Pago
  */
 export function initMercadoPagoClient(accessToken: string) {
-  const client = new MercadoPagoSDKConfig({ accessToken })
+  // Limpiar espacios y saltos de línea del token para evitar errores de HTTP headers
+  const cleanToken = accessToken.trim()
+  const client = new MercadoPagoSDKConfig({ accessToken: cleanToken })
   return {
     preference: new Preference(client),
     payment: new Payment(client),
