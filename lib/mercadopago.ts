@@ -22,6 +22,7 @@ export interface CreatePreferenceParams {
   }
   autoReturn?: 'approved' | 'all'
   externalReference?: string
+  notificationUrl?: string // URL del webhook (opcional, se construye automáticamente si no se proporciona)
 }
 
 export interface PaymentNotification {
@@ -72,9 +73,22 @@ export async function createPaymentPreference(
       back_urls: params.backUrls || {},
       auto_return: params.autoReturn || 'approved',
       external_reference: params.externalReference || params.subscriptionId || params.invoiceId,
-      notification_url: params.backUrls?.success
-        ? `${params.backUrls.success.replace('/success', '')}/api/payments/mercadopago/webhook`
-        : undefined,
+      notification_url: params.notificationUrl || (() => {
+        // Construir la URL del webhook desde backUrls.success si está disponible
+        if (params.backUrls?.success) {
+          try {
+            const url = new URL(params.backUrls.success)
+            return `${url.origin}/api/payments/mercadopago/webhook`
+          } catch {
+            // Si falla al parsear, usar el baseUrl del entorno
+            const baseUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://clivaro.vercel.app'
+            return `${baseUrl}/api/payments/mercadopago/webhook`
+          }
+        }
+        // Si no hay backUrls, usar el baseUrl del entorno
+        const baseUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://clivaro.vercel.app'
+        return `${baseUrl}/api/payments/mercadopago/webhook`
+      })(),
       statement_descriptor: params.title.substring(0, 22), // Máximo 22 caracteres
     }
 

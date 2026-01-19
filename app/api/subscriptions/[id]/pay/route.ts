@@ -128,8 +128,11 @@ export async function POST(
     const amount = subscription.plan.price
 
     // Crear la preferencia de pago
-    const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
+    const baseUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://clivaro.vercel.app'
     const tenantSlug = subscription.tenant.slug
+
+    // Construir la URL del webhook explícitamente
+    const webhookUrl = `${baseUrl}/api/payments/mercadopago/webhook`
 
     const preference = await createPaymentPreference(
       {
@@ -151,6 +154,7 @@ export async function POST(
         },
         autoReturn: 'approved',
         externalReference: subscription.id,
+        notificationUrl: webhookUrl, // Proporcionar explícitamente la URL del webhook
       }
     )
 
