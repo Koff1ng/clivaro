@@ -70,7 +70,8 @@ export async function POST(request: Request) {
     const paymentId = notification.data.id
 
     // Usar credenciales globales de Mercado Pago (Clivaro)
-    const mercadoPagoAccessToken = process.env.MERCADOPAGO_ACCESS_TOKEN
+    // Limpiar espacios y saltos de línea del token
+    const mercadoPagoAccessToken = process.env.MERCADOPAGO_ACCESS_TOKEN?.trim()
     
     if (!mercadoPagoAccessToken) {
       logger.error('Mercado Pago not configured in environment variables')

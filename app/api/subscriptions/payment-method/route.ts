@@ -133,7 +133,8 @@ export async function POST(request: Request) {
     }
 
     // Verificar que Mercado Pago está configurado
-    const mercadoPagoAccessToken = process.env.MERCADOPAGO_ACCESS_TOKEN
+    // Limpiar espacios y saltos de línea del token
+    const mercadoPagoAccessToken = process.env.MERCADOPAGO_ACCESS_TOKEN?.trim()
     
     if (!mercadoPagoAccessToken) {
       return NextResponse.json(

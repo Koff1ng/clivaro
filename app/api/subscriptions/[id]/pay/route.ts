@@ -101,8 +101,9 @@ export async function POST(
     }
 
     // Verificar que Mercado Pago está configurado (usando credenciales globales de Clivaro)
-    const mercadoPagoAccessToken = process.env.MERCADOPAGO_ACCESS_TOKEN
-    const mercadoPagoPublicKey = process.env.MERCADOPAGO_PUBLIC_KEY
+    // Limpiar espacios y saltos de línea del token
+    const mercadoPagoAccessToken = process.env.MERCADOPAGO_ACCESS_TOKEN?.trim()
+    const mercadoPagoPublicKey = process.env.MERCADOPAGO_PUBLIC_KEY?.trim()
     
     if (!mercadoPagoAccessToken) {
       return NextResponse.json(
