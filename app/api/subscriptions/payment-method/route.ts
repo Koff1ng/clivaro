@@ -160,6 +160,7 @@ export async function POST(request: Request) {
         email: subscription.tenant.email || undefined,
       },
       external_reference: subscription.id,
+      statement_descriptor: `CLIVARO ${subscription.plan.name.substring(0, 12)}`, // Máximo 13 caracteres
     }
 
     logger.info('Creating Mercado Pago payment', {

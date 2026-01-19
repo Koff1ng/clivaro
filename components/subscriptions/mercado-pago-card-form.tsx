@@ -2,9 +2,12 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Loader2, CreditCard, AlertCircle } from 'lucide-react'
+import { Loader2, CreditCard, AlertCircle, Phone, User } from 'lucide-react'
 import { useToast } from '@/components/ui/toast'
 import { formatCurrency } from '@/lib/utils'
+import { Card, CardContent } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 
 interface MercadoPagoCardFormProps {
   subscriptionId: string
@@ -35,6 +38,12 @@ export function MercadoPagoCardForm({
   const formRef = useRef<HTMLFormElement>(null)
   const cardFormRef = useRef<any>(null)
   const isMountedRef = useRef(false)
+  
+  // Estados para los campos del formulario
+  const [cardholderName, setCardholderName] = useState('')
+  const [phone, setPhone] = useState('')
+  const [countryCode, setCountryCode] = useState('+57') // Colombia por defecto
+  const [email, setEmail] = useState('')
 
   // Cargar SDK de Mercado Pago
   useEffect(() => {
@@ -94,23 +103,23 @@ export function MercadoPagoCardForm({
           id: 'mp-card-form',
           cardholderName: {
             id: 'form-checkout__cardholderName',
-            placeholder: 'Titular de la tarjeta',
+            placeholder: 'John Doe',
           },
           cardholderEmail: {
             id: 'form-checkout__cardholderEmail',
-            placeholder: 'E-mail',
+            placeholder: 'email@ejemplo.com',
           },
           cardNumber: {
             id: 'form-checkout__cardNumber',
-            placeholder: 'Número de tarjeta',
+            placeholder: '1234 1234 1234 1234',
           },
           expirationDate: {
             id: 'form-checkout__expirationDate',
-            placeholder: 'MM/AA',
+            placeholder: 'MM/YY',
           },
           securityCode: {
             id: 'form-checkout__securityCode',
-            placeholder: 'Código de seguridad',
+            placeholder: 'CVC',
           },
           installments: {
             id: 'form-checkout__installments',
@@ -145,9 +154,18 @@ export function MercadoPagoCardForm({
             setIsProcessing(true)
 
             try {
+              // Validar campos requeridos
+              if (!cardholderName.trim()) {
+                throw new Error('El nombre completo es requerido')
+              }
+              if (!email.trim() || !email.includes('@')) {
+                throw new Error('Un email válido es requerido')
+              }
+              if (!phone.trim()) {
+                throw new Error('El teléfono es requerido')
+              }
+
               // Obtener los valores del formulario
-              const cardholderName = (document.getElementById('form-checkout__cardholderName') as HTMLInputElement)?.value
-              const cardholderEmail = (document.getElementById('form-checkout__cardholderEmail') as HTMLInputElement)?.value
               const identificationType = (document.getElementById('form-checkout__identificationType') as HTMLSelectElement)?.value
               const identificationNumber = (document.getElementById('form-checkout__identificationNumber') as HTMLInputElement)?.value
               const installments = (document.getElementById('form-checkout__installments') as HTMLSelectElement)?.value
@@ -168,8 +186,8 @@ export function MercadoPagoCardForm({
                 // Crear el token manualmente usando el SDK
                 try {
                   const tokenResult = await mp.fields.createCardToken({
-                    cardholderName: cardholderName || undefined,
-                    cardholderEmail: cardholderEmail || undefined,
+                    cardholderName: cardholderName.trim(),
+                    cardholderEmail: email.trim(),
                     identificationType: identificationType || undefined,
                     identificationNumber: identificationNumber || undefined,
                   })
@@ -211,7 +229,7 @@ export function MercadoPagoCardForm({
               }
 
               if (paymentData.success) {
-                toast('Pago procesado exitosamente', 'success')
+                toast('¡Pago procesado exitosamente!', 'success')
                 onPaymentSuccess?.()
               } else {
                 throw new Error(paymentData.payment?.statusDetail || 'El pago fue rechazado')
@@ -269,8 +287,8 @@ export function MercadoPagoCardForm({
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-8">
-        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground mr-2" />
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground mr-2" />
         <span className="text-sm text-muted-foreground">Cargando pasarela de pago...</span>
       </div>
     )
@@ -291,133 +309,189 @@ export function MercadoPagoCardForm({
   }
 
   return (
-    <div className="space-y-4">
-      <div className="p-4 bg-muted rounded-lg">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-sm font-medium text-muted-foreground">Monto a pagar</span>
-          <span className="text-xl font-bold">{formatCurrency(amount)}</span>
-        </div>
-      </div>
-
-      <form id="mp-card-form" ref={formRef} className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <Card className="w-full max-w-2xl mx-auto">
+      <CardContent className="p-6">
+        <form id="mp-card-form" ref={formRef} className="space-y-5">
+          {/* Full Name */}
           <div className="space-y-2">
-            <label htmlFor="form-checkout__cardholderName" className="text-sm font-medium">
-              Titular de la tarjeta
-            </label>
-            <input
-              type="text"
-              id="form-checkout__cardholderName"
-              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-              placeholder="Nombre completo"
-            />
+            <Label htmlFor="form-checkout__cardholderName" className="text-sm font-medium">
+              Full Name:
+            </Label>
+            <div className="relative">
+              <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <input
+                type="text"
+                id="form-checkout__cardholderName"
+                value={cardholderName}
+                onChange={(e) => setCardholderName(e.target.value)}
+                className="flex h-11 w-full rounded-md border border-input bg-background pl-10 pr-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                placeholder="John Doe"
+                required
+              />
+            </div>
           </div>
 
+          {/* Phone */}
           <div className="space-y-2">
-            <label htmlFor="form-checkout__cardholderEmail" className="text-sm font-medium">
-              E-mail
-            </label>
+            <Label htmlFor="phone" className="text-sm font-medium">
+              Phone:
+            </Label>
+            <div className="flex gap-2">
+              <select
+                value={countryCode}
+                onChange={(e) => setCountryCode(e.target.value)}
+                className="flex h-11 w-24 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              >
+                <option value="+57">🇨🇴 +57</option>
+                <option value="+1">🇺🇸 +1</option>
+                <option value="+52">🇲🇽 +52</option>
+                <option value="+54">🇦🇷 +54</option>
+                <option value="+55">🇧🇷 +55</option>
+                <option value="+56">🇨🇱 +56</option>
+                <option value="+51">🇵🇪 +51</option>
+              </select>
+              <div className="relative flex-1">
+                <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <input
+                  type="tel"
+                  id="phone"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  className="flex h-11 w-full rounded-md border border-input bg-background pl-10 pr-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  placeholder="+8917895190"
+                  required
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Email */}
+          <div className="space-y-2">
+            <Label htmlFor="form-checkout__cardholderEmail" className="text-sm font-medium">
+              Email:
+            </Label>
             <input
               type="email"
               id="form-checkout__cardholderEmail"
-              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               placeholder="email@ejemplo.com"
+              required
             />
           </div>
-        </div>
 
-        <div className="space-y-2">
-          <label htmlFor="form-checkout__cardNumber" className="text-sm font-medium">
-            Número de tarjeta
-          </label>
-          <div id="form-checkout__cardNumber" className="h-10 w-full rounded-md border border-input bg-background"></div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
+          {/* Card Number */}
           <div className="space-y-2">
-            <label htmlFor="form-checkout__expirationDate" className="text-sm font-medium">
-              Fecha de vencimiento
-            </label>
-            <div id="form-checkout__expirationDate" className="h-10 w-full rounded-md border border-input bg-background"></div>
+            <Label htmlFor="form-checkout__cardNumber" className="text-sm font-medium">
+              Card number
+            </Label>
+            <div 
+              id="form-checkout__cardNumber" 
+              className="h-11 w-full rounded-md border border-input bg-background px-3 py-2 flex items-center"
+            ></div>
+            {/* Los iconos de tarjetas se mostrarán automáticamente por Mercado Pago */}
           </div>
 
-          <div className="space-y-2">
-            <label htmlFor="form-checkout__securityCode" className="text-sm font-medium">
-              Código de seguridad
-            </label>
-            <div id="form-checkout__securityCode" className="h-10 w-full rounded-md border border-input bg-background"></div>
-          </div>
-        </div>
+          {/* Expiration Date and Security Code */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="form-checkout__expirationDate" className="text-sm font-medium">
+                Expiration date
+              </Label>
+              <div 
+                id="form-checkout__expirationDate" 
+                className="h-11 w-full rounded-md border border-input bg-background px-3 py-2"
+              ></div>
+            </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <label htmlFor="form-checkout__installments" className="text-sm font-medium">
+            <div className="space-y-2">
+              <Label htmlFor="form-checkout__securityCode" className="text-sm font-medium">
+                Security code
+              </Label>
+              <div 
+                id="form-checkout__securityCode" 
+                className="h-11 w-full rounded-md border border-input bg-background px-3 py-2"
+              ></div>
+            </div>
+          </div>
+
+          {/* Installments (Oculto por defecto, se mostrará si es necesario) */}
+          <div className="space-y-2 hidden">
+            <Label htmlFor="form-checkout__installments" className="text-sm font-medium">
               Cuotas
-            </label>
+            </Label>
             <select
               id="form-checkout__installments"
-              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
             >
-              <option value="">Selecciona cuotas</option>
+              <option value="1">1 cuota</option>
             </select>
           </div>
 
-          <div className="space-y-2">
-            <label htmlFor="form-checkout__identificationType" className="text-sm font-medium">
-              Tipo de documento
-            </label>
+          {/* Identification Type and Number (Ocultos por defecto, se mostrarán si es necesario) */}
+          <div className="grid grid-cols-2 gap-4 hidden">
+            <div className="space-y-2">
+              <Label htmlFor="form-checkout__identificationType" className="text-sm font-medium">
+                Tipo de documento
+              </Label>
+              <select
+                id="form-checkout__identificationType"
+                className="flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              >
+                <option value="">Selecciona tipo</option>
+                <option value="CC">Cédula de Ciudadanía</option>
+                <option value="CE">Cédula de Extranjería</option>
+                <option value="NIT">NIT</option>
+                <option value="PP">Pasaporte</option>
+              </select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="form-checkout__identificationNumber" className="text-sm font-medium">
+                Número de documento
+              </Label>
+              <input
+                type="text"
+                id="form-checkout__identificationNumber"
+                className="flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                placeholder="1234567890"
+              />
+            </div>
+          </div>
+
+          {/* Issuer (Oculto por defecto) */}
+          <div className="space-y-2 hidden">
+            <Label htmlFor="form-checkout__issuer" className="text-sm font-medium">
+              Banco emisor
+            </Label>
             <select
-              id="form-checkout__identificationType"
-              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              id="form-checkout__issuer"
+              className="flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
             >
-              <option value="">Selecciona tipo</option>
+              <option value="">Selecciona banco</option>
             </select>
           </div>
-        </div>
 
-        <div className="space-y-2">
-          <label htmlFor="form-checkout__identificationNumber" className="text-sm font-medium">
-            Número de documento
-          </label>
-          <input
-            type="text"
-            id="form-checkout__identificationNumber"
-            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-            placeholder="1234567890"
-          />
-        </div>
-
-        <div className="space-y-2">
-          <label htmlFor="form-checkout__issuer" className="text-sm font-medium">
-            Banco emisor
-          </label>
-          <select
-            id="form-checkout__issuer"
-            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+          {/* Pay Button */}
+          <Button
+            type="submit"
+            className="w-full h-12 text-base font-semibold bg-blue-600 hover:bg-blue-700 text-white"
+            disabled={isProcessing}
           >
-            <option value="">Selecciona banco</option>
-          </select>
-        </div>
-
-        <Button
-          type="submit"
-          className="w-full"
-          disabled={isProcessing}
-        >
-          {isProcessing ? (
-            <>
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              Procesando pago...
-            </>
-          ) : (
-            <>
-              <CreditCard className="h-4 w-4 mr-2" />
-              Pagar {formatCurrency(amount)}
-            </>
-          )}
-        </Button>
-      </form>
-    </div>
+            {isProcessing ? (
+              <>
+                <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                Procesando...
+              </>
+            ) : (
+              <>
+                Pay {formatCurrency(amount)}
+              </>
+            )}
+          </Button>
+        </form>
+      </CardContent>
+    </Card>
   )
 }
-
