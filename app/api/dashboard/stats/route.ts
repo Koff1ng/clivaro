@@ -5,6 +5,8 @@ import { getPrismaForRequest } from '@/lib/get-tenant-prisma'
 import { logger } from '@/lib/logger'
 import { startOfDay, startOfMonth } from 'date-fns'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET(request: Request) {
   const startTime = Date.now()
   logger.apiRequest('GET', '/api/dashboard/stats')
