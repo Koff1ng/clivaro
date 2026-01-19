@@ -8,9 +8,11 @@ import { useToast } from '@/components/ui/toast'
 
 interface PaySubscriptionButtonProps {
   subscriptionId: string
-  planName: string
-  amount: number
+  planName?: string
+  amount?: number
   onPaymentCreated?: (subscriptionId: string, initPoint: string) => void
+  onSuccess?: () => void
+  onError?: (error: string) => void
   disabled?: boolean
 }
 
@@ -31,6 +33,8 @@ export function PaySubscriptionButton({
   planName,
   amount,
   onPaymentCreated,
+  onSuccess,
+  onError,
   disabled = false,
 }: PaySubscriptionButtonProps) {
   const { toast } = useToast()
@@ -47,6 +51,7 @@ export function PaySubscriptionButton({
         // Abrir el checkout de Mercado Pago en una nueva ventana
         window.open(initPoint, '_blank')
         onPaymentCreated?.(data.subscriptionId, initPoint)
+        onSuccess?.()
         toast(
           data.sandboxInitPoint 
             ? 'Redirigiendo a Mercado Pago (Modo Prueba)...' 
@@ -54,11 +59,15 @@ export function PaySubscriptionButton({
           'success'
         )
       } else {
-        toast('Error: No se pudo obtener la URL de pago', 'error')
+        const errorMsg = 'Error: No se pudo obtener la URL de pago'
+        onError?.(errorMsg)
+        toast(errorMsg, 'error')
       }
     },
     onError: (error: any) => {
-      toast(error.message || 'Error al procesar el pago', 'error')
+      const errorMsg = error.message || 'Error al procesar el pago'
+      onError?.(errorMsg)
+      toast(errorMsg, 'error')
     },
     onSettled: () => {
       setIsProcessing(false)
