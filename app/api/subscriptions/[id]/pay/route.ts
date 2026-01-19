@@ -181,6 +181,7 @@ export async function POST(
       preferenceId: preference.preferenceId,
       initPoint: preference.initPoint,
       sandboxInitPoint: preference.sandboxInitPoint,
+      isTestMode: preference.isTestMode || false,
       publicKey: mercadoPagoPublicKey || undefined,
     })
   } catch (error: any) {
