@@ -24,15 +24,31 @@ interface SubscriptionConfigProps {
 }
 
 async function fetchSubscription() {
-  const res = await fetch('/api/tenant/plan')
-  if (!res.ok) throw new Error('Failed to fetch subscription')
-  return res.json()
+  try {
+    const res = await fetch('/api/tenant/plan')
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}))
+      throw new Error(errorData.error || errorData.details || `Error ${res.status}: Failed to fetch subscription`)
+    }
+    return res.json()
+  } catch (error: any) {
+    console.error('Error fetching subscription:', error)
+    throw error
+  }
 }
 
 async function fetchPaymentHistory() {
-  const res = await fetch('/api/subscriptions/payments')
-  if (!res.ok) throw new Error('Failed to fetch payment history')
-  return res.json()
+  try {
+    const res = await fetch('/api/subscriptions/payments')
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}))
+      throw new Error(errorData.error || errorData.details || `Error ${res.status}: Failed to fetch payment history`)
+    }
+    return res.json()
+  } catch (error: any) {
+    console.error('Error fetching payment history:', error)
+    throw error
+  }
 }
 
 async function cancelSubscription(subscriptionId: string) {
@@ -53,14 +69,20 @@ export function SubscriptionConfig({ settings, onSave, isLoading }: Subscription
   const [showPaymentDialog, setShowPaymentDialog] = useState(false)
   const [autoRenew, setAutoRenew] = useState(settings?.subscriptionAutoRenew ?? true)
 
-  const { data: subscriptionData, isLoading: isLoadingSubscription } = useQuery({
+  const { data: subscriptionData, isLoading: isLoadingSubscription, error: subscriptionError } = useQuery({
     queryKey: ['tenant-plan'],
     queryFn: fetchSubscription,
+    retry: 3,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+    staleTime: 5 * 60 * 1000, // 5 minutos
   })
 
-  const { data: paymentHistory, isLoading: isLoadingPayments } = useQuery({
+  const { data: paymentHistory, isLoading: isLoadingPayments, error: paymentHistoryError } = useQuery({
     queryKey: ['subscription-payments'],
     queryFn: fetchPaymentHistory,
+    retry: 3,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+    staleTime: 5 * 60 * 1000, // 5 minutos
   })
 
   const plan = subscriptionData?.plan
@@ -162,6 +184,32 @@ export function SubscriptionConfig({ settings, onSave, isLoading }: Subscription
       <Card>
         <CardContent className="flex items-center justify-center py-12">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </CardContent>
+      </Card>
+    )
+  }
+
+  // Mostrar error si falla la carga de la suscripción
+  if (subscriptionError) {
+    return (
+      <Card>
+        <CardContent className="flex flex-col items-center justify-center py-12 space-y-4">
+          <AlertTriangle className="h-8 w-8 text-destructive" />
+          <div className="text-center">
+            <p className="font-semibold text-destructive">Error al cargar la suscripción</p>
+            <p className="text-sm text-muted-foreground mt-2">
+              {subscriptionError instanceof Error ? subscriptionError.message : 'Error desconocido'}
+            </p>
+            <Button
+              variant="outline"
+              className="mt-4"
+              onClick={() => {
+                queryClient.invalidateQueries({ queryKey: ['tenant-plan'] })
+              }}
+            >
+              Reintentar
+            </Button>
+          </div>
         </CardContent>
       </Card>
     )
