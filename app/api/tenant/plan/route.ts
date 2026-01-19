@@ -8,8 +8,8 @@ export const dynamic = 'force-dynamic'
 // Función helper para ejecutar consultas con retry y manejo de errores de conexión
 async function executeWithRetry<T>(
   fn: () => Promise<T>,
-  maxRetries = 3,
-  delay = 1000
+  maxRetries = 5,
+  delay = 2000
 ): Promise<T> {
   let lastError: any
   for (let attempt = 0; attempt < maxRetries; attempt++) {
@@ -22,7 +22,7 @@ async function executeWithRetry<T>(
       // Si es error de límite de conexiones, esperar y reintentar
       if (errorMessage.includes('MaxClientsInSessionMode') || errorMessage.includes('max clients reached')) {
         if (attempt < maxRetries - 1) {
-          const backoffDelay = Math.min(delay * Math.pow(2, attempt), 10000) // Backoff exponencial, max 10s
+          const backoffDelay = Math.min(delay * Math.pow(2, attempt), 15000) // Backoff exponencial, max 15s
           logger.warn(`[Tenant Plan] Límite de conexiones alcanzado, reintentando en ${backoffDelay}ms (intento ${attempt + 1}/${maxRetries})`)
           await new Promise(resolve => setTimeout(resolve, backoffDelay))
           continue
