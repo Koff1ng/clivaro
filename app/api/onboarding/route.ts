@@ -79,9 +79,9 @@ export async function POST(request: Request) {
     const validatedData = onboardingSchema.parse(body)
 
     // Obtener tenant para acceder a su BD
-    const tenant = await prisma.tenant.findUnique({
+    const tenant = await executeWithRetry(() => prisma.tenant.findUnique({
       where: { id: user.tenantId },
-    })
+    }))
 
     if (!tenant) {
       return NextResponse.json(
