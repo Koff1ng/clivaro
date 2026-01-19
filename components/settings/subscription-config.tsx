@@ -267,18 +267,22 @@ export function SubscriptionConfig({ settings, onSave, isLoading }: Subscription
                       ? ' Completa el pago para activar tu suscripción.'
                       : ' Contacta con el administrador para más información.'}
                   </p>
-                  {(subscription.status === 'pending_payment' || subscription.status === 'pending') && subscription.id && (
-                    <PaySubscriptionButton
-                      subscriptionId={subscription.id}
-                      onSuccess={() => {
-                        queryClient.invalidateQueries({ queryKey: ['tenant-plan'] })
-                        queryClient.invalidateQueries({ queryKey: ['subscription-payments'] })
-                        toast('Pago procesado exitosamente', 'success')
-                      }}
-                      onError={(error) => {
-                        toast(error || 'Error al procesar el pago', 'error')
-                      }}
-                    />
+                  {(subscription.status === 'pending_payment' || subscription.status === 'pending') && subscription.id && plan && (
+                    <div className="mt-4">
+                      <MercadoPagoCardForm
+                        subscriptionId={subscription.id}
+                        amount={plan.price}
+                        currency={plan.currency || 'COP'}
+                        onPaymentSuccess={() => {
+                          queryClient.invalidateQueries({ queryKey: ['tenant-plan'] })
+                          queryClient.invalidateQueries({ queryKey: ['subscription-payments'] })
+                          toast('¡Pago procesado exitosamente!', 'success')
+                        }}
+                        onPaymentError={(error) => {
+                          toast(error || 'Error al procesar el pago', 'error')
+                        }}
+                      />
+                    </div>
                   )}
                 </div>
               </div>
@@ -385,28 +389,30 @@ export function SubscriptionConfig({ settings, onSave, isLoading }: Subscription
             </div>
           )}
 
-          {/* Payment Button for expired/pending subscriptions */}
+          {/* Payment Form for expired/pending subscriptions - Solo Checkout API */}
           {subscription && (subscription.status === 'expired' || subscription.status === 'pending_payment') && plan && (
-            <div className="p-4 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-200 dark:border-orange-800">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-semibold text-orange-900 dark:text-orange-100 mb-1">
-                    {subscription.status === 'expired' ? 'Suscripción Expirada' : 'Pago Pendiente'}
-                  </p>
-                  <p className="text-sm text-orange-800 dark:text-orange-200">
-                    Monto a pagar: <span className="font-bold">{formatCurrency(plan.price)}</span>
-                  </p>
-                </div>
-                <PaySubscriptionButton
-                  subscriptionId={subscription.id}
-                  planName={plan.name}
-                  amount={plan.price}
-                  onPaymentCreated={() => {
-                    queryClient.invalidateQueries({ queryKey: ['tenant-plan'] })
-                    queryClient.invalidateQueries({ queryKey: ['subscription-payments'] })
-                  }}
-                />
+            <div className="p-6 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-200 dark:border-orange-800">
+              <div className="mb-4">
+                <p className="text-lg font-semibold text-orange-900 dark:text-orange-100 mb-2">
+                  {subscription.status === 'expired' ? 'Suscripción Expirada' : 'Pago Pendiente'}
+                </p>
+                <p className="text-sm text-orange-800 dark:text-orange-200">
+                  Completa el pago para activar tu suscripción. Monto: <span className="font-bold">{formatCurrency(plan.price)}</span>
+                </p>
               </div>
+              <MercadoPagoCardForm
+                subscriptionId={subscription.id}
+                amount={plan.price}
+                currency={plan.currency || 'COP'}
+                onPaymentSuccess={() => {
+                  queryClient.invalidateQueries({ queryKey: ['tenant-plan'] })
+                  queryClient.invalidateQueries({ queryKey: ['subscription-payments'] })
+                  toast('¡Pago procesado exitosamente!', 'success')
+                }}
+                onPaymentError={(error) => {
+                  toast(error || 'Error al procesar el pago', 'error')
+                }}
+              />
             </div>
           )}
         </CardContent>
