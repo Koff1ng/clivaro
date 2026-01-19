@@ -8,6 +8,37 @@ import bcrypt from 'bcryptjs'
 
 export const dynamic = 'force-dynamic'
 
+// Función helper para ejecutar consultas con retry y manejo de errores de conexión
+async function executeWithRetry<T>(
+  fn: () => Promise<T>,
+  maxRetries = 3,
+  delay = 1000
+): Promise<T> {
+  let lastError: any
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      return await fn()
+    } catch (error: any) {
+      lastError = error
+      const errorMessage = error?.message || String(error)
+      
+      // Si es error de límite de conexiones, esperar y reintentar
+      if (errorMessage.includes('MaxClientsInSessionMode') || errorMessage.includes('max clients reached')) {
+        if (attempt < maxRetries - 1) {
+          const backoffDelay = Math.min(delay * Math.pow(2, attempt), 10000) // Backoff exponencial, max 10s
+          logger.warn(`[Onboarding] Límite de conexiones alcanzado, reintentando en ${backoffDelay}ms (intento ${attempt + 1}/${maxRetries})`)
+          await new Promise(resolve => setTimeout(resolve, backoffDelay))
+          continue
+        }
+      }
+      
+      // Si no es error de conexión, lanzar inmediatamente
+      throw error
+    }
+  }
+  throw lastError
+}
+
 const onboardingSchema = z.object({
   userName: z.string().min(1, 'El nombre es requerido'),
   companyName: z.string().min(1, 'El nombre de la empresa es requerido'),
@@ -186,25 +217,30 @@ export async function GET(request: Request) {
     }
 
     try {
-      const settings = await prisma.tenantSettings.findUnique({
-        where: { tenantId: user.tenantId }
-      })
+      // Usar executeWithRetry para manejar errores de conexión
+      const settings = await executeWithRetry(() =>
+        prisma.tenantSettings.findUnique({
+          where: { tenantId: user.tenantId }
+        })
+      )
 
-      // Obtener el plan del tenant (con manejo de errores)
+      // Obtener el plan del tenant (con manejo de errores y retry)
       let subscription = null
       try {
-        subscription = await prisma.subscription.findFirst({
-          where: {
-            tenantId: user.tenantId,
-            status: 'active',
-          },
-          include: {
-            plan: true,
-          },
-          orderBy: {
-            createdAt: 'desc',
-          },
-        })
+        subscription = await executeWithRetry(() =>
+          prisma.subscription.findFirst({
+            where: {
+              tenantId: user.tenantId,
+              status: 'active',
+            },
+            include: {
+              plan: true,
+            },
+            orderBy: {
+              createdAt: 'desc',
+            },
+          })
+        )
       } catch (subError: any) {
         // Si hay error al obtener suscripción (posiblemente campos nuevos no migrados), continuar sin plan
         logger.warn('Error fetching subscription in onboarding check', {
