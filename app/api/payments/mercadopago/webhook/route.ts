@@ -72,12 +72,33 @@ export async function POST(request: Request) {
       )
     }
 
-    // Buscar en todas las suscripciones (Mercado Pago solo se usa para suscripciones)
+    // Primero obtener la información del pago desde Mercado Pago para obtener el external_reference
+    let paymentInfo
+    try {
+      paymentInfo = await getPaymentInfo(
+        {
+          accessToken: mercadoPagoAccessToken,
+        },
+        paymentId
+      )
+    } catch (error: any) {
+      logger.error('Error fetching payment info from Mercado Pago', error, {
+        paymentId,
+      })
+      // Continuar intentando buscar por paymentId directamente
+    }
+
+    // Buscar la suscripción por múltiples criterios:
+    // 1. Por paymentId (si ya está guardado)
+    // 2. Por preferenceId (si el paymentId es en realidad un preferenceId)
+    // 3. Por external_reference del pago (subscriptionId)
     const subscription = await executeWithRetry(() => prisma.subscription.findFirst({
       where: {
         OR: [
           { mercadoPagoPaymentId: paymentId },
           { mercadoPagoPreferenceId: paymentId },
+          // Si tenemos el external_reference del pago, buscarlo
+          ...(paymentInfo?.externalReference ? [{ id: paymentInfo.externalReference }] : []),
         ],
       },
       include: {
@@ -87,35 +108,58 @@ export async function POST(request: Request) {
     }))
 
     if (subscription) {
-      // Obtener información actualizada del pago desde Mercado Pago
-      const paymentInfo = await getPaymentInfo(
-        {
-          accessToken: mercadoPagoAccessToken,
-        },
-        paymentId
-      )
+      // Si no obtuvimos la información del pago antes, obtenerla ahora
+      if (!paymentInfo) {
+        try {
+          paymentInfo = await getPaymentInfo(
+            {
+              accessToken: mercadoPagoAccessToken,
+            },
+            paymentId
+          )
+        } catch (error: any) {
+          logger.error('Error fetching payment info in subscription update', error, {
+            paymentId,
+            subscriptionId: subscription.id,
+          })
+          // Continuar con la información que tenemos
+        }
+      }
 
       // Actualizar la suscripción con la información de Mercado Pago
+      // Procesar TODOS los estados: approved, pending, rejected, cancelled, refunded, etc.
       const updateData: any = {
-        mercadoPagoPaymentId: paymentInfo.id ? paymentInfo.id.toString() : paymentId,
-        mercadoPagoStatus: paymentInfo.status,
-        mercadoPagoStatusDetail: paymentInfo.statusDetail,
-        mercadoPagoPaymentMethod: paymentInfo.paymentMethodId,
-        mercadoPagoTransactionId: paymentInfo.id ? paymentInfo.id.toString() : paymentId,
-        mercadoPagoResponse: JSON.stringify(paymentInfo),
+        mercadoPagoPaymentId: paymentInfo?.id ? paymentInfo.id.toString() : paymentId,
+        mercadoPagoStatus: paymentInfo?.status || 'pending',
+        mercadoPagoStatusDetail: paymentInfo?.statusDetail || null,
+        mercadoPagoPaymentMethod: paymentInfo?.paymentMethodId || null,
+        mercadoPagoTransactionId: paymentInfo?.id ? paymentInfo.id.toString() : paymentId,
+        mercadoPagoResponse: paymentInfo ? JSON.stringify(paymentInfo) : null,
         updatedAt: new Date(),
       }
 
-      // Si el pago fue aprobado, activar la suscripción
-      if (paymentInfo.status === 'approved') {
+      // Manejar diferentes estados del pago
+      if (paymentInfo?.status === 'approved') {
+        // Pago aprobado: activar la suscripción
         const now = new Date()
         const interval = subscription.plan.interval === 'annual' ? 365 : 30
         const endDate = new Date(now)
         endDate.setDate(endDate.getDate() + interval)
 
         updateData.status = 'active'
-        updateData.startDate = now
-        updateData.endDate = endDate
+        updateData.startDate = subscription.startDate || now
+        updateData.endDate = subscription.endDate ? 
+          new Date(Math.max(new Date(subscription.endDate).getTime(), endDate.getTime())) : 
+          endDate
+      } else if (paymentInfo?.status === 'pending' || paymentInfo?.status === 'in_process') {
+        // Pago pendiente: mantener estado pending_payment
+        updateData.status = 'pending_payment'
+      } else if (paymentInfo?.status === 'rejected' || paymentInfo?.status === 'cancelled') {
+        // Pago rechazado o cancelado: mantener estado pero registrar el rechazo
+        updateData.status = 'pending_payment' // Mantener como pendiente para que pueda reintentar
+      } else if (paymentInfo?.status === 'refunded' || paymentInfo?.status === 'charged_back') {
+        // Pago reembolsado: mantener la suscripción activa pero registrar el reembolso
+        // No cambiar el status de la suscripción, solo registrar el estado del pago
       }
 
       await executeWithRetry(() => prisma.subscription.update({
@@ -123,13 +167,21 @@ export async function POST(request: Request) {
         data: updateData,
       }))
 
-      logger.info('Subscription updated from Mercado Pago payment', {
+      logger.info('Subscription updated from Mercado Pago payment webhook', {
         subscriptionId: subscription.id,
-        status: paymentInfo.status,
+        paymentId,
+        status: paymentInfo?.status || 'unknown',
+        statusDetail: paymentInfo?.statusDetail || null,
         amount: subscription.plan.price,
       })
 
-      return NextResponse.json({ received: true, processed: true, type: 'subscription' })
+      return NextResponse.json({ 
+        received: true, 
+        processed: true, 
+        type: 'subscription',
+        subscriptionId: subscription.id,
+        paymentStatus: paymentInfo?.status || 'unknown',
+      })
     }
 
     // Si no encontramos el pago, aún respondemos OK para evitar reintentos
