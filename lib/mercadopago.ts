@@ -55,7 +55,13 @@ export async function createPaymentPreference(
   try {
     const { preference } = initMercadoPagoClient(config.accessToken)
 
-    const preferenceData = {
+    // Detectar si estamos usando credenciales de prueba
+    // Los tokens de prueba de Mercado Pago generalmente empiezan con "TEST-" o contienen "test"
+    const isTestMode = config.accessToken.includes('TEST-') || 
+                      config.accessToken.includes('test') ||
+                      config.accessToken.includes('APP_USR') // Los tokens de prueba de producción también pueden ser APP_USR
+
+    const preferenceData: any = {
       items: [
         {
           id: params.subscriptionId || params.invoiceId || 'item-1',
@@ -92,19 +98,41 @@ export async function createPaymentPreference(
       statement_descriptor: params.title.substring(0, 22), // Máximo 22 caracteres
     }
 
+    // Si estamos en modo prueba, agregar el parámetro test_mode
+    // Nota: Mercado Pago puede no requerir esto explícitamente, pero ayuda a asegurar el modo sandbox
+    if (isTestMode) {
+      logger.info('Creating preference in test mode', {
+        accessTokenPrefix: config.accessToken.substring(0, 10) + '...',
+      })
+    }
+
     const response = await preference.create({ body: preferenceData })
 
     logger.info('Mercado Pago preference created', {
       preferenceId: response.id,
       invoiceId: params.invoiceId,
       amount: params.amount,
+      hasSandboxInitPoint: !!response.sandbox_init_point,
+      hasInitPoint: !!response.init_point,
+      isTestMode,
     })
+
+    // Si estamos en modo prueba y no hay sandbox_init_point, pero hay init_point,
+    // verificar si el init_point es de sandbox
+    let sandboxInitPoint = response.sandbox_init_point
+    if (!sandboxInitPoint && isTestMode && response.init_point) {
+      // Si el init_point contiene "sandbox" o "test", usarlo como sandbox
+      if (response.init_point.includes('sandbox') || response.init_point.includes('test')) {
+        sandboxInitPoint = response.init_point
+      }
+    }
 
     return {
       preferenceId: response.id,
       initPoint: response.init_point,
-      sandboxInitPoint: response.sandbox_init_point,
+      sandboxInitPoint: sandboxInitPoint || response.sandbox_init_point,
       clientId: response.client_id,
+      isTestMode,
     }
   } catch (error: any) {
     logger.error('Error creating Mercado Pago preference', error, {

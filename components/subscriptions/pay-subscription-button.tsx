@@ -43,9 +43,20 @@ export function PaySubscriptionButton({
   const createPaymentMutation = useMutation({
     mutationFn: createSubscriptionPayment,
     onSuccess: (data) => {
+      // Detectar si estamos usando credenciales de prueba
+      // Los tokens de prueba de Mercado Pago generalmente contienen "test" o son de tipo APP_USR
+      const isTestMode = data.sandboxInitPoint || 
+                        (data.initPoint && (data.initPoint.includes('sandbox') || data.initPoint.includes('test')))
+      
       // Priorizar sandbox_init_point si está disponible (credenciales de prueba)
+      // Si no hay sandboxInitPoint pero el initPoint es de sandbox, usarlo
       // Esto evita el error "Una de las partes con la que intentas hacer el pago es de prueba"
-      const initPoint = data.sandboxInitPoint || data.initPoint
+      let initPoint = data.sandboxInitPoint || data.initPoint
+      
+      // Si estamos en modo prueba pero no hay sandboxInitPoint, verificar si el initPoint es de sandbox
+      if (!data.sandboxInitPoint && data.initPoint && isTestMode) {
+        initPoint = data.initPoint
+      }
       
       if (initPoint) {
         // Abrir el checkout de Mercado Pago en una nueva ventana
@@ -53,7 +64,7 @@ export function PaySubscriptionButton({
         onPaymentCreated?.(data.subscriptionId, initPoint)
         onSuccess?.()
         toast(
-          data.sandboxInitPoint 
+          isTestMode
             ? 'Redirigiendo a Mercado Pago (Modo Prueba)...' 
             : 'Redirigiendo a Mercado Pago...', 
           'success'
