@@ -75,7 +75,7 @@ async function getUserPermissions(prisma: any, userId: string) {
         },
       },
     },
-  }))
+  })) as any[]
   const perms = new Set<string>()
   userRoles.forEach((ur: any) => {
     ur.role.rolePermissions.forEach((rp: any) => perms.add(rp.permission.name))
