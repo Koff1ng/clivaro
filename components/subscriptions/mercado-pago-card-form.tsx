@@ -155,8 +155,15 @@ export function MercadoPagoCardForm({
 
             try {
               // Validar campos requeridos
-              if (!cardholderName.trim()) {
-                throw new Error('El nombre completo es requerido')
+              const trimmedCardholderName = cardholderName.trim()
+              if (!trimmedCardholderName) {
+                throw new Error('El nombre del titular es requerido. Ingresa el nombre tal como aparece en tu tarjeta.')
+              }
+              if (trimmedCardholderName.length < 3) {
+                throw new Error('El nombre del titular debe tener al menos 3 caracteres.')
+              }
+              if (trimmedCardholderName.length > 50) {
+                throw new Error('El nombre del titular no puede exceder 50 caracteres.')
               }
               if (!email.trim() || !email.includes('@')) {
                 throw new Error('Un email válido es requerido')
@@ -185,8 +192,11 @@ export function MercadoPagoCardForm({
               if (!token && mp && mp.fields) {
                 // Crear el token manualmente usando el SDK
                 try {
+                  // Usar el nombre tal como lo ingresó el usuario (puede tener mayúsculas, espacios, etc.)
+                  const normalizedCardholderName = cardholderName.trim().toUpperCase()
+                  
                   const tokenResult = await mp.fields.createCardToken({
-                    cardholderName: cardholderName.trim(),
+                    cardholderName: normalizedCardholderName,
                     cardholderEmail: email.trim(),
                     identificationType: identificationType || undefined,
                     identificationNumber: identificationNumber || undefined,
@@ -315,7 +325,7 @@ export function MercadoPagoCardForm({
           {/* Full Name */}
           <div className="space-y-2">
             <Label htmlFor="form-checkout__cardholderName" className="text-sm font-medium">
-              Full Name:
+              Nombre del titular (tal como aparece en la tarjeta):
             </Label>
             <div className="relative">
               <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -323,12 +333,21 @@ export function MercadoPagoCardForm({
                 type="text"
                 id="form-checkout__cardholderName"
                 value={cardholderName}
-                onChange={(e) => setCardholderName(e.target.value)}
+                onChange={(e) => {
+                  // Permitir cualquier carácter que pueda aparecer en una tarjeta (letras, espacios, guiones, puntos, etc.)
+                  const value = e.target.value
+                  setCardholderName(value)
+                }}
                 className="flex h-11 w-full rounded-md border border-input bg-background pl-10 pr-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                placeholder="John Doe"
+                placeholder="Ej: JUAN PEREZ, MARIA GONZALEZ, etc."
                 required
+                minLength={3}
+                maxLength={50}
               />
             </div>
+            <p className="text-xs text-muted-foreground">
+              Ingresa el nombre exactamente como aparece impreso en tu tarjeta (puede incluir mayúsculas, espacios y guiones)
+            </p>
           </div>
 
           {/* Phone */}
