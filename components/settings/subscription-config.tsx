@@ -415,7 +415,21 @@ export function SubscriptionConfig({ settings, onSave, isLoading }: Subscription
       {/* Payments History Section */}
       <Card>
         <CardHeader>
-          <CardTitle>Payments history</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle>Payments history</CardTitle>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                queryClient.invalidateQueries({ queryKey: ['subscription-payments'] })
+                toast('Historial actualizado', 'success')
+              }}
+              disabled={isLoadingPayments}
+            >
+              <Loader2 className={`h-4 w-4 mr-2 ${isLoadingPayments ? 'animate-spin' : ''}`} />
+              Actualizar
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           {isLoadingPayments ? (
