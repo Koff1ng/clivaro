@@ -39,16 +39,22 @@ export function PaySubscriptionButton({
   const createPaymentMutation = useMutation({
     mutationFn: createSubscriptionPayment,
     onSuccess: (data) => {
-      if (data.initPoint) {
+      // Priorizar sandbox_init_point si está disponible (credenciales de prueba)
+      // Esto evita el error "Una de las partes con la que intentas hacer el pago es de prueba"
+      const initPoint = data.sandboxInitPoint || data.initPoint
+      
+      if (initPoint) {
         // Abrir el checkout de Mercado Pago en una nueva ventana
-        window.open(data.initPoint, '_blank')
-        onPaymentCreated?.(data.subscriptionId, data.initPoint)
-        toast('Redirigiendo a Mercado Pago...', 'success')
-      } else if (data.sandboxInitPoint) {
-        // Si estamos en modo sandbox
-        window.open(data.sandboxInitPoint, '_blank')
-        onPaymentCreated?.(data.subscriptionId, data.sandboxInitPoint)
-        toast('Redirigiendo a Mercado Pago (Sandbox)...', 'success')
+        window.open(initPoint, '_blank')
+        onPaymentCreated?.(data.subscriptionId, initPoint)
+        toast(
+          data.sandboxInitPoint 
+            ? 'Redirigiendo a Mercado Pago (Modo Prueba)...' 
+            : 'Redirigiendo a Mercado Pago...', 
+          'success'
+        )
+      } else {
+        toast('Error: No se pudo obtener la URL de pago', 'error')
       }
     },
     onError: (error: any) => {
