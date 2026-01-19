@@ -118,6 +118,26 @@ export async function GET(request: Request) {
     const isPendingPayment = subscription.status === 'pending_payment' || subscription.status === 'pending'
     const isExpired = !isPendingPayment && subscription.endDate && new Date(subscription.endDate) < now
 
+    // Si está expirada y no está cancelada, actualizar el estado a 'expired'
+    if (isExpired && subscription.status !== 'cancelled' && subscription.status !== 'expired') {
+      // Actualizar el estado en segundo plano (no bloquear la respuesta)
+      prisma.subscription.update({
+        where: { id: subscription.id },
+        data: { status: 'expired' },
+      }).catch((error) => {
+        logger.error('Error updating subscription status to expired', error, {
+          subscriptionId: subscription.id,
+        })
+      })
+      
+      return NextResponse.json({
+        plan: null,
+        subscription: null,
+        features: null,
+        expired: true,
+      })
+    }
+
     if (isExpired) {
       return NextResponse.json({
         plan: null,

@@ -198,10 +198,26 @@ export async function POST(request: Request) {
         mercadoPagoTransactionId: paymentResult.transaction_details?.transaction_id || null,
         mercadoPagoResponse: JSON.stringify(paymentResult),
         status: paymentResult.status === 'approved' ? 'active' : 'pending_payment',
-        // Si el pago fue aprobado, extender la fecha de fin
-        ...(paymentResult.status === 'approved' && subscription.endDate && {
-          endDate: new Date(subscription.endDate.getTime() + (subscription.plan.interval === 'monthly' ? 30 : 365) * 24 * 60 * 60 * 1000),
-        }),
+        // Si el pago fue aprobado, calcular la nueva fecha de fin
+        ...(paymentResult.status === 'approved' && (() => {
+          const now = new Date()
+          const interval = subscription.plan.interval === 'monthly' ? 30 : 365
+          
+          // Si la suscripción ya tiene un endDate futuro, extender desde ahí
+          // Si no tiene endDate o está en el pasado, crear uno nuevo desde ahora
+          let baseDate = now
+          if (subscription.endDate) {
+            const currentEndDate = new Date(subscription.endDate)
+            if (currentEndDate > now) {
+              baseDate = currentEndDate
+            }
+          }
+          
+          const newEndDate = new Date(baseDate)
+          newEndDate.setDate(newEndDate.getDate() + interval)
+          
+          return { endDate: newEndDate }
+        })()),
       },
     }))
 

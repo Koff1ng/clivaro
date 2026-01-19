@@ -65,8 +65,8 @@ export function WelcomeOnboarding({ onComplete, planName }: WelcomeOnboardingPro
   const steps = [
     {
       title: 'Bienvenido a',
-      subtitle: planName ? `Clivaro ${planName}` : 'Clivaro Super Pro',
-      description: 'Tu sistema de gestión empresarial todo-en-uno',
+      subtitle: planName ? `Clivaro ${planName}` : 'Clivaro',
+      description: 'Tu sistema de gestión empresarial todo en uno',
       showInput: false,
     },
     {

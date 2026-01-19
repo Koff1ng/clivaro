@@ -131,6 +131,16 @@ export async function POST(request: Request) {
         tenant: true,
       },
     }))
+    
+    // Validar que el external_reference coincida con el subscriptionId (seguridad)
+    if (subscription && paymentInfo?.externalReference && paymentInfo.externalReference !== subscription.id) {
+      logger.error('External reference mismatch in webhook', {
+        subscriptionId: subscription.id,
+        externalReference: paymentInfo.externalReference,
+        paymentId,
+      })
+      // Continuar procesando pero registrar la advertencia
+    }
 
     if (subscription) {
       // Si no obtuvimos la información del pago antes, obtenerla ahora
@@ -168,14 +178,43 @@ export async function POST(request: Request) {
         // Pago aprobado: activar la suscripción
         const now = new Date()
         const interval = subscription.plan.interval === 'annual' ? 365 : 30
-        const endDate = new Date(now)
-        endDate.setDate(endDate.getDate() + interval)
+        
+        // Calcular la nueva fecha de fin
+        // Si la suscripción ya tiene un endDate futuro, extender desde ahí
+        // Si no tiene endDate o está en el pasado, crear uno nuevo desde ahora
+        let baseDate = now
+        if (subscription.endDate) {
+          const currentEndDate = new Date(subscription.endDate)
+          // Si el endDate es futuro, extender desde ahí (renovación)
+          // Si es pasado, usar la fecha actual (nuevo pago)
+          if (currentEndDate > now) {
+            baseDate = currentEndDate
+          }
+        }
+        
+        const newEndDate = new Date(baseDate)
+        newEndDate.setDate(newEndDate.getDate() + interval)
 
         updateData.status = 'active'
         updateData.startDate = subscription.startDate || now
-        updateData.endDate = subscription.endDate ? 
-          new Date(Math.max(new Date(subscription.endDate).getTime(), endDate.getTime())) : 
-          endDate
+        updateData.endDate = newEndDate
+        
+        // Validar que el monto del pago coincida con el precio del plan (con tolerancia del 1%)
+        if (paymentInfo.transactionAmount && subscription.plan.price) {
+          const expectedAmount = subscription.plan.price
+          const receivedAmount = paymentInfo.transactionAmount
+          const tolerance = expectedAmount * 0.01 // 1% de tolerancia
+          
+          if (Math.abs(receivedAmount - expectedAmount) > tolerance) {
+            logger.warn('Payment amount mismatch', {
+              subscriptionId: subscription.id,
+              expectedAmount,
+              receivedAmount,
+              difference: Math.abs(receivedAmount - expectedAmount),
+            })
+            // No rechazar el pago, solo registrar la advertencia
+          }
+        }
       } else if (paymentInfo?.status === 'pending' || paymentInfo?.status === 'in_process') {
         // Pago pendiente: mantener estado pending_payment
         updateData.status = 'pending_payment'
