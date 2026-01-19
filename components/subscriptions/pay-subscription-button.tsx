@@ -44,18 +44,38 @@ export function PaySubscriptionButton({
     mutationFn: createSubscriptionPayment,
     onSuccess: (data) => {
       // Detectar si estamos usando credenciales de prueba
-      // Los tokens de prueba de Mercado Pago generalmente contienen "test" o son de tipo APP_USR
-      const isTestMode = data.sandboxInitPoint || 
+      const isTestMode = data.isTestMode || 
+                        data.sandboxInitPoint || 
                         (data.initPoint && (data.initPoint.includes('sandbox') || data.initPoint.includes('test')))
       
-      // Priorizar sandbox_init_point si está disponible (credenciales de prueba)
-      // Si no hay sandboxInitPoint pero el initPoint es de sandbox, usarlo
-      // Esto evita el error "Una de las partes con la que intentas hacer el pago es de prueba"
-      let initPoint = data.sandboxInitPoint || data.initPoint
+      // CRÍTICO: Si estamos en modo prueba, DEBEMOS usar sandboxInitPoint
+      // Si no hay sandboxInitPoint, NO usar initPoint de producción (causará error)
+      let initPoint: string | null = null
       
-      // Si estamos en modo prueba pero no hay sandboxInitPoint, verificar si el initPoint es de sandbox
-      if (!data.sandboxInitPoint && data.initPoint && isTestMode) {
-        initPoint = data.initPoint
+      if (isTestMode) {
+        // En modo prueba, priorizar sandboxInitPoint
+        if (data.sandboxInitPoint) {
+          initPoint = data.sandboxInitPoint
+        } else if (data.initPoint && (data.initPoint.includes('sandbox') || data.initPoint.includes('test'))) {
+          // Si el initPoint es explícitamente de sandbox, usarlo
+          initPoint = data.initPoint
+        } else {
+          // Si estamos en modo prueba pero no hay sandboxInitPoint y el initPoint no es de sandbox,
+          // no podemos proceder (causaría el error "Una de las partes... es de prueba")
+          const errorMsg = 'Error: No se pudo obtener la URL de pago en modo prueba. Por favor, verifica la configuración de Mercado Pago.'
+          console.error('Mercado Pago sandbox error:', {
+            hasSandboxInitPoint: !!data.sandboxInitPoint,
+            hasInitPoint: !!data.initPoint,
+            initPoint: data.initPoint,
+            isTestMode,
+          })
+          onError?.(errorMsg)
+          toast(errorMsg, 'error')
+          return
+        }
+      } else {
+        // En modo producción, usar initPoint normal
+        initPoint = data.initPoint || null
       }
       
       if (initPoint) {

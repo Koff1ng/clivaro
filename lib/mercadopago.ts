@@ -116,6 +116,8 @@ export async function createPaymentPreference(
       amount: params.amount,
       hasSandboxInitPoint: !!response.sandbox_init_point,
       hasInitPoint: !!response.init_point,
+      initPointUrl: response.init_point ? new URL(response.init_point).hostname : null,
+      sandboxInitPointUrl: response.sandbox_init_point ? new URL(response.sandbox_init_point).hostname : null,
       isTestMode,
     })
 
@@ -124,15 +126,35 @@ export async function createPaymentPreference(
     let sandboxInitPoint = response.sandbox_init_point
     if (!sandboxInitPoint && isTestMode && response.init_point) {
       // Si el init_point contiene "sandbox" o "test", usarlo como sandbox
-      if (response.init_point.includes('sandbox') || response.init_point.includes('test')) {
-        sandboxInitPoint = response.init_point
+      try {
+        const initPointUrl = new URL(response.init_point)
+        if (initPointUrl.hostname.includes('sandbox') || initPointUrl.hostname.includes('test')) {
+          sandboxInitPoint = response.init_point
+          logger.info('Using init_point as sandbox (detected from URL)', {
+            hostname: initPointUrl.hostname,
+          })
+        }
+      } catch {
+        // Si no se puede parsear la URL, verificar por string
+        if (response.init_point.includes('sandbox') || response.init_point.includes('test')) {
+          sandboxInitPoint = response.init_point
+        }
       }
+    }
+
+    // Si estamos en modo prueba pero no hay sandboxInitPoint, registrar un warning
+    if (isTestMode && !sandboxInitPoint) {
+      logger.warn('Test mode detected but no sandbox_init_point available', {
+        hasInitPoint: !!response.init_point,
+        initPoint: response.init_point ? response.init_point.substring(0, 100) : null,
+        preferenceId: response.id,
+      })
     }
 
     return {
       preferenceId: response.id,
       initPoint: response.init_point,
-      sandboxInitPoint: sandboxInitPoint || response.sandbox_init_point,
+      sandboxInitPoint: sandboxInitPoint || response.sandbox_init_point || null,
       clientId: response.client_id,
       isTestMode,
     }
