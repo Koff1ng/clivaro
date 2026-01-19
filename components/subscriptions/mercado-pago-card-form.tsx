@@ -32,8 +32,9 @@ export function MercadoPagoCardForm({
   const [isProcessing, setIsProcessing] = useState(false)
   const [publicKey, setPublicKey] = useState<string | null>(null)
   const [mp, setMp] = useState<any>(null)
-  const [cardForm, setCardForm] = useState<any>(null)
   const formRef = useRef<HTMLFormElement>(null)
+  const cardFormRef = useRef<any>(null)
+  const isMountedRef = useRef(false)
 
   // Cargar SDK de Mercado Pago
   useEffect(() => {
@@ -78,12 +79,23 @@ export function MercadoPagoCardForm({
 
   // Inicializar el formulario de tarjeta
   useEffect(() => {
-    if (!mp || !publicKey || !formRef.current) return
+    if (!mp || !publicKey || !formRef.current || isMountedRef.current) return
 
-    let cardFormInstance: any = null
+    // Limpiar cualquier instancia anterior
+    if (cardFormRef.current) {
+      try {
+        if (typeof cardFormRef.current.unmount === 'function') {
+          cardFormRef.current.unmount()
+        }
+      } catch (error) {
+        // Ignorar errores al desmontar si no está montado
+        console.warn('Error unmounting previous card form:', error)
+      }
+      cardFormRef.current = null
+    }
 
     try {
-      cardFormInstance = mp.cardForm({
+      const cardFormInstance = mp.cardForm({
         amount: amount.toString(),
         iframe: true,
         form: {
@@ -130,6 +142,9 @@ export function MercadoPagoCardForm({
             if (error) {
               console.error('Error mounting card form:', error)
               toast('Error al inicializar el formulario de pago', 'error')
+              isMountedRef.current = false
+            } else {
+              isMountedRef.current = true
             }
           },
           onSubmit: async (event: any) => {
@@ -202,15 +217,25 @@ export function MercadoPagoCardForm({
         },
       })
 
-      setCardForm(cardFormInstance)
+      cardFormRef.current = cardFormInstance
     } catch (error: any) {
       console.error('Error initializing card form:', error)
       toast('Error al inicializar el formulario de pago', 'error')
+      isMountedRef.current = false
     }
 
     return () => {
-      if (cardFormInstance && typeof cardFormInstance.unmount === 'function') {
-        cardFormInstance.unmount()
+      if (cardFormRef.current && isMountedRef.current) {
+        try {
+          if (typeof cardFormRef.current.unmount === 'function') {
+            cardFormRef.current.unmount()
+          }
+        } catch (error) {
+          // Ignorar errores si el formulario no está montado
+          console.warn('Error unmounting card form:', error)
+        }
+        cardFormRef.current = null
+        isMountedRef.current = false
       }
     }
   }, [mp, publicKey, amount, subscriptionId, toast, onPaymentSuccess, onPaymentError])
