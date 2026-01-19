@@ -15,12 +15,6 @@ const nextConfig = {
   // Optimización de bundle
   swcMinify: true, // Usar SWC para minificación (más rápido que Terser)
   
-  // Excluir paquetes del procesamiento de webpack (solo servidor)
-  serverComponentsExternalPackages: [
-    'puppeteer-core',
-    '@sparticuz/chromium',
-  ],
-  
   // Configuración de webpack para excluir puppeteer-core del procesamiento
   webpack: (config, { isServer }) => {
     if (isServer) {
