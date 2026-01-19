@@ -79,19 +79,11 @@ export function MercadoPagoCardForm({
 
   // Inicializar el formulario de tarjeta
   useEffect(() => {
-    if (!mp || !publicKey || !formRef.current || isMountedRef.current) return
-
-    // Limpiar cualquier instancia anterior
-    if (cardFormRef.current) {
-      try {
-        if (typeof cardFormRef.current.unmount === 'function') {
-          cardFormRef.current.unmount()
-        }
-      } catch (error) {
-        // Ignorar errores al desmontar si no está montado
-        console.warn('Error unmounting previous card form:', error)
-      }
-      cardFormRef.current = null
+    if (!mp || !publicKey || !formRef.current) return
+    
+    // Evitar múltiples montajes
+    if (isMountedRef.current || cardFormRef.current) {
+      return
     }
 
     try {
@@ -143,6 +135,7 @@ export function MercadoPagoCardForm({
               console.error('Error mounting card form:', error)
               toast('Error al inicializar el formulario de pago', 'error')
               isMountedRef.current = false
+              cardFormRef.current = null
             } else {
               isMountedRef.current = true
             }
@@ -222,16 +215,18 @@ export function MercadoPagoCardForm({
       console.error('Error initializing card form:', error)
       toast('Error al inicializar el formulario de pago', 'error')
       isMountedRef.current = false
+      cardFormRef.current = null
     }
 
     return () => {
       if (cardFormRef.current && isMountedRef.current) {
         try {
-          if (typeof cardFormRef.current.unmount === 'function') {
+          // Verificar que el método unmount existe y el formulario está montado
+          if (cardFormRef.current && typeof cardFormRef.current.unmount === 'function') {
             cardFormRef.current.unmount()
           }
         } catch (error) {
-          // Ignorar errores si el formulario no está montado
+          // Ignorar errores si el formulario no está montado o ya fue desmontado
           console.warn('Error unmounting card form:', error)
         }
         cardFormRef.current = null
@@ -327,14 +322,24 @@ export function MercadoPagoCardForm({
             <label htmlFor="form-checkout__installments" className="text-sm font-medium">
               Cuotas
             </label>
-            <div id="form-checkout__installments" className="h-10 w-full rounded-md border border-input bg-background"></div>
+            <select
+              id="form-checkout__installments"
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <option value="">Selecciona cuotas</option>
+            </select>
           </div>
 
           <div className="space-y-2">
             <label htmlFor="form-checkout__identificationType" className="text-sm font-medium">
               Tipo de documento
             </label>
-            <div id="form-checkout__identificationType" className="h-10 w-full rounded-md border border-input bg-background"></div>
+            <select
+              id="form-checkout__identificationType"
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <option value="">Selecciona tipo</option>
+            </select>
           </div>
         </div>
 
@@ -354,7 +359,12 @@ export function MercadoPagoCardForm({
           <label htmlFor="form-checkout__issuer" className="text-sm font-medium">
             Banco emisor
           </label>
-          <div id="form-checkout__issuer" className="h-10 w-full rounded-md border border-input bg-background"></div>
+          <select
+            id="form-checkout__issuer"
+            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <option value="">Selecciona banco</option>
+          </select>
         </div>
 
         <Button
