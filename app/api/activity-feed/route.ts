@@ -94,9 +94,14 @@ export async function GET(request: Request) {
     })
 
     // 2. Payments (Pagos - Ingresos de Dinero)
+    // Usar select en lugar de include para evitar problemas con columnas que pueden no existir
     const payments = await executeWithRetry(() => prisma.payment.findMany({
       take: limit,
-      include: {
+      select: {
+        id: true,
+        amount: true,
+        method: true,
+        createdAt: true,
         invoice: { 
           select: { 
             id: true, 
