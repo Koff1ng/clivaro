@@ -125,10 +125,21 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ payments })
   } catch (error: any) {
+    // Obtener tenantId de forma segura para logging
+    let tenantId: string | undefined
+    try {
+      const session = await requireAuth(request)
+      if (!(session instanceof NextResponse)) {
+        tenantId = (session.user as any)?.tenantId
+      }
+    } catch {
+      // Ignorar errores de autenticación en el catch
+    }
+    
     logger.error('Error fetching subscription payments', error, {
       endpoint: '/api/subscriptions/payments',
       method: 'GET',
-      tenantId: user?.tenantId,
+      tenantId,
     })
     return NextResponse.json(
       { 
