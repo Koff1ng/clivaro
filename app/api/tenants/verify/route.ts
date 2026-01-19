@@ -8,13 +8,13 @@ export const dynamic = 'force-dynamic'
 // Función helper para ejecutar consultas con retry y manejo de errores de conexión
 async function executeWithRetry<T>(
   fn: () => Promise<T>,
-  maxRetries = 7,
-  delay = 3000
+  maxRetries = 10,
+  delay = 2000
 ): Promise<T> {
   let lastError: any
   
-  // Pequeño delay inicial para dar tiempo a que se liberen conexiones
-  await new Promise(resolve => setTimeout(resolve, 500))
+  // Delay inicial más largo para dar tiempo a que se liberen conexiones
+  await new Promise(resolve => setTimeout(resolve, 1000))
   
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     try {
@@ -22,17 +22,28 @@ async function executeWithRetry<T>(
     } catch (error: any) {
       lastError = error
       const errorMessage = error?.message || String(error)
+      const errorCode = error?.code || ''
       
-      // Si es error de límite de conexiones, esperar y reintentar
-      if (errorMessage.includes('MaxClientsInSessionMode') || 
-          errorMessage.includes('max clients reached') ||
-          errorMessage.includes('connection') ||
-          errorMessage.includes('timeout')) {
+      // Detectar errores de conexión más ampliamente
+      const isConnectionError = 
+        errorMessage.includes('MaxClientsInSessionMode') || 
+        errorMessage.includes('max clients reached') ||
+        errorMessage.includes('connection') ||
+        errorMessage.includes('timeout') ||
+        errorMessage.includes('ECONNREFUSED') ||
+        errorMessage.includes('ETIMEDOUT') ||
+        errorCode === 'P1001' || // Prisma connection error
+        errorCode === 'P1002' || // Prisma timeout error
+        errorCode === 'P1008' || // Prisma operation timeout
+        errorCode === 'P1017'    // Prisma server closed connection
+      
+      if (isConnectionError) {
         if (attempt < maxRetries - 1) {
-          // Backoff exponencial más agresivo: 3s, 6s, 12s, 20s, 20s, 20s, 20s
+          // Backoff exponencial: 2s, 4s, 8s, 16s, 20s, 20s, 20s, 20s, 20s, 20s
           const backoffDelay = Math.min(delay * Math.pow(2, attempt), 20000) // Backoff exponencial, max 20s
           logger.warn(`[Tenant Verify] Error de conexión, reintentando en ${backoffDelay}ms (intento ${attempt + 1}/${maxRetries})`, {
             errorMessage: errorMessage.substring(0, 100),
+            errorCode,
           })
           await new Promise(resolve => setTimeout(resolve, backoffDelay))
           continue

@@ -10,6 +10,13 @@ const inter = Inter({ subsets: ['latin'] })
 export const metadata: Metadata = {
   title: 'ClientumExpress',
   description: 'Sistema de gestion empresarial',
+  icons: {
+    icon: [
+      { url: '/clivaro-logo.webp', type: 'image/webp' },
+      { url: '/favicon.ico', sizes: 'any' },
+    ],
+    apple: '/clivaro-logo.webp',
+  },
 }
 
 export default function RootLayout({
