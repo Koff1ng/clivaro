@@ -82,7 +82,8 @@ export function SubscriptionConfig({ settings, onSave, isLoading }: Subscription
     queryFn: fetchPaymentHistory,
     retry: 3,
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
-    staleTime: 5 * 60 * 1000, // 5 minutos
+    staleTime: 30 * 1000, // 30 segundos - actualizar más frecuentemente para ver nuevos pagos
+    refetchInterval: 60 * 1000, // Refrescar cada minuto automáticamente
   })
 
   const plan = subscriptionData?.plan
@@ -163,20 +164,37 @@ export function SubscriptionConfig({ settings, onSave, isLoading }: Subscription
   }
 
   const getPaymentStatusBadge = (status: string) => {
-    if (status === 'Paid') {
-      return (
-        <div className="flex items-center gap-2">
-          <CheckCircle2 className="h-4 w-4 text-green-600" />
-          <span className="text-sm font-medium text-green-600 dark:text-green-400">Paid</span>
-        </div>
-      )
+    switch (status) {
+      case 'Paid':
+        return (
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="h-4 w-4 text-green-600" />
+            <span className="text-sm font-medium text-green-600 dark:text-green-400">Paid</span>
+          </div>
+        )
+      case 'Failed':
+        return (
+          <div className="flex items-center gap-2">
+            <X className="h-4 w-4 text-red-600" />
+            <span className="text-sm font-medium text-red-600 dark:text-red-400">Failed</span>
+          </div>
+        )
+      case 'Refunded':
+        return (
+          <div className="flex items-center gap-2">
+            <Minus className="h-4 w-4 text-gray-600" />
+            <span className="text-sm font-medium text-gray-600 dark:text-gray-400">Refunded</span>
+          </div>
+        )
+      case 'Pending':
+      default:
+        return (
+          <div className="flex items-center gap-2">
+            <Minus className="h-4 w-4 text-orange-600" />
+            <span className="text-sm font-medium text-orange-600 dark:text-orange-400">Pending</span>
+          </div>
+        )
     }
-    return (
-      <div className="flex items-center gap-2">
-        <Minus className="h-4 w-4 text-orange-600" />
-        <span className="text-sm font-medium text-orange-600 dark:text-orange-400">Pending</span>
-      </div>
-    )
   }
 
   if (isLoadingSubscription) {

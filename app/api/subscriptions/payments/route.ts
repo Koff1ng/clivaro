@@ -61,12 +61,12 @@ export async function GET(request: Request) {
       )
     }
 
-    // Obtener todas las suscripciones del tenant que tienen pagos aprobados (con retry logic)
+    // Obtener todas las suscripciones del tenant que tienen pagos (aprobados, pendientes, rechazados, etc.)
+    // Incluir todos los estados para mostrar el historial completo
     const subscriptions = await executeWithRetry(() => prisma.subscription.findMany({
       where: {
         tenantId: tenantId,
-        mercadoPagoStatus: 'approved',
-        mercadoPagoPaymentId: { not: null },
+        mercadoPagoPaymentId: { not: null }, // Solo suscripciones que tienen un payment ID
       },
       select: {
         id: true,
@@ -83,28 +83,45 @@ export async function GET(request: Request) {
         },
         mercadoPagoPaymentId: true,
         mercadoPagoStatus: true,
+        mercadoPagoStatusDetail: true,
         mercadoPagoPaymentMethod: true,
         mercadoPagoTransactionId: true,
       },
       orderBy: {
-        createdAt: 'desc',
+        updatedAt: 'desc', // Ordenar por fecha de actualización (cuando se procesó el pago)
       },
       take: 50, // Limitar a los últimos 50 pagos
     }))
 
     // Transformar las suscripciones en pagos para el historial
-    const payments = subscriptions.map((sub) => ({
-      id: sub.id,
-      date: sub.createdAt,
-      amount: sub.plan.price,
-      currency: sub.plan.currency,
-      status: sub.mercadoPagoStatus === 'approved' ? 'Paid' : 'Pending',
-      paymentMethod: sub.mercadoPagoPaymentMethod,
-      transactionId: sub.mercadoPagoTransactionId,
-      mercadoPagoPaymentId: sub.mercadoPagoPaymentId,
-      planName: sub.plan.name,
-      interval: sub.plan.interval,
-    }))
+    const payments = subscriptions.map((sub) => {
+      // Mapear el estado de Mercado Pago a un estado legible
+      let status = 'Pending'
+      if (sub.mercadoPagoStatus === 'approved') {
+        status = 'Paid'
+      } else if (sub.mercadoPagoStatus === 'rejected' || sub.mercadoPagoStatus === 'cancelled') {
+        status = 'Failed'
+      } else if (sub.mercadoPagoStatus === 'pending' || sub.mercadoPagoStatus === 'in_process') {
+        status = 'Pending'
+      } else if (sub.mercadoPagoStatus === 'refunded' || sub.mercadoPagoStatus === 'charged_back') {
+        status = 'Refunded'
+      }
+
+      return {
+        id: sub.id,
+        date: sub.updatedAt, // Usar updatedAt para mostrar cuándo se procesó el pago
+        amount: sub.plan.price,
+        currency: sub.plan.currency,
+        status: status,
+        mercadoPagoStatus: sub.mercadoPagoStatus, // Incluir el estado original de Mercado Pago
+        mercadoPagoStatusDetail: sub.mercadoPagoStatusDetail, // Incluir detalles del estado
+        paymentMethod: sub.mercadoPagoPaymentMethod,
+        transactionId: sub.mercadoPagoTransactionId,
+        mercadoPagoPaymentId: sub.mercadoPagoPaymentId,
+        planName: sub.plan.name,
+        interval: sub.plan.interval,
+      }
+    })
 
     return NextResponse.json({ payments })
   } catch (error: any) {
