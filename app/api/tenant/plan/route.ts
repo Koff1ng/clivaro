@@ -66,12 +66,15 @@ export async function GET(request: Request) {
       )
     }
 
-    // Obtener la suscripción activa del tenant con retry logic
+    // Obtener la suscripción activa o pendiente del tenant con retry logic
+    // Incluir suscripciones activas y pendientes para que el usuario pueda ver el estado y reintentar pagos
     // Usar select en lugar de include para evitar problemas con campos nuevos no migrados
     const subscription = await executeWithRetry(() => prisma.subscription.findFirst({
       where: {
         tenantId: tenantId,
-        status: 'active',
+        status: {
+          in: ['active', 'pending_payment', 'pending', 'trial'],
+        },
       },
       select: {
         id: true,
@@ -110,8 +113,10 @@ export async function GET(request: Request) {
     }
 
     // Verificar si la suscripción está vigente
+    // No marcar como expirada si está pendiente de pago, para que el usuario pueda reintentar
     const now = new Date()
-    const isExpired = subscription.endDate && new Date(subscription.endDate) < now
+    const isPendingPayment = subscription.status === 'pending_payment' || subscription.status === 'pending'
+    const isExpired = !isPendingPayment && subscription.endDate && new Date(subscription.endDate) < now
 
     if (isExpired) {
       return NextResponse.json({

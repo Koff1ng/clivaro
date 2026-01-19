@@ -224,13 +224,46 @@ export function SubscriptionConfig({ settings, onSave, isLoading }: Subscription
         </CardHeader>
         <CardContent className="space-y-6">
           {/* Mensaje cuando no hay suscripción */}
-          {!plan && !subscription && (
+          {!subscription && (
             <div className="p-6 border rounded-lg bg-muted/50 text-center">
               <Rocket className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
               <h3 className="text-lg font-semibold mb-2">No hay suscripción activa</h3>
               <p className="text-sm text-muted-foreground mb-4">
-                No se encontró una suscripción activa para tu cuenta. Contacta con el administrador para activar un plan.
+                No se encontró una suscripción activa o pendiente para tu cuenta. Contacta con el administrador para activar un plan.
               </p>
+            </div>
+          )}
+
+          {/* Mostrar información de suscripción pendiente incluso si no hay plan todavía */}
+          {subscription && !plan && (
+            <div className="p-6 border rounded-lg bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800">
+              <div className="flex items-start gap-4">
+                <AlertTriangle className="h-6 w-6 text-orange-600 dark:text-orange-400 mt-1" />
+                <div className="flex-1">
+                  <h3 className="text-lg font-semibold text-orange-900 dark:text-orange-100 mb-2">
+                    Suscripción Pendiente
+                  </h3>
+                  <p className="text-sm text-orange-800 dark:text-orange-200 mb-4">
+                    Tu suscripción está en estado <strong>{getStatusBadge(subscription.status)}</strong>. 
+                    {subscription.status === 'pending_payment' || subscription.status === 'pending' 
+                      ? ' Completa el pago para activar tu suscripción.'
+                      : ' Contacta con el administrador para más información.'}
+                  </p>
+                  {(subscription.status === 'pending_payment' || subscription.status === 'pending') && subscription.id && (
+                    <PaySubscriptionButton
+                      subscriptionId={subscription.id}
+                      onSuccess={() => {
+                        queryClient.invalidateQueries({ queryKey: ['tenant-plan'] })
+                        queryClient.invalidateQueries({ queryKey: ['subscription-payments'] })
+                        toast('Pago procesado exitosamente', 'success')
+                      }}
+                      onError={(error) => {
+                        toast(error || 'Error al procesar el pago', 'error')
+                      }}
+                    />
+                  )}
+                </div>
+              </div>
             </div>
           )}
 
