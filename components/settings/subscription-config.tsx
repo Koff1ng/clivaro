@@ -267,21 +267,34 @@ export function SubscriptionConfig({ settings, onSave, isLoading }: Subscription
                       ? ' Completa el pago para activar tu suscripción.'
                       : ' Contacta con el administrador para más información.'}
                   </p>
-                  {(subscription.status === 'pending_payment' || subscription.status === 'pending') && subscription.id && plan && (
+                  {(subscription.status === 'pending_payment' || subscription.status === 'pending') && subscription.id && (
                     <div className="mt-4">
-                      <MercadoPagoCardForm
-                        subscriptionId={subscription.id}
-                        amount={plan.price}
-                        currency={plan.currency || 'COP'}
-                        onPaymentSuccess={() => {
-                          queryClient.invalidateQueries({ queryKey: ['tenant-plan'] })
-                          queryClient.invalidateQueries({ queryKey: ['subscription-payments'] })
-                          toast('¡Pago procesado exitosamente!', 'success')
-                        }}
-                        onPaymentError={(error) => {
-                          toast(error || 'Error al procesar el pago', 'error')
-                        }}
-                      />
+                      <p className="text-sm text-orange-800 dark:text-orange-200 mb-4">
+                        {plan 
+                          ? `Completa el pago de ${formatCurrency(plan.price)} para activar tu suscripción.`
+                          : 'Completa el pago para activar tu suscripción. Contacta al administrador si necesitas información sobre el monto.'}
+                      </p>
+                      {plan ? (
+                        <MercadoPagoCardForm
+                          subscriptionId={subscription.id}
+                          amount={plan.price}
+                          currency={plan.currency || 'COP'}
+                          onPaymentSuccess={() => {
+                            queryClient.invalidateQueries({ queryKey: ['tenant-plan'] })
+                            queryClient.invalidateQueries({ queryKey: ['subscription-payments'] })
+                            toast('¡Pago procesado exitosamente!', 'success')
+                          }}
+                          onPaymentError={(error) => {
+                            toast(error || 'Error al procesar el pago', 'error')
+                          }}
+                        />
+                      ) : (
+                        <div className="p-4 bg-muted rounded-lg text-center">
+                          <p className="text-sm text-muted-foreground">
+                            No se pudo cargar la información del plan. Por favor, contacta al administrador.
+                          </p>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
