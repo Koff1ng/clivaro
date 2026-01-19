@@ -223,6 +223,17 @@ export function SubscriptionConfig({ settings, onSave, isLoading }: Subscription
           <CardTitle>Subscription</CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
+          {/* Mensaje cuando no hay suscripción */}
+          {!plan && !subscription && (
+            <div className="p-6 border rounded-lg bg-muted/50 text-center">
+              <Rocket className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+              <h3 className="text-lg font-semibold mb-2">No hay suscripción activa</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                No se encontró una suscripción activa para tu cuenta. Contacta con el administrador para activar un plan.
+              </p>
+            </div>
+          )}
+
           {/* Plan Card */}
           {plan && (
             <div className="p-6 border rounded-lg bg-card">
