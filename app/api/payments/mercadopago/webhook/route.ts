@@ -82,7 +82,7 @@ export async function POST(request: Request) {
 
     // Primero obtener la información del pago desde Mercado Pago para obtener el external_reference
     type PaymentInfo = {
-      id: string | null
+      id: number | null
       status: string | null
       statusDetail: string | null
       paymentMethodId: string | null
