@@ -146,26 +146,18 @@ export function MercadoPagoCardForm({
 
             try {
               // Obtener los valores del formulario
-              const cardholderName = (document.getElementById('form-checkout__cardholderName') as HTMLInputElement)?.value
-              const cardholderEmail = (document.getElementById('form-checkout__cardholderEmail') as HTMLInputElement)?.value
-              const identificationType = (document.getElementById('form-checkout__identificationType') as HTMLSelectElement)?.value
-              const identificationNumber = (document.getElementById('form-checkout__identificationNumber') as HTMLInputElement)?.value
               const installments = (document.getElementById('form-checkout__installments') as HTMLSelectElement)?.value
 
-              // Crear el token de la tarjeta usando el SDK de Mercado Pago
-              const { token, error: tokenError } = await mp.fields.createCardToken({
-                cardholderName,
-                identificationType,
-                identificationNumber,
-                cardholderEmail,
-              })
-
-              if (tokenError) {
-                throw new Error(tokenError.message || 'Error al procesar los datos de la tarjeta')
+              // Usar el método getCardFormData del CardForm para obtener el token
+              // Este método debe ser llamado desde la instancia del CardForm
+              if (!cardFormRef.current) {
+                throw new Error('El formulario de pago no está inicializado')
               }
 
-              if (!token) {
-                throw new Error('No se pudo generar el token de la tarjeta')
+              const formData = cardFormRef.current.getCardFormData()
+              
+              if (!formData || !formData.token) {
+                throw new Error('No se pudo generar el token de la tarjeta. Por favor, verifica los datos ingresados.')
               }
 
               // Procesar el pago
@@ -174,10 +166,10 @@ export function MercadoPagoCardForm({
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                   subscriptionId,
-                  token: token.id,
-                  paymentMethodId: token.payment_method_id,
-                  installments: parseInt(installments || '1'),
-                  issuerId: token.issuer_id,
+                  token: formData.token,
+                  paymentMethodId: formData.paymentMethodId,
+                  installments: parseInt(installments || formData.installments || '1'),
+                  issuerId: formData.issuerId,
                 }),
               })
 
@@ -200,6 +192,14 @@ export function MercadoPagoCardForm({
             } finally {
               setIsProcessing(false)
             }
+          },
+          onError: (error: any) => {
+            // Manejar errores de validación del formulario
+            console.error('CardForm validation error:', error)
+            const errorMessage = error?.message || 'Error al validar los datos de la tarjeta'
+            toast(errorMessage, 'error')
+            setIsProcessing(false)
+            onPaymentError?.(errorMessage)
           },
           onFetching: (resource: string) => {
             // Mientras se obtienen los datos del recurso
