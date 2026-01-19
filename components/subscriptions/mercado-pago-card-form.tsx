@@ -177,6 +177,23 @@ export function MercadoPagoCardForm({
               const finalCardholderNameRaw = nameFromDom || nameFromForm || nameFromState
               const finalCardholderName = finalCardholderNameRaw.trim()
 
+              // Obtener el email desde múltiples fuentes para máxima robustez
+              const domEmailInput = document.getElementById('form-checkout__cardholderEmail') as HTMLInputElement | null
+              const emailFromDom = domEmailInput?.value || ''
+              const emailFromForm = (formData && (formData.cardholderEmail || formData.cardholder_email)) || ''
+              const emailFromState = email || ''
+              
+              const finalEmailRaw = emailFromDom || emailFromForm || emailFromState
+              const finalEmail = finalEmailRaw.trim()
+
+              // Obtener el teléfono desde múltiples fuentes
+              const domPhoneInput = document.getElementById('phone') as HTMLInputElement | null
+              const phoneFromDom = domPhoneInput?.value || ''
+              const phoneFromState = phone || ''
+              
+              const finalPhoneRaw = phoneFromDom || phoneFromState
+              const finalPhone = finalPhoneRaw.trim()
+
               // Validar campos requeridos ANTES de intentar crear el token
               if (!finalCardholderName) {
                 toast('Por favor, ingresa el nombre del titular de la tarjeta', 'error')
@@ -190,23 +207,36 @@ export function MercadoPagoCardForm({
                 toast('El nombre del titular no puede exceder 50 caracteres', 'error')
                 throw new Error('El nombre del titular no puede exceder 50 caracteres.')
               }
-              if (!email.trim() || !email.includes('@')) {
+              
+              // Validar email con expresión regular más robusta
+              const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+              if (!finalEmail) {
                 toast('Por favor, ingresa un email válido', 'error')
                 throw new Error('Un email válido es requerido')
               }
-              if (!phone.trim()) {
+              if (!emailRegex.test(finalEmail)) {
+                toast('Por favor, ingresa un email válido con formato correcto (ej: usuario@dominio.com)', 'error')
+                throw new Error('El formato del email no es válido')
+              }
+              
+              if (!finalPhone) {
                 toast('Por favor, ingresa un número de teléfono', 'error')
                 throw new Error('El teléfono es requerido')
               }
               
-              // Log de auditoría para depuración en caso de fallo
+              // Log de auditoría para depuración en caso de fallo (sin datos sensibles completos)
               console.log('Validating payment with:', {
-                cardholderNameDom: nameFromDom,
-                cardholderNameForm: nameFromForm,
-                cardholderNameState: nameFromState,
-                finalCardholderName,
-                email: email.trim(),
-                phone: phone.trim(),
+                cardholderNameDom: nameFromDom ? '***' : '',
+                cardholderNameForm: nameFromForm ? '***' : '',
+                cardholderNameState: nameFromState ? '***' : '',
+                finalCardholderName: finalCardholderName ? '***' : '',
+                emailDom: emailFromDom ? `${emailFromDom.substring(0, 3)}***` : '',
+                emailForm: emailFromForm ? `${emailFromForm.substring(0, 3)}***` : '',
+                emailState: emailFromState ? `${emailFromState.substring(0, 3)}***` : '',
+                finalEmail: finalEmail ? `${finalEmail.substring(0, 3)}***` : '',
+                phoneDom: phoneFromDom ? '***' : '',
+                phoneState: phoneFromState ? '***' : '',
+                finalPhone: finalPhone ? '***' : '',
                 hasCardForm: !!cardFormRef.current,
               })
               
@@ -223,7 +253,7 @@ export function MercadoPagoCardForm({
                   
                   const tokenResult = await mp.fields.createCardToken({
                     cardholderName: normalizedCardholderName,
-                    cardholderEmail: email.trim(),
+                    cardholderEmail: finalEmail,
                     identificationType: identificationType || undefined,
                     identificationNumber: identificationNumber || undefined,
                   })
