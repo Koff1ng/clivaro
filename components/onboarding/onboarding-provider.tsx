@@ -26,7 +26,8 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
   const { data, isLoading } = useQuery({
     queryKey: ['onboarding-status'],
     queryFn: checkOnboarding,
-    staleTime: 5 * 60 * 1000, // 5 minutos
+    staleTime: Infinity, // No refrescar automáticamente - solo cuando se complete el onboarding
+    gcTime: Infinity, // Mantener en caché indefinidamente
   })
 
   useEffect(() => {

@@ -53,6 +53,7 @@ export function WelcomeOnboarding({ onComplete, planName }: WelcomeOnboardingPro
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['settings'] })
       queryClient.invalidateQueries({ queryKey: ['tenant-plan'] })
+      queryClient.invalidateQueries({ queryKey: ['onboarding-status'] })
       toast('¡Bienvenido a Clivaro!', 'success')
       onComplete()
     },
