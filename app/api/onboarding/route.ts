@@ -213,7 +213,10 @@ export async function GET(request: Request) {
         })
       }
 
-      const needsOnboarding = !settings?.onboardingCompleted
+      // Solo necesita onboarding si:
+      // 1. No hay settings (tenant recién creado)
+      // 2. O si hay settings pero onboardingCompleted es false o null
+      const needsOnboarding = !settings || settings.onboardingCompleted === false || settings.onboardingCompleted === null
 
       return NextResponse.json({
         needsOnboarding,
@@ -221,16 +224,16 @@ export async function GET(request: Request) {
         plan: subscription?.plan || null,
       })
     } catch (settingsError: any) {
-      // Si hay error al obtener settings (posiblemente campos nuevos no migrados), asumir que necesita onboarding
+      // Si hay error al obtener settings, asumir que NO necesita onboarding
+      // Esto evita mostrar el onboarding a usuarios existentes cuando hay errores de BD
       logger.warn('Error fetching settings in onboarding check', {
         tenantId: user.tenantId,
         error: settingsError?.message || String(settingsError),
       })
       
-      // Retornar que necesita onboarding si no se pueden obtener los settings
-      // Pero retornar un objeto válido para evitar errores en el frontend
+      // Retornar que NO necesita onboarding si hay error (para evitar mostrar onboarding a usuarios existentes)
       return NextResponse.json({
-        needsOnboarding: true,
+        needsOnboarding: false,
         settings: null,
         plan: null,
       })
