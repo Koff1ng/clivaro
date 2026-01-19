@@ -103,10 +103,34 @@ export async function GET(request: Request) {
       },
       dbMode: isTenantPostgres ? 'postgres' : isTenantSqlite ? (isPostgresEnv ? 'legacy_sqlite' : 'sqlite') : 'unknown',
     })
-  } catch (error) {
-    logger.error('Error verifying tenant', error, { endpoint: '/api/tenants/verify', method: 'GET' })
+  } catch (error: any) {
+    const errorMessage = error?.message || String(error)
+    const errorCode = error?.code || 'UNKNOWN_ERROR'
+    
+    logger.error('Error verifying tenant', error, { 
+      endpoint: '/api/tenants/verify', 
+      method: 'GET',
+      errorMessage,
+      errorCode,
+    })
+    
+    // Si es un error de conexión a la base de datos, dar un mensaje más específico
+    if (errorMessage.includes('MaxClientsInSessionMode') || errorMessage.includes('max clients reached')) {
+      return NextResponse.json(
+        { 
+          error: 'Error de conexión a la base de datos. Por favor, intente nuevamente en unos momentos.',
+          code: 'DATABASE_CONNECTION_ERROR',
+        },
+        { status: 503 }
+      )
+    }
+    
     return NextResponse.json(
-      { error: 'Error al verificar la empresa' },
+      { 
+        error: 'Error al verificar la empresa',
+        details: process.env.NODE_ENV === 'development' ? errorMessage : undefined,
+        code: errorCode,
+      },
       { status: 500 }
     )
   }
