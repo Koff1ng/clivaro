@@ -224,10 +224,13 @@ export async function GET(request: Request) {
         })
       )
 
-      // Obtener el plan del tenant (con manejo de errores y retry)
+      // Obtener el plan del tenant (completamente opcional - no crítico para onboarding)
+      // Si falla, simplemente continuamos sin plan
       let subscription = null
       try {
-        subscription = await executeWithRetry(() =>
+        // Intentar obtener la suscripción con timeout corto y sin reintentos
+        // para evitar saturar el pool de conexiones
+        subscription = await Promise.race([
           prisma.subscription.findFirst({
             where: {
               tenantId: user.tenantId,
@@ -239,14 +242,17 @@ export async function GET(request: Request) {
             orderBy: {
               createdAt: 'desc',
             },
-          })
-        )
+          }),
+          new Promise<null>((resolve) => setTimeout(() => resolve(null), 2000)) // Timeout de 2 segundos
+        ])
       } catch (subError: any) {
-        // Si hay error al obtener suscripción (posiblemente campos nuevos no migrados), continuar sin plan
-        logger.warn('Error fetching subscription in onboarding check', {
+        // Si hay error al obtener suscripción, simplemente continuar sin plan
+        // Esto no es crítico para determinar si necesita onboarding
+        logger.warn('Error fetching subscription in onboarding check (non-critical)', {
           tenantId: user.tenantId,
           error: subError?.message || String(subError),
         })
+        subscription = null
       }
 
       // Solo necesita onboarding si:
