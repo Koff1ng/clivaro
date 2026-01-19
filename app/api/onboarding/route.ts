@@ -228,10 +228,10 @@ export async function GET(request: Request) {
       // Si falla, simplemente continuamos sin plan
       let subscription = null
       try {
-        // Intentar obtener la suscripción con timeout corto y sin reintentos
+        // Intentar obtener la suscripción con retry logic y timeout corto
         // para evitar saturar el pool de conexiones
         subscription = await Promise.race([
-          prisma.subscription.findFirst({
+          executeWithRetry(() => prisma.subscription.findFirst({
             where: {
               tenantId: user.tenantId,
               status: 'active',
@@ -242,7 +242,7 @@ export async function GET(request: Request) {
             orderBy: {
               createdAt: 'desc',
             },
-          }),
+          }), 2, 500), // Solo 2 reintentos con delay de 500ms
           new Promise<null>((resolve) => setTimeout(() => resolve(null), 2000)) // Timeout de 2 segundos
         ])
       } catch (subError: any) {
