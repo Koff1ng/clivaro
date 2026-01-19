@@ -59,7 +59,7 @@ export function Sidebar() {
   const { isOpen, toggle } = useSidebar()
   const userPermissions = (session?.user as any)?.permissions || []
   const isSuperAdmin = (session?.user as any)?.isSuperAdmin || false
-  const { hasFeature: hasPlanFeature, isNewFeature, newFeatures } = useTenantPlan()
+  const { hasFeature: hasPlanFeature, isNewFeature, newFeatures, isLoading, planName } = useTenantPlan()
   const [visitedFeatures, setVisitedFeatures] = useState<Record<string, number>>({})
 
   // Cargar features visitadas desde localStorage
