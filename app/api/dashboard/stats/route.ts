@@ -21,7 +21,7 @@ export async function GET(request: Request) {
     // Obtener el cliente Prisma correcto (tenant o master según el usuario)
     const prisma = await getPrismaForRequest(request, session)
 
-    const withRetry = async <T,>(fn: () => Promise<T>, label: string, retries = 3): Promise<T> => {
+    const withRetry = async <T,>(fn: () => Promise<T>, label: string, retries = 5): Promise<T> => {
       let lastError: unknown
       for (let attempt = 0; attempt <= retries; attempt++) {
         try {
@@ -33,7 +33,7 @@ export async function GET(request: Request) {
           // Si es error de límite de conexiones, esperar y reintentar con backoff exponencial
           if (errorMessage.includes('MaxClientsInSessionMode') || errorMessage.includes('max clients reached')) {
             if (attempt < retries) {
-              const backoffDelay = Math.min(1000 * Math.pow(2, attempt), 10000) // Backoff exponencial, max 10s
+              const backoffDelay = Math.min(2000 * Math.pow(2, attempt), 15000) // Backoff exponencial, max 15s
               logger.warn(`[Dashboard Stats] Límite de conexiones alcanzado en ${label}, reintentando en ${backoffDelay}ms (intento ${attempt + 1}/${retries + 1})`)
               await new Promise(resolve => setTimeout(resolve, backoffDelay))
               continue
@@ -45,7 +45,7 @@ export async function GET(request: Request) {
             error: errorMessage,
           })
           if (attempt < retries) {
-            await new Promise(resolve => setTimeout(resolve, 250 * (attempt + 1)))
+            await new Promise(resolve => setTimeout(resolve, 500 * (attempt + 1)))
           }
         }
       }
