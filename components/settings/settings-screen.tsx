@@ -1,12 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Users, Receipt, CreditCard, Settings as SettingsIcon, Loader2 } from 'lucide-react'
+import { Users, Receipt, CreditCard, Settings as SettingsIcon, Loader2, CheckCircle2, XCircle, AlertCircle } from 'lucide-react'
 import { useToast } from '@/components/ui/toast'
 import { useSession } from 'next-auth/react'
+import { useSearchParams, useRouter } from 'next/navigation'
 import { UsersConfig } from './users-config'
 import { ElectronicBillingConfig } from './electronic-billing-config'
 import { SubscriptionConfig } from './subscription-config'
@@ -22,9 +23,72 @@ export function SettingsScreen() {
   const { toast } = useToast()
   const queryClient = useQueryClient()
   const { data: session } = useSession()
+  const searchParams = useSearchParams()
+  const router = useRouter()
   const [activeTab, setActiveTab] = useState('users')
   
   const isSuperAdmin = (session?.user as any)?.isSuperAdmin || false
+
+  // Manejar parámetros de redirección de Mercado Pago
+  useEffect(() => {
+    const paymentStatus = searchParams.get('payment')
+    const externalReference = searchParams.get('external_reference')
+    const preferenceId = searchParams.get('preference_id')
+    const collectionId = searchParams.get('collection_id')
+    const collectionStatus = searchParams.get('collection_status')
+    const paymentId = searchParams.get('payment_id')
+    const status = searchParams.get('status')
+
+    if (paymentStatus && externalReference) {
+      // Cambiar a la pestaña de suscripción
+      setActiveTab('subscription')
+
+      // Invalidar queries para actualizar datos
+      queryClient.invalidateQueries({ queryKey: ['tenant-plan'] })
+      queryClient.invalidateQueries({ queryKey: ['subscription-payments'] })
+
+      // Mostrar mensaje según el estado del pago
+      if (paymentStatus === 'success') {
+        toast('¡Pago procesado exitosamente! Tu suscripción ha sido activada.', 'success')
+      } else if (paymentStatus === 'failure') {
+        // Intentar obtener más información del pago si hay payment_id
+        if (paymentId && paymentId !== 'null') {
+          toast(`El pago fue rechazado. ID de pago: ${paymentId}. Puedes intentar nuevamente.`, 'error')
+        } else if (collectionStatus && collectionStatus !== 'null') {
+          toast(`El pago no pudo ser procesado. Estado: ${collectionStatus}. Puedes intentar nuevamente.`, 'error')
+        } else {
+          toast('El pago no pudo ser procesado. Por favor, intenta nuevamente o contacta con soporte.', 'error')
+        }
+      } else if (paymentStatus === 'pending') {
+        toast('Tu pago está siendo procesado. Te notificaremos cuando se complete.', 'info')
+      }
+
+      // Limpiar los parámetros de la URL después de procesarlos
+      const newUrl = new URL(window.location.href)
+      newUrl.searchParams.delete('payment')
+      newUrl.searchParams.delete('external_reference')
+      newUrl.searchParams.delete('preference_id')
+      newUrl.searchParams.delete('collection_id')
+      newUrl.searchParams.delete('collection_status')
+      newUrl.searchParams.delete('payment_id')
+      newUrl.searchParams.delete('status')
+      newUrl.searchParams.delete('payment_type')
+      newUrl.searchParams.delete('merchant_order_id')
+      newUrl.searchParams.delete('site_id')
+      newUrl.searchParams.delete('processing_mode')
+      newUrl.searchParams.delete('merchant_account_id')
+      
+      // Mantener solo el tab si está presente
+      if (newUrl.searchParams.get('tab')) {
+        // Ya está en la URL, no hacer nada
+      } else {
+        router.replace(newUrl.pathname + newUrl.search, { scroll: false })
+      }
+    } else if (searchParams.get('tab')) {
+      // Si hay un parámetro tab, cambiar a esa pestaña
+      setActiveTab(searchParams.get('tab') || 'users')
+    }
+  }, [searchParams, queryClient, router, toast])
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['settings'],
