@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/api-middleware'
 import { prisma } from '@/lib/db'
+import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
 
