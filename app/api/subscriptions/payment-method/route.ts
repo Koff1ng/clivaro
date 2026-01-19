@@ -161,7 +161,30 @@ export async function POST(request: Request) {
       external_reference: subscription.id,
     }
 
-    const paymentResult = await payment.create({ body: paymentData })
+    logger.info('Creating Mercado Pago payment', {
+      subscriptionId: subscription.id,
+      amount: paymentData.transaction_amount,
+      hasToken: !!token,
+      paymentMethodId,
+      installments: paymentData.installments,
+    })
+
+    let paymentResult
+    try {
+      paymentResult = await payment.create({ body: paymentData })
+    } catch (mpError: any) {
+      logger.error('Mercado Pago payment creation failed', mpError, {
+        subscriptionId: subscription.id,
+        errorMessage: mpError?.message,
+        errorStatus: mpError?.status,
+        errorCause: mpError?.cause,
+        paymentData: {
+          ...paymentData,
+          token: token ? `${token.substring(0, 10)}...` : null, // Solo mostrar parte del token por seguridad
+        },
+      })
+      throw new Error(`Error al procesar el pago con Mercado Pago: ${mpError?.message || String(mpError)}`)
+    }
 
     // Actualizar la suscripción con la información del pago
     const updatedSubscription = await executeWithRetry(() => prisma.subscription.update({
@@ -199,15 +222,38 @@ export async function POST(request: Request) {
       subscription: updatedSubscription,
     })
   } catch (error: any) {
+    const errorMessage = error?.message || String(error)
+    const errorCode = error?.code || 'UNKNOWN_ERROR'
+    const errorStatus = error?.status || error?.statusCode
+    
     logger.error('Error processing Mercado Pago payment', error, {
       endpoint: '/api/subscriptions/payment-method',
       method: 'POST',
+      errorMessage,
+      errorCode,
+      errorStatus,
+      errorStack: error?.stack,
+      errorCause: error?.cause,
     })
+    
+    // Si es un error de Mercado Pago, proporcionar más detalles
+    if (errorMessage.includes('Mercado Pago')) {
+      return NextResponse.json(
+        { 
+          error: 'Error al procesar el pago con Mercado Pago', 
+          details: errorMessage,
+          code: errorCode,
+          mercadoPagoStatus: errorStatus,
+        },
+        { status: 500 }
+      )
+    }
+    
     return NextResponse.json(
       { 
         error: 'Error al procesar el pago', 
-        details: error?.message || String(error),
-        code: error?.code || 'UNKNOWN_ERROR',
+        details: process.env.NODE_ENV === 'development' ? errorMessage : undefined,
+        code: errorCode,
       },
       { status: 500 }
     )
