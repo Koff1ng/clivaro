@@ -233,7 +233,8 @@ export function MercadoPagoCardForm({
         isMountedRef.current = false
       }
     }
-  }, [mp, publicKey, amount, subscriptionId, toast, onPaymentSuccess, onPaymentError])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mp, publicKey, amount, subscriptionId])
 
   if (isLoading) {
     return (
