@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -28,6 +28,9 @@ export function SettingsScreen() {
   const [activeTab, setActiveTab] = useState('users')
   
   const isSuperAdmin = (session?.user as any)?.isSuperAdmin || false
+  
+  // Referencia para rastrear si ya se procesaron los parámetros de pago
+  const processedPaymentRef = useRef<string | null>(null)
 
   // Manejar parámetros de redirección de Mercado Pago
   useEffect(() => {
@@ -42,7 +45,18 @@ export function SettingsScreen() {
     // Función helper para verificar si un valor es válido (no es 'null' string)
     const isValidValue = (value: string | null) => value && value !== 'null' && value.trim() !== ''
 
+    // Crear una clave única para este conjunto de parámetros
+    const paymentKey = `${paymentStatus || ''}-${externalReference || ''}-${preferenceId || ''}-${collectionId || ''}`
+    
+    // Si ya procesamos estos parámetros, no hacer nada
+    if (processedPaymentRef.current === paymentKey) {
+      return
+    }
+
     if (paymentStatus || (externalReference && isValidValue(externalReference))) {
+      // Marcar como procesado ANTES de hacer cualquier cosa
+      processedPaymentRef.current = paymentKey
+      
       // Cambiar a la pestaña de suscripción
       setActiveTab('subscription')
 
@@ -75,29 +89,29 @@ export function SettingsScreen() {
         toast('Procesando información del pago. Por favor, espera unos momentos...', 'info')
       }
 
-      // Limpiar los parámetros de la URL después de procesarlos (con un pequeño delay para que el usuario vea el mensaje)
-      setTimeout(() => {
-        const newUrl = new URL(window.location.href)
-        newUrl.searchParams.delete('payment')
-        newUrl.searchParams.delete('external_reference')
-        newUrl.searchParams.delete('preference_id')
-        newUrl.searchParams.delete('collection_id')
-        newUrl.searchParams.delete('collection_status')
-        newUrl.searchParams.delete('payment_id')
-        newUrl.searchParams.delete('status')
-        newUrl.searchParams.delete('payment_type')
-        newUrl.searchParams.delete('merchant_order_id')
-        newUrl.searchParams.delete('site_id')
-        newUrl.searchParams.delete('processing_mode')
-        newUrl.searchParams.delete('merchant_account_id')
-        
-        // Mantener solo el tab si está presente
-        if (newUrl.searchParams.get('tab')) {
-          // Ya está en la URL, no hacer nada
-        } else {
-          router.replace(newUrl.pathname + newUrl.search, { scroll: false })
-        }
-      }, 3000) // Esperar 3 segundos antes de limpiar la URL
+      // Limpiar los parámetros de la URL INMEDIATAMENTE para evitar re-ejecuciones
+      const newUrl = new URL(window.location.href)
+      newUrl.searchParams.delete('payment')
+      newUrl.searchParams.delete('external_reference')
+      newUrl.searchParams.delete('preference_id')
+      newUrl.searchParams.delete('collection_id')
+      newUrl.searchParams.delete('collection_status')
+      newUrl.searchParams.delete('payment_id')
+      newUrl.searchParams.delete('status')
+      newUrl.searchParams.delete('payment_type')
+      newUrl.searchParams.delete('merchant_order_id')
+      newUrl.searchParams.delete('site_id')
+      newUrl.searchParams.delete('processing_mode')
+      newUrl.searchParams.delete('merchant_account_id')
+      
+      // Mantener solo el tab si está presente
+      const tabParam = newUrl.searchParams.get('tab')
+      if (tabParam) {
+        newUrl.searchParams.set('tab', 'subscription')
+      }
+      
+      // Reemplazar la URL inmediatamente para evitar re-ejecuciones del efecto
+      router.replace(newUrl.pathname + newUrl.search, { scroll: false })
     } else if (searchParams.get('tab')) {
       // Si hay un parámetro tab, cambiar a esa pestaña
       setActiveTab(searchParams.get('tab') || 'users')
