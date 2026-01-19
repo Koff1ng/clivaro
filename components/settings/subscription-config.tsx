@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Rocket, Calendar, CheckCircle2, Minus, ExternalLink, Loader2, X, AlertTriangle, CreditCard } from 'lucide-react'
+import { Rocket, Calendar, CheckCircle2, Minus, ExternalLink, Loader2, X, AlertTriangle, CreditCard, RefreshCw } from 'lucide-react'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { useQuery } from '@tanstack/react-query'
 import { useState, useEffect } from 'react'
@@ -432,34 +432,67 @@ export function SubscriptionConfig({ settings, onSave, isLoading }: Subscription
           </div>
         </CardHeader>
         <CardContent>
-          {isLoadingPayments ? (
+          {paymentHistoryError ? (
+            <div className="flex flex-col items-center justify-center py-8 space-y-4">
+              <AlertTriangle className="h-8 w-8 text-destructive" />
+              <div className="text-center">
+                <p className="font-semibold text-destructive">Error al cargar el historial</p>
+                <p className="text-sm text-muted-foreground mt-2">
+                  {paymentHistoryError instanceof Error ? paymentHistoryError.message : 'Error desconocido'}
+                </p>
+                <Button
+                  variant="outline"
+                  className="mt-4"
+                  onClick={() => {
+                    queryClient.invalidateQueries({ queryKey: ['subscription-payments'] })
+                  }}
+                >
+                  Reintentar
+                </Button>
+              </div>
+            </div>
+          ) : isLoadingPayments ? (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
             </div>
           ) : payments.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
-              No hay pagos registrados
+              <CreditCard className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <p className="font-medium">No hay pagos registrados</p>
+              <p className="text-sm mt-2">Los pagos aparecerán aquí una vez que se procesen</p>
             </div>
           ) : (
             <>
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Amount</TableHead>
-                    <TableHead>Invoice</TableHead>
-                    <TableHead>Status</TableHead>
+                    <TableHead>Fecha</TableHead>
+                    <TableHead>Monto</TableHead>
+                    <TableHead>Plan</TableHead>
+                    <TableHead>Método</TableHead>
+                    <TableHead>Estado</TableHead>
+                    <TableHead>Factura</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {payments.slice(0, 10).map((payment: any) => (
                     <TableRow key={payment.id}>
                       <TableCell>
-                        {new Date(payment.date).toLocaleDateString('es-ES', { 
-                          year: 'numeric', 
-                          month: 'long', 
-                          day: 'numeric' 
-                        })}
+                        <div className="flex flex-col">
+                          <span className="font-medium">
+                            {new Date(payment.date).toLocaleDateString('es-ES', { 
+                              year: 'numeric', 
+                              month: 'short', 
+                              day: 'numeric' 
+                            })}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            {new Date(payment.date).toLocaleTimeString('es-ES', {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })}
+                          </span>
+                        </div>
                       </TableCell>
                       <TableCell className="font-medium">
                         {new Intl.NumberFormat('es-CO', {
@@ -468,28 +501,55 @@ export function SubscriptionConfig({ settings, onSave, isLoading }: Subscription
                           minimumFractionDigits: 2,
                           maximumFractionDigits: 2,
                         }).format(payment.amount)}
+                        {payment.interval && (
+                          <span className="text-xs text-muted-foreground block mt-1">
+                            {payment.interval === 'monthly' ? 'Mensual' : 'Anual'}
+                          </span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-col">
+                          <span className="font-medium">{payment.planName || 'N/A'}</span>
+                          {payment.mercadoPagoStatusDetail && (
+                            <span className="text-xs text-muted-foreground mt-1">
+                              {payment.mercadoPagoStatusDetail}
+                            </span>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {payment.paymentMethod ? (
+                          <Badge variant="outline" className="text-xs">
+                            {payment.paymentMethod === 'credit_card' ? 'Tarjeta Crédito' :
+                             payment.paymentMethod === 'debit_card' ? 'Tarjeta Débito' :
+                             payment.paymentMethod}
+                          </Badge>
+                        ) : (
+                          <span className="text-muted-foreground text-sm">-</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {getPaymentStatusBadge(payment.status)}
                       </TableCell>
                       <TableCell>
                         {payment.mercadoPagoPaymentId ? (
                           <Button
                             variant="link"
-                            className="h-auto p-0 text-primary"
+                            className="h-auto p-0 text-primary text-sm"
                             onClick={() => {
-                              // Aquí podrías abrir un modal o redirigir a la factura de Mercado Pago
-                              window.open(
-                                `https://www.mercadopago.com/activities/payments/${payment.mercadoPagoPaymentId}`,
-                                '_blank'
-                              )
+                              // Abrir la factura de Mercado Pago en una nueva pestaña
+                              const mpUrl = process.env.NODE_ENV === 'production'
+                                ? `https://www.mercadopago.com/activities/payments/${payment.mercadoPagoPaymentId}`
+                                : `https://www.mercadopago.com.co/activities/payments/${payment.mercadoPagoPaymentId}`
+                              window.open(mpUrl, '_blank')
                             }}
                           >
-                            View invoice
+                            Ver factura
+                            <ExternalLink className="h-3 w-3 ml-1 inline" />
                           </Button>
                         ) : (
-                          <span className="text-muted-foreground">-</span>
+                          <span className="text-muted-foreground text-sm">-</span>
                         )}
-                      </TableCell>
-                      <TableCell>
-                        {getPaymentStatusBadge(payment.status)}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -497,15 +557,19 @@ export function SubscriptionConfig({ settings, onSave, isLoading }: Subscription
               </Table>
               {payments.length > 10 && (
                 <div className="mt-4 text-center">
+                  <p className="text-sm text-muted-foreground mb-2">
+                    Mostrando los últimos 10 pagos de {payments.length} totales
+                  </p>
                   <Button
                     variant="link"
                     className="text-primary"
                     onClick={() => {
-                      // Aquí podrías implementar una vista completa de pagos
-                      toast('Función en desarrollo', 'info')
+                      // Expandir para mostrar todos los pagos
+                      toast('Mostrando todos los pagos', 'info')
+                      // TODO: Implementar paginación o vista expandida
                     }}
                   >
-                    View all payments <ExternalLink className="h-4 w-4 ml-1 inline" />
+                    Ver todos los pagos <ExternalLink className="h-4 w-4 ml-1 inline" />
                   </Button>
                 </div>
               )}

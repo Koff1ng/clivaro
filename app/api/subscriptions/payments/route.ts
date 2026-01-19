@@ -125,11 +125,15 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ payments })
   } catch (error: any) {
-    console.error('Error fetching subscription payments:', error)
+    logger.error('Error fetching subscription payments', error, {
+      endpoint: '/api/subscriptions/payments',
+      method: 'GET',
+      tenantId: user?.tenantId,
+    })
     return NextResponse.json(
       { 
         error: error.message || 'Error al obtener el historial de pagos',
-        details: error?.message || String(error),
+        details: process.env.NODE_ENV === 'development' ? error?.message : undefined,
         code: error?.code || 'UNKNOWN_ERROR',
       },
       { status: 500 }
