@@ -35,16 +35,19 @@ export async function GET(request: Request) {
     }
 
     // Este endpoint siempre usa la BD maestra para verificar tenants
-    const tenant = await prisma.tenant.findUnique({
-      where: { slug },
-      select: {
-        id: true,
-        name: true,
-        slug: true,
-        active: true,
-        databaseUrl: true,
-      }
-    })
+    // Usar retry logic para manejar errores de conexión
+    const tenant = await executeWithRetry(() =>
+      prisma.tenant.findUnique({
+        where: { slug },
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          active: true,
+          databaseUrl: true,
+        }
+      })
+    )
 
     if (!tenant) {
       return NextResponse.json(
