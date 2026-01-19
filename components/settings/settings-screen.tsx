@@ -39,7 +39,10 @@ export function SettingsScreen() {
     const paymentId = searchParams.get('payment_id')
     const status = searchParams.get('status')
 
-    if (paymentStatus && externalReference) {
+    // Función helper para verificar si un valor es válido (no es 'null' string)
+    const isValidValue = (value: string | null) => value && value !== 'null' && value.trim() !== ''
+
+    if (paymentStatus || (externalReference && isValidValue(externalReference))) {
       // Cambiar a la pestaña de suscripción
       setActiveTab('subscription')
 
@@ -51,39 +54,50 @@ export function SettingsScreen() {
       if (paymentStatus === 'success') {
         toast('¡Pago procesado exitosamente! Tu suscripción ha sido activada.', 'success')
       } else if (paymentStatus === 'failure') {
-        // Intentar obtener más información del pago si hay payment_id
-        if (paymentId && paymentId !== 'null') {
-          toast(`El pago fue rechazado. ID de pago: ${paymentId}. Puedes intentar nuevamente.`, 'error')
-        } else if (collectionStatus && collectionStatus !== 'null') {
-          toast(`El pago no pudo ser procesado. Estado: ${collectionStatus}. Puedes intentar nuevamente.`, 'error')
-        } else {
-          toast('El pago no pudo ser procesado. Por favor, intenta nuevamente o contacta con soporte.', 'error')
+        // Construir mensaje de error más informativo
+        let errorMessage = 'El pago no pudo ser procesado.'
+        
+        if (isValidValue(paymentId)) {
+          errorMessage = `El pago fue rechazado. ID de pago: ${paymentId}.`
+        } else if (isValidValue(collectionStatus)) {
+          errorMessage = `El pago no pudo ser procesado. Estado: ${collectionStatus}.`
+        } else if (isValidValue(status)) {
+          errorMessage = `El pago no pudo ser procesado. Estado: ${status}.`
         }
+        
+        errorMessage += ' Puedes intentar nuevamente desde la sección de suscripción.'
+        toast(errorMessage, 'error')
       } else if (paymentStatus === 'pending') {
         toast('Tu pago está siendo procesado. Te notificaremos cuando se complete.', 'info')
+      } else if (!paymentStatus && isValidValue(externalReference)) {
+        // Si hay external_reference pero no payment status, puede ser una redirección incompleta
+        // El webhook debería procesar el pago, pero mostramos un mensaje informativo
+        toast('Procesando información del pago. Por favor, espera unos momentos...', 'info')
       }
 
-      // Limpiar los parámetros de la URL después de procesarlos
-      const newUrl = new URL(window.location.href)
-      newUrl.searchParams.delete('payment')
-      newUrl.searchParams.delete('external_reference')
-      newUrl.searchParams.delete('preference_id')
-      newUrl.searchParams.delete('collection_id')
-      newUrl.searchParams.delete('collection_status')
-      newUrl.searchParams.delete('payment_id')
-      newUrl.searchParams.delete('status')
-      newUrl.searchParams.delete('payment_type')
-      newUrl.searchParams.delete('merchant_order_id')
-      newUrl.searchParams.delete('site_id')
-      newUrl.searchParams.delete('processing_mode')
-      newUrl.searchParams.delete('merchant_account_id')
-      
-      // Mantener solo el tab si está presente
-      if (newUrl.searchParams.get('tab')) {
-        // Ya está en la URL, no hacer nada
-      } else {
-        router.replace(newUrl.pathname + newUrl.search, { scroll: false })
-      }
+      // Limpiar los parámetros de la URL después de procesarlos (con un pequeño delay para que el usuario vea el mensaje)
+      setTimeout(() => {
+        const newUrl = new URL(window.location.href)
+        newUrl.searchParams.delete('payment')
+        newUrl.searchParams.delete('external_reference')
+        newUrl.searchParams.delete('preference_id')
+        newUrl.searchParams.delete('collection_id')
+        newUrl.searchParams.delete('collection_status')
+        newUrl.searchParams.delete('payment_id')
+        newUrl.searchParams.delete('status')
+        newUrl.searchParams.delete('payment_type')
+        newUrl.searchParams.delete('merchant_order_id')
+        newUrl.searchParams.delete('site_id')
+        newUrl.searchParams.delete('processing_mode')
+        newUrl.searchParams.delete('merchant_account_id')
+        
+        // Mantener solo el tab si está presente
+        if (newUrl.searchParams.get('tab')) {
+          // Ya está en la URL, no hacer nada
+        } else {
+          router.replace(newUrl.pathname + newUrl.search, { scroll: false })
+        }
+      }, 3000) // Esperar 3 segundos antes de limpiar la URL
     } else if (searchParams.get('tab')) {
       // Si hay un parámetro tab, cambiar a esa pestaña
       setActiveTab(searchParams.get('tab') || 'users')
