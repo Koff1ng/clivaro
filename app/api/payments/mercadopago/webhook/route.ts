@@ -45,6 +45,11 @@ export async function POST(request: Request) {
   try {
     const body = await request.json()
     
+    logger.info('Mercado Pago webhook received', {
+      body: JSON.stringify(body),
+      headers: Object.fromEntries(request.headers.entries()),
+    })
+    
     // Mercado Pago envía notificaciones en formato:
     // { type: "payment", data: { id: "123456789" } }
     const notification = body as {
@@ -56,6 +61,9 @@ export async function POST(request: Request) {
     }
 
     if (notification.type !== 'payment') {
+      logger.info('Webhook notification type is not payment, ignoring', {
+        type: notification.type,
+      })
       return NextResponse.json({ received: true })
     }
 
