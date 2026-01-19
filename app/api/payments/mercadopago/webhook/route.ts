@@ -81,7 +81,23 @@ export async function POST(request: Request) {
     }
 
     // Primero obtener la información del pago desde Mercado Pago para obtener el external_reference
-    let paymentInfo
+    type PaymentInfo = {
+      id: string | null
+      status: string | null
+      statusDetail: string | null
+      paymentMethodId: string | null
+      paymentTypeId: string | null
+      transactionAmount: number | null
+      currencyId: string | null
+      dateCreated: string | null
+      dateApproved: string | null
+      dateLastUpdated: string | null
+      externalReference: string | null
+      payer: any
+      metadata: any
+    }
+    
+    let paymentInfo: PaymentInfo | null = null
     try {
       paymentInfo = await getPaymentInfo(
         {
