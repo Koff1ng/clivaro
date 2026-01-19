@@ -103,7 +103,7 @@ export function MercadoPagoCardForm({
           id: 'mp-card-form',
           cardholderName: {
             id: 'form-checkout__cardholderName',
-            placeholder: 'John Doe',
+            placeholder: 'Nombre tal como aparece en la tarjeta',
           },
           cardholderEmail: {
             id: 'form-checkout__cardholderEmail',
