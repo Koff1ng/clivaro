@@ -243,6 +243,7 @@ export async function POST(request: Request) {
     const errorMessage = error?.message || String(error)
     const errorCode = error?.code || 'UNKNOWN_ERROR'
     const errorStatus = error?.status || error?.statusCode
+    const errorCause = error?.cause
     
     logger.error('Error processing Mercado Pago payment', error, {
       endpoint: '/api/subscriptions/payment-method',
@@ -251,19 +252,31 @@ export async function POST(request: Request) {
       errorCode,
       errorStatus,
       errorStack: error?.stack,
-      errorCause: error?.cause,
+      errorCause,
     })
     
-    // Si es un error de Mercado Pago, proporcionar más detalles
-    if (errorMessage.includes('Mercado Pago')) {
+    // Si es un error de Mercado Pago, intentar extraer causa legible
+    if (errorMessage.includes('Mercado Pago') || Array.isArray(errorCause)) {
+      let userMessage = 'Error al procesar el pago con Mercado Pago'
+      let detailedCause: any = undefined
+      
+      if (Array.isArray(errorCause) && errorCause.length > 0) {
+        detailedCause = errorCause
+        const first = errorCause[0]
+        if (first?.description) {
+          userMessage = `Error al procesar el pago con Mercado Pago: ${first.description}`
+        }
+      }
+      
       return NextResponse.json(
         { 
-          error: 'Error al procesar el pago con Mercado Pago', 
-          details: errorMessage,
+          error: userMessage,
+          details: process.env.NODE_ENV === 'development' ? errorMessage : undefined,
           code: errorCode,
           mercadoPagoStatus: errorStatus,
+          cause: detailedCause,
         },
-        { status: 500 }
+        { status: 400 }
       )
     }
     
