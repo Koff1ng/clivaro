@@ -34,9 +34,9 @@ export async function GET(request: Request) {
       )
     }
 
-    // Obtener la suscripción activa del tenant
+    // Obtener la suscripción activa del tenant con retry logic
     // Usar select en lugar de include para evitar problemas con campos nuevos no migrados
-    const subscription = await prisma.subscription.findFirst({
+    const subscription = await executeWithRetry(() => prisma.subscription.findFirst({
       where: {
         tenantId: tenantId,
         status: 'active',
@@ -67,7 +67,7 @@ export async function GET(request: Request) {
       orderBy: {
         createdAt: 'desc',
       },
-    })
+    }))
 
     if (!subscription) {
       return NextResponse.json({
