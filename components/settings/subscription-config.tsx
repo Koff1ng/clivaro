@@ -422,11 +422,16 @@ export function SubscriptionConfig({ settings, onSave, isLoading }: Subscription
               size="sm"
               onClick={() => {
                 queryClient.invalidateQueries({ queryKey: ['subscription-payments'] })
-                toast('Historial actualizado', 'success')
+                toast('Actualizando historial...', 'info')
               }}
               disabled={isLoadingPayments}
+              title="Actualizar historial de pagos"
             >
-              <Loader2 className={`h-4 w-4 mr-2 ${isLoadingPayments ? 'animate-spin' : ''}`} />
+              {isLoadingPayments ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <RefreshCw className="h-4 w-4 mr-2" />
+              )}
               Actualizar
             </Button>
           </div>
