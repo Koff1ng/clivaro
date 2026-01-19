@@ -8,6 +8,37 @@ import { toDecimal } from '@/lib/numbers'
 import { updateStockLevel, checkStock } from '@/lib/inventory'
 import jwt from 'jsonwebtoken'
 
+// Función helper para ejecutar consultas con retry y manejo de errores de conexión
+async function executeWithRetry<T>(
+  fn: () => Promise<T>,
+  maxRetries = 3,
+  delay = 1000
+): Promise<T> {
+  let lastError: any
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      return await fn()
+    } catch (error: any) {
+      lastError = error
+      const errorMessage = error?.message || String(error)
+      
+      // Si es error de límite de conexiones, esperar y reintentar
+      if (errorMessage.includes('MaxClientsInSessionMode') || errorMessage.includes('max clients reached')) {
+        if (attempt < maxRetries - 1) {
+          const backoffDelay = Math.min(delay * Math.pow(2, attempt), 10000) // Backoff exponencial, max 10s
+          logger.warn(`[POS Sale] Límite de conexiones alcanzado, reintentando en ${backoffDelay}ms (intento ${attempt + 1}/${maxRetries})`)
+          await new Promise(resolve => setTimeout(resolve, backoffDelay))
+          continue
+        }
+      }
+      
+      // Si no es error de conexión, lanzar inmediatamente
+      throw error
+    }
+  }
+  throw lastError
+}
+
 const createPOSSaleSchema = z.object({
   customerId: z.string().optional(),
   warehouseId: z.string(),
@@ -35,7 +66,7 @@ const createPOSSaleSchema = z.object({
 })
 
 async function getUserPermissions(prisma: any, userId: string) {
-  const userRoles = await prisma.userRole.findMany({
+  const userRoles = await executeWithRetry(() => prisma.userRole.findMany({
     where: { userId },
     include: {
       role: {
@@ -44,7 +75,7 @@ async function getUserPermissions(prisma: any, userId: string) {
         },
       },
     },
-  })
+  }))
   const perms = new Set<string>()
   userRoles.forEach((ur: any) => {
     ur.role.rolePermissions.forEach((rp: any) => perms.add(rp.permission.name))
