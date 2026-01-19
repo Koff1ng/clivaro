@@ -11,10 +11,8 @@ export const metadata: Metadata = {
   title: 'ClientumExpress',
   description: 'Sistema de gestion empresarial',
   icons: {
-    icon: [
-      { url: '/clivaro-logo.webp', type: 'image/webp' },
-      { url: '/favicon.ico', sizes: 'any' },
-    ],
+    icon: '/clivaro-logo.webp',
+    shortcut: '/clivaro-logo.webp',
     apple: '/clivaro-logo.webp',
   },
 }
