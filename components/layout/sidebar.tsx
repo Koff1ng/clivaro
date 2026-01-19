@@ -155,7 +155,17 @@ export function Sidebar() {
     if (!hasPermission) return false
 
     // Verificar feature del plan
+    // Si no hay plan activo o está cargando, mostrar elementos basándose solo en permisos
+    // (asumir acceso completo si no hay plan para evitar ocultar el sidebar)
     if (item.planFeature && !isSuperAdmin) {
+      // Si está cargando el plan, mostrar el elemento (evitar ocultar mientras carga)
+      if (isLoading) {
+        return true
+      }
+      // Si no hay plan activo, mostrar todos los elementos (asumir acceso completo)
+      if (!planName) {
+        return true
+      }
       return hasPlanFeature(item.planFeature as any)
     }
 
