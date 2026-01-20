@@ -119,7 +119,7 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json()
-    const { subscriptionId, token, paymentMethodId, installments, issuerId, identificationType, identificationNumber } = body
+    const { subscriptionId, token, paymentMethodId, installments, issuerId, identificationType, identificationNumber, email } = body
 
     if (!subscriptionId || !token) {
       return NextResponse.json(
@@ -185,7 +185,8 @@ export async function POST(request: Request) {
       payment_method_id: paymentMethodId,
       issuer_id: issuerId,
       payer: {
-        email: subscription.tenant.email || undefined,
+        // Usar el email del formulario si está disponible, sino el del tenant
+        email: email || subscription.tenant.email || undefined,
         // Identificación obligatoria para Colombia
         identification: {
           type: identificationType,
