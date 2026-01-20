@@ -261,24 +261,24 @@ export function InvoiceList() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
         <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Buscar facturas (número, CUFE)..."
+            placeholder="Buscar facturas (número, CUFE, cliente)..."
             value={search}
             onChange={handleSearchChange}
-            className="pl-10"
+            className="pl-9 rounded-full text-sm"
           />
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap md:flex-nowrap">
           <select
             value={statusFilter}
             onChange={(e) => {
               setStatusFilter(e.target.value)
               setPage(1)
             }}
-            className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
+            className="flex h-9 rounded-full border border-input bg-background px-3 py-1.5 text-xs md:text-sm"
           >
             <option value="">Todos los estados</option>
             <option value="EMITIDA">Emitida</option>
@@ -286,13 +286,13 @@ export function InvoiceList() {
             <option value="EN_COBRANZA">En Cobranza</option>
             <option value="ANULADA">Anulada</option>
           </select>
-          <div className="relative">
+          <div className="flex flex-col gap-1">
             <Input
               type="text"
               placeholder="Buscar cliente..."
               value={customerSearch}
               onChange={(e) => setCustomerSearch(e.target.value)}
-              className="w-48"
+              className="w-48 h-9 text-xs md:text-sm"
             />
             <select
               value={customerFilter}
@@ -300,7 +300,7 @@ export function InvoiceList() {
                 setCustomerFilter(e.target.value)
                 setPage(1)
               }}
-              className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm mt-2"
+              className="flex h-9 rounded-full border border-input bg-background px-3 py-1.5 text-xs md:text-sm"
             >
               <option value="">Todos los clientes</option>
               {customers.slice(0, 50).map((customer: any) => (
@@ -311,7 +311,7 @@ export function InvoiceList() {
         </div>
       </div>
 
-      <div className="border rounded-lg">
+      <div className="border rounded-2xl bg-card/80 backdrop-blur-sm shadow-sm">
         <Table>
           <TableHeader>
             <TableRow>

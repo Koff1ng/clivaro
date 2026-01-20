@@ -29,6 +29,7 @@ import {
   Shield,
 } from 'lucide-react'
 import { Logo } from '@/components/ui/logo'
+import { AppIcon } from '@/components/ui/app-icon'
 import { useSidebar } from '@/lib/sidebar-context'
 import { Button } from '@/components/ui/button'
 import { useTenantPlan } from '@/lib/hooks/use-plan-features'
@@ -246,7 +247,7 @@ export function Sidebar() {
                 )}
                 title={!isOpen ? item.label : undefined}
               >
-                <Icon className="h-5 w-5 flex-shrink-0" />
+                <AppIcon icon={Icon} />
                 <span className={cn(
                   'transition-opacity duration-300 whitespace-nowrap flex items-center gap-1.5',
                   isOpen ? 'opacity-100' : 'opacity-0 md:hidden'

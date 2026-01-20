@@ -7,6 +7,7 @@ import { Sidebar } from './sidebar'
 import { Header } from './header'
 import { SidebarProvider } from '@/lib/sidebar-context'
 import { OnboardingProvider } from '@/components/onboarding/onboarding-provider'
+import { SubscriptionGate } from '@/components/subscriptions/subscription-gate'
 
 function LayoutContent({ children }: { children: React.ReactNode }) {
   return (
@@ -49,7 +50,9 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
   return (
     <SidebarProvider>
       <OnboardingProvider>
-        <LayoutContent>{children}</LayoutContent>
+        <SubscriptionGate>
+          <LayoutContent>{children}</LayoutContent>
+        </SubscriptionGate>
       </OnboardingProvider>
     </SidebarProvider>
   )

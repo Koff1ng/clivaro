@@ -1,0 +1,45 @@
+:root {
+  /* Radii */
+  --app-radius-xs: 0.375rem;
+  --app-radius-sm: 0.5rem;
+  --app-radius-md: 0.75rem;
+  --app-radius-lg: 1rem;
+  --app-radius-xl: 1.25rem;
+
+  /* Shadows */
+  --app-shadow-soft: 0 18px 40px rgba(15, 23, 42, 0.08);
+  --app-shadow-subtle: 0 10px 25px rgba(15, 23, 42, 0.06);
+  --app-shadow-elevated: 0 24px 60px rgba(15, 23, 42, 0.14);
+
+  /* Backdrop / blur */
+  --app-blur-soft: 16px;
+  --app-blur-strong: 28px;
+
+  /* Spacing scale (for custom CSS when Tailwind is not enough) */
+  --app-space-xs: 0.375rem;
+  --app-space-sm: 0.75rem;
+  --app-space-md: 1.25rem;
+  --app-space-lg: 2rem;
+  --app-space-xl: 3rem;
+
+  /* Typography scale */
+  --app-font-size-xs: 0.75rem;
+  --app-font-size-sm: 0.875rem;
+  --app-font-size-md: 1rem;
+  --app-font-size-lg: 1.125rem;
+  --app-font-size-xl: 1.5rem;
+  --app-font-size-2xl: 1.875rem;
+
+  --app-letter-spacing-tight: -0.03em;
+  --app-letter-spacing-normal: -0.01em;
+  --app-letter-spacing-wide: 0.02em;
+}
+
+[data-theme='dark'] {
+  /* Shadows more subtle in dark mode */
+  --app-shadow-soft: 0 18px 40px rgba(0, 0, 0, 0.4);
+  --app-shadow-subtle: 0 10px 25px rgba(0, 0, 0, 0.3);
+  --app-shadow-elevated: 0 24px 60px rgba(0, 0, 0, 0.55);
+}
+
+

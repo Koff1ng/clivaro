@@ -142,26 +142,28 @@ export function CustomerList() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3">
         <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Buscar clientes..."
+            placeholder="Buscar clientes por nombre, NIT, email..."
             value={search}
             onChange={handleSearchChange}
-            className="pl-10"
+            className="pl-9 rounded-full text-sm"
           />
         </div>
-        <Button onClick={() => {
-          setSelectedCustomer(null)
-          setIsFormOpen(true)
-        }}>
+        <Button
+          onClick={() => {
+            setSelectedCustomer(null)
+            setIsFormOpen(true)
+          }}
+        >
           <Plus className="h-4 w-4 mr-2" />
           Nuevo Cliente
         </Button>
       </div>
 
-      <div className="border rounded-lg">
+      <div className="border rounded-2xl bg-card/80 backdrop-blur-sm shadow-sm">
         <Table>
           <TableHeader>
             <TableRow>

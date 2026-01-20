@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { formatCurrency } from '@/lib/utils'
 import { TrendingUp, Package, DollarSign, AlertTriangle } from 'lucide-react'
+import { AppIcon } from '@/components/ui/app-icon'
 
 async function fetchStats() {
   const res = await fetch('/api/dashboard/stats')
@@ -56,47 +57,71 @@ export function DashboardStats() {
 
   return (
     <div className="grid gap-4 md:grid-cols-4">
-      {/* Ingresos - Azul */}
-      <Card className="border-l-4 border-l-blue-500">
+      {/* Ingresos */}
+      <Card className="group border-none bg-gradient-to-b from-slate-50 to-white dark:from-slate-900/50 dark:to-slate-900 hover:-translate-y-[1px] hover:shadow-[0_18px_40px_rgba(15,23,42,0.08)] transition-all duration-150 ease-out">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Ingresos</CardTitle>
-          <TrendingUp className="h-5 w-5 text-blue-600" />
+          <CardTitle className="text-xs font-medium text-muted-foreground tracking-[0.12em] uppercase">
+            Ingresos
+          </CardTitle>
+          <div className="rounded-full bg-blue-50 dark:bg-blue-900/30 p-2">
+            <AppIcon icon={TrendingUp} size={18} className="text-blue-600 dark:text-blue-400" />
+          </div>
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{formatCurrency(stats.salesMonth)}</div>
+          <div className="text-2xl font-semibold tracking-tight">
+            {formatCurrency(stats.salesMonth)}
+          </div>
         </CardContent>
       </Card>
-      
-      {/* Ganancias - Teal */}
-      <Card className="border-l-4 border-l-teal-500">
+
+      {/* Ganancias */}
+      <Card className="group border-none bg-gradient-to-b from-slate-50 to-white dark:from-slate-900/50 dark:to-slate-900 hover:-translate-y-[1px] hover:shadow-[0_18px_40px_rgba(15,23,42,0.08)] transition-all duration-150 ease-out">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Ganancias</CardTitle>
-          <DollarSign className="h-5 w-5 text-teal-600" />
+          <CardTitle className="text-xs font-medium text-muted-foreground tracking-[0.12em] uppercase">
+            Ganancias
+          </CardTitle>
+          <div className="rounded-full bg-teal-50 dark:bg-teal-900/30 p-2">
+            <AppIcon icon={DollarSign} size={18} className="text-teal-600 dark:text-teal-400" />
+          </div>
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{formatCurrency(earnings)}</div>
+          <div className="text-2xl font-semibold tracking-tight">
+            {formatCurrency(earnings)}
+          </div>
         </CardContent>
       </Card>
-      
-      {/* En Cobranza - Naranja */}
-      <Card className="border-l-4 border-l-orange-500">
+
+      {/* En Cobranza */}
+      <Card className="group border-none bg-gradient-to-b from-slate-50 to-white dark:from-slate-900/50 dark:to-slate-900 hover:-translate-y-[1px] hover:shadow-[0_18px_40px_rgba(15,23,42,0.08)] transition-all duration-150 ease-out">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">En Cobranza</CardTitle>
-          <AlertTriangle className="h-5 w-5 text-orange-600" />
+          <CardTitle className="text-xs font-medium text-muted-foreground tracking-[0.12em] uppercase">
+            En cobranza
+          </CardTitle>
+          <div className="rounded-full bg-amber-50 dark:bg-amber-900/30 p-2">
+            <AppIcon icon={AlertTriangle} size={18} className="text-amber-600 dark:text-amber-400" />
+          </div>
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{formatCurrency(inCollection)}</div>
+          <div className="text-2xl font-semibold tracking-tight">
+            {formatCurrency(inCollection)}
+          </div>
         </CardContent>
       </Card>
-      
-      {/* Ventas - Amarillo */}
-      <Card className="border-l-4 border-l-yellow-500">
+
+      {/* Ventas */}
+      <Card className="group border-none bg-gradient-to-b from-slate-50 to-white dark:from-slate-900/50 dark:to-slate-900 hover:-translate-y-[1px] hover:shadow-[0_18px_40px_rgba(15,23,42,0.08)] transition-all duration-150 ease-out">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Ventas</CardTitle>
-          <Package className="h-5 w-5 text-yellow-600" />
+          <CardTitle className="text-xs font-medium text-muted-foreground tracking-[0.12em] uppercase">
+            Ventas
+          </CardTitle>
+          <div className="rounded-full bg-indigo-50 dark:bg-indigo-900/30 p-2">
+            <AppIcon icon={Package} size={18} className="text-indigo-600 dark:text-indigo-400" />
+          </div>
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{stats.salesCount || 0}</div>
+          <div className="text-2xl font-semibold tracking-tight">
+            {stats.salesCount || 0}
+          </div>
         </CardContent>
       </Card>
     </div>
