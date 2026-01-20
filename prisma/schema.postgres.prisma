@@ -4,9 +4,8 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
-  // directUrl es opcional, solo disponible en planes pagos de Supabase
-  // directUrl = env("DIRECT_URL")
+  url      = env("DATABASE_URL") // Transaction pooler para runtime
+  directUrl = env("DIRECT_URL") // Conexión directa para migraciones (opcional, solo en planes pagos de Supabase)
 }
 
 model User {
