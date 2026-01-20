@@ -724,7 +724,7 @@ model Plan {
 
 model Subscription {
   id            String    @id @default(cuid())
-  tenantId      String
+  tenantId      String    @unique // Un tenant solo puede tener una suscripción activa
   planId        String
   status        String    // "active" | "cancelled" | "expired" | "trial" | "pending_payment"
   startDate     DateTime
