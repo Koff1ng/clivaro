@@ -251,7 +251,9 @@ export async function POST(request: Request) {
       mercadoPago: {
         preapprovalId: mpPreapproval.id,
         initPoint: mpPreapproval.init_point,
-        sandboxInitPoint: mpPreapproval.sandbox_init_point,
+        // Algunos tipos del SDK no exponen sandbox_init_point en PreApprovalResponse,
+        // pero el campo puede existir en tiempo de ejecución; por eso se accede vía any.
+        sandboxInitPoint: (mpPreapproval as any).sandbox_init_point ?? null,
         status: mpPreapproval.status,
       },
     })
