@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -70,11 +70,17 @@ export function TenantsClient() {
     }
   })
 
-  const filteredTenants = tenants?.filter((tenant: any) =>
-    tenant.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    tenant.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    tenant.slug.toLowerCase().includes(searchTerm.toLowerCase())
-  ) || []
+  const tenantsList = useMemo(() => {
+    return Array.isArray(tenants) ? tenants : []
+  }, [tenants])
+
+  const filteredTenants = useMemo(() => {
+    return tenantsList.filter((tenant: any) =>
+      tenant.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      tenant.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      tenant.slug.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+  }, [tenantsList, searchTerm])
 
   const getStatusBadge = (subscription: any) => {
     if (!subscription) return <Badge variant="secondary">Sin suscripción</Badge>
@@ -152,7 +158,7 @@ export function TenantsClient() {
             <Building2 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{tenants?.length || 0}</div>
+            <div className="text-2xl font-bold">{tenantsList.length}</div>
           </CardContent>
         </Card>
         <Card>
@@ -162,7 +168,7 @@ export function TenantsClient() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
-              {tenants?.filter((t: any) => t.active).length || 0}
+              {tenantsList.filter((t: any) => t.active).length}
             </div>
           </CardContent>
         </Card>
@@ -173,7 +179,7 @@ export function TenantsClient() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {tenants?.filter((t: any) => t.subscriptions?.some((s: any) => s.status === 'active')).length || 0}
+              {tenantsList.filter((t: any) => t.subscriptions?.some((s: any) => s.status === 'active')).length}
             </div>
           </CardContent>
         </Card>
@@ -184,19 +190,19 @@ export function TenantsClient() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-red-600">
-              {tenants?.filter((t: any) => {
+              {tenantsList.filter((t: any) => {
                 const sub = t.subscriptions?.[0]
                 if (!sub || sub.status !== 'active') return false
                 const endDate = sub.endDate ? new Date(sub.endDate) : null
                 return endDate && endDate < new Date()
-              }).length || 0}
+              }).length}
             </div>
           </CardContent>
         </Card>
       </div>
 
       {/* Tenants List */}
-      {isLoading && (!tenants || tenants.length === 0) ? (
+      {isLoading && tenantsList.length === 0 ? (
         <div className="flex items-center justify-center py-12">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground mr-2" />
           <span className="text-muted-foreground">Cargando tenants...</span>
