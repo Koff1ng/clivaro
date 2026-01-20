@@ -57,12 +57,19 @@ Estado: Será rechazada
    - Selecciona el código de país (🇨🇴 +57 para Colombia)
    - Ingresa un número de teléfono (ej: "8917895190")
 3. **Email**: 
-   - **IMPORTANTE**: En modo sandbox, usa el email de tu **Usuario de Prueba** creado en el panel de Mercado Pago
-   - Ve a: https://www.mercadopago.com.co/developers/panel/app → Tu App → **Cuentas de prueba**
-   - Usa el email del "Usuario de prueba pagador" (Buyer)
-   - Si no tienes uno, crea uno desde el panel
-   - **NO uses** emails genéricos como "test@example.com" - Mercado Pago los rechaza
-   - Ejemplo válido: "test_user_123456@testuser.com" (del panel de Mercado Pago)
+   - **IMPORTANTE**: En modo sandbox, usa el email asociado a tu **Usuario de Prueba** de Mercado Pago
+   - Cuando creas un usuario de prueba, Mercado Pago te da:
+     - **Usuario**: Generalmente es un email (ej: `test_user_123456@testuser.com`)
+     - **Contraseña**: Para iniciar sesión en el panel
+   - **Cómo obtener el email:**
+     1. Ve a: https://www.mercadopago.com.co/developers/panel/app
+     2. Selecciona tu aplicación
+     3. Ve a **Cuentas de prueba** → **Usuarios de prueba**
+     4. Busca el "Usuario de prueba pagador" (Buyer)
+     5. El **email es el mismo que el usuario** (o aparece listado junto al usuario)
+   - **Alternativa**: Si el usuario no es un email, puedes usar cualquier email válido con formato correcto (ej: `test@test.com`, `buyer@testuser.com`)
+   - **NO uses** emails genéricos muy comunes como "test@example.com" - algunos pueden ser rechazados
+   - **Recomendado**: Usa un email con formato `test_user_XXXXX@testuser.com` o similar
 4. **Card number**: Ingresa una de las tarjetas de prueba arriba
 5. **Expiration date**: Ingresa una fecha futura (ej: "12/25")
 6. **Security code**: Ingresa "123"
@@ -107,8 +114,13 @@ Puedes verificar los pagos de prueba en:
 
 1. **Credenciales de Prueba**: Asegúrate de estar usando credenciales de prueba (`TEST-` o `APP_USR-`)
 2. **Modo Sandbox**: Los pagos se procesan en modo sandbox, no son reales
-3. **Webhook**: El webhook recibirá notificaciones de los pagos de prueba
-4. **Historial**: Los pagos aparecerán en el historial de pagos de la suscripción
+3. **Email del Usuario de Prueba**: 
+   - Mercado Pago te da un **usuario** y **contraseña** para el usuario de prueba
+   - El **email** generalmente es el mismo que el usuario
+   - Si no aparece el email, puedes usar cualquier email válido con formato correcto
+   - Ejemplos válidos: `test@test.com`, `buyer@testuser.com`, `test_user_123@testuser.com`
+4. **Webhook**: El webhook recibirá notificaciones de los pagos de prueba
+5. **Historial**: Los pagos aparecerán en el historial de pagos de la suscripción
 
 ## 🐛 Solución de Problemas
 
@@ -121,6 +133,7 @@ Puedes verificar los pagos de prueba en:
 - Verifica que estés usando una tarjeta de prueba válida
 - Revisa los logs del servidor para más detalles
 - Asegúrate de que todos los campos requeridos estén completos
+- **Email inválido**: Si Mercado Pago rechaza el email, intenta con otro formato válido (ej: `test@test.com` en lugar de `test@example.com`)
 
 ### El token no se genera
 - Verifica que el número de tarjeta sea válido

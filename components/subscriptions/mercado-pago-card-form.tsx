@@ -43,7 +43,7 @@ export function MercadoPagoCardForm({
   const [cardholderName, setCardholderName] = useState('')
   const [phone, setPhone] = useState('')
   const [countryCode, setCountryCode] = useState('+57') // Colombia por defecto
-  const [email, setEmail] = useState('')
+  // Email es manejado directamente por Mercado Pago en el CardForm
   const [identificationType, setIdentificationType] = useState('CC') // CC por defecto para Colombia
   const [identificationNumber, setIdentificationNumber] = useState('')
 
@@ -187,20 +187,30 @@ export function MercadoPagoCardForm({
               toast('El nombre del titular no puede exceder 50 caracteres', 'error')
               return
             }
-            // Validación estricta de email
+            
+            // Validar email del campo de Mercado Pago
+            // Mercado Pago renderiza el input dentro del contenedor
+            const emailInput = document.querySelector('#form-checkout__cardholderEmail input') as HTMLInputElement
+            const emailValue = emailInput?.value?.trim() || ''
+            
+            if (!emailValue) {
+              toast('Por favor, ingresa un email válido', 'error')
+              return
+            }
+            
             const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-            const trimmedEmail = email.trim()
-            if (!trimmedEmail || !emailRegex.test(trimmedEmail)) {
+            if (!emailRegex.test(emailValue)) {
               toast('Por favor, ingresa un email válido (ej: usuario@dominio.com)', 'error')
               return
             }
             
             // Validar que el email no sea demasiado largo (límite de Mercado Pago)
-            if (trimmedEmail.length > 254) {
+            if (emailValue.length > 254) {
               toast('El email es demasiado largo', 'error')
               return
             }
-              if (!phone.trim()) {
+            
+            if (!phone.trim()) {
                 toast('Por favor, ingresa un número de teléfono', 'error')
                 return
               }
@@ -300,7 +310,15 @@ export function MercadoPagoCardForm({
 
               // Procesar el pago
               // Asegurar que el email esté normalizado (sin espacios, en minúsculas)
-              const normalizedEmail = email.trim().toLowerCase()
+              const normalizedEmail = emailValue.trim().toLowerCase()
+              
+              // Validar email antes de enviar
+              const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+              if (!normalizedEmail || !emailRegex.test(normalizedEmail)) {
+                toast('Por favor, ingresa un email válido', 'error')
+                setIsProcessing(false)
+                return
+              }
               
               const paymentRes = await fetch('/api/subscriptions/payment-method', {
                 method: 'POST',
@@ -532,29 +550,18 @@ export function MercadoPagoCardForm({
             </div>
           </div>
 
-          {/* Email */}
+          {/* Email - Mercado Pago maneja este campo */}
           <div className="space-y-2">
             <Label htmlFor="form-checkout__cardholderEmail" className="text-sm font-medium">
               Email:
             </Label>
-              <input
-                type="email"
-                id="form-checkout__cardholderEmail"
-                value={email}
-                onChange={(e) => {
-                  // Normalizar el email (sin espacios)
-                  const value = e.target.value.trim().toLowerCase()
-                  setEmail(value)
-                }}
-                className="flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                placeholder="usuario@dominio.com"
-                required
-                pattern="[^\s@]+@[^\s@]+\.[^\s@]+"
-                title="Ingresa un email válido (ej: usuario@dominio.com)"
-              />
-              <p className="text-xs text-muted-foreground">
-                Usa un email válido. En modo prueba, usa el email de tu usuario de prueba de Mercado Pago.
-              </p>
+            <div 
+              id="form-checkout__cardholderEmail" 
+              className="h-11 w-full rounded-md border border-input bg-background px-3 py-2 flex items-center"
+            ></div>
+            <p className="text-xs text-muted-foreground">
+              Usa un email válido. En modo prueba, puedes usar cualquier email con formato correcto (ej: test@test.com)
+            </p>
           </div>
 
           {/* Card Number */}
