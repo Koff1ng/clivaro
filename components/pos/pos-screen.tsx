@@ -1029,14 +1029,14 @@ export function POSScreen() {
       return
     }
 
-    const anyCashSplit = paymentMode === 'SPLIT' && splitPayments.some(p => p.method === 'CASH' && parseFloat(p.amount || '0') > 0)
-    if (paymentMode === 'SINGLE' && paymentMethod === 'CASH') {
-      if (!activeShift) {
-        toast('Debes abrir un turno de caja primero', 'warning')
-        setShowShiftDialog(true)
-        return
-      }
+    // Todos los métodos de pago requieren turno de caja abierto (quedan registrados en el cierre)
+    if (!activeShift) {
+      toast('Debes abrir un turno de caja primero', 'warning')
+      setShowShiftDialog(true)
+      return
+    }
 
+    if (paymentMode === 'SINGLE' && paymentMethod === 'CASH') {
       const total = calculateTotals().total
       const received = parseFloat(cashReceived || '0')
       
@@ -1044,12 +1044,6 @@ export function POSScreen() {
         toast(`El efectivo recibido (${formatCurrency(received)}) debe ser mayor o igual al total (${formatCurrency(total)})`, 'warning')
         return
       }
-    }
-    
-    if (paymentMode === 'SPLIT' && anyCashSplit && !activeShift) {
-      toast('Debes abrir un turno de caja primero (hay efectivo en la venta)', 'warning')
-      setShowShiftDialog(true)
-      return
     }
 
     // Validate cart items
@@ -1798,12 +1792,12 @@ export function POSScreen() {
               disabled={
                 cart.length === 0 ||
                 saleMutation.isPending ||
-                ((paymentMode === 'SINGLE' && paymentMethod === 'CASH') && !activeShift) ||
+                !activeShift ||
                 (paymentMode === 'SPLIT' && splitPaid < totals.total)
               }
               title={
-                (paymentMode === 'SINGLE' && paymentMethod === 'CASH' && !activeShift)
-                  ? 'Debes abrir un turno de caja para pagos en efectivo'
+                !activeShift
+                  ? 'Debes abrir un turno de caja para procesar cualquier pago'
                   : undefined
               }
             >
