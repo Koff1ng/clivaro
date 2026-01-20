@@ -10,8 +10,17 @@
 
 import { PrismaClient } from '@prisma/client'
 import { PrismaClient as TenantPrismaClient } from '@prisma/client'
+import { execSync } from 'child_process'
+import * as path from 'path'
 
-const prisma = new PrismaClient()
+// Usar el schema postgres para la conexión master
+const prisma = new PrismaClient({
+  datasources: {
+    db: {
+      url: process.env.DATABASE_URL,
+    },
+  },
+})
 
 const MIGRATION_SQL = `
 DO $$
@@ -91,6 +100,21 @@ async function migrateTenantDatabase(databaseUrl: string, tenantName: string, te
 
 async function main() {
   console.log('🚀 Iniciando migración de updatedAt para todos los tenants...\n')
+
+  // Verificar conexión a la base de datos
+  try {
+    await prisma.$connect()
+    console.log('✅ Conectado a la base de datos master\n')
+  } catch (error: any) {
+    console.error('❌ Error al conectar a la base de datos master:')
+    console.error(`   ${error.message}\n`)
+    console.error('💡 Soluciones posibles:')
+    console.error('   1. Verifica que DATABASE_URL esté configurado en .env')
+    console.error('   2. Verifica que la base de datos esté accesible desde tu red')
+    console.error('   3. Si estás en producción, ejecuta este script desde el servidor')
+    console.error('   4. O ejecuta la migración manualmente en cada base de datos de tenant\n')
+    process.exit(1)
+  }
 
   try {
     // Obtener todos los tenants activos
