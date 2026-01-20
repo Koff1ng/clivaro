@@ -17,16 +17,17 @@ function addConnectionLimit(url: string): string {
     return url
   }
   
-  // Añadir connection_limit=1 y pool_timeout para usar solo 1 conexión del pool de Supabase
+  // Añadir connection_limit y pool_timeout para optimizar el pool de Supabase
+  // connection_limit=5 permite paralelismo sin exceder límites de Supabase
   const separator = url.includes('?') ? '&' : '?'
-  // Usar connection_limit=1 y pool_timeout=10 para evitar exceder el límite
+  // Usar connection_limit=5 y pool_timeout=20 para mejor rendimiento
   let newUrl = url
   if (!newUrl.includes('connection_limit=')) {
-    newUrl = `${newUrl}${separator}connection_limit=1`
+    newUrl = `${newUrl}${separator}connection_limit=5`
   }
   if (!newUrl.includes('pool_timeout=')) {
     const sep = newUrl.includes('?') ? '&' : '?'
-    newUrl = `${newUrl}${sep}pool_timeout=10`
+    newUrl = `${newUrl}${sep}pool_timeout=20`
   }
   return newUrl
 }

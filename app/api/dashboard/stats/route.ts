@@ -56,37 +56,45 @@ export async function GET(request: Request) {
       const today = startOfDay(new Date())
       const monthStart = startOfMonth(new Date())
 
-      const salesToday = await withRetry(
-        () =>
-          prisma.invoice.aggregate({
-            where: {
-              status: { in: ['PAGADA', 'PAID', 'EN_COBRANZA', 'PARCIAL', 'PARTIAL'] }, // Compatibilidad con estados antiguos y nuevos
-              createdAt: { gte: today },
-            },
-            _sum: {
-              total: true,
-            },
-          }),
-        'salesToday'
-      )
-
-      const salesMonth = await withRetry(
-        () =>
-          prisma.invoice.aggregate({
-            where: {
-              status: { in: ['PAGADA', 'PAID', 'EN_COBRANZA', 'PARCIAL', 'PARTIAL'] }, // Compatibilidad con estados antiguos y nuevos
-              createdAt: { gte: monthStart },
-            },
-            _sum: {
-              total: true,
-            },
-          }),
-        'salesMonth'
-      )
-
-      // Ganancia del mes: (precio_venta_sin_impuestos - descuentos - costos)
-      // Fórmula: (subtotal - descuento_factura) - costos_de_productos_vendidos
-      const profitMonth = await withRetry(async () => {
+      // Ejecutar queries independientes en paralelo para mejor rendimiento
+      const [
+        salesToday,
+        salesMonth,
+        profitMonth,
+        salesCount,
+        totalProducts,
+        lowStockCount,
+        inCollection,
+      ] = await Promise.all([
+        withRetry(
+          () =>
+            prisma.invoice.aggregate({
+              where: {
+                status: { in: ['PAGADA', 'PAID', 'EN_COBRANZA', 'PARCIAL', 'PARTIAL'] }, // Compatibilidad con estados antiguos y nuevos
+                createdAt: { gte: today },
+              },
+              _sum: {
+                total: true,
+              },
+            }),
+          'salesToday'
+        ),
+        withRetry(
+          () =>
+            prisma.invoice.aggregate({
+              where: {
+                status: { in: ['PAGADA', 'PAID', 'EN_COBRANZA', 'PARCIAL', 'PARTIAL'] }, // Compatibilidad con estados antiguos y nuevos
+                createdAt: { gte: monthStart },
+              },
+              _sum: {
+                total: true,
+              },
+            }),
+          'salesMonth'
+        ),
+        // Ganancia del mes: (precio_venta_sin_impuestos - descuentos - costos)
+        // Fórmula: (subtotal - descuento_factura) - costos_de_productos_vendidos
+        withRetry(async () => {
       const invoices = await prisma.invoice.findMany({
         where: {
           status: { in: ['PAGADA', 'PAID', 'EN_COBRANZA', 'PARCIAL', 'PARTIAL'] },
@@ -134,10 +142,9 @@ export async function GET(request: Request) {
 
         // Ganancia = ingresos sin impuestos (después de descuentos) - costos
         return subtotalWithoutTaxes - costOfGoodsSold
-      }, 'profitMonth')
-
-      // Número de ventas = número de facturas pagadas en el turno activo
-      const salesCount = await withRetry(async () => {
+        }, 'profitMonth'),
+        // Número de ventas = número de facturas pagadas en el turno activo
+        withRetry(async () => {
       // Buscar turno activo
       const activeShift = await prisma.cashShift.findFirst({
         where: {
@@ -169,19 +176,17 @@ export async function GET(request: Request) {
       })
 
         return paidInvoicesCount
-      }, 'salesCount')
-
-      const totalProducts = await withRetry(
-        () =>
-          prisma.product.count({
-            where: {
-              active: true,
-            },
-          }),
-        'totalProducts'
-      )
-
-      const lowStockCount = await withRetry(async () => {
+        }, 'salesCount'),
+        withRetry(
+          () =>
+            prisma.product.count({
+              where: {
+                active: true,
+              },
+            }),
+          'totalProducts'
+        ),
+        withRetry(async () => {
         const levels = await prisma.stockLevel.findMany({
           where: {
             product: {
@@ -201,9 +206,8 @@ export async function GET(request: Request) {
           // Verificar que minStock sea mayor que 0 y que quantity sea menor o igual
           return (level.minStock > 0 && level.quantity <= level.minStock) ? count + 1 : count
         }, 0)
-      }, 'lowStockCount')
-
-      const inCollection = await withRetry(async () => {
+        }, 'lowStockCount'),
+        withRetry(async () => {
       const unpaidInvoices = await prisma.invoice.findMany({
         where: {
           status: {
@@ -229,7 +233,8 @@ export async function GET(request: Request) {
       }
 
       return totalInCollection
-    }, 'inCollection')
+    }, 'inCollection'),
+      ])
 
       const duration = Date.now() - startTime
       logger.apiResponse('GET', '/api/dashboard/stats', 200, duration)
