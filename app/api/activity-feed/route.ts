@@ -50,28 +50,195 @@ export async function GET(request: Request) {
 
   try {
     const { searchParams } = new URL(request.url)
-    const limit = parseInt(searchParams.get('limit') || '30') // Aumentar límite para incluir más actividades
+    const rawLimit = parseInt(searchParams.get('limit') || '30')
+    const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(rawLimit, 50) : 30
 
     const activities: any[] = []
 
-    // 1. Manual Stock Adjustments (Ajustes Manuales de Inventario)
-    // Solo movimientos que son ajustes manuales (reference empieza con "ADJ-" o reason contiene "Ajuste")
-    const stockAdjustments = await executeWithRetry(() => prisma.stockMovement.findMany({
-      take: limit * 2, // Tomar más para filtrar después
-      where: {
-        OR: [
-          { reference: { startsWith: 'ADJ-' } },
-          { reason: { contains: 'Ajuste' } },
-        ],
-      },
-      include: {
-        product: { select: { id: true, name: true, sku: true } },
-        warehouse: { select: { id: true, name: true } },
-        createdBy: { select: { id: true, name: true } },
-      },
-      orderBy: { createdAt: 'desc' },
-    }))
+    // Ejecutar todas las consultas en paralelo y ser tolerantes a fallos para evitar timeouts largos
+    const [
+      stockAdjustments,
+      payments,
+      cashMovements,
+      products,
+      invoices,
+      purchaseOrders,
+      goodsReceipts,
+      quotations,
+      crmActivities,
+    ] = await Promise.all([
+      executeWithRetry(
+        () =>
+          prisma.stockMovement.findMany({
+            take: limit * 2,
+            where: {
+              OR: [
+                { reference: { startsWith: 'ADJ-' } },
+                { reason: { contains: 'Ajuste' } },
+              ],
+            },
+            include: {
+              product: { select: { id: true, name: true, sku: true } },
+              warehouse: { select: { id: true, name: true } },
+              createdBy: { select: { id: true, name: true } },
+            },
+            orderBy: { createdAt: 'desc' },
+          }),
+        2,
+        1000
+      ).catch((error) => {
+        logger.error('[Activity Feed] Error fetching stock adjustments', error)
+        return [] as any[]
+      }),
+      executeWithRetry(
+        () =>
+          prisma.payment.findMany({
+            take: limit,
+            select: {
+              id: true,
+              amount: true,
+              method: true,
+              createdAt: true,
+              invoice: {
+                select: {
+                  id: true,
+                  number: true,
+                  customer: { select: { id: true, name: true } },
+                },
+              },
+            },
+            orderBy: { createdAt: 'desc' },
+          }),
+        2,
+        1000
+      ).catch((error) => {
+        logger.error('[Activity Feed] Error fetching payments', error)
+        return [] as any[]
+      }),
+      executeWithRetry(
+        () =>
+          prisma.cashMovement.findMany({
+            take: limit,
+            include: {
+              cashShift: { select: { id: true, status: true, openedAt: true } },
+              createdBy: { select: { id: true, name: true } },
+            },
+            orderBy: { createdAt: 'desc' },
+          }),
+        2,
+        1000
+      ).catch((error) => {
+        logger.error('[Activity Feed] Error fetching cash movements', error)
+        return [] as any[]
+      }),
+      executeWithRetry(
+        () =>
+          prisma.product.findMany({
+            take: limit,
+            orderBy: { createdAt: 'desc' },
+          }),
+        2,
+        1000
+      ).catch((error) => {
+        logger.error('[Activity Feed] Error fetching products', error)
+        return [] as any[]
+      }),
+      executeWithRetry(
+        () =>
+          prisma.invoice.findMany({
+            take: limit,
+            include: {
+              customer: { select: { id: true, name: true } },
+              createdBy: { select: { id: true, name: true } },
+            },
+            orderBy: { createdAt: 'desc' },
+          }),
+        2,
+        1000
+      ).catch((error) => {
+        logger.error('[Activity Feed] Error fetching invoices', error)
+        return [] as any[]
+      }),
+      executeWithRetry(
+        () =>
+          prisma.purchaseOrder.findMany({
+            take: limit,
+            include: {
+              supplier: { select: { id: true, name: true } },
+            },
+            orderBy: { createdAt: 'desc' },
+          }),
+        2,
+        1000
+      ).catch((error) => {
+        logger.error('[Activity Feed] Error fetching purchase orders', error)
+        return [] as any[]
+      }),
+      executeWithRetry(
+        () =>
+          prisma.goodsReceipt.findMany({
+            take: limit,
+            include: {
+              purchaseOrder: { select: { id: true, number: true } },
+            },
+            orderBy: { createdAt: 'desc' },
+          }),
+        2,
+        1000
+      ).catch((error) => {
+        logger.error('[Activity Feed] Error fetching goods receipts', error)
+        return [] as any[]
+      }),
+      executeWithRetry(
+        () =>
+          prisma.quotation.findMany({
+            take: limit,
+            include: {
+              customer: { select: { id: true, name: true } },
+            },
+            orderBy: { createdAt: 'desc' },
+          }),
+        2,
+        1000
+      ).catch((error) => {
+        logger.error('[Activity Feed] Error fetching quotations', error)
+        return [] as any[]
+      }),
+      executeWithRetry(
+        () =>
+          prisma.activity.findMany({
+            take: limit,
+            include: {
+              createdBy: {
+                select: {
+                  id: true,
+                  name: true,
+                },
+              },
+              lead: {
+                select: {
+                  id: true,
+                  name: true,
+                },
+              },
+              customer: {
+                select: {
+                  id: true,
+                  name: true,
+                },
+              },
+            },
+            orderBy: { createdAt: 'desc' },
+          }),
+        2,
+        1000
+      ).catch((error) => {
+        logger.error('[Activity Feed] Error fetching CRM activities', error)
+        return [] as any[]
+      }),
+    ])
 
+    // 1. Manual Stock Adjustments
     stockAdjustments.forEach(m => {
       activities.push({
         id: `adjustment-${m.id}`,
@@ -93,26 +260,7 @@ export async function GET(request: Request) {
       })
     })
 
-    // 2. Payments (Pagos - Ingresos de Dinero)
-    // Usar select en lugar de include para evitar problemas con columnas que pueden no existir
-    const payments = await executeWithRetry(() => prisma.payment.findMany({
-      take: limit,
-      select: {
-        id: true,
-        amount: true,
-        method: true,
-        createdAt: true,
-        invoice: { 
-          select: { 
-            id: true, 
-            number: true,
-            customer: { select: { id: true, name: true } },
-          } 
-        },
-      },
-      orderBy: { createdAt: 'desc' },
-    }))
-
+    // 2. Payments
     payments.forEach(p => {
       activities.push({
         id: `payment-${p.id}`,
@@ -125,23 +273,14 @@ export async function GET(request: Request) {
           invoice: p.invoice?.number,
           customer: p.invoice?.customer?.name,
         },
-        user: 'Sistema', // Payment no tiene createdBy en el schema actual
+        user: 'Sistema',
         createdAt: p.createdAt,
         icon: 'dollar-sign',
         color: 'green',
       })
     })
 
-    // 3. Cash Movements (Movimientos de Caja - Ingresos/Salidas de Dinero)
-    const cashMovements = await executeWithRetry(() => prisma.cashMovement.findMany({
-      take: limit,
-      include: {
-        cashShift: { select: { id: true, status: true, openedAt: true } },
-        createdBy: { select: { id: true, name: true } },
-      },
-      orderBy: { createdAt: 'desc' },
-    }))
-
+    // 3. Cash Movements
     cashMovements.forEach(cm => {
       const shiftInfo = cm.cashShift 
         ? `Turno ${cm.cashShift.status === 'OPEN' ? 'Abierto' : 'Cerrado'} (${new Date(cm.cashShift.openedAt).toLocaleDateString()})`
@@ -165,12 +304,7 @@ export async function GET(request: Request) {
       })
     })
 
-    // 4. Products (Productos Nuevos)
-    const products = await executeWithRetry(() => prisma.product.findMany({
-      take: limit,
-      orderBy: { createdAt: 'desc' },
-    }))
-
+    // 4. Products
     products.forEach(p => {
       activities.push({
         id: `product-${p.id}`,
@@ -190,16 +324,7 @@ export async function GET(request: Request) {
       })
     })
 
-    // 5. Invoices (Facturas) - Solo para referencia de pagos
-    const invoices = await executeWithRetry(() => prisma.invoice.findMany({
-      take: limit,
-      include: {
-        customer: { select: { id: true, name: true } },
-        createdBy: { select: { id: true, name: true } },
-      },
-      orderBy: { createdAt: 'desc' },
-    }))
-
+    // 5. Invoices
     invoices.forEach(inv => {
       activities.push({
         id: `invoice-${inv.id}`,
@@ -219,15 +344,7 @@ export async function GET(request: Request) {
       })
     })
 
-    // 6. Purchase Orders (Órdenes de Compra)
-    const purchaseOrders = await executeWithRetry(() => prisma.purchaseOrder.findMany({
-      take: limit,
-      include: {
-        supplier: { select: { id: true, name: true } },
-      },
-      orderBy: { createdAt: 'desc' },
-    }))
-
+    // 6. Purchase Orders
     purchaseOrders.forEach(po => {
       activities.push({
         id: `purchase-order-${po.id}`,
@@ -247,15 +364,7 @@ export async function GET(request: Request) {
       })
     })
 
-    // 7. Goods Receipts (Recepciones)
-    const goodsReceipts = await executeWithRetry(() => prisma.goodsReceipt.findMany({
-      take: limit,
-      include: {
-        purchaseOrder: { select: { id: true, number: true } },
-      },
-      orderBy: { createdAt: 'desc' },
-    }))
-
+    // 7. Goods Receipts
     goodsReceipts.forEach(gr => {
       activities.push({
         id: `goods-receipt-${gr.id}`,
@@ -273,15 +382,7 @@ export async function GET(request: Request) {
       })
     })
 
-    // 8. Quotations (Cotizaciones)
-    const quotations = await executeWithRetry(() => prisma.quotation.findMany({
-      take: limit,
-      include: {
-        customer: { select: { id: true, name: true } },
-      },
-      orderBy: { createdAt: 'desc' },
-    }))
-
+    // 8. Quotations
     quotations.forEach(q => {
       activities.push({
         id: `quotation-${q.id}`,
@@ -301,33 +402,7 @@ export async function GET(request: Request) {
       })
     })
 
-
-    // 8. CRM Activities (Actividades de CRM - Llamadas, Emails, Reuniones, Tareas, Notas)
-    const crmActivities = await executeWithRetry(() => prisma.activity.findMany({
-      take: limit,
-      include: {
-        createdBy: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-        lead: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-        customer: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-      },
-      orderBy: { createdAt: 'desc' },
-    }))
-
+    // 9. CRM Activities
     crmActivities.forEach(act => {
       const activityTypeLabels: Record<string, string> = {
         'CALL': 'Llamada',
