@@ -778,7 +778,8 @@ export function POSScreen() {
       cashReceived: paymentMode === 'SINGLE' && paymentMethod === 'CASH' ? parseFloat(cashReceived || '0') : null,
     })
     setShowReceipt(true)
-    setAutoPrintPending(true)
+    // Auto-print disabled - user must click print button manually
+    // setAutoPrintPending(true)
 
     setCart([])
     setSearchQuery('')
@@ -1139,22 +1140,21 @@ export function POSScreen() {
     }
   }, [])
 
-  // Auto-print receipt on successful sale
-  useEffect(() => {
-    if (showReceipt && autoPrintPending && typeof window !== 'undefined') {
-      // Pequeño delay para asegurarnos de que el dialogo se haya renderizado
-      const id = setTimeout(() => {
-        try {
-          printThermal()
-        } catch {
-          toast('No se pudo iniciar la impresión automática', 'error')
-        } finally {
-          setAutoPrintPending(false)
-        }
-      }, 300)
-      return () => clearTimeout(id)
-    }
-  }, [showReceipt, autoPrintPending, printThermal, toast])
+  // Auto-print disabled - user must click print button manually
+  // useEffect(() => {
+  //   if (showReceipt && autoPrintPending && typeof window !== 'undefined') {
+  //     const id = setTimeout(() => {
+  //       try {
+  //         printThermal()
+  //       } catch {
+  //         toast('No se pudo iniciar la impresión automática', 'error')
+  //       } finally {
+  //         setAutoPrintPending(false)
+  //       }
+  //     }, 300)
+  //     return () => clearTimeout(id)
+  //   }
+  // }, [showReceipt, autoPrintPending, printThermal, toast])
 
   // Buscar por teclado: Enter agrega (SKU/código exacto si existe; si no, agrega el primer resultado por nombre)
   const handleSearchKeyDown = (e: React.KeyboardEvent) => {
@@ -1863,45 +1863,53 @@ export function POSScreen() {
 
       {/* Receipt Dialog */}
       <Dialog open={showReceipt} onOpenChange={setShowReceipt}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-center">Venta Completada</DialogTitle>
+        <DialogContent className="max-w-lg p-0 gap-0 overflow-hidden">
+          <DialogHeader className="px-6 pt-6 pb-4 bg-gradient-to-br from-primary/5 to-primary/10 border-b">
+            <DialogTitle className="text-2xl font-semibold text-center">Venta Completada</DialogTitle>
+            {saleResult?.offline && (
+              <div className="mt-2 text-xs font-semibold text-orange-600 text-center">
+                PENDIENTE DE SINCRONIZAR
+              </div>
+            )}
           </DialogHeader>
           {saleResult && (
-            <div className="space-y-4">
+            <div className="space-y-0">
               {/* Receipt Header */}
-              <div className="text-center border-b pb-4">
-                <div className="text-lg font-bold">Ferretería</div>
-                <div className="text-sm text-gray-600">Punto de Venta</div>
-                {saleResult.offline && (
-                  <div className="mt-2 text-xs font-semibold text-orange-600">
-                    PENDIENTE DE SINCRONIZAR
-                  </div>
-                )}
+              <div className="px-6 pt-6 pb-4 text-center bg-muted/30">
+                <div className="text-xl font-bold text-foreground">Ferretería</div>
+                <div className="text-sm text-muted-foreground mt-1">Punto de Venta</div>
               </div>
 
               {/* Sale Info */}
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Factura:</span>
-                  <span className="font-medium">{saleResult.invoiceNumber}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Fecha:</span>
-                  <span className="font-medium">{new Date().toLocaleString('es-CO')}</span>
+              <div className="px-6 py-4 space-y-3 bg-card">
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div className="flex flex-col">
+                    <span className="text-muted-foreground text-xs mb-1">Factura</span>
+                    <span className="font-semibold text-foreground">{saleResult.invoiceNumber}</span>
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-muted-foreground text-xs mb-1">Fecha</span>
+                    <span className="font-medium text-foreground">{new Date().toLocaleString('es-CO', { 
+                      day: '2-digit', 
+                      month: '2-digit', 
+                      year: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}</span>
+                  </div>
                 </div>
                 {saleResult.customer && (
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Cliente:</span>
-                    <span className="font-medium">{saleResult.customer.name}</span>
+                  <div className="flex flex-col pt-2 border-t">
+                    <span className="text-muted-foreground text-xs mb-1">Cliente</span>
+                    <span className="font-medium text-foreground">{saleResult.customer.name}</span>
                   </div>
                 )}
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Método de Pago:</span>
+                <div className="flex flex-col pt-2 border-t">
+                  <span className="text-muted-foreground text-xs mb-1">Método de Pago</span>
                   {saleResult.paymentMode === 'SPLIT' && Array.isArray(saleResult.payments) ? (
-                    <div className="text-right">
-                      <div className="font-medium">Mixto</div>
-                      <div className="text-xs text-gray-500">
+                    <div>
+                      <span className="font-medium text-foreground">Mixto</span>
+                      <div className="mt-1 space-y-0.5 text-xs text-muted-foreground">
                         {saleResult.payments.map((p: any, idx: number) => (
                           <div key={idx}>
                             {p.method === 'CASH' ? 'Efectivo' : p.method === 'CARD' ? 'Tarjeta' : 'Transferencia'}: {formatCurrency(p.amount)}
@@ -1910,7 +1918,7 @@ export function POSScreen() {
                       </div>
                     </div>
                   ) : (
-                    <span className="font-medium">
+                    <span className="font-medium text-foreground">
                       {saleResult.paymentMethod === 'CASH' ? 'Efectivo' :
                       saleResult.paymentMethod === 'CARD' ? 'Tarjeta' : 'Transferencia'}
                     </span>
@@ -1919,48 +1927,48 @@ export function POSScreen() {
               </div>
 
               {/* Items */}
-            <div id="pos-thermal-print" className="border-t pt-4 thermal-ticket">
-                <div className="text-sm font-semibold mb-2">Productos:</div>
-                <div className="space-y-1 max-h-40 overflow-y-auto">
+              <div id="pos-thermal-print" className="px-6 py-4 border-t border-b bg-muted/20">
+                <div className="text-sm font-semibold mb-3 text-foreground">Productos</div>
+                <div className="space-y-2 max-h-48 overflow-y-auto">
                   {saleResult.items.map((item: CartItem) => (
-                    <div key={item.productId} className="flex justify-between text-sm">
-                      <span>{item.productName} x{item.quantity}</span>
-                      <span>{formatCurrency(item.subtotal)}</span>
+                    <div key={item.productId} className="flex justify-between items-start text-sm py-1">
+                      <span className="flex-1 text-foreground">{item.productName} <span className="text-muted-foreground">x{item.quantity}</span></span>
+                      <span className="font-medium text-foreground ml-4">{formatCurrency(item.subtotal)}</span>
                     </div>
                   ))}
                 </div>
               </div>
 
               {/* Totals */}
-              <div className="border-t pt-4 space-y-2">
-                <div className="flex justify-between text-lg font-bold">
-                  <span>Total:</span>
-                  <span>{formatCurrency(saleResult.total)}</span>
+              <div className="px-6 py-4 space-y-3 bg-card">
+                <div className="flex justify-between items-center pt-2 border-t">
+                  <span className="text-lg font-semibold text-foreground">Total</span>
+                  <span className="text-2xl font-bold text-primary">{formatCurrency(saleResult.total)}</span>
                 </div>
                 {saleResult.paymentMethod === 'CASH' && saleResult.cashReceived && (
                   <>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">Recibido:</span>
-                      <span>{formatCurrency(saleResult.cashReceived)}</span>
+                    <div className="flex justify-between text-sm pt-1">
+                      <span className="text-muted-foreground">Recibido</span>
+                      <span className="font-medium text-foreground">{formatCurrency(saleResult.cashReceived)}</span>
                     </div>
                     {saleResult.change > 0 && (
-                      <div className="flex justify-between text-lg font-semibold text-green-600">
-                        <span>Cambio:</span>
-                        <span>{formatCurrency(saleResult.change)}</span>
+                      <div className="flex justify-between items-center pt-2 border-t">
+                        <span className="text-base font-semibold text-green-600">Cambio</span>
+                        <span className="text-lg font-bold text-green-600">{formatCurrency(saleResult.change)}</span>
                       </div>
                     )}
                   </>
                 )}
                 {saleResult.paymentMode === 'SPLIT' && saleResult.change > 0 && (
-                  <div className="flex justify-between text-lg font-semibold text-green-600">
-                    <span>Cambio:</span>
-                    <span>{formatCurrency(saleResult.change)}</span>
+                  <div className="flex justify-between items-center pt-2 border-t">
+                    <span className="text-base font-semibold text-green-600">Cambio</span>
+                    <span className="text-lg font-bold text-green-600">{formatCurrency(saleResult.change)}</span>
                   </div>
                 )}
               </div>
 
               {/* Actions */}
-              <div className="flex gap-2 pt-4 border-t">
+              <div className="px-6 py-4 border-t bg-muted/30 flex gap-2">
                 <Button
                   variant="outline"
                   className="flex-1"
