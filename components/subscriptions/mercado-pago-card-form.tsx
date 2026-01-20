@@ -11,8 +11,9 @@ import { Label } from '@/components/ui/label'
 
 interface MercadoPagoCardFormProps {
   subscriptionId: string
-  amount: number
+  amount?: number // Opcional cuando solo se actualiza el método de pago
   currency?: string
+  updateOnly?: boolean // Si es true, solo actualiza el método de pago sin procesar un pago
   onPaymentSuccess?: () => void
   onPaymentError?: (error: string) => void
 }
@@ -25,8 +26,9 @@ declare global {
 
 export function MercadoPagoCardForm({
   subscriptionId,
-  amount,
+  amount = 0,
   currency = 'COP',
+  updateOnly = false,
   onPaymentSuccess,
   onPaymentError,
 }: MercadoPagoCardFormProps) {
@@ -366,43 +368,71 @@ export function MercadoPagoCardForm({
                 return
               }
               
-              const paymentRes = await fetch('/api/subscriptions/payment-method', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  subscriptionId,
-                  token: token,
-                  paymentMethodId: paymentMethodId,
-                  installments: parseInt(installments),
-                  issuerId: issuerId,
-                  identificationType: identificationTypeValue,
-                  identificationNumber: identificationNumberValue.trim(),
-                  email: normalizedEmail, // Enviar email normalizado
-                }),
-              })
+              // Si es modo "update-only", solo actualizar el método de pago sin procesar un pago
+              if (updateOnly) {
+                const updateRes = await fetch('/api/subscriptions/payment-method', {
+                  method: 'PUT',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    subscriptionId,
+                    token: token,
+                    paymentMethodId: paymentMethodId,
+                    issuerId: issuerId,
+                    identificationType: identificationTypeValue,
+                    identificationNumber: identificationNumberValue.trim(),
+                    email: normalizedEmail,
+                  }),
+                })
 
-              const paymentData = await paymentRes.json()
+                const updateData = await updateRes.json()
 
-              if (!paymentRes.ok) {
-                // Extraer mensaje de error más descriptivo
-                let errorMessage = paymentData.error || 'Error al procesar el pago'
-                
-                // Si hay un statusDetail, agregarlo al mensaje si el error no lo incluye ya
-                if (paymentData.statusDetail && !errorMessage.includes(paymentData.statusDetail)) {
-                  errorMessage = `${errorMessage} (${paymentData.statusDetail})`
+                if (!updateRes.ok) {
+                  const errorMessage = updateData.error || 'Error al actualizar el método de pago'
+                  throw new Error(errorMessage)
                 }
-                
-                throw new Error(errorMessage)
-              }
 
-              if (paymentData.success) {
-                toast('¡Pago procesado exitosamente!', 'success')
+                toast('Método de pago actualizado exitosamente', 'success')
                 onPaymentSuccess?.()
               } else {
-                const rejectionMessage = paymentData.payment?.statusDetail 
-                  ? `El pago fue rechazado: ${paymentData.payment.statusDetail}`
-                  : paymentData.error || 'El pago fue rechazado'
-                throw new Error(rejectionMessage)
+                // Modo normal: procesar un pago
+                const paymentRes = await fetch('/api/subscriptions/payment-method', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    subscriptionId,
+                    token: token,
+                    paymentMethodId: paymentMethodId,
+                    installments: parseInt(installments),
+                    issuerId: issuerId,
+                    identificationType: identificationTypeValue,
+                    identificationNumber: identificationNumberValue.trim(),
+                    email: normalizedEmail, // Enviar email normalizado
+                  }),
+                })
+
+                const paymentData = await paymentRes.json()
+
+                if (!paymentRes.ok) {
+                  // Extraer mensaje de error más descriptivo
+                  let errorMessage = paymentData.error || 'Error al procesar el pago'
+                  
+                  // Si hay un statusDetail, agregarlo al mensaje si el error no lo incluye ya
+                  if (paymentData.statusDetail && !errorMessage.includes(paymentData.statusDetail)) {
+                    errorMessage = `${errorMessage} (${paymentData.statusDetail})`
+                  }
+                  
+                  throw new Error(errorMessage)
+                }
+
+                if (paymentData.success) {
+                  toast('¡Pago procesado exitosamente!', 'success')
+                  onPaymentSuccess?.()
+                } else {
+                  const rejectionMessage = paymentData.payment?.statusDetail 
+                    ? `El pago fue rechazado: ${paymentData.payment.statusDetail}`
+                    : paymentData.error || 'El pago fue rechazado'
+                  throw new Error(rejectionMessage)
+                }
               }
             } catch (error: any) {
               console.error('Error processing payment:', error)
@@ -740,11 +770,11 @@ export function MercadoPagoCardForm({
             {isProcessing ? (
               <>
                 <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-                Procesando...
+                {updateOnly ? 'Actualizando...' : 'Procesando...'}
               </>
             ) : (
               <>
-                Pay {formatCurrency(amount)}
+                {updateOnly ? 'Actualizar método de pago' : `Pay ${formatCurrency(amount)}`}
               </>
             )}
           </Button>

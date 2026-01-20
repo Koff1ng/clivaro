@@ -744,6 +744,7 @@ export function SubscriptionConfig({ settings, onSave, isLoading }: Subscription
                 subscriptionId={subscription.id}
                 amount={plan.price}
                 currency={plan.currency || 'COP'}
+                updateOnly={true}
                 onPaymentSuccess={() => {
                   queryClient.invalidateQueries({ queryKey: ['tenant-plan'] })
                   queryClient.invalidateQueries({ queryKey: ['subscription-payments'] })
@@ -752,7 +753,7 @@ export function SubscriptionConfig({ settings, onSave, isLoading }: Subscription
                   toast('Método de pago actualizado exitosamente', 'success')
                 }}
                 onPaymentError={(error) => {
-                  toast(error || 'Error al procesar el pago', 'error')
+                  toast(error || 'Error al actualizar el método de pago', 'error')
                 }}
               />
             </div>

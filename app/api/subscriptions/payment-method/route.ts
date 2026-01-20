@@ -407,3 +407,141 @@ export async function POST(request: Request) {
   }
 }
 
+/**
+ * PUT /api/subscriptions/payment-method
+ * Actualiza solo el método de pago de la suscripción sin procesar un pago
+ */
+export async function PUT(request: Request) {
+  try {
+    const session = await requireAuth(request)
+    
+    if (session instanceof NextResponse) {
+      return session
+    }
+
+    const user = session.user as any
+    
+    if (user.isSuperAdmin) {
+      return NextResponse.json(
+        { error: 'Super admin no puede actualizar métodos de pago de tenant' },
+        { status: 403 }
+      )
+    }
+
+    if (!user.tenantId) {
+      return NextResponse.json(
+        { error: 'Usuario no tiene tenant asociado' },
+        { status: 400 }
+      )
+    }
+
+    const body = await request.json()
+    const { subscriptionId, token, paymentMethodId, issuerId, identificationType, identificationNumber, email } = body
+
+    if (!subscriptionId || !token) {
+      return NextResponse.json(
+        { error: 'subscriptionId y token son requeridos' },
+        { status: 400 }
+      )
+    }
+
+    // Validar campos de identificación (obligatorios para Colombia)
+    if (!identificationType || !identificationNumber) {
+      return NextResponse.json(
+        { error: 'Tipo y número de documento son requeridos para pagos en Colombia' },
+        { status: 400 }
+      )
+    }
+
+    // Obtener la suscripción
+    const subscription = await executeWithRetry(() => prisma.subscription.findUnique({
+      where: { id: subscriptionId },
+      include: {
+        plan: true,
+        tenant: true,
+      },
+    }))
+
+    if (!subscription) {
+      return NextResponse.json(
+        { error: 'Suscripción no encontrada' },
+        { status: 404 }
+      )
+    }
+
+    // Verificar que la suscripción pertenece al tenant del usuario
+    if (subscription.tenantId !== user.tenantId) {
+      return NextResponse.json(
+        { error: 'No tienes permiso para actualizar esta suscripción' },
+        { status: 403 }
+      )
+    }
+
+    // Verificar que Mercado Pago está configurado
+    const mercadoPagoAccessToken = process.env.MERCADOPAGO_ACCESS_TOKEN?.trim()
+    
+    if (!mercadoPagoAccessToken) {
+      return NextResponse.json(
+        { error: 'Mercado Pago no está configurado. Contacta al administrador.' },
+        { status: 500 }
+      )
+    }
+
+    // Actualizar la suscripción con la información del método de pago
+    // NO procesamos un pago, solo guardamos la información para futuras renovaciones
+    // El token se validará cuando se use para procesar un pago en el futuro
+    const updatedSubscription = await executeWithRetry(() => prisma.subscription.update({
+      where: { id: subscription.id },
+      data: {
+        mercadoPagoPaymentMethod: paymentMethodId || null,
+        // Guardar información adicional del método de pago en el campo de respuesta
+        mercadoPagoResponse: JSON.stringify({
+          tokenId: token,
+          paymentMethodId: paymentMethodId,
+          issuerId: issuerId,
+          identificationType,
+          identificationNumber,
+          email: email || subscription.tenant.email,
+          updatedAt: new Date().toISOString(),
+          updateOnly: true, // Marcar que fue una actualización sin pago
+        }),
+      },
+    }))
+
+    logger.info('Payment method updated (no payment processed)', {
+      subscriptionId: subscription.id,
+      paymentMethodId: paymentMethodId,
+      tokenId: token ? `${token.substring(0, 10)}...` : null,
+    })
+
+    return NextResponse.json({
+      success: true,
+      message: 'Método de pago actualizado exitosamente',
+      subscription: {
+        id: updatedSubscription.id,
+        paymentMethod: updatedSubscription.mercadoPagoPaymentMethod,
+      },
+    })
+  } catch (error: any) {
+    const errorMessage = error?.message || String(error)
+    const errorCode = error?.code || 'UNKNOWN_ERROR'
+    
+    logger.error('Error updating payment method (non-MP error)', error, {
+      endpoint: '/api/subscriptions/payment-method',
+      method: 'PUT',
+      errorMessage,
+      errorCode,
+      errorStack: error?.stack,
+    })
+    
+    return NextResponse.json(
+      { 
+        error: 'Error interno al actualizar el método de pago', 
+        details: process.env.NODE_ENV === 'development' ? errorMessage : undefined,
+        code: errorCode,
+      },
+      { status: 500 }
+    )
+  }
+}
+
