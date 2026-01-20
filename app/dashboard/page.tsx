@@ -32,7 +32,6 @@ export default async function DashboardPage() {
       <div className="space-y-6">
         <PageHeader
           title="Dashboard"
-          breadcrumbs={[{ label: 'Inicio', href: '/dashboard' }, { label: 'Dashboard' }]}
           badges={<PageHeaderBadges />}
         />
         
