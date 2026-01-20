@@ -6,28 +6,22 @@ import { useSession, signOut } from 'next-auth/react'
 import { useEffect, useState } from 'react'
 import { cn } from '@/lib/utils'
 import {
-  LayoutDashboard,
-  Package,
-  Warehouse,
-  Users,
-  FileText,
-  ShoppingCart,
-  ShoppingBag,
-  Receipt,
-  CreditCard,
-  BarChart3,
-  Settings,
-  LogOut,
+  NavArrowRight,
+  Box,
+  Archive,
+  Group,
+  KanbanBoard,
   Mail,
-  Target,
-  FileCheck,
-  Building2,
-  PackageCheck,
-  Store,
-  Wallet,
-  UserCog,
-  Shield,
-} from 'lucide-react'
+  Page,
+  Receipt as ReceiptIcon,
+  Cart as CartIcon,
+  Bag,
+  Shop,
+  Wallet as WalletIcon,
+  UserSquare,
+  Settings as SettingsIcon,
+  LogOut as LogOutIcon,
+} from 'iconoir-react'
 import { Logo } from '@/components/ui/logo'
 import { AppIcon } from '@/components/ui/app-icon'
 import { useSidebar } from '@/lib/sidebar-context'
@@ -36,21 +30,21 @@ import { useTenantPlan } from '@/lib/hooks/use-plan-features'
 import { ROUTE_FEATURES } from '@/lib/plan-features'
 
 const menuItems = [
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, permission: ['view_reports', 'manage_sales'], planFeature: 'viewReports' },
-  { href: '/products', label: 'Productos', icon: Package, permission: 'manage_products', planFeature: 'manageProducts' },
-  { href: '/inventory', label: 'Inventario', icon: Warehouse, permission: 'manage_inventory', planFeature: 'manageInventory' },
-  { href: '/crm/customers', label: 'Clientes', icon: Users, permission: ['manage_crm', 'manage_sales'], planFeature: 'manageSales' },
-  { href: '/crm/leads', label: 'Oportunidades', icon: Target, permission: 'manage_crm', planFeature: 'leads' },
+  { href: '/dashboard', label: 'Dashboard', icon: NavArrowRight, permission: ['view_reports', 'manage_sales'], planFeature: 'viewReports' },
+  { href: '/products', label: 'Productos', icon: Box, permission: 'manage_products', planFeature: 'manageProducts' },
+  { href: '/inventory', label: 'Inventario', icon: Archive, permission: 'manage_inventory', planFeature: 'manageInventory' },
+  { href: '/crm/customers', label: 'Clientes', icon: Group, permission: ['manage_crm', 'manage_sales'], planFeature: 'manageSales' },
+  { href: '/crm/leads', label: 'Oportunidades', icon: KanbanBoard, permission: 'manage_crm', planFeature: 'leads' },
   { href: '/marketing/campaigns', label: 'Campañas', icon: Mail, permission: 'manage_crm', planFeature: 'marketing' },
-  { href: '/sales/quotes', label: 'Cotizaciones', icon: FileCheck, permission: 'manage_sales', planFeature: 'quotations' },
-  { href: '/sales/invoices', label: 'Facturas', icon: Receipt, permission: 'manage_sales', planFeature: 'invoices' },
-  { href: '/purchases/suppliers', label: 'Proveedores', icon: Building2, permission: 'manage_purchases', planFeature: 'managePurchases' },
-  { href: '/purchases/orders', label: 'Órdenes Compra', icon: ShoppingBag, permission: 'manage_purchases', planFeature: 'managePurchases' },
-  { href: '/purchases/receipts', label: 'Recepciones', icon: PackageCheck, permission: 'manage_purchases', planFeature: 'managePurchases' },
-  { href: '/pos', label: 'Punto de Venta', icon: ShoppingCart, permission: 'manage_sales', planFeature: 'pos' },
-  { href: '/cash/shifts', label: 'Caja', icon: Wallet, permission: ['manage_cash', 'manage_sales'], planFeature: 'manageCash' },
-  { href: '/admin/users', label: 'Usuarios', icon: UserCog, permission: 'manage_users', planFeature: 'manageUsers' },
-  { href: '/settings', label: 'Configuración', icon: Settings, permission: 'manage_users', planFeature: 'manageUsers' },
+  { href: '/sales/quotes', label: 'Cotizaciones', icon: Page, permission: 'manage_sales', planFeature: 'quotations' },
+  { href: '/sales/invoices', label: 'Facturas', icon: ReceiptIcon, permission: 'manage_sales', planFeature: 'invoices' },
+  { href: '/purchases/suppliers', label: 'Proveedores', icon: Shop, permission: 'manage_purchases', planFeature: 'managePurchases' },
+  { href: '/purchases/orders', label: 'Órdenes Compra', icon: Bag, permission: 'manage_purchases', planFeature: 'managePurchases' },
+  { href: '/purchases/receipts', label: 'Recepciones', icon: Box, permission: 'manage_purchases', planFeature: 'managePurchases' },
+  { href: '/pos', label: 'Punto de Venta', icon: CartIcon, permission: 'manage_sales', planFeature: 'pos' },
+  { href: '/cash/shifts', label: 'Caja', icon: WalletIcon, permission: ['manage_cash', 'manage_sales'], planFeature: 'manageCash' },
+  { href: '/admin/users', label: 'Usuarios', icon: UserSquare, permission: 'manage_users', planFeature: 'manageUsers' },
+  { href: '/settings', label: 'Configuración', icon: SettingsIcon, permission: 'manage_users', planFeature: 'manageUsers' },
 ]
 
 export function Sidebar() {
