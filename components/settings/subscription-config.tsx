@@ -65,6 +65,7 @@ export function SubscriptionConfig({ settings, onSave, isLoading }: Subscription
   const queryClient = useQueryClient()
   const [showManageDialog, setShowManageDialog] = useState(false)
   const [showPaymentDialog, setShowPaymentDialog] = useState(false)
+  const [showChangePlanDialog, setShowChangePlanDialog] = useState(false)
   const [autoRenew, setAutoRenew] = useState(settings?.subscriptionAutoRenew ?? true)
 
   const { data: subscriptionData, isLoading: isLoadingSubscription, error: subscriptionError } = useQuery({
@@ -82,6 +83,16 @@ export function SubscriptionConfig({ settings, onSave, isLoading }: Subscription
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
     staleTime: 30 * 1000, // 30 segundos - actualizar más frecuentemente para ver nuevos pagos
     refetchInterval: 60 * 1000, // Refrescar cada minuto automáticamente
+  })
+
+  const { data: availablePlans, isLoading: isLoadingPlans } = useQuery({
+    queryKey: ['available-plans'],
+    queryFn: async () => {
+      const res = await fetch('/api/plans')
+      if (!res.ok) throw new Error('Error al cargar planes')
+      return res.json()
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutos
   })
 
   const plan = subscriptionData?.plan
@@ -112,6 +123,32 @@ export function SubscriptionConfig({ settings, onSave, isLoading }: Subscription
     },
     onError: (error: any) => {
       toast(error.message || 'Error al actualizar', 'error')
+    },
+  })
+
+  const changePlanMutation = useMutation({
+    mutationFn: async (newPlanId: string) => {
+      if (!subscription?.id) throw new Error('No hay suscripción activa')
+      const res = await fetch(`/api/subscriptions/${subscription.id}/change-plan`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ newPlanId }),
+      })
+      if (!res.ok) {
+        const error = await res.json()
+        throw new Error(error.error || 'Error al cambiar el plan')
+      }
+      return res.json()
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['tenant-plan'] })
+      queryClient.invalidateQueries({ queryKey: ['available-plans'] })
+      setShowChangePlanDialog(false)
+      setShowManageDialog(false)
+      toast(data.message || 'Plan actualizado exitosamente', 'success')
+    },
+    onError: (error: any) => {
+      toast(error.message || 'Error al cambiar el plan', 'error')
     },
   })
 
@@ -659,6 +696,27 @@ export function SubscriptionConfig({ settings, onSave, isLoading }: Subscription
               />
             </div>
 
+            {/* Change Plan */}
+            <div className="p-4 border rounded-lg">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-sm font-medium text-muted-foreground">Plan</span>
+                {plan && (
+                  <Badge className="bg-blue-500/10 text-blue-600 dark:text-blue-400">
+                    {plan.name}
+                  </Badge>
+                )}
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowChangePlanDialog(true)}
+                className="w-full"
+              >
+                <Rocket className="h-4 w-4 mr-2" />
+                Cambiar de plan
+              </Button>
+            </div>
+
             {/* Payment Method Info */}
             <div className="p-4 border rounded-lg">
               <div className="flex items-center justify-between mb-3">
@@ -765,6 +823,108 @@ export function SubscriptionConfig({ settings, onSave, isLoading }: Subscription
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowPaymentDialog(false)}>
+              Cancelar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Change Plan Dialog */}
+      <Dialog open={showChangePlanDialog} onOpenChange={setShowChangePlanDialog}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Cambiar de Plan</DialogTitle>
+            <DialogDescription>
+              Selecciona un plan para cambiar tu suscripción. Los cambios se aplicarán según el tipo de cambio.
+            </DialogDescription>
+          </DialogHeader>
+          
+          {isLoadingPlans ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : availablePlans && availablePlans.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+              {availablePlans.map((availablePlan: any) => {
+                const isCurrentPlan = plan?.id === availablePlan.id
+                const isUpgrade = plan && availablePlan.price > plan.price
+                const isDowngrade = plan && availablePlan.price < plan.price
+                
+                return (
+                  <Card 
+                    key={availablePlan.id}
+                    className={`relative ${isCurrentPlan ? 'ring-2 ring-primary' : ''}`}
+                  >
+                    {isCurrentPlan && (
+                      <div className="absolute top-2 right-2">
+                        <Badge className="bg-primary text-primary-foreground">Actual</Badge>
+                      </div>
+                    )}
+                    <CardHeader>
+                      <CardTitle className="text-xl">{availablePlan.name}</CardTitle>
+                      <CardDescription>{availablePlan.description}</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div>
+                        <div className="text-3xl font-bold">
+                          {formatCurrency(availablePlan.price)}
+                        </div>
+                        <div className="text-sm text-muted-foreground">
+                          / {availablePlan.interval === 'monthly' ? 'mes' : 'año'}
+                        </div>
+                      </div>
+                      
+                      {availablePlan.features && availablePlan.features.length > 0 && (
+                        <ul className="space-y-2 text-sm">
+                          {availablePlan.features.map((feature: string, idx: number) => (
+                            <li key={idx} className="flex items-start gap-2">
+                              <CheckCircle2 className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
+                              <span>{feature}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+
+                      <Button
+                        className="w-full"
+                        variant={isCurrentPlan ? 'outline' : isUpgrade ? 'default' : 'outline'}
+                        disabled={isCurrentPlan || changePlanMutation.isPending}
+                        onClick={() => {
+                          if (confirm(
+                            isUpgrade 
+                              ? `¿Estás seguro de cambiar a ${availablePlan.name}? El cambio es inmediato y se cobrará la diferencia prorrateada.`
+                              : `¿Estás seguro de cambiar a ${availablePlan.name}? El cambio se aplicará en tu próximo ciclo de facturación.`
+                          )) {
+                            changePlanMutation.mutate(availablePlan.id)
+                          }
+                        }}
+                      >
+                        {changePlanMutation.isPending ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Cambiando...
+                          </>
+                        ) : isCurrentPlan ? (
+                          'Plan Actual'
+                        ) : isUpgrade ? (
+                          'Upgrade'
+                        ) : (
+                          'Downgrade'
+                        )}
+                      </Button>
+                    </CardContent>
+                  </Card>
+                )
+              })}
+            </div>
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              No hay planes disponibles
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowChangePlanDialog(false)}>
               Cancelar
             </Button>
           </DialogFooter>
