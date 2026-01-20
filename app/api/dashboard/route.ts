@@ -398,7 +398,7 @@ export async function GET(request: Request) {
           activities.push({
             type: 'payment',
             id: payment.id,
-            description: `Pago de ${payment.amount} por factura ${payment.invoice?.number || payment.invoiceId}`,
+            description: `Pago de ${payment.amount} por factura ${payment.invoice?.number ?? payment.invoice?.id ?? payment.id}`,
             createdAt: payment.createdAt,
             customer: payment.invoice?.customer?.name,
           })
