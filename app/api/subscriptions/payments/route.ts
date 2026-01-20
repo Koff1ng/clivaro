@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/api-middleware'
 import { prisma } from '@/lib/db'
+import { getTenantPrisma } from '@/lib/tenant-db'
 import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
@@ -67,25 +68,29 @@ export async function GET(request: Request) {
     const limit = parseInt(searchParams.get('limit') || '4', 10)
     const skip = (page - 1) * limit
 
-    // Contar el total de suscripciones con pagos
-    const total = await executeWithRetry(() => prisma.subscription.count({
-      where: {
-        tenantId: tenantId,
-        mercadoPagoPaymentId: { not: null },
+    // Obtener el tenant para acceder a su base de datos
+    const tenant = await executeWithRetry(() => prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: {
+        id: true,
+        databaseUrl: true,
       },
     }))
 
-    // Obtener todas las suscripciones del tenant que tienen pagos (aprobados, pendientes, rechazados, etc.)
-    // Incluir todos los estados para mostrar el historial completo
-    const subscriptions = await executeWithRetry(() => prisma.subscription.findMany({
+    if (!tenant) {
+      return NextResponse.json(
+        { error: 'Tenant no encontrado' },
+        { status: 404 }
+      )
+    }
+
+    // Obtener la suscripción actual para obtener el plan
+    const subscription = await executeWithRetry(() => prisma.subscription.findFirst({
       where: {
         tenantId: tenantId,
-        mercadoPagoPaymentId: { not: null }, // Solo suscripciones que tienen un payment ID
       },
       select: {
         id: true,
-        createdAt: true,
-        updatedAt: true,
         plan: {
           select: {
             id: true,
@@ -95,6 +100,27 @@ export async function GET(request: Request) {
             interval: true,
           },
         },
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    }))
+
+    // Obtener el cliente Prisma del tenant para consultar la tabla Payment
+    const tenantPrisma = getTenantPrisma(tenant.databaseUrl)
+
+    // Buscar pagos de Mercado Pago en la tabla Payment del tenant
+    // Estos son los pagos históricos de suscripciones
+    const paymentRecords = await executeWithRetry(() => tenantPrisma.payment.findMany({
+      where: {
+        method: 'MERCADOPAGO',
+        mercadoPagoPaymentId: { not: null },
+      },
+      select: {
+        id: true,
+        createdAt: true,
+        updatedAt: true,
+        amount: true,
         mercadoPagoPaymentId: true,
         mercadoPagoStatus: true,
         mercadoPagoStatusDetail: true,
@@ -102,46 +128,106 @@ export async function GET(request: Request) {
         mercadoPagoTransactionId: true,
       },
       orderBy: {
-        updatedAt: 'desc', // Ordenar por fecha de actualización (cuando se procesó el pago)
+        updatedAt: 'desc',
       },
-      skip: skip,
-      take: limit,
     }))
 
-    // Transformar las suscripciones en pagos para el historial
-    const payments = subscriptions.map((sub) => {
-      // Mapear el estado de Mercado Pago a un estado legible
-      let status = 'Pending'
-      if (sub.mercadoPagoStatus === 'approved') {
-        status = 'Paid'
-      } else if (sub.mercadoPagoStatus === 'rejected' || sub.mercadoPagoStatus === 'cancelled') {
-        status = 'Failed'
-      } else if (sub.mercadoPagoStatus === 'pending' || sub.mercadoPagoStatus === 'in_process') {
-        status = 'Pending'
-      } else if (sub.mercadoPagoStatus === 'refunded' || sub.mercadoPagoStatus === 'charged_back') {
-        status = 'Refunded'
-      }
+    // También obtener la suscripción actual si tiene un pago
+    const subscriptionPayments: any[] = []
+    if (subscription) {
+      const currentSubscription = await executeWithRetry(() => prisma.subscription.findFirst({
+        where: {
+          tenantId: tenantId,
+          mercadoPagoPaymentId: { not: null },
+        },
+        select: {
+          id: true,
+          updatedAt: true,
+          mercadoPagoPaymentId: true,
+          mercadoPagoStatus: true,
+          mercadoPagoStatusDetail: true,
+          mercadoPagoPaymentMethod: true,
+          mercadoPagoTransactionId: true,
+        },
+        orderBy: {
+          updatedAt: 'desc',
+        },
+      }))
 
-      return {
-        id: sub.id,
-        date: sub.updatedAt, // Usar updatedAt para mostrar cuándo se procesó el pago
-        amount: sub.plan.price,
-        currency: sub.plan.currency,
-        status: status,
-        mercadoPagoStatus: sub.mercadoPagoStatus, // Incluir el estado original de Mercado Pago
-        mercadoPagoStatusDetail: sub.mercadoPagoStatusDetail, // Incluir detalles del estado
-        paymentMethod: sub.mercadoPagoPaymentMethod,
-        transactionId: sub.mercadoPagoTransactionId,
-        mercadoPagoPaymentId: sub.mercadoPagoPaymentId,
-        planName: sub.plan.name,
-        interval: sub.plan.interval,
+      if (currentSubscription) {
+        subscriptionPayments.push({
+          id: `sub-${currentSubscription.id}`,
+          date: currentSubscription.updatedAt,
+          amount: subscription.plan.price,
+          currency: subscription.plan.currency,
+          status: currentSubscription.mercadoPagoStatus === 'approved' ? 'Paid' :
+                  currentSubscription.mercadoPagoStatus === 'rejected' || currentSubscription.mercadoPagoStatus === 'cancelled' ? 'Failed' :
+                  currentSubscription.mercadoPagoStatus === 'refunded' || currentSubscription.mercadoPagoStatus === 'charged_back' ? 'Refunded' :
+                  'Pending',
+          mercadoPagoStatus: currentSubscription.mercadoPagoStatus,
+          mercadoPagoStatusDetail: currentSubscription.mercadoPagoStatusDetail,
+          paymentMethod: currentSubscription.mercadoPagoPaymentMethod,
+          transactionId: currentSubscription.mercadoPagoTransactionId,
+          mercadoPagoPaymentId: currentSubscription.mercadoPagoPaymentId,
+          planName: subscription.plan.name,
+          interval: subscription.plan.interval,
+        })
+      }
+    }
+
+    // Combinar pagos de Payment y suscripción, eliminando duplicados por mercadoPagoPaymentId
+    const allPaymentsMap = new Map<string, any>()
+
+    // Agregar pagos de la tabla Payment
+    paymentRecords.forEach((payment) => {
+      if (payment.mercadoPagoPaymentId) {
+        let status = 'Pending'
+        if (payment.mercadoPagoStatus === 'approved') {
+          status = 'Paid'
+        } else if (payment.mercadoPagoStatus === 'rejected' || payment.mercadoPagoStatus === 'cancelled') {
+          status = 'Failed'
+        } else if (payment.mercadoPagoStatus === 'pending' || payment.mercadoPagoStatus === 'in_process') {
+          status = 'Pending'
+        } else if (payment.mercadoPagoStatus === 'refunded' || payment.mercadoPagoStatus === 'charged_back') {
+          status = 'Refunded'
+        }
+
+        allPaymentsMap.set(payment.mercadoPagoPaymentId, {
+          id: payment.id,
+          date: payment.updatedAt || payment.createdAt,
+          amount: payment.amount,
+          currency: subscription?.plan.currency || 'COP',
+          status: status,
+          mercadoPagoStatus: payment.mercadoPagoStatus,
+          mercadoPagoStatusDetail: payment.mercadoPagoStatusDetail,
+          paymentMethod: payment.mercadoPagoPaymentMethod,
+          transactionId: payment.mercadoPagoTransactionId,
+          mercadoPagoPaymentId: payment.mercadoPagoPaymentId,
+          planName: subscription?.plan.name || 'N/A',
+          interval: subscription?.plan.interval || 'monthly',
+        })
       }
     })
+
+    // Agregar pagos de suscripción (solo si no están ya en el mapa)
+    subscriptionPayments.forEach((payment) => {
+      if (payment.mercadoPagoPaymentId && !allPaymentsMap.has(payment.mercadoPagoPaymentId)) {
+        allPaymentsMap.set(payment.mercadoPagoPaymentId, payment)
+      }
+    })
+
+    // Convertir a array y ordenar por fecha
+    let allPayments = Array.from(allPaymentsMap.values())
+    allPayments.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+
+    // Aplicar paginación
+    const total = allPayments.length
+    const paginatedPayments = allPayments.slice(skip, skip + limit)
 
     const totalPages = Math.ceil(total / limit)
 
     return NextResponse.json({ 
-      payments,
+      payments: paginatedPayments,
       total,
       page,
       limit,
