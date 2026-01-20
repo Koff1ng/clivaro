@@ -27,15 +27,24 @@ export function PageHeaderBadges() {
   if (!session) return null
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      {isSuperAdmin && <Badge variant="secondary">Super Admin</Badge>}
+    <div className="flex flex-wrap items-center gap-1.5 text-xs">
+      {isSuperAdmin && (
+        <Badge variant="outline" className="border-border/60 bg-background/80 text-foreground/80">
+          Super Admin
+        </Badge>
+      )}
 
       {!isSuperAdmin &&
         (isLoading ? (
-          <Badge variant="outline">Plan: ...</Badge>
+          <Badge variant="outline" className="border-border/60 bg-background/80 text-muted-foreground">
+            Plan: ...
+          </Badge>
         ) : (
           planName && (
-            <Badge className="border-transparent bg-gradient-to-r from-blue-600 to-indigo-600 text-white">
+            <Badge
+              variant="outline"
+              className="border-border/60 bg-background/80 text-foreground/80"
+            >
               Plan: {planName}
             </Badge>
           )
@@ -44,11 +53,20 @@ export function PageHeaderBadges() {
       {!isSuperAdmin && (
         <>
           {isExpired ? (
-            <Badge variant="destructive">Suscripción Expirada</Badge>
+            <Badge variant="destructive" className="text-xs">
+              Suscripción expirada
+            </Badge>
           ) : (
             (() => {
               const label = getSubscriptionLabel(subscription?.status || null)
-              return label ? <Badge variant="outline">Suscripción: {label}</Badge> : null
+              return label ? (
+                <Badge
+                  variant="outline"
+                  className="border-border/60 bg-background/80 text-foreground/80"
+                >
+                  Suscripción: {label}
+                </Badge>
+              ) : null
             })()
           )}
         </>

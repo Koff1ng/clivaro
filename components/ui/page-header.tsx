@@ -25,10 +25,15 @@ export function PageHeader({
   className?: string
 }) {
   return (
-    <div className={cn('flex flex-col gap-3 md:flex-row md:items-start md:justify-between md:gap-4', className)}>
-      <div className="min-w-0">
+    <div
+      className={cn(
+        'flex flex-col gap-3 md:flex-row md:items-start md:justify-between md:gap-4',
+        className
+      )}
+    >
+      <div className="min-w-0 space-y-2">
         {!!breadcrumbs?.length && (
-          <nav aria-label="Breadcrumb" className="mb-2">
+          <nav aria-label="Breadcrumb">
             <ol className="flex flex-wrap items-center gap-x-1 gap-y-1 text-sm text-muted-foreground">
               {breadcrumbs.map((b, idx) => (
                 <li key={idx} className="flex items-center min-w-0">
@@ -48,22 +53,22 @@ export function PageHeader({
 
         <div className="flex items-center gap-3">
           {icon && (
-            <div className="h-10 w-10 rounded-xl border bg-background/80 shadow-sm flex items-center justify-center text-primary">
+            <div className="hidden h-9 w-9 items-center justify-center rounded-xl border border-border/60 bg-background/80 text-primary shadow-sm sm:flex">
               {icon}
             </div>
           )}
           <div className="min-w-0">
-            <h1 className="text-3xl font-semibold tracking-tight text-foreground truncate">
+            <h1 className="text-2xl font-semibold tracking-tight text-foreground truncate md:text-[26px]">
               {title}
             </h1>
             {description && (
-              <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
+              <p className="mt-0.5 text-sm text-muted-foreground leading-relaxed">
                 {description}
               </p>
             )}
           </div>
         </div>
-        <div className="mt-4 h-px w-full bg-gradient-to-r from-primary/30 via-primary/10 to-transparent" />
+        <div className="h-px w-full border-b border-border/60" />
       </div>
 
       {(badges || actions) && (
