@@ -1272,7 +1272,7 @@ export function POSScreen() {
   }
 
   return (
-    <div className="h-[calc(100vh-120px)] flex flex-col bg-background">
+    <div className="h-[calc(100vh-60px)] flex flex-col bg-background">
       {/* Shift Dialog - Solo mostrar si NO hay turno activo */}
       <Dialog open={showShiftDialog && !activeShift} onOpenChange={(open) => {
         if (!open && !activeShift) {
@@ -1800,6 +1800,11 @@ export function POSScreen() {
                 saleMutation.isPending ||
                 ((paymentMode === 'SINGLE' && paymentMethod === 'CASH') && !activeShift) ||
                 (paymentMode === 'SPLIT' && splitPaid < totals.total)
+              }
+              title={
+                (paymentMode === 'SINGLE' && paymentMethod === 'CASH' && !activeShift)
+                  ? 'Debes abrir un turno de caja para pagos en efectivo'
+                  : undefined
               }
             >
               {saleMutation.isPending ? (
