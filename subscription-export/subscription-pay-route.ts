@@ -194,10 +194,12 @@ export async function POST(request: Request) {
     }
 
     // Crear o actualizar suscripción en la base de datos
+    // Nota: en este archivo de export los tipos de Prisma pueden no coincidir 1:1 con el schema real,
+    // por eso se fuerza el tipo de `where` a any para permitir usar tenantId como clave lógica.
     const subscription = await executeWithRetry(() => prisma.subscription.upsert({
       where: {
         tenantId: validatedData.tenantId,
-      },
+      } as any,
       update: {
         planId: plan.id,
         status: 'pending_payment', // Cambiará a 'active' cuando se procese el primer pago
