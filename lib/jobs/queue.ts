@@ -188,9 +188,9 @@ export async function processJob(jobData: {
 import { logger } from '@/lib/logger'
 
 // Pre-register common job types
-registerJobHandler('generate_pdf', async (payload: { invoiceId: string }) => {
-  // This will be implemented in the actual job handler
-  logger.info('PDF generation job', { invoiceId: payload.invoiceId })
+registerJobHandler('generate_pdf', async (payload: { invoiceId: string; tenantId?: string; databaseUrl?: string }) => {
+  const { handleGeneratePDF } = await import('./handlers/pdf-handler')
+  await handleGeneratePDF(payload)
 })
 
 registerJobHandler('send_email', async (payload: { to: string; subject: string; body: string }) => {
