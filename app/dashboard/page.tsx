@@ -39,7 +39,7 @@ export default async function DashboardPage() {
         <DashboardGreeting />
         
         {/* Cards de métricas - 4 columnas */}
-        <Suspense fallback={<div className="grid gap-4 md:grid-cols-4"><div className="h-24 bg-gray-100 animate-pulse rounded" /><div className="h-24 bg-gray-100 animate-pulse rounded" /><div className="h-24 bg-gray-100 animate-pulse rounded" /><div className="h-24 bg-gray-100 animate-pulse rounded" /></div>}>
+        <Suspense fallback={<div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4"><div className="h-24 bg-gray-100 animate-pulse rounded" /><div className="h-24 bg-gray-100 animate-pulse rounded" /><div className="h-24 bg-gray-100 animate-pulse rounded" /><div className="h-24 bg-gray-100 animate-pulse rounded" /></div>}>
           <DashboardStats />
         </Suspense>
 
@@ -47,7 +47,7 @@ export default async function DashboardPage() {
         <Last30DaysChartLazy />
 
         {/* Grid de 3 columnas: Top Clientes, Stock Bajo, Productos */}
-        <div className="grid gap-6 md:grid-cols-3">
+        <div className="grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-3">
           <Suspense fallback={<div className="h-64 bg-gray-100 animate-pulse rounded-lg" />}>
             <TopClients />
           </Suspense>

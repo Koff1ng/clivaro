@@ -622,11 +622,11 @@ export function SubscriptionConfig({ settings, onSave, isLoading }: Subscription
               </Table>
               {/* Paginación */}
               {paymentTotalPages > 1 && (
-                <div className="mt-4 flex items-center justify-between border-t pt-4">
-                  <div className="text-sm text-muted-foreground">
+                <div className="mt-4 flex flex-col sm:flex-row items-center justify-between gap-3 border-t pt-4">
+                  <div className="text-sm text-muted-foreground text-center sm:text-left">
                     Mostrando {((paymentCurrentPage - 1) * paymentsPerPage) + 1} - {Math.min(paymentCurrentPage * paymentsPerPage, paymentTotal)} de {paymentTotal} pagos
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap justify-center">
                     <Button
                       variant="outline"
                       size="sm"
@@ -634,7 +634,7 @@ export function SubscriptionConfig({ settings, onSave, isLoading }: Subscription
                       disabled={paymentCurrentPage === 1 || isLoadingPayments}
                     >
                       <ChevronLeft className="h-4 w-4" />
-                      Anterior
+                      <span className="hidden sm:inline">Anterior</span>
                     </Button>
                     <div className="flex items-center gap-1">
                       {Array.from({ length: Math.min(paymentTotalPages, 5) }, (_, i) => {
@@ -669,7 +669,7 @@ export function SubscriptionConfig({ settings, onSave, isLoading }: Subscription
                       onClick={() => setPaymentPage(prev => Math.min(paymentTotalPages, prev + 1))}
                       disabled={paymentCurrentPage === paymentTotalPages || isLoadingPayments}
                     >
-                      Siguiente
+                      <span className="hidden sm:inline">Siguiente</span>
                       <ChevronRight className="h-4 w-4" />
                     </Button>
                   </div>
@@ -887,7 +887,7 @@ export function SubscriptionConfig({ settings, onSave, isLoading }: Subscription
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             </div>
           ) : availablePlans && availablePlans.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
               {availablePlans.map((availablePlan: any) => {
                 const isCurrentPlan = plan?.id === availablePlan.id
                 const isUpgrade = plan && availablePlan.price > plan.price

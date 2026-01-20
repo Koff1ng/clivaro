@@ -665,7 +665,7 @@ export function MercadoPagoCardForm({
           </div>
 
           {/* Expiration Date and Security Code */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="form-checkout__expirationDate" className="text-sm font-medium">
                 Expiration date
@@ -701,7 +701,7 @@ export function MercadoPagoCardForm({
           </div>
 
           {/* Identification Type and Number (OBLIGATORIOS para Colombia) */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="form-checkout__identificationType" className="text-sm font-medium">
                 Tipo de documento <span className="text-red-500">*</span>

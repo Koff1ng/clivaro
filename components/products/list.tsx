@@ -79,7 +79,7 @@ export function ProductsList() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-4">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
           <Input
@@ -91,7 +91,7 @@ export function ProductsList() {
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button onClick={() => setEditingProduct(null)}>
+            <Button onClick={() => setEditingProduct(null)} className="w-full sm:w-auto">
               <Plus className="h-4 w-4 mr-2" />
               Nuevo Producto
             </Button>
@@ -156,8 +156,8 @@ export function ProductsList() {
       )}
 
       {pagination.totalPages > 1 && (
-        <div className="flex items-center justify-between">
-          <div className="text-sm text-gray-600">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div className="text-sm text-gray-600 text-center sm:text-left">
             Página {pagination.page} de {pagination.totalPages}
           </div>
           <div className="flex gap-2">
@@ -165,6 +165,7 @@ export function ProductsList() {
               variant="outline"
               onClick={() => setPage(p => Math.max(1, p - 1))}
               disabled={page === 1}
+              size="sm"
             >
               Anterior
             </Button>
@@ -172,6 +173,7 @@ export function ProductsList() {
               variant="outline"
               onClick={() => setPage(p => Math.min(pagination.totalPages, p + 1))}
               disabled={page === pagination.totalPages}
+              size="sm"
             >
               Siguiente
             </Button>

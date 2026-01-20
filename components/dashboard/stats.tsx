@@ -25,7 +25,7 @@ export function DashboardStats() {
 
   if (isLoading) {
     return (
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         {[1, 2, 3, 4].map((i) => (
           <Card key={i}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -56,7 +56,7 @@ export function DashboardStats() {
   const inCollection = stats.inCollection || 0
 
   return (
-    <div className="grid gap-4 md:grid-cols-4">
+    <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
       {/* Ingresos */}
       <Card className="group border-none bg-gradient-to-b from-slate-50 to-white dark:from-slate-900/50 dark:to-slate-900 hover:-translate-y-[1px] hover:shadow-[0_18px_40px_rgba(15,23,42,0.08)] transition-all duration-150 ease-out">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">

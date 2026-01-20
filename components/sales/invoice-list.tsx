@@ -261,7 +261,7 @@ export function InvoiceList() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
@@ -271,7 +271,7 @@ export function InvoiceList() {
             className="pl-9 rounded-full text-sm"
           />
         </div>
-        <div className="flex gap-2 flex-wrap md:flex-nowrap">
+        <div className="flex gap-2 flex-wrap sm:flex-nowrap">
           <select
             value={statusFilter}
             onChange={(e) => {
@@ -286,13 +286,13 @@ export function InvoiceList() {
             <option value="EN_COBRANZA">En Cobranza</option>
             <option value="ANULADA">Anulada</option>
           </select>
-          <div className="flex flex-col gap-1">
+          <div className="flex flex-col gap-1 w-full sm:w-auto">
             <Input
               type="text"
               placeholder="Buscar cliente..."
               value={customerSearch}
               onChange={(e) => setCustomerSearch(e.target.value)}
-              className="w-48 h-9 text-xs md:text-sm"
+              className="w-full sm:w-48 h-9 text-xs sm:text-sm"
             />
             <select
               value={customerFilter}
@@ -300,7 +300,7 @@ export function InvoiceList() {
                 setCustomerFilter(e.target.value)
                 setPage(1)
               }}
-              className="flex h-9 rounded-full border border-input bg-background px-3 py-1.5 text-xs md:text-sm"
+              className="flex h-9 rounded-full border border-input bg-background px-3 py-1.5 text-xs sm:text-sm w-full sm:w-auto"
             >
               <option value="">Todos los clientes</option>
               {customers.slice(0, 50).map((customer: any) => (

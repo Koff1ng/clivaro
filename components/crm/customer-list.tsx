@@ -239,12 +239,13 @@ export function CustomerList() {
                     )}
                   </TableCell>
                   <TableCell>
-                    <div className="flex gap-2">
+                    <div className="flex gap-1 sm:gap-2">
                       <Button
                         variant="ghost"
                         size="sm"
                         onClick={() => handleView(customer)}
                         title="Ver detalles"
+                        className="h-8 w-8 p-0"
                       >
                         <Eye className="h-4 w-4" />
                       </Button>
@@ -253,6 +254,7 @@ export function CustomerList() {
                         size="sm"
                         onClick={() => handleEdit(customer)}
                         title="Editar"
+                        className="h-8 w-8 p-0"
                       >
                         <Edit className="h-4 w-4" />
                       </Button>
@@ -261,6 +263,7 @@ export function CustomerList() {
                         size="sm"
                         onClick={() => handleDelete(customer)}
                         title="Desactivar"
+                        className="h-8 w-8 p-0"
                       >
                         <Trash2 className="h-4 w-4 text-red-500" />
                       </Button>
@@ -275,8 +278,8 @@ export function CustomerList() {
       )}
 
       {pagination.totalPages > 1 && (
-        <div className="flex items-center justify-between">
-          <div className="text-sm text-gray-600">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div className="text-sm text-gray-600 text-center sm:text-left">
             Página {pagination.page} de {pagination.totalPages} ({pagination.total} clientes)
           </div>
           <div className="flex gap-2">
@@ -284,6 +287,7 @@ export function CustomerList() {
               variant="outline"
               onClick={() => setPage(p => Math.max(1, p - 1))}
               disabled={page === 1}
+              size="sm"
             >
               Anterior
             </Button>
@@ -291,6 +295,7 @@ export function CustomerList() {
               variant="outline"
               onClick={() => setPage(p => Math.min(pagination.totalPages, p + 1))}
               disabled={page === pagination.totalPages}
+              size="sm"
             >
               Siguiente
             </Button>

@@ -1302,9 +1302,9 @@ export function POSScreen() {
         </DialogContent>
       </Dialog>
 
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
         {/* Left Panel - Products */}
-        <div className="w-2/3 flex flex-col border-r bg-background">
+        <div className="w-full lg:w-2/3 flex flex-col border-r bg-background">
           {/* Search Bar */}
           <div className="p-4 border-b bg-background">
             <div className="relative">
@@ -1363,7 +1363,7 @@ export function POSScreen() {
                 {searchQuery ? 'No se encontraron productos' : 'Selecciona una categoría o busca un producto'}
               </div>
             ) : (
-              <div className="grid grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
                 {products.map((product: Product) => {
                   const warehouseStock = product.stockLevels.find(sl => sl.warehouseId === selectedWarehouse)
                   const availableStock = warehouseStock?.quantity || 0
@@ -1400,7 +1400,7 @@ export function POSScreen() {
         </div>
 
         {/* Right Panel - Cart & Payment */}
-        <div className="w-1/3 flex flex-col bg-background min-h-0">
+        <div className="w-full lg:w-1/3 flex flex-col bg-background min-h-0 border-t lg:border-t-0">
           {/* Customer Selection - Compact */}
           <div className="p-2 border-b flex items-center justify-between">
             <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -1885,7 +1885,7 @@ export function POSScreen() {
 
               {/* Sale Info */}
               <div className="px-6 py-4 space-y-3 bg-card">
-                <div className="grid grid-cols-2 gap-3 text-sm">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
                   <div className="flex flex-col">
                     <span className="text-muted-foreground text-xs mb-1">Factura</span>
                     <span className="font-semibold text-foreground">{saleResult.invoiceNumber}</span>
@@ -1971,7 +1971,7 @@ export function POSScreen() {
               </div>
 
               {/* Actions */}
-              <div className="px-6 py-4 border-t bg-muted/30 flex gap-2">
+              <div className="px-6 py-4 border-t bg-muted/30 flex flex-col sm:flex-row gap-2">
                 <Button
                   variant="outline"
                   className="flex-1"

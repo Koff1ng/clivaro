@@ -112,7 +112,7 @@ export function ProductForm({ product, onSuccess }: { product?: any; onSuccess: 
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <Label htmlFor="sku">SKU *</Label>
           <Input id="sku" {...register('sku')} />
@@ -130,7 +130,7 @@ export function ProductForm({ product, onSuccess }: { product?: any; onSuccess: 
         {errors.name && <p className="text-sm text-red-500">{errors.name.message}</p>}
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <Label htmlFor="brand">Marca</Label>
           <Input id="brand" {...register('brand')} />
@@ -167,7 +167,7 @@ export function ProductForm({ product, onSuccess }: { product?: any; onSuccess: 
         </select>
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div>
           <Label htmlFor="cost">Costo *</Label>
           <Input
@@ -201,7 +201,7 @@ export function ProductForm({ product, onSuccess }: { product?: any; onSuccess: 
       </div>
 
       {trackStock && (
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <Label htmlFor="minStock">Stock mínimo *</Label>
             <Input
@@ -255,11 +255,11 @@ export function ProductForm({ product, onSuccess }: { product?: any; onSuccess: 
         />
       </div>
 
-      <div className="flex justify-end gap-2">
-        <Button type="button" variant="outline" onClick={onSuccess}>
+      <div className="flex flex-col-reverse sm:flex-row justify-end gap-2">
+        <Button type="button" variant="outline" onClick={onSuccess} className="w-full sm:w-auto">
           Cancelar
         </Button>
-        <Button type="submit" disabled={loading}>
+        <Button type="submit" disabled={loading} className="w-full sm:w-auto">
           {loading ? 'Guardando...' : product ? 'Actualizar' : 'Crear'}
         </Button>
       </div>
