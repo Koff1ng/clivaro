@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { useDebounce } from '@/lib/hooks/use-debounce'
 import { formatCurrency } from '@/lib/utils'
 import { useToast } from '@/components/ui/toast'
-import { Search, Plus, Edit, Trash2, Eye, Mail, Phone } from 'lucide-react'
+import { Search, Plus, Edit, Trash2, Eye, Mail, Phone, Loader2 } from 'lucide-react'
 
 // Lazy load heavy components
 const CustomerForm = dynamic(() => import('./customer-form').then(mod => ({ default: mod.CustomerForm })), {
@@ -163,6 +163,12 @@ export function CustomerList() {
         </Button>
       </div>
 
+      {isLoading && customers.length === 0 ? (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground mr-2" />
+          <span className="text-muted-foreground">Cargando clientes...</span>
+        </div>
+      ) : (
       <div className="border rounded-2xl bg-card/80 backdrop-blur-sm shadow-sm">
         <Table>
           <TableHeader>
@@ -266,6 +272,7 @@ export function CustomerList() {
           </TableBody>
         </Table>
       </div>
+      )}
 
       {pagination.totalPages > 1 && (
         <div className="flex items-center justify-between">

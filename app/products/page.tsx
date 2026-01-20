@@ -21,7 +21,6 @@ export default async function ProductsPage() {
           title="Productos"
           description="Crea, organiza y controla tu catálogo con precios, impuestos y categorías."
           icon={<Package className="h-5 w-5" />}
-          breadcrumbs={[{ label: 'Inicio', href: '/dashboard' }, { label: 'Productos' }]}
           badges={<PageHeaderBadges />}
         />
         <ProductsList />

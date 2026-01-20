@@ -21,7 +21,6 @@ export default async function InventoryPage() {
           title="Inventario"
           description="Controla existencias, movimientos y ajustes con trazabilidad por almacén."
           icon={<Warehouse className="h-5 w-5" />}
-          breadcrumbs={[{ label: 'Inicio', href: '/dashboard' }, { label: 'Inventario' }]}
           badges={<PageHeaderBadges />}
         />
         

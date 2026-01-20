@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useDebounce } from '@/lib/hooks/use-debounce'
 import { formatCurrency, formatDate } from '@/lib/utils'
-import { Search, Eye, FileText, QrCode, CheckCircle, XCircle, Clock, Trash2 } from 'lucide-react'
+import { Search, Eye, FileText, QrCode, CheckCircle, XCircle, Clock, Trash2, Loader2 } from 'lucide-react'
 import { useToast } from '@/components/ui/toast'
 
 // Lazy load heavy component
@@ -311,6 +311,12 @@ export function InvoiceList() {
         </div>
       </div>
 
+      {isLoading && invoices.length === 0 ? (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground mr-2" />
+          <span className="text-muted-foreground">Cargando facturas...</span>
+        </div>
+      ) : (
       <div className="border rounded-2xl bg-card/80 backdrop-blur-sm shadow-sm">
         <Table>
           <TableHeader>
@@ -409,8 +415,9 @@ export function InvoiceList() {
               })
             )}
           </TableBody>
-        </Table>
+          </Table>
       </div>
+      )}
 
       {pagination.totalPages > 1 && (
         <div className="flex items-center justify-between">
