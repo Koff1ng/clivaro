@@ -60,23 +60,27 @@ function addConnectionLimit(url: string): string {
     return url
   }
   
-  // Si ya tiene connection_limit, no hacer nada
-  if (url.includes('connection_limit=')) {
-    return url
-  }
-  
-  // Añadir connection_limit y pool_timeout para optimizar el pool de Supabase
-  // connection_limit=5 permite paralelismo sin exceder límites de Supabase
-  const separator = url.includes('?') ? '&' : '?'
-  // Usar connection_limit=5 y pool_timeout=20 para mejor rendimiento
+  // Añadir parámetros para optimizar el uso de Supabase + PgBouncer
+  // - connection_limit=5 permite paralelismo sin exceder límites de Supabase
+  // - pool_timeout=20 aumenta el tiempo de espera del pool
+  // - pgbouncer=true indica a Prisma que no use prepared statements (evita errores 42P05)
   let newUrl = url
+
   if (!newUrl.includes('connection_limit=')) {
-    newUrl = `${newUrl}${separator}connection_limit=5`
+    const sep = newUrl.includes('?') ? '&' : '?'
+    newUrl = `${newUrl}${sep}connection_limit=5`
   }
+
   if (!newUrl.includes('pool_timeout=')) {
     const sep = newUrl.includes('?') ? '&' : '?'
     newUrl = `${newUrl}${sep}pool_timeout=20`
   }
+
+  if (!newUrl.toLowerCase().includes('pgbouncer=')) {
+    const sep = newUrl.includes('?') ? '&' : '?'
+    newUrl = `${newUrl}${sep}pgbouncer=true`
+  }
+
   return newUrl
 }
 
