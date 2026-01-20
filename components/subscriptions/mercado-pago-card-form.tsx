@@ -158,26 +158,29 @@ export function MercadoPagoCardForm({
           },
           onValidityChange: (error: any, field: string) => {
             // Callback para validación en tiempo real
-            if (error) {
-              console.warn(`Validation error in field ${field}:`, error)
-              // Mostrar error específico para el email si hay problema
-              if (field === 'cardholderEmail' && Array.isArray(error) && error.length > 0) {
-                const emailInput = document.getElementById('form-checkout__cardholderEmail') as HTMLInputElement
-                if (emailInput) {
+            // Los errores de validación mientras el usuario escribe son normales
+            // Solo loggear errores del email (campo visible que controlamos)
+            // cardNumber y expirationDate son manejados por Mercado Pago internamente
+            
+            if (field === 'cardholderEmail') {
+              const emailInput = document.getElementById('form-checkout__cardholderEmail') as HTMLInputElement
+              if (emailInput) {
+                if (error && Array.isArray(error) && error.length > 0) {
                   const errorMessage = error[0].message || 'Email inválido'
                   emailInput.setCustomValidity(errorMessage)
-                  emailInput.reportValidity()
-                }
-              }
-            } else {
-              // Limpiar error si la validación pasa
-              if (field === 'cardholderEmail') {
-                const emailInput = document.getElementById('form-checkout__cardholderEmail') as HTMLInputElement
-                if (emailInput) {
+                  // Solo reportar validez si el campo ha sido tocado o tiene contenido
+                  if (document.activeElement === emailInput || emailInput.value.length > 0) {
+                    emailInput.reportValidity()
+                  }
+                } else {
                   emailInput.setCustomValidity('')
                 }
               }
             }
+            
+            // Para cardNumber, expirationDate, securityCode, etc.
+            // Mercado Pago maneja los errores visualmente dentro de sus iframes
+            // No necesitamos hacer logging adicional ya que son errores normales durante la escritura
           },
           onSubmit: async (event: any) => {
             event.preventDefault()
