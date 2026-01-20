@@ -183,26 +183,62 @@ export async function POST(request: Request) {
     // Determinar el email del pagador
     // En modo sandbox, Mercado Pago acepta cualquier email válido
     // En producción, debe ser un email real del pagador
-    const payerEmail = email || subscription.tenant.email || (isTestMode ? 'test@testuser.com' : undefined)
+    const payerEmail: string | undefined = email || subscription.tenant.email || (isTestMode ? 'test@testuser.com' : undefined)
     
-    const paymentData = {
-      transaction_amount: subscription.plan.price,
-      token: token,
+    // Convertir campos numéricos a números
+    // transaction_amount (amount) - debe ser número
+    const transactionAmount = typeof subscription.plan.price === 'number' 
+      ? subscription.plan.price 
+      : parseFloat(String(subscription.plan.price)) || 0
+    
+    // installments - debe ser número entero
+    const installmentsNum = typeof installments === 'number' 
+      ? Math.floor(installments) 
+      : parseInt(String(installments || '1'), 10) || 1
+    
+    // issuer_id - debe ser número entero o no incluirse
+    let processedIssuerId: number | undefined = undefined
+    if (issuerId !== undefined && issuerId !== null && issuerId !== '') {
+      const issuerIdNum = typeof issuerId === 'string' ? parseInt(issuerId, 10) : Number(issuerId)
+      if (!isNaN(issuerIdNum) && issuerIdNum > 0) {
+        processedIssuerId = Math.floor(issuerIdNum)
+      }
+    }
+    
+    // Asegurar que los strings sean strings
+    const tokenString = String(token || '')
+    const paymentMethodIdString = String(paymentMethodId || '')
+    const identificationNumberString = String(identificationNumber || '').trim()
+    const identificationTypeString = String(identificationType || '')
+    
+    const paymentData: any = {
+      transaction_amount: transactionAmount,
+      token: tokenString,
       description: `Pago de suscripción ${subscription.plan.name}`,
-      installments: installments || 1,
-      payment_method_id: paymentMethodId,
-      issuer_id: issuerId,
+      installments: installmentsNum,
+      payment_method_id: paymentMethodIdString,
       payer: {
         email: payerEmail,
         // Identificación obligatoria para Colombia
         identification: {
-          type: identificationType,
-          number: identificationNumber.trim(),
+          type: identificationTypeString,
+          number: identificationNumberString, // Mantener como string (puede tener ceros a la izquierda)
         },
       },
       external_reference: subscription.id,
       statement_descriptor: `CLIVARO ${subscription.plan.name.substring(0, 12)}`, // Máximo 13 caracteres
     }
+    
+    // Solo incluir issuer_id si tiene un valor válido (entero)
+    if (processedIssuerId !== undefined) {
+      paymentData.issuer_id = processedIssuerId
+    }
+    
+    // merchantAccountId no se usa en este flujo, pero si fuera necesario:
+    // const merchantAccountIdNum = merchantAccountId ? (typeof merchantAccountId === 'string' ? parseInt(merchantAccountId, 10) : Number(merchantAccountId)) : undefined
+    // if (merchantAccountIdNum && !isNaN(merchantAccountIdNum) && merchantAccountIdNum > 0) {
+    //   paymentData.merchant_account_id = Math.floor(merchantAccountIdNum)
+    // }
     
     logger.info('Creating Mercado Pago payment', {
       subscriptionId: subscription.id,
