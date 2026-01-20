@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { useToast } from '@/components/ui/toast'
 import { useDebounce } from '@/lib/hooks/use-debounce'
 import { formatCurrency, formatDate } from '@/lib/utils'
-import { Search, Plus, Eye, Edit, Trash2 } from 'lucide-react'
+import { Search, Plus, Eye, Edit, Trash2, Loader2 } from 'lucide-react'
 
 // Lazy load heavy components
 const PurchaseOrderForm = dynamic(() => import('./purchase-order-form').then(mod => ({ default: mod.PurchaseOrderForm })), {
@@ -198,6 +198,12 @@ export function PurchaseOrderList() {
         </Button>
       </div>
 
+      {isLoading && orders.length === 0 ? (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground mr-2" />
+          <span className="text-muted-foreground">Cargando órdenes de compra...</span>
+        </div>
+      ) : (
       <div className="border rounded-lg">
         <Table>
           <TableHeader>
@@ -265,6 +271,7 @@ export function PurchaseOrderList() {
           </TableBody>
         </Table>
       </div>
+      )}
 
       {pagination.totalPages > 1 && (
         <div className="flex items-center justify-between">

@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { DatePicker } from '@/components/ui/date-picker'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { formatCurrency, formatDateTime } from '@/lib/utils'
-import { Search, Filter } from 'lucide-react'
+import { Search, Filter, Loader2 } from 'lucide-react'
 
 async function fetchMovements(page: number, warehouseId: string, type: string, createdById: string, startDate: string, endDate: string, q: string) {
   const params = new URLSearchParams({
@@ -186,6 +186,12 @@ export function MovementsList() {
         )}
       </div>
 
+      {isLoading && movements.length === 0 ? (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground mr-2" />
+          <span className="text-muted-foreground">Cargando movimientos...</span>
+        </div>
+      ) : (
       <div className="border rounded-lg">
         <Table>
           <TableHeader>
@@ -232,6 +238,7 @@ export function MovementsList() {
           </TableBody>
         </Table>
       </div>
+      )}
 
       {pagination.totalPages > 1 && (
         <div className="flex items-center justify-between">

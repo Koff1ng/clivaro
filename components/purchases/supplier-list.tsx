@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { SupplierForm } from './supplier-form'
 import { SupplierDetails } from './supplier-details'
 import { formatCurrency } from '@/lib/utils'
-import { Search, Plus, Edit, Trash2, Eye, Mail, Phone } from 'lucide-react'
+import { Search, Plus, Edit, Trash2, Eye, Mail, Phone, Loader2 } from 'lucide-react'
 import { useToast } from '@/components/ui/toast'
 
 async function fetchSuppliers(page: number, search: string) {
@@ -84,11 +84,9 @@ export function SupplierList() {
     }
   }
 
-  if (isLoading) {
-    return <div>Cargando proveedores...</div>
-  }
-
-  const { suppliers, pagination } = data || { suppliers: [], pagination: { totalPages: 1 } }
+  const { suppliers, pagination } = useMemo(() => {
+    return data || { suppliers: [], pagination: { totalPages: 1 } }
+  }, [data])
 
   return (
     <div className="space-y-4">
@@ -114,6 +112,12 @@ export function SupplierList() {
         </Button>
       </div>
 
+      {isLoading && suppliers.length === 0 ? (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground mr-2" />
+          <span className="text-muted-foreground">Cargando proveedores...</span>
+        </div>
+      ) : (
       <div className="border rounded-lg">
         <Table>
           <TableHeader>
@@ -203,6 +207,7 @@ export function SupplierList() {
           </TableBody>
         </Table>
       </div>
+      )}
 
       {pagination.totalPages > 1 && (
         <div className="flex items-center justify-between">

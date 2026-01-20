@@ -19,7 +19,8 @@ import {
   Trash2,
   CheckCircle,
   XCircle,
-  AlertCircle
+  AlertCircle,
+  Loader2
 } from 'lucide-react'
 import { useToast } from '@/components/ui/toast'
 import { TenantForm } from './tenant-form'
@@ -96,18 +97,6 @@ export function TenantsClient() {
     return <Badge className="bg-green-600">Activa</Badge>
   }
 
-  if (isLoading) {
-    return (
-      <div className="space-y-6">
-        <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-64 animate-pulse"></div>
-        <div className="grid gap-4">
-          {[1, 2, 3].map(i => (
-            <div key={i} className="h-32 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
-          ))}
-        </div>
-      </div>
-    )
-  }
 
   if (selectedTenant) {
     return (
@@ -207,6 +196,12 @@ export function TenantsClient() {
       </div>
 
       {/* Tenants List */}
+      {isLoading && (!tenants || tenants.length === 0) ? (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground mr-2" />
+          <span className="text-muted-foreground">Cargando tenants...</span>
+        </div>
+      ) : (
       <div className="grid gap-4">
         {filteredTenants.map((tenant: any) => {
           const activeSubscription = tenant.subscriptions?.find((s: any) => s.status === 'active')
@@ -282,8 +277,9 @@ export function TenantsClient() {
           )
         })}
       </div>
+      )}
 
-      {filteredTenants.length === 0 && (
+      {filteredTenants.length === 0 && !isLoading && (
         <Card>
           <CardContent className="p-12 text-center">
             <Building2 className="h-12 w-12 text-gray-400 mx-auto mb-4" />

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -10,7 +10,7 @@ import { UserForm } from './user-form'
 import { UserDetails } from './user-details'
 import { formatDate } from '@/lib/utils'
 import { useToast } from '@/components/ui/toast'
-import { Search, Plus, Edit, Trash2, Eye, Mail, User as UserIcon, Shield } from 'lucide-react'
+import { Search, Plus, Edit, Trash2, Eye, Mail, User as UserIcon, Shield, Loader2 } from 'lucide-react'
 
 async function fetchUsers(search: string, includeInactive: boolean) {
   const params = new URLSearchParams()
@@ -78,11 +78,9 @@ export function UserList() {
     }
   }
 
-  if (isLoading) {
-    return <div className="text-center py-8">Cargando usuarios...</div>
-  }
-
-  const { users = [] } = data || {}
+  const { users = [] } = useMemo(() => {
+    return data || { users: [] }
+  }, [data])
 
   return (
     <div className="space-y-4">
@@ -116,6 +114,12 @@ export function UserList() {
         </div>
       </div>
 
+      {isLoading && users.length === 0 ? (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground mr-2" />
+          <span className="text-muted-foreground">Cargando usuarios...</span>
+        </div>
+      ) : (
       <div className="border rounded-lg">
         <Table>
           <TableHeader>
@@ -221,6 +225,7 @@ export function UserList() {
           </TableBody>
         </Table>
       </div>
+      )}
 
       {/* Form Dialog */}
       <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>

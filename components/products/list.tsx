@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { useDebounce } from '@/lib/hooks/use-debounce'
 import { formatCurrency } from '@/lib/utils'
-import { Plus, Search, Edit } from 'lucide-react'
+import { Plus, Search, Edit, Loader2 } from 'lucide-react'
 
 // Lazy load heavy form component
 const ProductForm = dynamic(() => import('./form').then(mod => ({ default: mod.ProductForm })), {
@@ -114,6 +114,12 @@ export function ProductsList() {
         </Dialog>
       </div>
 
+      {isLoading && products.length === 0 ? (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground mr-2" />
+          <span className="text-muted-foreground">Cargando productos...</span>
+        </div>
+      ) : (
       <div className="border rounded-lg">
         <Table>
           <TableHeader>
@@ -147,6 +153,7 @@ export function ProductsList() {
           </TableBody>
         </Table>
       </div>
+      )}
 
       {pagination.totalPages > 1 && (
         <div className="flex items-center justify-between">

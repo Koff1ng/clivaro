@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { formatDate } from '@/lib/utils'
-import { Plus, Printer, Eye, CheckCircle, XCircle, Clock, FileText, ClipboardList, AlertTriangle } from 'lucide-react'
+import { Plus, Printer, Eye, CheckCircle, XCircle, Clock, FileText, ClipboardList, AlertTriangle, Loader2 } from 'lucide-react'
 import { PhysicalInventoryForm } from './physical-inventory-form'
 import { PhysicalInventoryDetails } from './physical-inventory-details'
 import { PhysicalInventoryPrint } from './physical-inventory-print'
@@ -118,10 +118,6 @@ export function PhysicalInventoryList() {
     }
   }
 
-  if (isLoading) {
-    return <div>Cargando inventarios físicos...</div>
-  }
-
   return (
     <>
       <div className="space-y-4">
@@ -144,6 +140,12 @@ export function PhysicalInventoryList() {
           </Button>
         </div>
 
+        {isLoading && inventories.length === 0 ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground mr-2" />
+            <span className="text-muted-foreground">Cargando inventarios físicos...</span>
+          </div>
+        ) : (
         <div className="border rounded-lg">
           <table className="w-full">
             <thead>
@@ -237,6 +239,7 @@ export function PhysicalInventoryList() {
             </tbody>
           </table>
         </div>
+        )}
       </div>
 
       {/* Form Dialog */}

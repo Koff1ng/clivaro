@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -11,7 +11,7 @@ import { LeadDetails } from './lead-details'
 import { LeadDashboard } from './lead-dashboard'
 import { LeadKanban } from './lead-kanban'
 import { formatCurrency } from '@/lib/utils'
-import { Search, Plus, Edit, Trash2, Eye, Filter, LayoutGrid, BarChart3 } from 'lucide-react'
+import { Search, Plus, Edit, Trash2, Eye, Filter, LayoutGrid, BarChart3, Loader2 } from 'lucide-react'
 
 async function fetchLeads(page: number, search: string, stage: string, assignedToId: string) {
   const params = new URLSearchParams({
@@ -109,11 +109,9 @@ export function LeadList() {
     return labels[stage] || stage
   }
 
-  if (isLoading) {
-    return <div>Cargando oportunidades...</div>
-  }
-
-  const { leads = [], pagination = { totalPages: 1, page: 1, total: 0 } } = data || {}
+  const { leads = [], pagination = { totalPages: 1, page: 1, total: 0 } } = useMemo(() => {
+    return data || { leads: [], pagination: { totalPages: 1, page: 1, total: 0 } }
+  }, [data])
 
   return (
     <div className="space-y-4">
@@ -209,6 +207,12 @@ export function LeadList() {
 
       {viewMode === 'list' && (
         <>
+          {isLoading && leads.length === 0 ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground mr-2" />
+              <span className="text-muted-foreground">Cargando oportunidades...</span>
+            </div>
+          ) : (
           <div className="border rounded-lg">
         <Table>
           <TableHeader>
@@ -301,6 +305,7 @@ export function LeadList() {
           </TableBody>
         </Table>
       </div>
+          )}
 
       {pagination.totalPages > 1 && (
         <div className="flex items-center justify-between">

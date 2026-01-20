@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -10,7 +10,7 @@ import { useToast } from '@/components/ui/toast'
 import { ReceiptForm } from './receipt-form'
 import { ReceiptDetails } from './receipt-details'
 import { formatCurrency, formatDate } from '@/lib/utils'
-import { Search, Plus, Eye } from 'lucide-react'
+import { Search, Plus, Eye, Loader2 } from 'lucide-react'
 
 async function fetchReceipts(page: number, search: string, purchaseOrderId: string) {
   const params = new URLSearchParams({
@@ -70,11 +70,9 @@ export function ReceiptList() {
     }
   }
 
-  if (isLoading) {
-    return <div>Cargando recepciones...</div>
-  }
-
-  const { receipts, pagination } = data || { receipts: [], pagination: { totalPages: 1 } }
+  const { receipts, pagination } = useMemo(() => {
+    return data || { receipts: [], pagination: { totalPages: 1 } }
+  }, [data])
 
   return (
     <div className="space-y-4">
@@ -117,6 +115,12 @@ export function ReceiptList() {
         </div>
       </div>
 
+      {isLoading && receipts.length === 0 ? (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground mr-2" />
+          <span className="text-muted-foreground">Cargando recepciones...</span>
+        </div>
+      ) : (
       <div className="border rounded-lg">
         <Table>
           <TableHeader>
@@ -162,6 +166,7 @@ export function ReceiptList() {
           </TableBody>
         </Table>
       </div>
+      )}
 
       {pagination.totalPages > 1 && (
         <div className="flex items-center justify-between">

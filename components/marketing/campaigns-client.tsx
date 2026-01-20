@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, Send, Edit, Trash2, Eye, Users } from 'lucide-react'
+import { Plus, Send, Edit, Trash2, Eye, Users, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -143,8 +143,11 @@ export default function CampaignsClient() {
         </Button>
       </div>
 
-      {isLoading ? (
-        <div className="text-center py-12">Cargando campañas...</div>
+      {isLoading && (!campaigns || campaigns.length === 0) ? (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground mr-2" />
+          <span className="text-muted-foreground">Cargando campañas...</span>
+        </div>
       ) : campaigns?.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">
