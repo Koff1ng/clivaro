@@ -160,6 +160,23 @@ export function MercadoPagoCardForm({
             // Callback para validación en tiempo real
             if (error) {
               console.warn(`Validation error in field ${field}:`, error)
+              // Mostrar error específico para el email si hay problema
+              if (field === 'cardholderEmail' && Array.isArray(error) && error.length > 0) {
+                const emailInput = document.getElementById('form-checkout__cardholderEmail') as HTMLInputElement
+                if (emailInput) {
+                  const errorMessage = error[0].message || 'Email inválido'
+                  emailInput.setCustomValidity(errorMessage)
+                  emailInput.reportValidity()
+                }
+              }
+            } else {
+              // Limpiar error si la validación pasa
+              if (field === 'cardholderEmail') {
+                const emailInput = document.getElementById('form-checkout__cardholderEmail') as HTMLInputElement
+                if (emailInput) {
+                  emailInput.setCustomValidity('')
+                }
+              }
             }
           },
           onSubmit: async (event: any) => {
@@ -189,8 +206,7 @@ export function MercadoPagoCardForm({
             }
             
             // Validar email del campo de Mercado Pago
-            // Mercado Pago renderiza el input dentro del contenedor
-            const emailInput = document.querySelector('#form-checkout__cardholderEmail input') as HTMLInputElement
+            const emailInput = document.getElementById('form-checkout__cardholderEmail') as HTMLInputElement
             const emailValue = emailInput?.value?.trim() || ''
             
             if (!emailValue) {
@@ -309,8 +325,12 @@ export function MercadoPagoCardForm({
               }
 
               // Procesar el pago
+              // Obtener el email del campo de Mercado Pago
+              const emailInput = document.getElementById('form-checkout__cardholderEmail') as HTMLInputElement
+              const emailValue = emailInput?.value?.trim() || ''
+              
               // Asegurar que el email esté normalizado (sin espacios, en minúsculas)
-              const normalizedEmail = emailValue.trim().toLowerCase()
+              const normalizedEmail = emailValue.toLowerCase()
               
               // Validar email antes de enviar
               const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -550,15 +570,19 @@ export function MercadoPagoCardForm({
             </div>
           </div>
 
-          {/* Email - Mercado Pago maneja este campo */}
+          {/* Email - Input controlado que Mercado Pago valida */}
           <div className="space-y-2">
             <Label htmlFor="form-checkout__cardholderEmail" className="text-sm font-medium">
               Email:
             </Label>
-            <div 
-              id="form-checkout__cardholderEmail" 
-              className="h-11 w-full rounded-md border border-input bg-background px-3 py-2 flex items-center"
-            ></div>
+            <input
+              type="email"
+              id="form-checkout__cardholderEmail"
+              className="flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              placeholder="usuario@dominio.com"
+              required
+              autoComplete="email"
+            />
             <p className="text-xs text-muted-foreground">
               Usa un email válido. En modo prueba, puedes usar cualquier email con formato correcto (ej: test@test.com)
             </p>
