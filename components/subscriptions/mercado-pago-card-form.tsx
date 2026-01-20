@@ -44,6 +44,8 @@ export function MercadoPagoCardForm({
   const [phone, setPhone] = useState('')
   const [countryCode, setCountryCode] = useState('+57') // Colombia por defecto
   const [email, setEmail] = useState('')
+  const [identificationType, setIdentificationType] = useState('CC') // CC por defecto para Colombia
+  const [identificationNumber, setIdentificationNumber] = useState('')
 
   // Cargar SDK de Mercado Pago
   useEffect(() => {
@@ -101,8 +103,7 @@ export function MercadoPagoCardForm({
         iframe: true,
         form: {
           id: 'mp-card-form',
-          // Importante: Mercado Pago requiere que se declare cardholderName en la configuración del form.
-          // Usamos nuestro input personalizado con el mismo id, pero el SDK necesita saber que el campo existe.
+          // Configuración de campos - Mercado Pago requiere que estos IDs existan en el DOM
           cardholderName: {
             id: 'form-checkout__cardholderName',
             placeholder: 'Nombre tal como aparece en la tarjeta',
@@ -144,135 +145,148 @@ export function MercadoPagoCardForm({
           onFormMounted: (error: any) => {
             if (error) {
               console.error('Error mounting card form:', error)
-              toast('Error al inicializar el formulario de pago', 'error')
+              const errorMsg = Array.isArray(error) && error[0]?.message 
+                ? error[0].message 
+                : 'Error al inicializar el formulario de pago'
+              toast(errorMsg, 'error')
               isMountedRef.current = false
               cardFormRef.current = null
             } else {
+              console.log('Card form mounted successfully')
               isMountedRef.current = true
+            }
+          },
+          onValidityChange: (error: any, field: string) => {
+            // Callback para validación en tiempo real
+            if (error) {
+              console.warn(`Validation error in field ${field}:`, error)
             }
           },
           onSubmit: async (event: any) => {
             event.preventDefault()
+            
+            // Prevenir múltiples envíos
+            if (isProcessing) {
+              console.warn('Payment already processing, ignoring duplicate submit')
+              return
+            }
+            
+            // Validar campos requeridos ANTES de procesar
+            const domCardholderInput = document.getElementById('form-checkout__cardholderName') as HTMLInputElement | null
+            const finalCardholderName = (domCardholderInput?.value || cardholderName || '').trim()
+
+            if (!finalCardholderName) {
+              toast('Por favor, ingresa el nombre del titular de la tarjeta', 'error')
+              return
+            }
+            if (finalCardholderName.length < 3) {
+              toast('El nombre del titular debe tener al menos 3 caracteres', 'error')
+              return
+            }
+            if (finalCardholderName.length > 50) {
+              toast('El nombre del titular no puede exceder 50 caracteres', 'error')
+              return
+            }
+            if (!email.trim() || !email.includes('@')) {
+              toast('Por favor, ingresa un email válido', 'error')
+              return
+            }
+              if (!phone.trim()) {
+                toast('Por favor, ingresa un número de teléfono', 'error')
+                return
+              }
+
+            // Validar campos de identificación (obligatorios para Colombia)
+            const identificationTypeValue = (document.getElementById('form-checkout__identificationType') as HTMLSelectElement)?.value || identificationType
+            const identificationNumberValue = (document.getElementById('form-checkout__identificationNumber') as HTMLInputElement)?.value || identificationNumber
+
+            if (!identificationTypeValue || identificationTypeValue === '') {
+              toast('Por favor, selecciona el tipo de documento', 'error')
+              return
+            }
+
+            if (!identificationNumberValue || identificationNumberValue.trim() === '') {
+              toast('Por favor, ingresa el número de documento', 'error')
+              return
+            }
+
+            // Validar formato del número de documento según el tipo
+            if (identificationTypeValue === 'CC' || identificationTypeValue === 'CE') {
+              // Cédula debe tener entre 7 y 10 dígitos
+              const docNumber = identificationNumberValue.trim().replace(/\D/g, '')
+              if (docNumber.length < 7 || docNumber.length > 10) {
+                toast('El número de documento debe tener entre 7 y 10 dígitos', 'error')
+                return
+              }
+            } else if (identificationTypeValue === 'NIT') {
+              // NIT debe tener entre 9 y 11 dígitos
+              const docNumber = identificationNumberValue.trim().replace(/\D/g, '')
+              if (docNumber.length < 9 || docNumber.length > 11) {
+                toast('El NIT debe tener entre 9 y 11 dígitos', 'error')
+                return
+              }
+            }
+
             setIsProcessing(true)
 
             try {
-              // Obtener los valores del formulario
-              const identificationType = (document.getElementById('form-checkout__identificationType') as HTMLSelectElement)?.value
-              const identificationNumber = (document.getElementById('form-checkout__identificationNumber') as HTMLInputElement)?.value
-              const installments = (document.getElementById('form-checkout__installments') as HTMLSelectElement)?.value
-
-              // Usar el método getCardFormData del CardForm para obtener los datos
               if (!cardFormRef.current) {
                 throw new Error('El formulario de pago no está inicializado')
               }
 
-              const formData = cardFormRef.current.getCardFormData()
+              // Obtener los valores del formulario (ya validados arriba)
+              const identificationTypeValue = (document.getElementById('form-checkout__identificationType') as HTMLSelectElement)?.value || identificationType
+              const identificationNumberValue = (document.getElementById('form-checkout__identificationNumber') as HTMLInputElement)?.value || identificationNumber
+              const installments = (document.getElementById('form-checkout__installments') as HTMLSelectElement)?.value || '1'
 
-              // Obtener el nombre del titular desde múltiples fuentes para máxima robustez
-              const domCardholderInput = document.getElementById('form-checkout__cardholderName') as HTMLInputElement | null
-              const nameFromDom = domCardholderInput?.value || ''
-              const nameFromForm = (formData && (formData.cardholderName || formData.cardholder_name)) || ''
-              const nameFromState = cardholderName || ''
-
-              const finalCardholderNameRaw = nameFromDom || nameFromForm || nameFromState
-              const finalCardholderName = finalCardholderNameRaw.trim()
-
-              // Obtener el email desde múltiples fuentes para máxima robustez
-              const domEmailInput = document.getElementById('form-checkout__cardholderEmail') as HTMLInputElement | null
-              const emailFromDom = domEmailInput?.value || ''
-              const emailFromForm = (formData && (formData.cardholderEmail || formData.cardholder_email)) || ''
-              const emailFromState = email || ''
+              // El CardForm de Mercado Pago genera el token automáticamente
+              // Usamos getFormData() que es el método estándar
+              let formData: any = null
               
-              const finalEmailRaw = emailFromDom || emailFromForm || emailFromState
-              const finalEmail = finalEmailRaw.trim()
-
-              // Obtener el teléfono desde múltiples fuentes
-              const domPhoneInput = document.getElementById('phone') as HTMLInputElement | null
-              const phoneFromDom = domPhoneInput?.value || ''
-              const phoneFromState = phone || ''
-              
-              const finalPhoneRaw = phoneFromDom || phoneFromState
-              const finalPhone = finalPhoneRaw.trim()
-
-              // Validar campos requeridos ANTES de intentar crear el token
-              if (!finalCardholderName) {
-                toast('Por favor, ingresa el nombre del titular de la tarjeta', 'error')
-                throw new Error('El nombre del titular es requerido. Ingresa el nombre tal como aparece en tu tarjeta.')
-              }
-              if (finalCardholderName.length < 3) {
-                toast('El nombre del titular debe tener al menos 3 caracteres', 'error')
-                throw new Error('El nombre del titular debe tener al menos 3 caracteres.')
-              }
-              if (finalCardholderName.length > 50) {
-                toast('El nombre del titular no puede exceder 50 caracteres', 'error')
-                throw new Error('El nombre del titular no puede exceder 50 caracteres.')
-              }
-              
-              // Validar email con expresión regular más robusta
-              const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-              if (!finalEmail) {
-                toast('Por favor, ingresa un email válido', 'error')
-                throw new Error('Un email válido es requerido')
-              }
-              if (!emailRegex.test(finalEmail)) {
-                toast('Por favor, ingresa un email válido con formato correcto (ej: usuario@dominio.com)', 'error')
-                throw new Error('El formato del email no es válido')
-              }
-              
-              if (!finalPhone) {
-                toast('Por favor, ingresa un número de teléfono', 'error')
-                throw new Error('El teléfono es requerido')
-              }
-              
-              // Log de auditoría para depuración en caso de fallo (sin datos sensibles completos)
-              console.log('Validating payment with:', {
-                cardholderNameDom: nameFromDom ? '***' : '',
-                cardholderNameForm: nameFromForm ? '***' : '',
-                cardholderNameState: nameFromState ? '***' : '',
-                finalCardholderName: finalCardholderName ? '***' : '',
-                emailDom: emailFromDom ? `${emailFromDom.substring(0, 3)}***` : '',
-                emailForm: emailFromForm ? `${emailFromForm.substring(0, 3)}***` : '',
-                emailState: emailFromState ? `${emailFromState.substring(0, 3)}***` : '',
-                finalEmail: finalEmail ? `${finalEmail.substring(0, 3)}***` : '',
-                phoneDom: phoneFromDom ? '***' : '',
-                phoneState: phoneFromState ? '***' : '',
-                finalPhone: finalPhone ? '***' : '',
-                hasCardForm: !!cardFormRef.current,
-              })
-              
-              // Si no hay token en formData, intentar crear el token manualmente
-              let token = formData.token
-              let paymentMethodId = formData.paymentMethodId
-              let issuerId = formData.issuerId
-
-              if (!token && mp && mp.fields) {
-                // Crear el token manualmente usando el SDK
-                try {
-                  // Usar el nombre tal como lo ingresó el usuario (normalizado a mayúsculas)
-                  const normalizedCardholderName = finalCardholderName.toUpperCase()
-                  
-                  const tokenResult = await mp.fields.createCardToken({
-                    cardholderName: normalizedCardholderName,
-                    cardholderEmail: finalEmail,
-                    identificationType: identificationType || undefined,
-                    identificationNumber: identificationNumber || undefined,
-                  })
-                  
-                  if (tokenResult.token) {
-                    token = tokenResult.token.id || tokenResult.token
-                    paymentMethodId = tokenResult.token.payment_method_id || paymentMethodId
-                    issuerId = tokenResult.token.issuer_id || issuerId
-                  } else if (tokenResult.error) {
-                    throw new Error(tokenResult.error.message || 'Error al generar el token de la tarjeta')
+              try {
+                // Intentar usar getFormData() primero (método estándar)
+                if (typeof cardFormRef.current.getFormData === 'function') {
+                  formData = cardFormRef.current.getFormData()
+                } 
+                // Si no existe, intentar getCardFormData()
+                else if (typeof cardFormRef.current.getCardFormData === 'function') {
+                  const data = cardFormRef.current.getCardFormData()
+                  // Puede ser una Promise
+                  if (data && typeof data.then === 'function') {
+                    formData = await data
+                  } else {
+                    formData = data
                   }
-                } catch (tokenError: any) {
-                  console.error('Error creating card token:', tokenError)
-                  throw new Error(tokenError.message || 'Error al generar el token de la tarjeta')
+                } 
+                // Si ninguno existe, el CardForm puede tener los datos directamente
+                else if (cardFormRef.current.token) {
+                  formData = {
+                    token: cardFormRef.current.token,
+                    paymentMethodId: cardFormRef.current.paymentMethodId,
+                    issuerId: cardFormRef.current.issuerId,
+                  }
+                } else {
+                  throw new Error('No se pudo obtener los datos del formulario. El CardForm puede no estar completamente inicializado.')
                 }
+                
+                console.log('Form data retrieved:', {
+                  hasToken: !!formData?.token,
+                  hasPaymentMethodId: !!formData?.paymentMethodId,
+                  formDataKeys: formData ? Object.keys(formData) : [],
+                })
+              } catch (getDataError: any) {
+                console.error('Error getting card form data:', getDataError)
+                throw new Error('Error al obtener los datos de la tarjeta. Verifica que todos los campos estén completos y válidos.')
               }
-              
+
+              // Extraer el token
+              let token = formData?.token || formData?.id || formData?.cardTokenId
+              let paymentMethodId = formData?.paymentMethodId || formData?.payment_method_id
+              let issuerId = formData?.issuerId || formData?.issuer_id
+
               if (!token) {
-                throw new Error('No se pudo generar el token de la tarjeta. Por favor, verifica los datos ingresados.')
+                console.error('No token in form data:', formData)
+                throw new Error('No se pudo generar el token de la tarjeta. Por favor, verifica que todos los campos de la tarjeta estén completos y correctos.')
               }
 
               // Procesar el pago
@@ -283,27 +297,41 @@ export function MercadoPagoCardForm({
                   subscriptionId,
                   token: token,
                   paymentMethodId: paymentMethodId,
-                  installments: parseInt(installments || formData.installments || '1'),
+                  installments: parseInt(installments),
                   issuerId: issuerId,
+                  identificationType: identificationTypeValue,
+                  identificationNumber: identificationNumberValue.trim(),
                 }),
               })
 
               const paymentData = await paymentRes.json()
 
               if (!paymentRes.ok) {
-                throw new Error(paymentData.error || 'Error al procesar el pago')
+                // Extraer mensaje de error más descriptivo
+                let errorMessage = paymentData.error || 'Error al procesar el pago'
+                
+                // Si hay un statusDetail, agregarlo al mensaje si el error no lo incluye ya
+                if (paymentData.statusDetail && !errorMessage.includes(paymentData.statusDetail)) {
+                  errorMessage = `${errorMessage} (${paymentData.statusDetail})`
+                }
+                
+                throw new Error(errorMessage)
               }
 
               if (paymentData.success) {
                 toast('¡Pago procesado exitosamente!', 'success')
                 onPaymentSuccess?.()
               } else {
-                throw new Error(paymentData.payment?.statusDetail || 'El pago fue rechazado')
+                const rejectionMessage = paymentData.payment?.statusDetail 
+                  ? `El pago fue rechazado: ${paymentData.payment.statusDetail}`
+                  : paymentData.error || 'El pago fue rechazado'
+                throw new Error(rejectionMessage)
               }
             } catch (error: any) {
               console.error('Error processing payment:', error)
-              toast(error.message || 'Error al procesar el pago', 'error')
-              onPaymentError?.(error.message)
+              const errorMessage = error?.message || 'Error al procesar el pago'
+              toast(errorMessage, 'error')
+              onPaymentError?.(errorMessage)
             } finally {
               setIsProcessing(false)
             }
@@ -311,7 +339,58 @@ export function MercadoPagoCardForm({
           onError: (error: any) => {
             // Manejar errores de validación del formulario
             console.error('CardForm validation error:', error)
-            const errorMessage = error?.message || 'Error al validar los datos de la tarjeta'
+            
+            // Extraer mensaje de error más descriptivo
+            let errorMessage = 'Error al validar los datos de la tarjeta'
+            let errorCode = null
+            
+            if (Array.isArray(error) && error.length > 0) {
+              const firstError = error[0]
+              errorCode = firstError?.code || firstError?.error?.code
+              
+              if (typeof firstError === 'string') {
+                errorMessage = firstError
+              } else if (firstError?.message) {
+                errorMessage = firstError.message
+              } else if (firstError?.error?.message) {
+                errorMessage = firstError.error.message
+              } else if (firstError?.description) {
+                errorMessage = firstError.description
+              }
+            } else if (error?.message) {
+              errorMessage = error.message
+              errorCode = error.code
+            } else if (typeof error === 'string') {
+              errorMessage = error
+            }
+            
+            // Mensajes más específicos según el código de error
+            if (errorCode) {
+              switch (errorCode) {
+                case 'E301':
+                  errorMessage = 'El número de tarjeta es inválido'
+                  break
+                case 'E302':
+                  errorMessage = 'La fecha de vencimiento es inválida'
+                  break
+                case 'E303':
+                  errorMessage = 'El código de seguridad (CVV) es inválido'
+                  break
+                case 'E205':
+                  errorMessage = 'El nombre del titular es requerido'
+                  break
+                default:
+                  // Mantener el mensaje original si no hay un código conocido
+                  break
+              }
+            }
+            
+            console.error('CardForm error details:', {
+              error,
+              errorCode,
+              errorMessage,
+            })
+            
             toast(errorMessage, 'error')
             setIsProcessing(false)
             onPaymentError?.(errorMessage)
@@ -504,15 +583,18 @@ export function MercadoPagoCardForm({
             </select>
           </div>
 
-          {/* Identification Type and Number (Ocultos por defecto, se mostrarán si es necesario) */}
-          <div className="grid grid-cols-2 gap-4 hidden">
+          {/* Identification Type and Number (OBLIGATORIOS para Colombia) */}
+          <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="form-checkout__identificationType" className="text-sm font-medium">
-                Tipo de documento
+                Tipo de documento <span className="text-red-500">*</span>
               </Label>
               <select
                 id="form-checkout__identificationType"
-                className="flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                value={identificationType}
+                onChange={(e) => setIdentificationType(e.target.value)}
+                className="flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                required
               >
                 <option value="">Selecciona tipo</option>
                 <option value="CC">Cédula de Ciudadanía</option>
@@ -520,18 +602,32 @@ export function MercadoPagoCardForm({
                 <option value="NIT">NIT</option>
                 <option value="PP">Pasaporte</option>
               </select>
+              <p className="text-xs text-muted-foreground">
+                Requerido para pagos en Colombia
+              </p>
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="form-checkout__identificationNumber" className="text-sm font-medium">
-                Número de documento
+                Número de documento <span className="text-red-500">*</span>
               </Label>
               <input
                 type="text"
                 id="form-checkout__identificationNumber"
-                className="flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                value={identificationNumber}
+                onChange={(e) => {
+                  // Solo permitir números
+                  const value = e.target.value.replace(/\D/g, '')
+                  setIdentificationNumber(value)
+                }}
+                className="flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 placeholder="1234567890"
+                required
+                maxLength={15}
               />
+              <p className="text-xs text-muted-foreground">
+                Sin puntos ni guiones
+              </p>
             </div>
           </div>
 

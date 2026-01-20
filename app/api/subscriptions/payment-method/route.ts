@@ -6,6 +6,26 @@ import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
 
+// Función helper para obtener mensajes amigables de rechazo de Mercado Pago
+function getRejectionReasonMessage(statusDetail: string): string {
+  const rejectionMessages: Record<string, string> = {
+    'cc_rejected_other_reason': 'La tarjeta fue rechazada. Si estás usando una tarjeta de prueba, usa: Número 5031 7557 3453 0604, CVV 123, Vencimiento 11/25, Nombre APRO. Verifica que estés usando credenciales de prueba (TEST-) en Vercel.',
+    'cc_rejected_insufficient_amount': 'La tarjeta no tiene fondos suficientes.',
+    'cc_rejected_bad_filled_card_number': 'El número de tarjeta es incorrecto.',
+    'cc_rejected_bad_filled_date': 'La fecha de vencimiento es incorrecta.',
+    'cc_rejected_bad_filled_other': 'Algunos datos de la tarjeta son incorrectos.',
+    'cc_rejected_call_for_authorize': 'Debes autorizar el pago con tu banco.',
+    'cc_rejected_card_error': 'Error con la tarjeta. Verifica los datos.',
+    'cc_rejected_high_risk': 'El pago fue rechazado por medidas de seguridad.',
+    'cc_rejected_insufficient_data': 'Faltan datos de la tarjeta.',
+    'cc_rejected_invalid_installments': 'El número de cuotas no es válido.',
+    'cc_rejected_max_attempts': 'Se excedió el número de intentos permitidos.',
+    'cc_rejected_card_type_not_allowed': 'Este tipo de tarjeta no está permitido.',
+  }
+  
+  return rejectionMessages[statusDetail] || `El pago fue rechazado: ${statusDetail}. Verifica los datos de la tarjeta o intenta con otro medio de pago.`
+}
+
 // Función helper para ejecutar consultas con retry y manejo de errores de conexión
 async function executeWithRetry<T>(
   fn: () => Promise<T>,
@@ -99,11 +119,19 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json()
-    const { subscriptionId, token, paymentMethodId, installments, issuerId } = body
+    const { subscriptionId, token, paymentMethodId, installments, issuerId, identificationType, identificationNumber } = body
 
     if (!subscriptionId || !token) {
       return NextResponse.json(
         { error: 'subscriptionId y token son requeridos' },
+        { status: 400 }
+      )
+    }
+
+    // Validar campos de identificación (obligatorios para Colombia)
+    if (!identificationType || !identificationNumber) {
+      return NextResponse.json(
+        { error: 'Tipo y número de documento son requeridos para pagos en Colombia' },
         { status: 400 }
       )
     }
@@ -158,6 +186,11 @@ export async function POST(request: Request) {
       issuer_id: issuerId,
       payer: {
         email: subscription.tenant.email || undefined,
+        // Identificación obligatoria para Colombia
+        identification: {
+          type: identificationType,
+          number: identificationNumber.trim(),
+        },
       },
       external_reference: subscription.id,
       statement_descriptor: `CLIVARO ${subscription.plan.name.substring(0, 12)}`, // Máximo 13 caracteres
@@ -174,12 +207,37 @@ export async function POST(request: Request) {
     let paymentResult
     try {
       paymentResult = await payment.create({ body: paymentData })
+      
+      // Verificar si el pago fue rechazado aunque no haya lanzado error
+      if (paymentResult.status === 'rejected') {
+        const statusDetail = paymentResult.status_detail || 'cc_rejected_other_reason'
+        const rejectionReason = getRejectionReasonMessage(statusDetail)
+        
+        logger.warn('Mercado Pago payment rejected', {
+          subscriptionId: subscription.id,
+          paymentId: paymentResult.id,
+          status: paymentResult.status,
+          statusDetail: statusDetail,
+          rejectionReason,
+        })
+
+        return NextResponse.json(
+          {
+            error: rejectionReason,
+            code: 'PAYMENT_REJECTED',
+            mercadoPagoStatus: paymentResult.status,
+            statusDetail: statusDetail,
+          },
+          { status: 400 }
+        )
+      }
     } catch (mpError: any) {
       // Error devuelto por la API de Mercado Pago
       const mpMessage = mpError?.message || String(mpError)
       const mpStatus = mpError?.status || mpError?.statusCode
       const mpCode = mpError?.code || 'MERCADOPAGO_ERROR'
       const mpCause = mpError?.cause
+      const mpStatusDetail = mpError?.status_detail || mpError?.statusDetail
 
       logger.error('Mercado Pago payment creation failed', mpError, {
         subscriptionId: subscription.id,
@@ -187,6 +245,7 @@ export async function POST(request: Request) {
         errorStatus: mpStatus,
         errorCode: mpCode,
         errorCause: mpCause,
+        statusDetail: mpStatusDetail,
         paymentData: {
           ...paymentData,
           token: token ? `${token.substring(0, 10)}...` : null, // Solo mostrar parte del token por seguridad
@@ -196,8 +255,12 @@ export async function POST(request: Request) {
       // Preparar mensaje amigable para el usuario según las causas de MP
       let userMessage = 'El pago fue rechazado por Mercado Pago. Verifica los datos de la tarjeta o intenta con otro medio de pago.'
 
+      // Si hay un status_detail, usarlo para dar un mensaje más específico
+      if (mpStatusDetail) {
+        userMessage = getRejectionReasonMessage(mpStatusDetail)
+      }
       // Si Mercado Pago envía causas detalladas, usarlas
-      if (Array.isArray(mpCause) && mpCause.length > 0) {
+      else if (Array.isArray(mpCause) && mpCause.length > 0) {
         const first = mpCause[0]
         if (first?.description) {
           userMessage = `El pago fue rechazado por Mercado Pago: ${first.description}`
@@ -209,6 +272,7 @@ export async function POST(request: Request) {
           error: userMessage,
           code: mpCode,
           mercadoPagoStatus: mpStatus,
+          statusDetail: mpStatusDetail,
           cause: Array.isArray(mpCause) ? mpCause : undefined,
         },
         { status: 400 }
