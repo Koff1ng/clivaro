@@ -307,7 +307,7 @@ export function Sidebar() {
             )}
             title={!isOpen ? 'Cerrar Sesión' : undefined}
           >
-            <LogOut className="h-5 w-5 flex-shrink-0" />
+            <LogOutIcon className="h-5 w-5 flex-shrink-0" />
             <span className={cn(
               'transition-opacity duration-300 whitespace-nowrap',
               isOpen ? 'opacity-100' : 'opacity-0 md:hidden'
