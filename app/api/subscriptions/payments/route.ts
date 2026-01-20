@@ -49,7 +49,7 @@ export async function GET(request: Request) {
 
     const user = session.user as any
     if (user.isSuperAdmin) {
-      return NextResponse.json({ payments: [] })
+      return NextResponse.json({ payments: [], total: 0, page: 1, limit: 4, totalPages: 0 })
     }
 
     const tenantId = user.tenantId
@@ -60,6 +60,20 @@ export async function GET(request: Request) {
         { status: 400 }
       )
     }
+
+    // Obtener parámetros de paginación de la URL
+    const { searchParams } = new URL(request.url)
+    const page = parseInt(searchParams.get('page') || '1', 10)
+    const limit = parseInt(searchParams.get('limit') || '4', 10)
+    const skip = (page - 1) * limit
+
+    // Contar el total de suscripciones con pagos
+    const total = await executeWithRetry(() => prisma.subscription.count({
+      where: {
+        tenantId: tenantId,
+        mercadoPagoPaymentId: { not: null },
+      },
+    }))
 
     // Obtener todas las suscripciones del tenant que tienen pagos (aprobados, pendientes, rechazados, etc.)
     // Incluir todos los estados para mostrar el historial completo
@@ -90,7 +104,8 @@ export async function GET(request: Request) {
       orderBy: {
         updatedAt: 'desc', // Ordenar por fecha de actualización (cuando se procesó el pago)
       },
-      take: 50, // Limitar a los últimos 50 pagos
+      skip: skip,
+      take: limit,
     }))
 
     // Transformar las suscripciones en pagos para el historial
@@ -123,7 +138,15 @@ export async function GET(request: Request) {
       }
     })
 
-    return NextResponse.json({ payments })
+    const totalPages = Math.ceil(total / limit)
+
+    return NextResponse.json({ 
+      payments,
+      total,
+      page,
+      limit,
+      totalPages,
+    })
   } catch (error: any) {
     // Obtener tenantId de forma segura para logging
     let tenantId: string | undefined

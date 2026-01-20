@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Rocket, Calendar, CheckCircle2, Minus, ExternalLink, Loader2, X, AlertTriangle, CreditCard, RefreshCw } from 'lucide-react'
+import { Rocket, Calendar, CheckCircle2, Minus, ExternalLink, Loader2, X, AlertTriangle, CreditCard, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { useQuery } from '@tanstack/react-query'
 import { useState, useEffect } from 'react'
@@ -35,9 +35,9 @@ async function fetchSubscription() {
   }
 }
 
-async function fetchPaymentHistory() {
+async function fetchPaymentHistory(page: number = 1, limit: number = 4) {
   try {
-    const res = await fetch('/api/subscriptions/payments')
+    const res = await fetch(`/api/subscriptions/payments?page=${page}&limit=${limit}`)
     if (!res.ok) {
       const errorData = await res.json().catch(() => ({}))
       throw new Error(errorData.error || errorData.details || `Error ${res.status}: Failed to fetch payment history`)
@@ -76,9 +76,12 @@ export function SubscriptionConfig({ settings, onSave, isLoading }: Subscription
     staleTime: 5 * 60 * 1000, // 5 minutos
   })
 
+  const [paymentPage, setPaymentPage] = useState(1)
+  const paymentsPerPage = 4
+
   const { data: paymentHistory, isLoading: isLoadingPayments, error: paymentHistoryError } = useQuery({
-    queryKey: ['subscription-payments'],
-    queryFn: fetchPaymentHistory,
+    queryKey: ['subscription-payments', paymentPage],
+    queryFn: () => fetchPaymentHistory(paymentPage, paymentsPerPage),
     retry: 3,
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
     staleTime: 30 * 1000, // 30 segundos - actualizar más frecuentemente para ver nuevos pagos
@@ -98,6 +101,9 @@ export function SubscriptionConfig({ settings, onSave, isLoading }: Subscription
   const plan = subscriptionData?.plan
   const subscription = subscriptionData?.subscription
   const payments = paymentHistory?.payments || []
+  const paymentTotal = paymentHistory?.total || 0
+  const paymentTotalPages = paymentHistory?.totalPages || 0
+  const paymentCurrentPage = paymentHistory?.page || 1
 
   const cancelMutation = useMutation({
     mutationFn: cancelSubscription,
@@ -534,7 +540,7 @@ export function SubscriptionConfig({ settings, onSave, isLoading }: Subscription
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {payments.slice(0, 10).map((payment: any) => (
+                  {payments.map((payment: any) => (
                     <TableRow key={payment.id}>
                       <TableCell>
                         <div className="flex flex-col">
@@ -614,22 +620,59 @@ export function SubscriptionConfig({ settings, onSave, isLoading }: Subscription
                   ))}
                 </TableBody>
               </Table>
-              {payments.length > 10 && (
-                <div className="mt-4 text-center">
-                  <p className="text-sm text-muted-foreground mb-2">
-                    Mostrando los últimos 10 pagos de {payments.length} totales
-                  </p>
-                  <Button
-                    variant="link"
-                    className="text-primary"
-                    onClick={() => {
-                      // Expandir para mostrar todos los pagos
-                      toast('Mostrando todos los pagos', 'info')
-                      // TODO: Implementar paginación o vista expandida
-                    }}
-                  >
-                    Ver todos los pagos <ExternalLink className="h-4 w-4 ml-1 inline" />
-                  </Button>
+              {/* Paginación */}
+              {paymentTotalPages > 1 && (
+                <div className="mt-4 flex items-center justify-between border-t pt-4">
+                  <div className="text-sm text-muted-foreground">
+                    Mostrando {((paymentCurrentPage - 1) * paymentsPerPage) + 1} - {Math.min(paymentCurrentPage * paymentsPerPage, paymentTotal)} de {paymentTotal} pagos
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setPaymentPage(prev => Math.max(1, prev - 1))}
+                      disabled={paymentCurrentPage === 1 || isLoadingPayments}
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                      Anterior
+                    </Button>
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: Math.min(paymentTotalPages, 5) }, (_, i) => {
+                        let pageNum: number
+                        if (paymentTotalPages <= 5) {
+                          pageNum = i + 1
+                        } else if (paymentCurrentPage <= 3) {
+                          pageNum = i + 1
+                        } else if (paymentCurrentPage >= paymentTotalPages - 2) {
+                          pageNum = paymentTotalPages - 4 + i
+                        } else {
+                          pageNum = paymentCurrentPage - 2 + i
+                        }
+                        
+                        return (
+                          <Button
+                            key={pageNum}
+                            variant={paymentCurrentPage === pageNum ? 'default' : 'outline'}
+                            size="sm"
+                            className="w-8 h-8 p-0"
+                            onClick={() => setPaymentPage(pageNum)}
+                            disabled={isLoadingPayments}
+                          >
+                            {pageNum}
+                          </Button>
+                        )
+                      })}
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setPaymentPage(prev => Math.min(paymentTotalPages, prev + 1))}
+                      disabled={paymentCurrentPage === paymentTotalPages || isLoadingPayments}
+                    >
+                      Siguiente
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               )}
             </>
