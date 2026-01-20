@@ -229,10 +229,33 @@ export function MercadoPagoCardForm({
               return
             }
             
-            if (!phone.trim()) {
-                toast('Por favor, ingresa un número de teléfono', 'error')
-                return
-              }
+            // Validar teléfono - leer directamente del DOM como otros campos
+            const phoneInput = document.getElementById('phone') as HTMLInputElement
+            const phoneValueFromDOM = phoneInput?.value?.trim() || ''
+            const phoneValueFromState = phone.trim()
+            // Usar el valor del DOM si está disponible, sino el del estado
+            const phoneValue = phoneValueFromDOM || phoneValueFromState
+            
+            if (!phoneValue) {
+              toast('Por favor, ingresa un número de teléfono', 'error')
+              return
+            }
+            
+            // Normalizar: eliminar espacios y el símbolo + si está al inicio
+            const phoneNormalized = phoneValue.replace(/\s+/g, '').replace(/^\+/, '')
+            
+            // Validar que tenga al menos 7 dígitos
+            if (phoneNormalized.length < 7) {
+              toast('Por favor, ingresa un número de teléfono válido (mínimo 7 dígitos)', 'error')
+              return
+            }
+            
+            // Validar que solo contenga números (después de normalizar)
+            const phoneRegex = /^\d+$/
+            if (!phoneRegex.test(phoneNormalized)) {
+              toast('El número de teléfono solo puede contener números', 'error')
+              return
+            }
 
             // Validar campos de identificación (obligatorios para Colombia)
             const identificationTypeValue = (document.getElementById('form-checkout__identificationType') as HTMLSelectElement)?.value || identificationType
@@ -564,12 +587,20 @@ export function MercadoPagoCardForm({
                   type="tel"
                   id="phone"
                   value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
+                  onChange={(e) => {
+                    // Permitir números, espacios, guiones y el símbolo +
+                    const value = e.target.value.replace(/[^\d\s+-]/g, '')
+                    setPhone(value)
+                  }}
                   className="flex h-11 w-full rounded-md border border-input bg-background pl-10 pr-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                  placeholder="+8917895190"
+                  placeholder="3001234567"
                   required
+                  minLength={7}
                 />
               </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Ingresa solo el número (sin código de país, ya está seleccionado arriba)
+              </p>
             </div>
           </div>
 
