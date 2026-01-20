@@ -12,7 +12,8 @@ import { useDebounce } from '@/lib/hooks/use-debounce'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { useToast } from '@/components/ui/toast'
 import { LoadingOverlay } from '@/components/ui/loading-overlay'
-import { Search, Plus, Edit, Trash2, Eye, FileText, Send, X, Loader2, Filter } from 'lucide-react'
+import { Search, Plus, Edit, Trash2, Eye, FileText, X, Loader2, Filter } from 'lucide-react'
+import { Mail } from 'iconoir-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -175,6 +176,8 @@ export function QuotationList() {
     }
     
     try {
+      const confirmed = window.confirm(`¿Enviar la cotización ${quotation.number} al correo ${quotation.customer.email}?`)
+      if (!confirmed) return
       await sendMutation.mutateAsync(quotation.id)
     } catch (error: any) {
       // Error already handled in mutation onError
@@ -440,10 +443,10 @@ export function QuotationList() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => handleSend(quotation)}
+                          onClick={() => handleSend(quotation)}
                             title="Enviar"
                           >
-                            <Send className="h-4 w-4" />
+                          <Mail className="h-4 w-4" />
                           </Button>
                         </>
                       )}
@@ -454,7 +457,7 @@ export function QuotationList() {
                           onClick={() => handleSend(quotation)}
                           title="Reenviar por email"
                         >
-                          <Send className="h-4 w-4" />
+                          <Mail className="h-4 w-4" />
                         </Button>
                       )}
                       {quotation.status === 'DRAFT' && (

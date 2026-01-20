@@ -7,12 +7,16 @@ import { Button } from '@/components/ui/button'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { useToast } from '@/components/ui/toast'
 import { LoadingOverlay } from '@/components/ui/loading-overlay'
-import { FileText, Mail, Phone, MapPin, CheckCircle, Send } from 'lucide-react'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
+import { FileText, Phone, MapPin, CheckCircle } from 'lucide-react'
+import { Mail } from 'iconoir-react'
 
 export function QuotationDetails({ quotation }: { quotation: any }) {
   const { toast } = useToast()
   const [loading, setLoading] = useState(false)
   const [sending, setSending] = useState(false)
+  const [confirmSendOpen, setConfirmSendOpen] = useState(false)
+  const [confirmMode, setConfirmMode] = useState<'send' | 'resend' | null>(null)
   const queryClient = useQueryClient()
 
   // Validar y normalizar datos
@@ -33,9 +37,14 @@ export function QuotationDetails({ quotation }: { quotation: any }) {
       }
       return res.json()
     },
-    onSuccess: (order) => {
+    onSuccess: (invoice) => {
       queryClient.invalidateQueries({ queryKey: ['quotations'] })
-      toast(`Cotización convertida a factura: ${order.number}`, 'success')
+      queryClient.invalidateQueries({ queryKey: ['invoices'] })
+      toast(`Cotización convertida a factura: ${invoice.number}`, 'success')
+    },
+    onError: (error: any) => {
+      const message = error?.message || 'No se pudo convertir la cotización en factura'
+      toast(message, 'error')
     },
   })
 
@@ -70,6 +79,21 @@ export function QuotationDetails({ quotation }: { quotation: any }) {
       toast(`Error: ${errorMessage}`, 'error')
     },
   })
+
+  const openSendConfirm = (mode: 'send' | 'resend') => {
+    if (!quotation.customer?.email) {
+      toast('El cliente no tiene un email registrado. Por favor, actualice los datos del cliente antes de enviar la cotización.', 'warning')
+      return
+    }
+    setConfirmMode(mode)
+    setConfirmSendOpen(true)
+  }
+
+  const handleConfirmSend = () => {
+    if (!quotation?.id) return
+    sendMutation.mutate()
+    setConfirmSendOpen(false)
+  }
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -109,51 +133,60 @@ export function QuotationDetails({ quotation }: { quotation: any }) {
           {quotation.status === 'DRAFT' && (
             <Button
               variant="outline"
-              onClick={() => {
-                if (!quotation.customer?.email) {
-                  toast('El cliente no tiene un email registrado. Por favor, actualice los datos del cliente antes de enviar la cotización.', 'warning')
-                  return
-                }
-                sendMutation.mutate()
-              }}
+              onClick={() => openSendConfirm('send')}
               disabled={sendMutation.isPending}
             >
-              <Send className="h-4 w-4 mr-2" />
-              {sendMutation.isPending ? 'Enviando...' : 'Enviar por Email'}
+              <Mail className="h-4 w-4 mr-2" />
+              {sendMutation.isPending ? 'Enviando...' : 'Enviar por email'}
             </Button>
           )}
           {(quotation.status === 'SENT' || quotation.status === 'ACCEPTED') && (
             <>
               <Button
                 variant="outline"
-                onClick={() => {
-                  if (!quotation.customer?.email) {
-                    toast('El cliente no tiene un email registrado. Por favor, actualice los datos del cliente antes de reenviar la cotización.', 'warning')
-                    return
-                  }
-                  sendMutation.mutate()
-                }}
+                onClick={() => openSendConfirm('resend')}
                 disabled={sendMutation.isPending}
               >
-                <Send className="h-4 w-4 mr-2" />
-                {sendMutation.isPending ? 'Reenviando...' : 'Reenviar por Email'}
+                <Mail className="h-4 w-4 mr-2" />
+                {sendMutation.isPending ? 'Reenviando...' : 'Reenviar por email'}
               </Button>
               {quotation.status === 'SENT' && (
                 <Button
                   onClick={() => {
-                    if (confirm('¿Convertir esta cotización en factura?')) {
+                    if (confirm('¿Convertir esta cotización en factura pagada?')) {
                       convertMutation.mutate()
                     }
                   }}
                 >
                   <CheckCircle className="h-4 w-4 mr-2" />
-                  Convertir a Factura
+                  Convertir a factura
                 </Button>
               )}
             </>
           )}
         </div>
       </div>
+
+      <Dialog open={confirmSendOpen} onOpenChange={setConfirmSendOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{confirmMode === 'resend' ? 'Reenviar cotización' : 'Enviar cotización'}</DialogTitle>
+            <DialogDescription>
+              {quotation?.customer?.email
+                ? `Se enviará la cotización ${quotation.number} al correo ${quotation.customer.email}.`
+                : 'El cliente no tiene un correo electrónico configurado.'}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setConfirmSendOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleConfirmSend} disabled={sendMutation.isPending}>
+              {sendMutation.isPending ? 'Enviando...' : 'Confirmar envío'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Customer Info */}
       <div className="grid grid-cols-2 gap-6">
