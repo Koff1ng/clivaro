@@ -227,8 +227,12 @@ export function POSScreen() {
   })
 
   useEffect(() => {
+    // Solo mostrar el diálogo si NO hay turno activo
     if (!activeShift) {
       setShowShiftDialog(true)
+    } else {
+      // Si hay turno activo, asegurarse de que el diálogo esté cerrado
+      setShowShiftDialog(false)
     }
   }, [activeShift])
   
@@ -1269,8 +1273,8 @@ export function POSScreen() {
 
   return (
     <div className="h-[calc(100vh-120px)] flex flex-col bg-background">
-      {/* Shift Dialog */}
-      <Dialog open={showShiftDialog} onOpenChange={(open) => {
+      {/* Shift Dialog - Solo mostrar si NO hay turno activo */}
+      <Dialog open={showShiftDialog && !activeShift} onOpenChange={(open) => {
         if (!open && !activeShift) {
           // Prevent closing if no shift is open
           return
