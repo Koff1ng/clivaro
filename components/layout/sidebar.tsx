@@ -20,6 +20,7 @@ import {
   UserSquare,
   Settings as SettingsIcon,
   LogOut as LogOutIcon,
+  ShieldCheck,
 } from 'iconoir-react'
 import { Logo } from '@/components/ui/logo'
 import { AppIcon } from '@/components/ui/app-icon'
@@ -274,7 +275,7 @@ export function Sidebar() {
               )}
               title={!isOpen ? 'Admin' : undefined}
             >
-              <Shield className="h-4 w-4 flex-shrink-0 opacity-70" />
+              <ShieldCheck className="h-4 w-4 flex-shrink-0 opacity-70" />
               <span className={cn(
                 'transition-opacity duration-300 whitespace-nowrap text-xs',
                 isOpen ? 'opacity-100' : 'opacity-0 md:hidden'
