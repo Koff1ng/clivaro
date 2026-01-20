@@ -177,6 +177,14 @@ export async function POST(request: Request) {
     const client = new MercadoPagoConfig({ accessToken: mercadoPagoAccessToken })
     const payment = new Payment(client)
 
+    // Detectar si estamos en modo sandbox
+    const isTestMode = mercadoPagoAccessToken.startsWith('TEST-') || mercadoPagoAccessToken.includes('test')
+    
+    // Determinar el email del pagador
+    // En modo sandbox, Mercado Pago acepta cualquier email válido
+    // En producción, debe ser un email real del pagador
+    const payerEmail = email || subscription.tenant.email || (isTestMode ? 'test@testuser.com' : undefined)
+    
     const paymentData = {
       transaction_amount: subscription.plan.price,
       token: token,
@@ -185,8 +193,7 @@ export async function POST(request: Request) {
       payment_method_id: paymentMethodId,
       issuer_id: issuerId,
       payer: {
-        // Usar el email del formulario si está disponible, sino el del tenant
-        email: email || subscription.tenant.email || undefined,
+        email: payerEmail,
         // Identificación obligatoria para Colombia
         identification: {
           type: identificationType,
@@ -196,13 +203,17 @@ export async function POST(request: Request) {
       external_reference: subscription.id,
       statement_descriptor: `CLIVARO ${subscription.plan.name.substring(0, 12)}`, // Máximo 13 caracteres
     }
-
+    
     logger.info('Creating Mercado Pago payment', {
       subscriptionId: subscription.id,
       amount: paymentData.transaction_amount,
       hasToken: !!token,
       paymentMethodId,
       installments: paymentData.installments,
+      payerEmail: paymentData.payer.email,
+      isTestMode,
+      identificationType: paymentData.payer.identification.type,
+      identificationNumber: paymentData.payer.identification.number,
     })
 
     let paymentResult
@@ -256,8 +267,12 @@ export async function POST(request: Request) {
       // Preparar mensaje amigable para el usuario según las causas de MP
       let userMessage = 'El pago fue rechazado por Mercado Pago. Verifica los datos de la tarjeta o intenta con otro medio de pago.'
 
+      // Manejar error específico "Invalid users involved" (modo sandbox)
+      if (mpMessage && (mpMessage.includes('Invalid users involved') || mpMessage.includes('invalid users'))) {
+        userMessage = `Error: El email "${paymentData.payer.email}" no corresponde a un usuario de prueba válido en Mercado Pago. En modo sandbox, debes usar el email de un usuario de prueba creado en tu panel de Mercado Pago. Ve a https://www.mercadopago.com.co/developers/panel/app → Tu App → Cuentas de prueba para crear o ver tus usuarios de prueba.`
+      }
       // Si hay un status_detail, usarlo para dar un mensaje más específico
-      if (mpStatusDetail) {
+      else if (mpStatusDetail) {
         userMessage = getRejectionReasonMessage(mpStatusDetail)
       }
       // Si Mercado Pago envía causas detalladas, usarlas

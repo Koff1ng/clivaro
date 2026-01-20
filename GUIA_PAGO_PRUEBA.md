@@ -57,19 +57,16 @@ Estado: Será rechazada
    - Selecciona el código de país (🇨🇴 +57 para Colombia)
    - Ingresa un número de teléfono (ej: "8917895190")
 3. **Email**: 
-   - **IMPORTANTE**: En modo sandbox, usa el email asociado a tu **Usuario de Prueba** de Mercado Pago
-   - Cuando creas un usuario de prueba, Mercado Pago te da:
-     - **Usuario**: Generalmente es un email (ej: `test_user_123456@testuser.com`)
-     - **Contraseña**: Para iniciar sesión en el panel
-   - **Cómo obtener el email:**
-     1. Ve a: https://www.mercadopago.com.co/developers/panel/app
-     2. Selecciona tu aplicación
-     3. Ve a **Cuentas de prueba** → **Usuarios de prueba**
-     4. Busca el "Usuario de prueba pagador" (Buyer)
-     5. El **email es el mismo que el usuario** (o aparece listado junto al usuario)
-   - **Alternativa**: Si el usuario no es un email, puedes usar cualquier email válido con formato correcto (ej: `test@test.com`, `buyer@testuser.com`)
-   - **NO uses** emails genéricos muy comunes como "test@example.com" - algunos pueden ser rechazados
-   - **Recomendado**: Usa un email con formato `test_user_XXXXX@testuser.com` o similar
+   - **IMPORTANTE**: En modo sandbox (prueba), puedes usar **cualquier email válido** con formato correcto
+   - Mercado Pago en sandbox acepta emails como:
+     - `test@testuser.com`
+     - `buyer@testuser.com`
+     - `test_user_123@testuser.com`
+     - `prueba@ejemplo.com`
+   - **NO es necesario** que el email corresponda a un usuario de prueba específico
+   - **Formato requerido**: Debe ser un email válido (usuario@dominio.com)
+   - **Evita** emails muy comunes como `test@example.com` - algunos pueden ser rechazados
+   - **Recomendado**: Usa un email con formato `test@testuser.com` o similar
 4. **Card number**: Ingresa una de las tarjetas de prueba arriba
 5. **Expiration date**: Ingresa una fecha futura (ej: "12/25")
 6. **Security code**: Ingresa "123"
