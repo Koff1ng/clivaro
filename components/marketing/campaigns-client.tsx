@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus, Send, Edit, Trash2, Eye, Users, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -77,6 +77,10 @@ export default function CampaignsClient() {
     }
   }
 
+  const campaignsList = useMemo(() => {
+    return Array.isArray(campaigns) ? campaigns : []
+  }, [campaigns])
+
   if (selectedCampaign) {
     return (
       <CampaignDetails
@@ -143,12 +147,12 @@ export default function CampaignsClient() {
         </Button>
       </div>
 
-      {isLoading && (!campaigns || campaigns.length === 0) ? (
+      {isLoading && campaignsList.length === 0 ? (
         <div className="flex items-center justify-center py-12">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground mr-2" />
           <span className="text-muted-foreground">Cargando campañas...</span>
         </div>
-      ) : campaigns?.length === 0 ? (
+      ) : campaignsList.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">
             <p className="text-gray-500 mb-4">No hay campañas creadas</p>
@@ -160,7 +164,7 @@ export default function CampaignsClient() {
         </Card>
       ) : (
         <div className="grid gap-4">
-          {campaigns?.map((campaign: any) => {
+          {campaignsList.map((campaign: any) => {
             const sentCount = campaign.recipients?.filter((r: any) => r.status === 'SENT').length || 0
             const totalRecipients = campaign.recipients?.length || 0
 
