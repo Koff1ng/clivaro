@@ -120,11 +120,10 @@ export async function POST(request: Request) {
     let mpCustomerId: string | null = null
     try {
       // Buscar customer existente por email
+      // El SDK tipa `qs` como string | number, así que enviamos la query ya serializada
       const existingCustomers = await customer.search({
         options: {
-          qs: {
-            email: validatedData.payerEmail,
-          },
+          qs: `email=${encodeURIComponent(validatedData.payerEmail)}`,
         },
       })
 
