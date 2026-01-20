@@ -10,7 +10,6 @@ import { RecentProducts } from '@/components/dashboard/recent-products'
 import { Last30DaysChartLazy, ProductCategoriesLazy } from '@/components/dashboard/lazy-charts'
 import { PageHeader } from '@/components/ui/page-header'
 import { PageHeaderBadges } from '@/components/ui/page-header-badges'
-import { LayoutDashboard } from 'lucide-react'
 import { DashboardGreeting } from '@/components/dashboard/greeting'
 
 export default async function DashboardPage() {
@@ -33,8 +32,6 @@ export default async function DashboardPage() {
       <div className="space-y-6">
         <PageHeader
           title="Dashboard"
-          description="Tu resumen operativo: ventas, stock, clientes y actividad reciente, actualizado en tiempo real."
-          icon={<LayoutDashboard className="h-5 w-5" />}
           breadcrumbs={[{ label: 'Inicio', href: '/dashboard' }, { label: 'Dashboard' }]}
           badges={<PageHeaderBadges />}
         />

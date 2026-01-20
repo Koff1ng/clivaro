@@ -90,61 +90,127 @@
 
 @layer base {
   :root {
-    /* Clivaro Brand Colors - Light Mode */
+    /* Base */
+    --bg-main: #F7F9FC;          /* fondo general */
+    --bg-card: #FFFFFF;         /* tarjetas / paneles */
+    --bg-soft: #F2F5FA;          /* fondos secundarios */
+
+    /* Bordes */
+    --border-light: #E5EAF1;
+    --border-muted: #EEF1F6;
+
+    /* Texto */
+    --text-primary: #0F172A;     /* títulos */
+    --text-secondary: #475569;   /* descripciones */
+    --text-muted: #94A3B8;       /* labels suaves */
+
+    /* Marca / Acción */
+    --primary: #3B82F6;          /* azul SaaS */
+    --primary-soft: #E8F0FF;
+    --primary-hover: #2563EB;
+
+    /* Estados */
+    --success: #10B981;          /* verde */
+    --success-soft: #ECFDF5;
+
+    --warning: #F59E0B;          /* naranja */
+    --warning-soft: #FFF7ED;
+
+    --danger: #EF4444;           /* rojo */
+    --danger-soft: #FEF2F2;
+
+    /* Iconos / Chips */
+    --icon-blue: #3B82F6;
+    --icon-green: #10B981;
+    --icon-yellow: #F59E0B;
+    --icon-purple: #6366F1;
+
+    /* Sombras */
+    --shadow-soft: 0 8px 20px rgba(15, 23, 42, 0.06);
+    --shadow-card: 0 4px 12px rgba(15, 23, 42, 0.05);
+
+    /* Tailwind CSS Variables (compatibilidad) */
     --background: 0 0% 100%;
     --foreground: 222 47% 11%;
     --card: 0 0% 100%;
     --card-foreground: 222 47% 11%;
     --popover: 0 0% 100%;
     --popover-foreground: 222 47% 11%;
-    /* Primary: Azul oscuro del logo (Cliv) */
     --primary: 217 91% 60%;
     --primary-foreground: 0 0% 100%;
-    /* Secondary: Teal/Verde azulado del gradiente */
     --secondary: 180 60% 50%;
     --secondary-foreground: 0 0% 100%;
-    /* Muted: Tonos suaves */
     --muted: 210 40% 96%;
     --muted-foreground: 215 16% 47%;
-    /* Accent: Naranja del mango de la lupa */
     --accent: 25 95% 53%;
     --accent-foreground: 0 0% 100%;
-    /* Destructive: Rojo del gradiente */
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
     --border: 214 32% 91%;
     --input: 214 32% 91%;
-    /* Ring: Azul primario */
     --ring: 217 91% 60%;
     --radius: 0.5rem;
   }
 
   .dark {
-    /* Clivaro Brand Colors - Dark Mode */
+    /* Base (Dark Mode) */
+    --bg-main: #0F172A;
+    --bg-card: #1E293B;
+    --bg-soft: #1E293B;
+
+    /* Bordes (Dark Mode) */
+    --border-light: #334155;
+    --border-muted: #334155;
+
+    /* Texto (Dark Mode) */
+    --text-primary: #F1F5F9;
+    --text-secondary: #CBD5E1;
+    --text-muted: #94A3B8;
+
+    /* Marca / Acción (Dark Mode) */
+    --primary: #3B82F6;
+    --primary-soft: #1E3A8A;
+    --primary-hover: #60A5FA;
+
+    /* Estados (Dark Mode) */
+    --success: #10B981;
+    --success-soft: #065F46;
+
+    --warning: #F59E0B;
+    --warning-soft: #92400E;
+
+    --danger: #EF4444;
+    --danger-soft: #991B1B;
+
+    /* Iconos / Chips (Dark Mode) */
+    --icon-blue: #60A5FA;
+    --icon-green: #34D399;
+    --icon-yellow: #FBBF24;
+    --icon-purple: #818CF8;
+
+    /* Sombras (Dark Mode) */
+    --shadow-soft: 0 8px 20px rgba(0, 0, 0, 0.4);
+    --shadow-card: 0 4px 12px rgba(0, 0, 0, 0.3);
+
+    /* Tailwind CSS Variables (Dark Mode) */
     --background: 222 47% 11%;
     --foreground: 210 40% 98%;
     --card: 222 47% 11%;
     --card-foreground: 210 40% 98%;
     --popover: 222 47% 11%;
     --popover-foreground: 210 40% 98%;
-    /* Primary: Azul más brillante para dark mode */
     --primary: 217 91% 65%;
     --primary-foreground: 222 47% 11%;
-    /* Secondary: Teal más brillante */
     --secondary: 180 60% 55%;
     --secondary-foreground: 222 47% 11%;
-    /* Muted: Tonos oscuros */
     --muted: 217 33% 18%;
     --muted-foreground: 215 20% 65%;
-    /* Accent: Naranja más brillante */
     --accent: 25 95% 58%;
     --accent-foreground: 222 47% 11%;
-    /* Destructive: Rojo más suave */
     --destructive: 0 63% 50%;
     --destructive-foreground: 0 0% 100%;
     --border: 217 33% 18%;
     --input: 217 33% 18%;
-    /* Ring: Azul más claro para dark mode */
     --ring: 217 91% 65%;
   }
 }

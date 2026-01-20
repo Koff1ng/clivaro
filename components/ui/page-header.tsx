@@ -51,22 +51,10 @@ export function PageHeader({
           </nav>
         )}
 
-        <div className="flex items-center gap-3">
-          {icon && (
-            <div className="hidden h-9 w-9 items-center justify-center rounded-xl border border-border/60 bg-background/80 text-primary shadow-sm sm:flex">
-              {icon}
-            </div>
-          )}
-          <div className="min-w-0">
-            <h1 className="text-2xl font-semibold tracking-tight text-foreground truncate md:text-[26px]">
-              {title}
-            </h1>
-            {description && (
-              <p className="mt-0.5 text-sm text-muted-foreground leading-relaxed">
-                {description}
-              </p>
-            )}
-          </div>
+        <div className="min-w-0">
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground truncate md:text-[26px]">
+            {title}
+          </h1>
         </div>
         <div className="h-px w-full border-b border-border/60" />
       </div>
