@@ -146,99 +146,99 @@ export function PhysicalInventoryList() {
             <span className="text-muted-foreground">Cargando inventarios físicos...</span>
           </div>
         ) : (
-        <div className="border rounded-lg">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b bg-gray-50">
-                <th className="text-left p-3 text-sm font-medium">Número</th>
-                <th className="text-left p-3 text-sm font-medium">Almacén</th>
-                <th className="text-left p-3 text-sm font-medium">Estado</th>
-                <th className="text-left p-3 text-sm font-medium">Productos</th>
-                <th className="text-left p-3 text-sm font-medium">Creado</th>
-                <th className="text-left p-3 text-sm font-medium">Creado Por</th>
-                <th className="text-right p-3 text-sm font-medium">Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {inventories.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="text-center p-8 text-gray-500">
-                    No hay inventarios físicos
-                  </td>
+          <div className="border rounded-lg">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b bg-gray-50">
+                  <th className="text-left p-3 text-sm font-medium">Número</th>
+                  <th className="text-left p-3 text-sm font-medium">Almacén</th>
+                  <th className="text-left p-3 text-sm font-medium">Estado</th>
+                  <th className="text-left p-3 text-sm font-medium">Productos</th>
+                  <th className="text-left p-3 text-sm font-medium">Creado</th>
+                  <th className="text-left p-3 text-sm font-medium">Creado Por</th>
+                  <th className="text-right p-3 text-sm font-medium">Acciones</th>
                 </tr>
-              ) : (
-                inventories.map((inventory: any) => {
-                  const StatusIcon = getStatusIcon(inventory.status)
-                  return (
-                    <tr key={inventory.id} className="border-b hover:bg-gray-50">
-                      <td className="p-3 font-medium">{inventory.number}</td>
-                      <td className="p-3">{inventory.warehouse?.name || '-'}</td>
-                      <td className="p-3">
-                        <div className="flex flex-col gap-2">
-                          <span className={`inline-flex items-center gap-1 px-2 py-1 text-xs rounded ${getStatusColor(inventory.status)}`}>
-                            <StatusIcon className="h-3 w-3" />
-                            {getStatusLabel(inventory.status)}
-                          </span>
-                          {inventory.hasDifferences && (
-                            <>
-                              {inventory.hasPositiveDifferences && (
-                                <span className="inline-flex items-center gap-1 px-2 py-1 text-xs rounded bg-orange-100 text-orange-800 font-semibold animate-pulse">
-                                  <AlertTriangle className="h-3 w-3" />
-                                  ¡Se contaron productos de más!
-                                </span>
-                              )}
-                              {inventory.hasNegativeDifferences && (
-                                <span className="inline-flex items-center gap-1 px-2 py-1 text-xs rounded bg-orange-100 text-orange-800 font-semibold animate-pulse">
-                                  <AlertTriangle className="h-3 w-3" />
-                                  ¡Revisar diferencias!
-                                </span>
-                              )}
-                            </>
-                          )}
-                        </div>
-                      </td>
-                      <td className="p-3">{inventory._count?.items || 0}</td>
-                      <td className="p-3 text-sm text-gray-600">{formatDate(inventory.createdAt)}</td>
-                      <td className="p-3 text-sm text-gray-600">{inventory.createdBy?.name || '-'}</td>
-                      <td className="p-3">
-                        <div className="flex items-center justify-end gap-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleView(inventory)}
-                            title="Ver detalles"
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
+              </thead>
+              <tbody>
+                {inventories.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="text-center p-8 text-gray-500">
+                      No hay inventarios físicos
+                    </td>
+                  </tr>
+                ) : (
+                  inventories.map((inventory: any) => {
+                    const StatusIcon = getStatusIcon(inventory.status)
+                    return (
+                      <tr key={inventory.id} className="border-b hover:bg-gray-50">
+                        <td className="p-3 font-medium">{inventory.number}</td>
+                        <td className="p-3">{inventory.warehouse?.name || '-'}</td>
+                        <td className="p-3">
+                          <div className="flex flex-col gap-2">
+                            <span className={`inline-flex items-center gap-1 px-2 py-1 text-xs rounded ${getStatusColor(inventory.status)}`}>
+                              <StatusIcon className="h-3 w-3" />
+                              {getStatusLabel(inventory.status)}
+                            </span>
+                            {inventory.hasDifferences && (
+                              <>
+                                {inventory.hasPositiveDifferences && (
+                                  <span className="inline-flex items-center gap-1 px-2 py-1 text-xs rounded bg-orange-100 text-orange-800 font-semibold animate-pulse">
+                                    <AlertTriangle className="h-3 w-3" />
+                                    ¡Se contaron productos de más!
+                                  </span>
+                                )}
+                                {inventory.hasNegativeDifferences && (
+                                  <span className="inline-flex items-center gap-1 px-2 py-1 text-xs rounded bg-orange-100 text-orange-800 font-semibold animate-pulse">
+                                    <AlertTriangle className="h-3 w-3" />
+                                    ¡Revisar diferencias!
+                                  </span>
+                                )}
+                              </>
+                            )}
+                          </div>
+                        </td>
+                        <td className="p-3">{inventory._count?.items || 0}</td>
+                        <td className="p-3 text-sm text-gray-600">{formatDate(inventory.createdAt)}</td>
+                        <td className="p-3 text-sm text-gray-600">{inventory.createdBy?.name || '-'}</td>
+                        <td className="p-3">
+                          <div className="flex items-center justify-end gap-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleView(inventory)}
+                              title="Ver detalles"
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
                             {inventory.status === 'PENDING' || inventory.status === 'COUNTING' ? (
-                            <>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handlePrint(inventory)}
-                                title="Imprimir formato"
-                              >
-                                <Printer className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleCount(inventory)}
-                                title="Ingresar cantidades contadas"
-                              >
-                                <ClipboardList className="h-4 w-4" />
-                              </Button>
-                            </>
-                          ) : null}
-                        </div>
-                      </td>
-                    </tr>
-                  )
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
+                              <>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handlePrint(inventory)}
+                                  title="Imprimir formato"
+                                >
+                                  <Printer className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleCount(inventory)}
+                                  title="Ingresar cantidades contadas"
+                                >
+                                  <ClipboardList className="h-4 w-4" />
+                                </Button>
+                              </>
+                            ) : null}
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 
@@ -261,7 +261,7 @@ export function PhysicalInventoryList() {
       {/* Details Dialog */}
       {viewInventory && (
         <Dialog open={!!viewInventory} onOpenChange={() => setViewInventory(null)}>
-          <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="w-auto sm:max-w-fit max-h-[90vh] overflow-y-auto">
             <PhysicalInventoryDetails
               inventory={viewInventory}
               onClose={() => setViewInventory(null)}
@@ -274,7 +274,7 @@ export function PhysicalInventoryList() {
       {/* Print View */}
       {printInventory && (
         <Dialog open={!!printInventory} onOpenChange={() => setPrintInventory(null)}>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="w-auto sm:max-w-fit max-h-[90vh] overflow-y-auto">
             <div className="space-y-4">
               <div className="flex justify-between items-center">
                 <DialogTitle>Formato de Conteo Físico</DialogTitle>
@@ -294,26 +294,26 @@ export function PhysicalInventoryList() {
         </Dialog>
       )}
 
-        {/* Count Form Dialog */}
-        {countInventory && (
-          <Dialog open={!!countInventory} onOpenChange={() => setCountInventory(null)}>
-            <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
-              <PhysicalInventoryCountForm
-                inventory={countInventory}
-                onClose={() => {
-                  setCountInventory(null)
-                  // Refetch to show updated status
-                  refetch()
-                }}
-                onSuccess={() => {
-                  setCountInventory(null)
-                  // Refetch to show updated status (PENDING -> COUNTING)
-                  refetch()
-                }}
-              />
-            </DialogContent>
-          </Dialog>
-        )}
+      {/* Count Form Dialog */}
+      {countInventory && (
+        <Dialog open={!!countInventory} onOpenChange={() => setCountInventory(null)}>
+          <DialogContent className="w-auto sm:max-w-fit max-h-[90vh] overflow-y-auto">
+            <PhysicalInventoryCountForm
+              inventory={countInventory}
+              onClose={() => {
+                setCountInventory(null)
+                // Refetch to show updated status
+                refetch()
+              }}
+              onSuccess={() => {
+                setCountInventory(null)
+                // Refetch to show updated status (PENDING -> COUNTING)
+                refetch()
+              }}
+            />
+          </DialogContent>
+        </Dialog>
+      )}
     </>
   )
 }

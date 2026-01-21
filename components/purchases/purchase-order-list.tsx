@@ -28,7 +28,7 @@ async function fetchPurchaseOrders(page: number, search: string, status: string,
   if (search) params.append('search', search)
   if (status) params.append('status', status)
   if (supplierId) params.append('supplierId', supplierId)
-  
+
   const res = await fetch(`/api/purchases/orders?${params}`)
   if (!res.ok) throw new Error('Failed to fetch purchase orders')
   return res.json()
@@ -204,73 +204,73 @@ export function PurchaseOrderList() {
           <span className="text-muted-foreground">Cargando órdenes de compra...</span>
         </div>
       ) : (
-      <div className="border rounded-lg">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Número</TableHead>
-              <TableHead>Proveedor</TableHead>
-              <TableHead>Fecha</TableHead>
-              <TableHead>Estado</TableHead>
-              <TableHead>Total</TableHead>
-              <TableHead>Acciones</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {orders.length === 0 ? (
+        <div className="border rounded-lg">
+          <Table>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={6} className="text-center text-gray-500">
-                  No hay órdenes de compra
-                </TableCell>
+                <TableHead>Número</TableHead>
+                <TableHead>Proveedor</TableHead>
+                <TableHead>Fecha</TableHead>
+                <TableHead>Estado</TableHead>
+                <TableHead>Total</TableHead>
+                <TableHead>Acciones</TableHead>
               </TableRow>
-            ) : (
-              orders.map((order: any) => (
-                <TableRow key={order.id}>
-                  <TableCell className="font-medium">{order.number}</TableCell>
-                  <TableCell>{order.supplier?.name || '-'}</TableCell>
-                  <TableCell>{formatDate(order.createdAt)}</TableCell>
-                  <TableCell>
-                    <span className={`px-2 py-1 text-xs rounded ${getStatusColor(order.status)}`}>
-                      {getStatusLabel(order.status)}
-                    </span>
+            </TableHeader>
+            <TableBody>
+              {orders.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center text-gray-500">
+                    No hay órdenes de compra
                   </TableCell>
-                  <TableCell>{formatCurrency(order.total)}</TableCell>
-                  <TableCell>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleView(order)}
-                        title="Ver detalles"
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleEdit(order)}
-                        title="Editar"
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      {order.status === 'DRAFT' && (
+                </TableRow>
+              ) : (
+                orders.map((order: any) => (
+                  <TableRow key={order.id}>
+                    <TableCell className="font-medium">{order.number}</TableCell>
+                    <TableCell>{order.supplier?.name || '-'}</TableCell>
+                    <TableCell>{formatDate(order.createdAt)}</TableCell>
+                    <TableCell>
+                      <span className={`px-2 py-1 text-xs rounded ${getStatusColor(order.status)}`}>
+                        {getStatusLabel(order.status)}
+                      </span>
+                    </TableCell>
+                    <TableCell>{formatCurrency(order.total)}</TableCell>
+                    <TableCell>
+                      <div className="flex gap-2">
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => handleDelete(order)}
-                          title="Eliminar"
+                          onClick={() => handleView(order)}
+                          title="Ver detalles"
                         >
-                          <Trash2 className="h-4 w-4 text-red-500" />
+                          <Eye className="h-4 w-4" />
                         </Button>
-                      )}
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleEdit(order)}
+                          title="Editar"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        {order.status === 'DRAFT' && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDelete(order)}
+                            title="Eliminar"
+                          >
+                            <Trash2 className="h-4 w-4 text-red-500" />
+                          </Button>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
       )}
 
       {pagination.totalPages > 1 && (
@@ -298,7 +298,7 @@ export function PurchaseOrderList() {
       )}
 
       <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="w-auto sm:max-w-fit max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {selectedOrder ? 'Editar Orden de Compra' : 'Nueva Orden de Compra'}
@@ -316,7 +316,7 @@ export function PurchaseOrderList() {
 
       {viewOrder && (
         <Dialog open={!!viewOrder} onOpenChange={() => setViewOrder(null)}>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="w-auto sm:max-w-fit max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Detalles de la Orden de Compra</DialogTitle>
             </DialogHeader>

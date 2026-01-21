@@ -19,7 +19,7 @@ async function fetchReceipts(page: number, search: string, purchaseOrderId: stri
   })
   if (search) params.append('search', search)
   if (purchaseOrderId) params.append('purchaseOrderId', purchaseOrderId)
-  
+
   const res = await fetch(`/api/purchases/receipts?${params}`)
   if (!res.ok) throw new Error('Failed to fetch receipts')
   return res.json()
@@ -121,51 +121,51 @@ export function ReceiptList() {
           <span className="text-muted-foreground">Cargando recepciones...</span>
         </div>
       ) : (
-      <div className="border rounded-lg">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Número</TableHead>
-              <TableHead>Orden de Compra</TableHead>
-              <TableHead>Proveedor</TableHead>
-              <TableHead>Almacén</TableHead>
-              <TableHead>Fecha</TableHead>
-              <TableHead>Total</TableHead>
-              <TableHead>Acciones</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {receipts.length === 0 ? (
+        <div className="border rounded-lg">
+          <Table>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={7} className="text-center text-gray-500">
-                  No hay recepciones
-                </TableCell>
+                <TableHead>Número</TableHead>
+                <TableHead>Orden de Compra</TableHead>
+                <TableHead>Proveedor</TableHead>
+                <TableHead>Almacén</TableHead>
+                <TableHead>Fecha</TableHead>
+                <TableHead>Total</TableHead>
+                <TableHead>Acciones</TableHead>
               </TableRow>
-            ) : (
-              receipts.map((receipt: any) => (
-                <TableRow key={receipt.id}>
-                  <TableCell className="font-medium">{receipt.number}</TableCell>
-                  <TableCell>{receipt.purchaseOrder?.number || '-'}</TableCell>
-                  <TableCell>{receipt.purchaseOrder?.supplier?.name || '-'}</TableCell>
-                  <TableCell>{receipt.warehouse?.name || '-'}</TableCell>
-                  <TableCell>{formatDate(receipt.receivedAt || receipt.createdAt)}</TableCell>
-                  <TableCell>{formatCurrency(receipt.total || 0)}</TableCell>
-                  <TableCell>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleView(receipt)}
-                      title="Ver detalles"
-                    >
-                      <Eye className="h-4 w-4" />
-                    </Button>
+            </TableHeader>
+            <TableBody>
+              {receipts.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center text-gray-500">
+                    No hay recepciones
                   </TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+              ) : (
+                receipts.map((receipt: any) => (
+                  <TableRow key={receipt.id}>
+                    <TableCell className="font-medium">{receipt.number}</TableCell>
+                    <TableCell>{receipt.purchaseOrder?.number || '-'}</TableCell>
+                    <TableCell>{receipt.purchaseOrder?.supplier?.name || '-'}</TableCell>
+                    <TableCell>{receipt.warehouse?.name || '-'}</TableCell>
+                    <TableCell>{formatDate(receipt.receivedAt || receipt.createdAt)}</TableCell>
+                    <TableCell>{formatCurrency(receipt.total || 0)}</TableCell>
+                    <TableCell>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleView(receipt)}
+                        title="Ver detalles"
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
       )}
 
       {pagination.totalPages > 1 && (
@@ -193,7 +193,7 @@ export function ReceiptList() {
       )}
 
       <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="w-auto sm:max-w-fit max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Nueva Recepción de Mercancía</DialogTitle>
           </DialogHeader>
@@ -209,7 +209,7 @@ export function ReceiptList() {
 
       {viewReceipt && (
         <Dialog open={!!viewReceipt} onOpenChange={() => setViewReceipt(null)}>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="w-auto sm:max-w-fit max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Detalles de la Recepción</DialogTitle>
             </DialogHeader>

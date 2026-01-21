@@ -34,7 +34,7 @@ export function PhysicalInventoryDetails({ inventory, onClose, onUpdate }: { inv
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           countedQuantity: inventory.items.find((i: any) => i.id === itemId)?.countedQuantity || 0,
           notes: notes || '',
         }),
@@ -82,7 +82,7 @@ export function PhysicalInventoryDetails({ inventory, onClose, onUpdate }: { inv
 
   const totalItems = inventory.items?.length || 0
   const countedItems = inventory.items?.filter((item: any) => item.countedQuantity !== null).length || 0
-  const itemsWithDifferences = inventory.items?.filter((item: any) => 
+  const itemsWithDifferences = inventory.items?.filter((item: any) =>
     item.countedQuantity !== null && item.difference !== null && item.difference !== 0
   ) || []
 
@@ -113,8 +113,8 @@ export function PhysicalInventoryDetails({ inventory, onClose, onUpdate }: { inv
           <div className="text-sm text-gray-600">Estado</div>
           <div className="text-lg font-semibold">
             {inventory.status === 'PENDING' ? 'Pendiente' :
-             inventory.status === 'COUNTING' ? 'En Conteo' :
-             inventory.status === 'COMPLETED' ? 'Completado' : 'Cancelado'}
+              inventory.status === 'COUNTING' ? 'En Conteo' :
+                inventory.status === 'COMPLETED' ? 'Completado' : 'Cancelado'}
           </div>
         </div>
         <div className="border rounded-lg p-4">
@@ -183,8 +183,8 @@ export function PhysicalInventoryDetails({ inventory, onClose, onUpdate }: { inv
             </thead>
             <tbody>
               {inventory.items?.map((item: any) => {
-                const difference = item.countedQuantity !== null 
-                  ? item.countedQuantity - item.systemQuantity 
+                const difference = item.countedQuantity !== null
+                  ? item.countedQuantity - item.systemQuantity
                   : null
 
                 return (
@@ -205,7 +205,7 @@ export function PhysicalInventoryDetails({ inventory, onClose, onUpdate }: { inv
                     </td>
                     <td className="p-3 text-right">
                       <span className={item.countedQuantity !== null ? 'font-semibold' : 'text-gray-400'}>
-                        {item.countedQuantity !== null 
+                        {item.countedQuantity !== null
                           ? `${item.countedQuantity.toFixed(2)} ${item.product?.unitOfMeasure || ''}`
                           : 'Sin contar'}
                       </span>
@@ -276,7 +276,7 @@ export function PhysicalInventoryDetails({ inventory, onClose, onUpdate }: { inv
       {/* Print Dialog */}
       {showPrintDialog && (
         <Dialog open={showPrintDialog} onOpenChange={setShowPrintDialog}>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="w-auto sm:max-w-fit max-h-[90vh] overflow-y-auto">
             <div className="space-y-4">
               <div className="flex justify-between items-center">
                 <DialogTitle>Formato de Inventario Físico</DialogTitle>

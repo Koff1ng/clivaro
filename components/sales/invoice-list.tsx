@@ -25,7 +25,7 @@ async function fetchInvoices(page: number, search: string, status: string, custo
   if (search) params.append('search', search)
   if (status) params.append('status', status)
   if (customerId) params.append('customerId', customerId)
-  
+
   const res = await fetch(`/api/invoices?${params}`)
   if (!res.ok) throw new Error('Failed to fetch invoices')
   return res.json()
@@ -52,7 +52,7 @@ export function InvoiceList() {
 
   // Debounce search to avoid excessive queries
   const debouncedSearch = useDebounce(search, 500)
-  
+
   const [customerSearch, setCustomerSearch] = useState('')
   const debouncedCustomerSearch = useDebounce(customerSearch, 300)
 
@@ -106,7 +106,7 @@ export function InvoiceList() {
     onSuccess: (_, invoiceId) => {
       // Agregar animación de eliminación
       setDeletingIds(prev => new Set(prev).add(invoiceId))
-      
+
       // Esperar a que termine la animación antes de invalidar queries
       setTimeout(() => {
         queryClient.invalidateQueries({ queryKey: ['invoices'] })
@@ -141,7 +141,7 @@ export function InvoiceList() {
       }
 
       const url = `/api/invoices/${invoice.id}`
-      
+
       const res = await fetch(url, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' },
@@ -154,11 +154,11 @@ export function InvoiceList() {
       } catch {
         // keep null
       }
-      
+
       if (!res.ok) {
         // Mensajes de error más descriptivos según el código de estado
         let errorMessage = data?.error || data?.message || `Error ${res.status}: ${res.statusText}`
-        
+
         if (res.status === 401) {
           errorMessage = 'No autorizado. Por favor, inicia sesión nuevamente.'
         } else if (res.status === 403) {
@@ -168,19 +168,19 @@ export function InvoiceList() {
         } else if (res.status === 500) {
           errorMessage = `Error del servidor: ${data?.message || data?.error || 'Error desconocido'}`
         }
-        
+
         throw new Error(errorMessage)
       }
-      
+
       if (!data || !data.id) {
         throw new Error('No se recibieron los datos de la factura correctamente')
       }
-      
+
       // Validar que los items estén presentes
       if (!Array.isArray(data.items)) {
         data.items = []
       }
-      
+
       setViewInvoice(data)
     } catch (error: any) {
       const errorMessage = error?.message || 'Error desconocido al cargar los detalles de la factura'
@@ -317,106 +317,106 @@ export function InvoiceList() {
           <span className="text-muted-foreground">Cargando facturas...</span>
         </div>
       ) : (
-      <div className="border rounded-2xl bg-card/80 backdrop-blur-sm shadow-sm">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Número</TableHead>
-              <TableHead>Cliente</TableHead>
-              <TableHead>Fecha</TableHead>
-              <TableHead>Estado</TableHead>
-              <TableHead>Fact. Electrónica</TableHead>
-              <TableHead>Total</TableHead>
-              <TableHead>Acciones</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {invoices.length === 0 ? (
+        <div className="border rounded-2xl bg-card/80 backdrop-blur-sm shadow-sm">
+          <Table>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={7} className="text-center text-gray-500">
-                  No hay facturas
-                </TableCell>
+                <TableHead>Número</TableHead>
+                <TableHead>Cliente</TableHead>
+                <TableHead>Fecha</TableHead>
+                <TableHead>Estado</TableHead>
+                <TableHead>Fact. Electrónica</TableHead>
+                <TableHead>Total</TableHead>
+                <TableHead>Acciones</TableHead>
               </TableRow>
-            ) : (
-              invoices.map((invoice: any) => {
-                const isDeleting = deletingIds.has(invoice.id)
-                return (
-                  <TableRow 
-                    key={invoice.id}
-                    className={isDeleting ? 'animate-slide-up-out' : ''}
-                  >
-                    <TableCell className="font-medium">
-                      <div className="flex items-center gap-2">
-                        {invoice.number}
-                        {invoice.cufe && (
-                          <span title="Factura electrónica">
-                            <FileText className="h-4 w-4 text-green-600" />
-                          </span>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>{invoice.customer?.name || '-'}</TableCell>
-                    <TableCell>{formatDate(invoice.createdAt)}</TableCell>
-                    <TableCell>
-                      <span className={`px-2 py-1 text-xs rounded ${getStatusColor(invoice.status)}`}>
-                        {getStatusLabel(invoice.status)}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        {getElectronicStatusIcon(invoice.electronicStatus)}
-                        {invoice.electronicStatus ? (
-                          <span className="text-xs text-gray-600">
-                            {invoice.electronicStatus === 'SENT' ? 'Enviada' :
-                             invoice.electronicStatus === 'ACCEPTED' ? 'Aceptada' :
-                             invoice.electronicStatus === 'REJECTED' ? 'Rechazada' : 'Pendiente'}
-                          </span>
-                        ) : (
-                          <span className="text-xs text-gray-400">No enviada</span>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>{formatCurrency(invoice.total)}</TableCell>
-                    <TableCell>
-                      <div className="flex gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleView(invoice)}
-                          title="Ver detalles"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        {(!invoice.electronicStatus || invoice.electronicStatus === 'PENDING') && (
+            </TableHeader>
+            <TableBody>
+              {invoices.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center text-gray-500">
+                    No hay facturas
+                  </TableCell>
+                </TableRow>
+              ) : (
+                invoices.map((invoice: any) => {
+                  const isDeleting = deletingIds.has(invoice.id)
+                  return (
+                    <TableRow
+                      key={invoice.id}
+                      className={isDeleting ? 'animate-slide-up-out' : ''}
+                    >
+                      <TableCell className="font-medium">
+                        <div className="flex items-center gap-2">
+                          {invoice.number}
+                          {invoice.cufe && (
+                            <span title="Factura electrónica">
+                              <FileText className="h-4 w-4 text-green-600" />
+                            </span>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>{invoice.customer?.name || '-'}</TableCell>
+                      <TableCell>{formatDate(invoice.createdAt)}</TableCell>
+                      <TableCell>
+                        <span className={`px-2 py-1 text-xs rounded ${getStatusColor(invoice.status)}`}>
+                          {getStatusLabel(invoice.status)}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          {getElectronicStatusIcon(invoice.electronicStatus)}
+                          {invoice.electronicStatus ? (
+                            <span className="text-xs text-gray-600">
+                              {invoice.electronicStatus === 'SENT' ? 'Enviada' :
+                                invoice.electronicStatus === 'ACCEPTED' ? 'Aceptada' :
+                                  invoice.electronicStatus === 'REJECTED' ? 'Rechazada' : 'Pendiente'}
+                            </span>
+                          ) : (
+                            <span className="text-xs text-gray-400">No enviada</span>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>{formatCurrency(invoice.total)}</TableCell>
+                      <TableCell>
+                        <div className="flex gap-2">
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => handleSendElectronic(invoice)}
-                            title="Enviar a facturación electrónica"
-                            disabled={sendElectronicMutation.isPending}
+                            onClick={() => handleView(invoice)}
+                            title="Ver detalles"
                           >
-                            <QrCode className="h-4 w-4" />
+                            <Eye className="h-4 w-4" />
                           </Button>
-                        )}
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDelete(invoice)}
-                          title="Eliminar factura"
-                          disabled={deleteInvoiceMutation.isPending}
-                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                )
-              })
-            )}
-          </TableBody>
+                          {(!invoice.electronicStatus || invoice.electronicStatus === 'PENDING') && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleSendElectronic(invoice)}
+                              title="Enviar a facturación electrónica"
+                              disabled={sendElectronicMutation.isPending}
+                            >
+                              <QrCode className="h-4 w-4" />
+                            </Button>
+                          )}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDelete(invoice)}
+                            title="Eliminar factura"
+                            disabled={deleteInvoiceMutation.isPending}
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )
+                })
+              )}
+            </TableBody>
           </Table>
-      </div>
+        </div>
       )}
 
       {pagination.totalPages > 1 && (
@@ -445,7 +445,7 @@ export function InvoiceList() {
 
       {viewInvoice && (
         <Dialog open={!!viewInvoice} onOpenChange={() => setViewInvoice(null)}>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="w-auto sm:max-w-fit max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Detalles de la Factura</DialogTitle>
             </DialogHeader>
