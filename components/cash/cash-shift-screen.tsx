@@ -8,13 +8,13 @@ import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { 
-  Plus, 
-  Minus, 
-  Lock, 
-  Unlock, 
-  DollarSign, 
-  TrendingUp, 
+import {
+  Plus,
+  Minus,
+  Lock,
+  Unlock,
+  DollarSign,
+  TrendingUp,
   TrendingDown,
   Clock,
   User,
@@ -22,12 +22,23 @@ import {
   CreditCard,
   ArrowLeftRight,
   Printer,
-  Download
+  Download,
+  Receipt
 } from 'lucide-react'
 import { useToast } from '@/components/ui/toast'
 import { ShiftReportPrint } from './shift-report-print'
+import { ShiftReportPrintLetter } from './shift-report-print-letter'
 import { MonthlyReport } from '@/components/dashboard/monthly-report'
 import { PageHeader } from '@/components/ui/page-header'
+import { useThermalPrint, useLetterPrint } from '@/lib/hooks/use-thermal-print'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 
 async function fetchActiveShift() {
   const res = await fetch('/api/cash/shifts?active=true')
@@ -58,19 +69,19 @@ async function fetchClosedShifts() {
 }
 
 async function openShift(startingCash: number) {
-  const payload = { 
-    action: 'open', 
-    startingCash: Number(startingCash) || 0 
+  const payload = {
+    action: 'open',
+    startingCash: Number(startingCash) || 0
   }
-  
+
   const res = await fetch('/api/cash/shifts', {
     method: 'POST',
-    headers: { 
+    headers: {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(payload),
   })
-  
+
   if (!res.ok) {
     let errorData
     try {
@@ -80,7 +91,7 @@ async function openShift(startingCash: number) {
     }
     throw new Error(errorData.error || 'Failed to open shift')
   }
-  
+
   try {
     return await res.json()
   } catch (e) {
@@ -128,6 +139,10 @@ export function CashShiftScreen() {
   const [showHistory, setShowHistory] = useState(false)
   const [closedShiftReport, setClosedShiftReport] = useState<any>(null)
   const [showReportDialog, setShowReportDialog] = useState(false)
+
+  // Print hooks for proper print dimensions
+  const { print: printThermal } = useThermalPrint({ targetId: 'shift-report-thermal', widthMm: 80 })
+  const { print: printLetter } = useLetterPrint({ targetId: 'shift-report-letter' })
 
   const queryClient = useQueryClient()
 
@@ -196,7 +211,7 @@ export function CashShiftScreen() {
           const paymentsData = paymentsRes.ok ? await paymentsRes.json() : { payments: [], totalsByMethod: {}, total: 0 }
           const movementsRes = await fetch(`/api/cash/movements?cashShiftId=${shiftId}`)
           const movementsData = movementsRes.ok ? await movementsRes.json() : { movements: [] }
-          
+
           setClosedShiftReport({
             ...data.shift,
             payments: paymentsData.payments || [],
@@ -421,11 +436,10 @@ export function CashShiftScreen() {
                       {formatCurrency(activeShift.expectedCash || 0)}
                     </div>
                   </div>
-                  <div className={`bg-gradient-to-br rounded-lg p-4 border ${
-                    netMovement >= 0 
-                      ? 'from-green-50 to-green-100 border-green-200' 
-                      : 'from-red-50 to-red-100 border-red-200'
-                  }`}>
+                  <div className={`bg-gradient-to-br rounded-lg p-4 border ${netMovement >= 0
+                    ? 'from-green-50 to-green-100 border-green-200'
+                    : 'from-red-50 to-red-100 border-red-200'
+                    }`}>
                     <div className={`text-xs font-medium mb-1 ${netMovement >= 0 ? 'text-green-700' : 'text-red-700'}`}>
                       Movimiento Neto
                     </div>
@@ -534,11 +548,10 @@ export function CashShiftScreen() {
                       >
                         <div className="flex items-center gap-3">
                           <div
-                            className={`p-2 rounded ${
-                              movement.type === 'IN'
-                                ? 'bg-green-100 text-green-700'
-                                : 'bg-red-100 text-red-700'
-                            }`}
+                            className={`p-2 rounded ${movement.type === 'IN'
+                              ? 'bg-green-100 text-green-700'
+                              : 'bg-red-100 text-red-700'
+                              }`}
                           >
                             {movement.type === 'IN' ? (
                               <TrendingUp className="h-4 w-4" />
@@ -649,13 +662,12 @@ export function CashShiftScreen() {
                       <TableCell>
                         {shift.difference !== null && shift.difference !== undefined ? (
                           <span
-                            className={`font-semibold ${
-                              shift.difference === 0
-                                ? 'text-green-600'
-                                : shift.difference > 0
+                            className={`font-semibold ${shift.difference === 0
+                              ? 'text-green-600'
+                              : shift.difference > 0
                                 ? 'text-blue-600'
                                 : 'text-red-600'
-                            }`}
+                              }`}
                           >
                             {formatCurrency(shift.difference)}
                           </span>
@@ -666,11 +678,10 @@ export function CashShiftScreen() {
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <span
-                            className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${
-                              shift.status === 'CLOSED'
-                                ? 'bg-gray-100 text-gray-700'
-                                : 'bg-green-100 text-green-700'
-                            }`}
+                            className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${shift.status === 'CLOSED'
+                              ? 'bg-gray-100 text-gray-700'
+                              : 'bg-green-100 text-green-700'
+                              }`}
                           >
                             {shift.status === 'CLOSED' ? 'Cerrado' : 'Abierto'}
                           </span>
@@ -684,7 +695,7 @@ export function CashShiftScreen() {
                                   const paymentsData = paymentsRes.ok ? await paymentsRes.json() : { payments: [], totalsByMethod: {}, total: 0 }
                                   const movementsRes = await fetch(`/api/cash/movements?cashShiftId=${shift.id}`)
                                   const movementsData = movementsRes.ok ? await movementsRes.json() : { movements: [] }
-                                  
+
                                   setClosedShiftReport({
                                     ...shift,
                                     payments: paymentsData.payments || [],
@@ -718,7 +729,7 @@ export function CashShiftScreen() {
 
       {/* Shift Report Dialog */}
       <Dialog open={showReportDialog} onOpenChange={setShowReportDialog}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="w-auto sm:max-w-fit max-h-[90vh] overflow-y-auto">
           {closedShiftReport && (
             <div className="space-y-6">
               <DialogHeader>
@@ -728,14 +739,26 @@ export function CashShiftScreen() {
                     {formatDate(closedShiftReport.openedAt)} - {closedShiftReport.closedAt ? formatDate(closedShiftReport.closedAt) : 'En curso'}
                   </div>
                   <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => window.print()}
-                    >
-                      <Printer className="h-4 w-4 mr-2" />
-                      Imprimir
-                    </Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" size="sm">
+                          <Printer className="h-4 w-4 mr-2" />
+                          Imprimir
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuLabel>Formato de impresión</DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={printThermal}>
+                          <Receipt className="h-4 w-4 mr-2" />
+                          Tirilla (80mm)
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={printLetter}>
+                          <FileText className="h-4 w-4 mr-2" />
+                          Hoja Carta
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                     <Button
                       variant="outline"
                       size="sm"
@@ -775,9 +798,22 @@ export function CashShiftScreen() {
                 </div>
               </DialogHeader>
 
-              {/* Vista para impresión - oculta en pantalla */}
-              <div className="hidden print:block">
+              {/* Vista para impresión térmica (80mm) - oculta en pantalla */}
+              <div id="shift-report-thermal" className="hidden">
                 <ShiftReportPrint
+                  shift={closedShiftReport}
+                  payments={closedShiftReport.payments || []}
+                  totalsByMethod={closedShiftReport.totalsByMethod || {}}
+                  totalPayments={closedShiftReport.totalPayments || 0}
+                  movements={closedShiftReport.movements || []}
+                  discountsTotal={closedShiftReport.discountsTotal || 0}
+                  discountsByInvoice={closedShiftReport.discountsByInvoice || []}
+                />
+              </div>
+
+              {/* Vista para impresión carta - oculta en pantalla */}
+              <div id="shift-report-letter" className="hidden">
+                <ShiftReportPrintLetter
                   shift={closedShiftReport}
                   payments={closedShiftReport.payments || []}
                   totalsByMethod={closedShiftReport.totalsByMethod || {}}
@@ -799,9 +835,8 @@ export function CashShiftScreen() {
                   <div>
                     <div className="text-sm text-gray-600">Estado</div>
                     <div className="font-semibold">
-                      <span className={`px-2 py-1 rounded text-xs ${
-                        closedShiftReport.status === 'CLOSED' ? 'bg-gray-100 text-gray-700' : 'bg-green-100 text-green-700'
-                      }`}>
+                      <span className={`px-2 py-1 rounded text-xs ${closedShiftReport.status === 'CLOSED' ? 'bg-gray-100 text-gray-700' : 'bg-green-100 text-green-700'
+                        }`}>
                         {closedShiftReport.status === 'CLOSED' ? 'Cerrado' : 'Abierto'}
                       </span>
                     </div>
@@ -837,10 +872,9 @@ export function CashShiftScreen() {
                   {closedShiftReport.difference !== null && closedShiftReport.difference !== undefined && (
                     <div className="p-4 border rounded-lg">
                       <div className="text-sm text-gray-600 mb-1">Diferencia</div>
-                      <div className={`text-xl font-bold ${
-                        closedShiftReport.difference === 0 ? 'text-green-600' :
+                      <div className={`text-xl font-bold ${closedShiftReport.difference === 0 ? 'text-green-600' :
                         closedShiftReport.difference > 0 ? 'text-blue-600' : 'text-red-600'
-                      }`}>
+                        }`}>
                         {formatCurrency(closedShiftReport.difference)}
                       </div>
                     </div>
@@ -921,9 +955,8 @@ export function CashShiftScreen() {
                           <TableRow key={movement.id}>
                             <TableCell className="text-sm">{formatDate(movement.createdAt)}</TableCell>
                             <TableCell>
-                              <span className={`px-2 py-1 rounded text-xs ${
-                                movement.type === 'IN' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-                              }`}>
+                              <span className={`px-2 py-1 rounded text-xs ${movement.type === 'IN' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                                }`}>
                                 {movement.type === 'IN' ? 'Entrada' : 'Salida'}
                               </span>
                             </TableCell>
@@ -1059,13 +1092,12 @@ export function CashShiftScreen() {
               <div className="p-3 bg-gray-50 rounded-lg">
                 <div className="text-sm text-gray-600">Diferencia:</div>
                 <div
-                  className={`text-xl font-bold ${
-                    parseFloat(countedCash) - (activeShift.expectedCash || 0) === 0
-                      ? 'text-green-600'
-                      : parseFloat(countedCash) - (activeShift.expectedCash || 0) > 0
+                  className={`text-xl font-bold ${parseFloat(countedCash) - (activeShift.expectedCash || 0) === 0
+                    ? 'text-green-600'
+                    : parseFloat(countedCash) - (activeShift.expectedCash || 0) > 0
                       ? 'text-blue-600'
                       : 'text-red-600'
-                  }`}
+                    }`}
                 >
                   {formatCurrency(
                     parseFloat(countedCash) - (activeShift.expectedCash || 0)

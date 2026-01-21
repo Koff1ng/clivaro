@@ -7,10 +7,11 @@ import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { useToast } from '@/components/ui/toast'
-import { FileText, Mail, Phone, MapPin, QrCode, Download, CheckCircle, XCircle, Clock, Printer, Ban, MoreVertical, FileDown } from 'lucide-react'
+import { FileText, Mail, Phone, MapPin, QrCode, Download, CheckCircle, XCircle, Clock, Printer, Ban, MoreVertical, FileDown, Receipt } from 'lucide-react'
 import { InvoicePrint } from './invoice-print'
+import { InvoicePrintLetter } from './invoice-print-letter'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { useThermalPrint } from '@/lib/hooks/use-thermal-print'
+import { useThermalPrint, useLetterPrint } from '@/lib/hooks/use-thermal-print'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -39,44 +40,24 @@ export function InvoiceDetails({ invoice }: { invoice: any }) {
   const [showPrintDialog, setShowPrintDialog] = useState(false)
   const [printType, setPrintType] = useState<'thermal' | 'normal'>('thermal')
 
-  const { print } = useThermalPrint({ targetId: 'invoice-thermal-print', styleId: 'thermal-print-style-invoice', widthMm: 80 })
+  // Print hooks for proper dimensions
+  const { print: printThermal } = useThermalPrint({ targetId: 'invoice-thermal-print', widthMm: 80 })
+  const { print: printLetter } = useLetterPrint({ targetId: 'invoice-letter-print' })
 
   const handlePrintThermal = () => {
     try {
-      print()
+      printThermal()
     } catch {
       toast('No se pudo iniciar la impresión', 'error')
     }
   }
 
-  const handlePrintNormal = () => {
-    // Mostrar solo la vista normal para impresión
-    const thermalEl = document.getElementById('invoice-thermal-print')
-    const normalEl = document.getElementById('invoice-normal-print')
-
-    if (thermalEl) {
-      thermalEl.classList.add('hidden')
-      thermalEl.classList.remove('print:block')
+  const handlePrintLetter = () => {
+    try {
+      printLetter()
+    } catch {
+      toast('No se pudo iniciar la impresión', 'error')
     }
-    if (normalEl) {
-      normalEl.classList.remove('hidden')
-      normalEl.classList.add('print:block')
-    }
-
-    setTimeout(() => {
-      window.print()
-      // Restaurar después de imprimir
-      setTimeout(() => {
-        if (thermalEl) {
-          thermalEl.classList.remove('hidden')
-          thermalEl.classList.add('print:block')
-        }
-        if (normalEl) {
-          normalEl.classList.add('hidden')
-          normalEl.classList.remove('print:block')
-        }
-      }, 500)
-    }, 100)
   }
 
   const handleDownloadPDF = async () => {
@@ -105,7 +86,7 @@ export function InvoiceDetails({ invoice }: { invoice: any }) {
     if (type === 'thermal') {
       handlePrintThermal()
     } else {
-      handlePrintNormal()
+      handlePrintLetter()
     }
   }
 
@@ -292,16 +273,14 @@ export function InvoiceDetails({ invoice }: { invoice: any }) {
 
   return (
     <>
-      {/* Vista para impresión térmica - oculta en pantalla */}
-      <div id="invoice-thermal-print" className="hidden print:block">
+      {/* Vista para impresión térmica (80mm) - oculta en pantalla */}
+      <div id="invoice-thermal-print" className="hidden">
         <InvoicePrint invoice={invoice} />
       </div>
 
-      {/* Vista para impresión normal - oculta en pantalla */}
-      <div id="invoice-normal-print" className="hidden">
-        <div className="p-8 max-w-4xl mx-auto print:block">
-          <InvoicePrint invoice={invoice} />
-        </div>
+      {/* Vista para impresión carta - oculta en pantalla */}
+      <div id="invoice-letter-print" className="hidden">
+        <InvoicePrintLetter invoice={invoice} />
       </div>
 
       {/* Vista normal en pantalla */}
