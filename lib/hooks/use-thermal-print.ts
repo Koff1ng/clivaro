@@ -12,10 +12,16 @@ type ThermalPrintOptions = {
 export function useThermalPrint(options: ThermalPrintOptions) {
   const { targetId, styleId = `thermal-print-style-${targetId}`, widthMm = 80 } = options
 
+  const clearAllPrintStyles = useCallback(() => {
+    if (typeof window === 'undefined') return
+    // Remove all print-related style tags to avoid conflicts
+    document.querySelectorAll('style[id*="print-style"]').forEach(el => el.remove())
+  }, [])
+
   const injectStyle = useCallback(() => {
     if (typeof window === 'undefined') return
-    const existing = document.getElementById(styleId)
-    if (existing) return
+    // Clear any existing print styles first
+    clearAllPrintStyles()
 
     const style = document.createElement('style')
     style.id = styleId
@@ -24,11 +30,17 @@ export function useThermalPrint(options: ThermalPrintOptions) {
   @page { size: ${widthMm}mm auto; margin: 0; }
   body { width: ${widthMm}mm !important; margin: 0 !important; padding: 0 !important; background: #fff !important; }
   body * { visibility: hidden !important; }
-  #${targetId}, #${targetId} * { visibility: visible !important; }
+  #${targetId}, #${targetId} * { visibility: visible !important; display: block !important; }
   #${targetId} { position: absolute !important; left: 0 !important; top: 0 !important; width: ${widthMm}mm !important; max-width: ${widthMm}mm !important; display: block !important; }
+  #${targetId} .hidden { display: block !important; }
+  #${targetId} table { display: table !important; }
+  #${targetId} thead { display: table-header-group !important; }
+  #${targetId} tbody { display: table-row-group !important; }
+  #${targetId} tr { display: table-row !important; }
+  #${targetId} th, #${targetId} td { display: table-cell !important; }
 }`
     document.head.appendChild(style)
-  }, [styleId, targetId, widthMm])
+  }, [styleId, targetId, widthMm, clearAllPrintStyles])
 
   const removeStyle = useCallback(() => {
     if (typeof window === 'undefined') return
@@ -76,10 +88,16 @@ type LetterPrintOptions = {
 export function useLetterPrint(options: LetterPrintOptions) {
   const { targetId, styleId = `letter-print-style-${targetId}`, orientation = 'portrait' } = options
 
+  const clearAllPrintStyles = useCallback(() => {
+    if (typeof window === 'undefined') return
+    // Remove all print-related style tags to avoid conflicts
+    document.querySelectorAll('style[id*="print-style"]').forEach(el => el.remove())
+  }, [])
+
   const injectStyle = useCallback(() => {
     if (typeof window === 'undefined') return
-    const existing = document.getElementById(styleId)
-    if (existing) return
+    // Clear any existing print styles first
+    clearAllPrintStyles()
 
     const style = document.createElement('style')
     style.id = styleId
@@ -100,6 +118,7 @@ export function useLetterPrint(options: LetterPrintOptions) {
   body * { visibility: hidden !important; }
   #${targetId}, #${targetId} * { 
     visibility: visible !important; 
+    display: revert !important;
   }
   #${targetId} { 
     position: absolute !important; 
@@ -108,13 +127,7 @@ export function useLetterPrint(options: LetterPrintOptions) {
     width: 100% !important; 
     display: block !important;
   }
-  #${targetId} > * {
-    display: block !important;
-  }
   #${targetId} .hidden {
-    display: block !important;
-  }
-  #${targetId} div {
     display: block !important;
   }
   #${targetId} .grid {
@@ -145,6 +158,7 @@ export function useLetterPrint(options: LetterPrintOptions) {
   }
   #${targetId} h1, #${targetId} h2, #${targetId} h3 {
     page-break-after: avoid !important;
+    display: block !important;
   }
   #${targetId} table, #${targetId} .avoid-break {
     page-break-inside: avoid !important;
@@ -153,9 +167,12 @@ export function useLetterPrint(options: LetterPrintOptions) {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
+  #${targetId} span {
+    display: inline !important;
+  }
 }`
     document.head.appendChild(style)
-  }, [styleId, targetId, orientation])
+  }, [styleId, targetId, orientation, clearAllPrintStyles])
 
   const removeStyle = useCallback(() => {
     if (typeof window === 'undefined') return
