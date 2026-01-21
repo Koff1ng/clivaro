@@ -98,7 +98,9 @@ export function useLetterPrint(options: LetterPrintOptions) {
     line-height: 1.4 !important;
   }
   body * { visibility: hidden !important; }
-  #${targetId}, #${targetId} * { visibility: visible !important; }
+  #${targetId}, #${targetId} * { 
+    visibility: visible !important; 
+  }
   #${targetId} { 
     position: absolute !important; 
     left: 0 !important; 
@@ -106,11 +108,31 @@ export function useLetterPrint(options: LetterPrintOptions) {
     width: 100% !important; 
     display: block !important;
   }
+  #${targetId} > * {
+    display: block !important;
+  }
+  #${targetId} .hidden {
+    display: block !important;
+  }
+  #${targetId} div {
+    display: block !important;
+  }
+  #${targetId} .grid {
+    display: grid !important;
+  }
+  #${targetId} .flex {
+    display: flex !important;
+  }
   #${targetId} table {
+    display: table !important;
     width: 100% !important;
     border-collapse: collapse !important;
   }
+  #${targetId} thead { display: table-header-group !important; }
+  #${targetId} tbody { display: table-row-group !important; }
+  #${targetId} tr { display: table-row !important; }
   #${targetId} th, #${targetId} td {
+    display: table-cell !important;
     border: 1px solid #ddd !important;
     padding: 6px 8px !important;
     font-size: 10pt !important;
@@ -118,12 +140,18 @@ export function useLetterPrint(options: LetterPrintOptions) {
   #${targetId} th {
     background-color: #f5f5f5 !important;
     font-weight: bold !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
   #${targetId} h1, #${targetId} h2, #${targetId} h3 {
     page-break-after: avoid !important;
   }
   #${targetId} table, #${targetId} .avoid-break {
     page-break-inside: avoid !important;
+  }
+  #${targetId} .bg-gray-50, #${targetId} .bg-gray-100, #${targetId} .bg-blue-50, #${targetId} .bg-green-50 {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 }`
     document.head.appendChild(style)
