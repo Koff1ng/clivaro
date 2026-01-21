@@ -25,7 +25,7 @@ export function useThermalPrint(options: ThermalPrintOptions) {
   body { width: ${widthMm}mm !important; margin: 0 !important; padding: 0 !important; background: #fff !important; }
   body * { visibility: hidden !important; }
   #${targetId}, #${targetId} * { visibility: visible !important; }
-  #${targetId} { position: absolute !important; left: 0 !important; top: 0 !important; width: ${widthMm}mm !important; max-width: ${widthMm}mm !important; }
+  #${targetId} { position: absolute !important; left: 0 !important; top: 0 !important; width: ${widthMm}mm !important; max-width: ${widthMm}mm !important; display: block !important; }
 }`
     document.head.appendChild(style)
   }, [styleId, targetId, widthMm])
@@ -104,6 +104,7 @@ export function useLetterPrint(options: LetterPrintOptions) {
     left: 0 !important; 
     top: 0 !important; 
     width: 100% !important; 
+    display: block !important;
   }
   #${targetId} table {
     width: 100% !important;
