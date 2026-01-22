@@ -56,10 +56,10 @@ export function useThermalPrint(options: ThermalPrintOptions) {
     html, body {
       width: ${widthMm}mm;
       margin: 0;
-      padding: 2mm;
+      padding: 4mm;
       font-family: 'Courier New', Courier, monospace;
-      font-size: 10pt;
-      line-height: 1.3;
+      font-size: 9pt;
+      line-height: 1.2;
       background: white;
       color: black;
     }
@@ -76,38 +76,38 @@ export function useThermalPrint(options: ThermalPrintOptions) {
     .font-semibold { font-weight: 600; }
     .font-mono { font-family: 'Courier New', Courier, monospace; }
     
-    .text-xs { font-size: 9pt; }
-    .text-sm { font-size: 10pt; }
+    .text-xs { font-size: 8pt; }
+    .text-sm { font-size: 9pt; }
     .text-\\[10px\\], .text-\\[9px\\], .text-\\[8px\\] { font-size: 8pt; }
     
     /* Spacing */
     .mb-0\\.5 { margin-bottom: 1mm; }
     .mb-1 { margin-bottom: 2mm; }
     .mb-2 { margin-bottom: 3mm; }
-    .mt-1 { margin-top: 2mm; }
-    .mt-2 { margin-top: 3mm; }
-    .pb-1 { padding-bottom: 2mm; }
-    .pb-2 { padding-bottom: 3mm; }
-    .pt-1 { padding-top: 2mm; }
-    .pl-2 { padding-left: 3mm; }
-    .py-1 { padding-top: 2mm; padding-bottom: 2mm; }
-    .px-1 { padding-left: 2mm; padding-right: 2mm; }
+    .mt-1 { margin-top: 1mm; }
+    .mt-2 { margin-top: 2mm; }
+    .pb-1 { padding-bottom: 1mm; }
+    .pb-2 { padding-bottom: 2mm; }
+    .pt-1 { padding-top: 1mm; }
+    .pl-2 { padding-left: 2mm; }
+    .py-1 { padding-top: 1mm; padding-bottom: 1mm; }
+    .px-1 { padding-left: 1mm; padding-right: 1mm; }
     .gap-0\\.5 { gap: 1mm; }
     .space-y-0\\.5 > * + * { margin-top: 1mm; }
     .space-y-1 > * + * { margin-top: 2mm; }
     
-    /* Borders */
-    .border-b { border-bottom: 1px solid black; }
-    .border-t { border-top: 1px solid black; }
-    .border-dashed { border-style: dashed; }
+    /* Borders - Thinner and cleaner */
+    .border-b { border-bottom: 0.5px solid #000; }
+    .border-t { border-top: 0.5px solid #000; }
+    .border-dashed { border-style: dotted; } /* Dotted looks cleaner on thermal */
     
     /* Flexbox */
     .flex { display: flex; }
     .justify-between { justify-content: space-between; }
     .items-center { align-items: center; }
-    .flex-1 { flex: 1; }
+    .flex-1 { flex: 1; min-width: 0; } /* min-width 0 allows truncate to work */
     
-    /* Width */
+    /* Width - Adjusted for better alignment */
     .w-\\[12mm\\] { width: 12mm; min-width: 12mm; }
     .w-\\[8mm\\] { width: 8mm; min-width: 8mm; }
     .w-\\[14mm\\] { width: 14mm; min-width: 14mm; }
@@ -116,23 +116,24 @@ export function useThermalPrint(options: ThermalPrintOptions) {
     .truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .break-words { word-wrap: break-word; }
     .break-all { word-break: break-all; }
-    .leading-tight { line-height: 1.2; }
+    .leading-tight { line-height: 1.1; }
     .uppercase { text-transform: uppercase; }
     
-    /* Colors - ensure black text on white */
-    .text-gray-500, .text-gray-600, .text-gray-700 { color: #333; }
-    .text-green-700 { color: #15803d; }
-    .text-blue-700 { color: #1d4ed8; }
+    /* Colors */
+    .text-gray-500, .text-gray-600, .text-gray-700 { color: #000; }
+    .text-green-700 { color: #000; }
+    .text-blue-700 { color: #000; }
     .bg-white { background: white; }
     
-    /* Hidden elements should stay hidden */
     .hidden { display: none !important; }
     
     @media print {
       html, body {
         width: ${widthMm}mm;
-        -webkit-print-color-adjust: exact;
-        print-color-adjust: exact;
+        padding: 0; /* Remove padding for print to use full width */
+      }
+      @page {
+        margin: 2mm;
       }
     }
   </style>

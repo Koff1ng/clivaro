@@ -201,12 +201,11 @@ export function InvoicePrint({ invoice }: InvoicePrintProps) {
         {/* Cabecera de la tabla */}
         <div className="text-[9px] leading-tight border-b border-dashed pb-1 mb-1">
           <div className="flex justify-between">
-            <span className="w-[12mm]">Código</span>
             <span className="flex-1 px-1">Descripción</span>
-            <span className="text-right w-[8mm]">Cant</span>
-            <span className="text-right w-[14mm]">V.Unit</span>
+            <span className="text-right w-[10mm]">Cant</span>
+            <span className="text-right w-[16mm]">V.Unit</span>
             <span className="text-right w-[8mm]">IVA%</span>
-            <span className="text-right w-[14mm]">Total</span>
+            <span className="text-right w-[18mm]">Total</span>
           </div>
         </div>
 
@@ -218,12 +217,14 @@ export function InvoicePrint({ invoice }: InvoicePrintProps) {
               return (
                 <div key={item.id || index} className="text-[9px] leading-tight">
                   <div className="flex justify-between gap-0.5">
-                    <span className="w-[12mm] truncate">{item.product?.sku || '-'}</span>
-                    <span className="flex-1 px-1 break-words text-left">{item.product?.name || 'Producto'}</span>
-                    <span className="text-right w-[8mm]">{item.quantity || 0}</span>
-                    <span className="text-right w-[14mm]">{formatCurrency(unitNet)}</span>
+                    <div className="flex-1 px-1 break-words text-left overflow-hidden">
+                      <div className="font-semibold">{item.product?.name || 'Producto'}</div>
+                      {item.product?.sku && <div className="text-[8px] text-gray-500">{item.product.sku}</div>}
+                    </div>
+                    <span className="text-right w-[10mm]">{item.quantity || 0}</span>
+                    <span className="text-right w-[16mm]">{formatCurrency(unitNet)}</span>
                     <span className="text-right w-[8mm]">{item.taxRate || 0}%</span>
-                    <span className="text-right w-[14mm]">{formatCurrency(item.subtotal || 0)}</span>
+                    <span className="text-right w-[18mm]">{formatCurrency(item.subtotal || 0)}</span>
                   </div>
                   {item.discount > 0 && (
                     <div className="text-[8px] text-gray-600 pl-[13mm]">
