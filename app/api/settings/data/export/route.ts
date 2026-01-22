@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { getTenantPrisma } from '@/lib/tenant-db'
 import * as XLSX from 'xlsx'
 
 export const dynamic = 'force-dynamic'
@@ -14,6 +15,24 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
         }
 
+        const tenantId = user.tenantId
+        if (!tenantId) {
+            return NextResponse.json({ error: 'No tenant associated with user' }, { status: 400 })
+        }
+
+        // Get tenant's database URL from master DB
+        const tenant = await prisma.tenant.findUnique({
+            where: { id: tenantId },
+            select: { id: true, databaseUrl: true }
+        })
+
+        if (!tenant) {
+            return NextResponse.json({ error: 'Tenant not found' }, { status: 404 })
+        }
+
+        // Get tenant-specific Prisma client
+        const tenantPrisma = getTenantPrisma(tenant.databaseUrl)
+
         const { entities, format } = await req.json()
 
         const wb = XLSX.utils.book_new()
@@ -21,7 +40,7 @@ export async function POST(req: Request) {
 
         // CLIENTS
         if (entities.includes('clients')) {
-            const clients = await prisma.customer.findMany({
+            const clients = await tenantPrisma.customer.findMany({
                 select: {
                     id: true,
                     name: true,
@@ -45,7 +64,7 @@ export async function POST(req: Request) {
 
         // PRODUCTS
         if (entities.includes('products')) {
-            const products = await prisma.product.findMany({
+            const products = await tenantPrisma.product.findMany({
                 select: {
                     id: true,
                     sku: true,
@@ -74,7 +93,7 @@ export async function POST(req: Request) {
 
         // SALES
         if (entities.includes('sales')) {
-            const sales = await prisma.invoice.findMany({
+            const sales = await tenantPrisma.invoice.findMany({
                 include: {
                     customer: { select: { name: true } },
                     items: {
@@ -113,7 +132,7 @@ export async function POST(req: Request) {
             return new NextResponse(JSON.stringify(jsonResult, null, 2), {
                 headers: {
                     'Content-Type': 'application/json',
-                    'Content-Disposition': `attachment; filename="backup-${new Date().toISOString().split('T')[0]}.json"`
+                    'Content-Disposition': `attachment; filename="backup-${tenant.id}-${new Date().toISOString().split('T')[0]}.json"`
                 }
             })
         } else {
@@ -123,7 +142,7 @@ export async function POST(req: Request) {
             return new NextResponse(buf, {
                 headers: {
                     'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                    'Content-Disposition': `attachment; filename="backup-${new Date().toISOString().split('T')[0]}.xlsx"`
+                    'Content-Disposition': `attachment; filename="backup-${tenant.id}-${new Date().toISOString().split('T')[0]}.xlsx"`
                 }
             })
         }

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { getTenantPrisma } from '@/lib/tenant-db'
 
 export const dynamic = 'force-dynamic'
 
@@ -12,6 +13,24 @@ export async function POST(req: Request) {
         if (!user?.id) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
         }
+
+        const tenantId = user.tenantId
+        if (!tenantId) {
+            return NextResponse.json({ error: 'No tenant associated with user' }, { status: 400 })
+        }
+
+        // Get tenant's database URL from master DB
+        const tenant = await prisma.tenant.findUnique({
+            where: { id: tenantId },
+            select: { id: true, databaseUrl: true }
+        })
+
+        if (!tenant) {
+            return NextResponse.json({ error: 'Tenant not found' }, { status: 404 })
+        }
+
+        // Get tenant-specific Prisma client
+        const tenantPrisma = getTenantPrisma(tenant.databaseUrl)
 
         const { entityType, data } = await req.json() // data is valid array from preflight
 
@@ -33,14 +52,14 @@ export async function POST(req: Request) {
                     // Try to find existing customer by email if provided
                     let existingCustomer = null
                     if (email) {
-                        existingCustomer = await prisma.customer.findFirst({
+                        existingCustomer = await tenantPrisma.customer.findFirst({
                             where: { email }
                         })
                     }
 
                     if (existingCustomer) {
                         // Update existing
-                        await prisma.customer.update({
+                        await tenantPrisma.customer.update({
                             where: { id: existingCustomer.id },
                             data: {
                                 name: row['name'],
@@ -53,7 +72,7 @@ export async function POST(req: Request) {
                         })
                     } else {
                         // Create new
-                        await prisma.customer.create({
+                        await tenantPrisma.customer.create({
                             data: {
                                 name: row['name'],
                                 email: row['email'] || null,
@@ -87,7 +106,7 @@ export async function POST(req: Request) {
                         continue
                     }
 
-                    await prisma.product.upsert({
+                    await tenantPrisma.product.upsert({
                         where: { sku: String(sku) },
                         update: {
                             name: row['name'],
