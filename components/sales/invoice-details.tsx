@@ -1,13 +1,13 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { useToast } from '@/components/ui/toast'
-import { FileText, Mail, Phone, MapPin, QrCode, Download, CheckCircle, XCircle, Clock, Printer, Ban, MoreVertical, FileDown, Receipt, Usb } from 'lucide-react'
+import { FileText, Mail, Phone, MapPin, QrCode, Download, CheckCircle, XCircle, Clock, Printer, Ban, MoreVertical, FileDown, Receipt, Usb, Network } from 'lucide-react'
 import { InvoicePrint } from './invoice-print'
 import { InvoicePrintLetter } from './invoice-print-letter'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -21,11 +21,34 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
+  DropdownMenuPortal,
 } from '@/components/ui/dropdown-menu'
 
 export function InvoiceDetails({ invoice }: { invoice: any }) {
   const { toast } = useToast()
   const queryClient = useQueryClient()
+
+  // Fetch settings for printers
+  const { data: settingsData } = useQuery({
+    queryKey: ['settings'],
+    queryFn: async () => {
+      const res = await fetch('/api/settings')
+      if (!res.ok) throw new Error('Failed to fetch settings')
+      return res.json()
+    },
+    staleTime: 5 * 60 * 1000 // 5 min
+  })
+
+  const configuredPrinters = settingsData?.settings?.customSettings
+    ? JSON.parse(settingsData.settings.customSettings)?.printing?.printers || []
+    : []
+
+  const lanPrinters = Array.isArray(configuredPrinters)
+    ? configuredPrinters.filter((p: any) => p.active && (p.interfaceType === 'lan' || p.type === 'thermal'))
+    : []
   const [showTicketPreview, setShowTicketPreview] = useState(false)
   const [showVoidDialog, setShowVoidDialog] = useState(false)
   const [voidReason, setVoidReason] = useState('')
@@ -189,6 +212,54 @@ export function InvoiceDetails({ invoice }: { invoice: any }) {
       toast('PDF descargado exitosamente', 'success')
     } catch (error: any) {
       toast(error.message || 'Error al descargar PDF', 'error')
+    }
+  }
+
+  const handlePrintLanWithIp = async (ip: string) => {
+    try {
+      toast(`Enviando a ${ip}...`, 'info')
+      const res = await fetch(`/api/invoices/${invoice.id}/print-lan`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ printerInterface: ip }),
+      })
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.error || 'Error al imprimir en LAN')
+      }
+
+      toast('Impresión LAN enviada correctamente', 'success')
+    } catch (error: any) {
+      toast(error.message || 'Error de impresión LAN', 'error')
+    }
+  }
+
+  const handlePrintLan = async () => {
+    // Legacy / Fallback to local storage if no printer selected
+    const printerIp = localStorage.getItem('printer_lan_ip')
+    if (!printerIp) {
+      toast('Configura la IP de la impresora LAN primero', 'warning')
+      return
+    }
+    await handlePrintLanWithIp(printerIp)
+
+    try {
+      toast('Enviando a impresora LAN...', 'info')
+      const res = await fetch(`/api/invoices/${invoice.id}/print-lan`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ printerInterface: printerIp }),
+      })
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.error || 'Error al imprimir en LAN')
+      }
+
+      toast('Impresión LAN enviada correctamente', 'success')
+    } catch (error: any) {
+      toast(error.message || 'Error de impresión LAN', 'error')
     }
   }
 
@@ -448,7 +519,35 @@ export function InvoiceDetails({ invoice }: { invoice: any }) {
                 {escposSupported && escposStatus === 'connected' && (
                   <DropdownMenuItem onClick={handlePrintEscPos}>
                     <Usb className="h-4 w-4 mr-2" />
-                    🖨️ Imprimir Ticket (POS)
+                    🖨️ Imprimir Ticket (POS USB)
+                  </DropdownMenuItem>
+                )}
+                {lanPrinters.length > 0 ? (
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger>
+                      <Network className="h-4 w-4 mr-2" />
+                      Imprimir LAN (Red)
+                    </DropdownMenuSubTrigger>
+                    <DropdownMenuPortal>
+                      <DropdownMenuSubContent>
+                        {lanPrinters.map((p: any) => (
+                          <DropdownMenuItem key={p.id} onClick={() => handlePrintLanWithIp(p.interfaceConfig)}>
+                            <Printer className="h-4 w-4 mr-2" />
+                            {p.name}
+                          </DropdownMenuItem>
+                        ))}
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={handlePrintLan}>
+                          <MoreVertical className="h-4 w-4 mr-2" />
+                          Otra IP (Manual)
+                        </DropdownMenuItem>
+                      </DropdownMenuSubContent>
+                    </DropdownMenuPortal>
+                  </DropdownMenuSub>
+                ) : (
+                  <DropdownMenuItem onClick={handlePrintLan}>
+                    <Network className="h-4 w-4 mr-2" />
+                    Imprimir LAN (Red 80mm)
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuItem onClick={() => handlePrintOption('thermal')}>
