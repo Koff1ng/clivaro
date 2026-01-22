@@ -1,148 +1,166 @@
-import { useEffect, useCallback } from 'react'
+import { useCallback, useEffect } from 'react'
 
 type ThermalPrintOptions = {
-  /** Unique id for the injected <style> tag */
-  styleId?: string
-  /** DOM id of the container that should be the ONLY visible content in print */
+  /** DOM id of the container that should be printed */
   targetId: string
   /** Width of the thermal paper in mm (default 80mm) */
   widthMm?: number
 }
 
+/**
+ * Hook for thermal ticket printing using a popup window approach
+ * This is more reliable than CSS injection as it avoids conflicts with page styles
+ */
 export function useThermalPrint(options: ThermalPrintOptions) {
-  const { targetId, styleId = `thermal-print-style-${targetId}`, widthMm = 80 } = options
-
-  const clearAllPrintStyles = useCallback(() => {
-    if (typeof window === 'undefined') return
-    // Remove all print-related style tags to avoid conflicts
-    document.querySelectorAll('style[id*="print-style"]').forEach(el => el.remove())
-  }, [])
-
-  const injectStyle = useCallback(() => {
-    if (typeof window === 'undefined') return
-    // Clear any existing print styles first
-    clearAllPrintStyles()
-
-    const style = document.createElement('style')
-    style.id = styleId
-    // More aggressive CSS to ensure print content is visible
-    style.innerHTML = `
-@media print {
-  @page { 
-    size: ${widthMm}mm auto; 
-    margin: 0mm; 
-  }
-  
-  /* Reset everything */
-  html, body { 
-    width: ${widthMm}mm !important; 
-    height: auto !important;
-    margin: 0 !important; 
-    padding: 0 !important; 
-    background: white !important;
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-  }
-  
-  /* Hide EVERYTHING by default */
-  body *, body > *, html > * {
-    visibility: hidden !important;
-  }
-  
-  /* Hide specific elements that might have display:block */
-  header, footer, nav, aside, .print\\:hidden, [class*="print:hidden"] {
-    display: none !important;
-  }
-  
-  /* Show the print container and ALL its ancestors */
-  #${targetId},
-  #${targetId} *,
-  #${targetId}-ancestor,
-  #${targetId}-ancestor * {
-    visibility: visible !important;
-  }
-  
-  /* Force the container to display even if it has .hidden class */
-  #${targetId} {
-    display: block !important;
-    visibility: visible !important;
-    position: absolute !important;
-    left: 0 !important;
-    top: 0 !important;
-    width: ${widthMm}mm !important;
-    max-width: ${widthMm}mm !important;
-    min-height: 100vh !important;
-    height: auto !important;
-    z-index: 999999 !important;
-    background: white !important;
-    padding: 2mm !important;
-    margin: 0 !important;
-    overflow: visible !important;
-    color: black !important;
-  }
-  
-  /* Override Tailwind .hidden class specifically */
-  #${targetId}.hidden,
-  .hidden#${targetId},
-  div#${targetId}.hidden,
-  [id="${targetId}"].hidden {
-    display: block !important;
-    visibility: visible !important;
-  }
-  
-  /* Make all children in the print container visible with proper display */
-  #${targetId} div { display: block !important; visibility: visible !important; }
-  #${targetId} span { display: inline !important; visibility: visible !important; }
-  #${targetId} p { display: block !important; visibility: visible !important; }
-  #${targetId} h1, #${targetId} h2, #${targetId} h3 { display: block !important; visibility: visible !important; }
-  #${targetId} table { display: table !important; visibility: visible !important; }
-  #${targetId} thead { display: table-header-group !important; visibility: visible !important; }
-  #${targetId} tbody { display: table-row-group !important; visibility: visible !important; }
-  #${targetId} tr { display: table-row !important; visibility: visible !important; }
-  #${targetId} th, #${targetId} td { display: table-cell !important; visibility: visible !important; }
-  
-  /* Ensure text is visible */
-  #${targetId}, #${targetId} * {
-    color: black !important;
-    background-color: white !important;
-  }
-  
-  /* Thermal ticket specific styles */
-  #${targetId} .thermal-ticket {
-    width: 100% !important;
-    font-family: 'Courier New', Courier, monospace !important;
-    font-size: 10pt !important;
-    line-height: 1.3 !important;
-  }
-}`
-    document.head.appendChild(style)
-  }, [styleId, targetId, widthMm, clearAllPrintStyles])
-
-  const removeStyle = useCallback(() => {
-    if (typeof window === 'undefined') return
-    const style = document.getElementById(styleId)
-    if (style) style.remove()
-  }, [styleId])
+  const { targetId, widthMm = 80 } = options
 
   const print = useCallback(() => {
-    try {
-      injectStyle()
-      // Give browser time to apply styles
-      setTimeout(() => window.print(), 100)
-    } catch {
-      // Swallow: UI layer should toast.
-    }
-  }, [injectStyle])
-
-  useEffect(() => {
     if (typeof window === 'undefined') return
-    const onAfterPrint = () => removeStyle()
-    window.addEventListener('afterprint', onAfterPrint)
-    return () => {
-      window.removeEventListener('afterprint', onAfterPrint)
-      removeStyle()
+
+    // Get the content to print
+    const printContent = document.getElementById(targetId)
+    if (!printContent) {
+      console.error(`Print target #${targetId} not found`)
+      return
     }
-  }, [removeStyle])
+
+    // Get the HTML content
+    const contentHtml = printContent.innerHTML
+
+    // Create popup window with the content
+    const printWindow = window.open('', '_blank', `width=400,height=600,scrollbars=yes`)
+    if (!printWindow) {
+      alert('Por favor permite las ventanas emergentes para imprimir')
+      return
+    }
+
+    // Write the document with embedded styles
+    printWindow.document.write(`
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Ticket de Venta</title>
+  <style>
+    @page {
+      size: ${widthMm}mm auto;
+      margin: 0;
+    }
+    
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    
+    html, body {
+      width: ${widthMm}mm;
+      margin: 0;
+      padding: 2mm;
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 10pt;
+      line-height: 1.3;
+      background: white;
+      color: black;
+    }
+    
+    .thermal-ticket {
+      width: 100%;
+    }
+    
+    /* Typography */
+    .text-center { text-align: center; }
+    .text-left { text-align: left; }
+    .text-right { text-align: right; }
+    .font-bold { font-weight: bold; }
+    .font-semibold { font-weight: 600; }
+    .font-mono { font-family: 'Courier New', Courier, monospace; }
+    
+    .text-xs { font-size: 9pt; }
+    .text-sm { font-size: 10pt; }
+    .text-\\[10px\\], .text-\\[9px\\], .text-\\[8px\\] { font-size: 8pt; }
+    
+    /* Spacing */
+    .mb-0\\.5 { margin-bottom: 1mm; }
+    .mb-1 { margin-bottom: 2mm; }
+    .mb-2 { margin-bottom: 3mm; }
+    .mt-1 { margin-top: 2mm; }
+    .mt-2 { margin-top: 3mm; }
+    .pb-1 { padding-bottom: 2mm; }
+    .pb-2 { padding-bottom: 3mm; }
+    .pt-1 { padding-top: 2mm; }
+    .pl-2 { padding-left: 3mm; }
+    .py-1 { padding-top: 2mm; padding-bottom: 2mm; }
+    .px-1 { padding-left: 2mm; padding-right: 2mm; }
+    .gap-0\\.5 { gap: 1mm; }
+    .space-y-0\\.5 > * + * { margin-top: 1mm; }
+    .space-y-1 > * + * { margin-top: 2mm; }
+    
+    /* Borders */
+    .border-b { border-bottom: 1px solid black; }
+    .border-t { border-top: 1px solid black; }
+    .border-dashed { border-style: dashed; }
+    
+    /* Flexbox */
+    .flex { display: flex; }
+    .justify-between { justify-content: space-between; }
+    .items-center { align-items: center; }
+    .flex-1 { flex: 1; }
+    
+    /* Width */
+    .w-\\[12mm\\] { width: 12mm; min-width: 12mm; }
+    .w-\\[8mm\\] { width: 8mm; min-width: 8mm; }
+    .w-\\[14mm\\] { width: 14mm; min-width: 14mm; }
+    
+    /* Text utilities */
+    .truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .break-words { word-wrap: break-word; }
+    .break-all { word-break: break-all; }
+    .leading-tight { line-height: 1.2; }
+    .uppercase { text-transform: uppercase; }
+    
+    /* Colors - ensure black text on white */
+    .text-gray-500, .text-gray-600, .text-gray-700 { color: #333; }
+    .text-green-700 { color: #15803d; }
+    .text-blue-700 { color: #1d4ed8; }
+    .bg-white { background: white; }
+    
+    /* Hidden elements should stay hidden */
+    .hidden { display: none !important; }
+    
+    @media print {
+      html, body {
+        width: ${widthMm}mm;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+    }
+  </style>
+</head>
+<body>
+  ${contentHtml}
+</body>
+</html>
+`)
+    printWindow.document.close()
+
+    // Wait for content to load then print
+    printWindow.onload = () => {
+      setTimeout(() => {
+        printWindow.print()
+        // Close after print dialog closes
+        printWindow.onafterprint = () => printWindow.close()
+      }, 100)
+    }
+
+    // Fallback: if onload doesn't fire (some browsers)
+    setTimeout(() => {
+      if (!printWindow.closed) {
+        printWindow.print()
+      }
+    }, 500)
+
+  }, [targetId, widthMm])
 
   return { print }
 }
