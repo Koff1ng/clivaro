@@ -7,11 +7,13 @@ import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { useToast } from '@/components/ui/toast'
-import { FileText, Mail, Phone, MapPin, QrCode, Download, CheckCircle, XCircle, Clock, Printer, Ban, MoreVertical, FileDown, Receipt } from 'lucide-react'
+import { FileText, Mail, Phone, MapPin, QrCode, Download, CheckCircle, XCircle, Clock, Printer, Ban, MoreVertical, FileDown, Receipt, Usb } from 'lucide-react'
 import { InvoicePrint } from './invoice-print'
 import { InvoicePrintLetter } from './invoice-print-letter'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useThermalPrint, useLetterPrint } from '@/lib/hooks/use-thermal-print'
+import { useEscPosPrint } from '@/lib/hooks/use-escpos-print'
+import { PrinterSetupDialog } from '@/components/ui/printer-setup-dialog'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -45,6 +47,78 @@ export function InvoiceDetails({ invoice }: { invoice: any }) {
   // Print hooks for proper dimensions
   const { print: printThermal } = useThermalPrint({ targetId: 'invoice-thermal-print', widthMm: 80 })
   const { print: printLetter } = useLetterPrint({ targetId: 'invoice-letter-print' })
+
+  // ESC/POS direct thermal printing
+  const {
+    isSupported: escposSupported,
+    status: escposStatus,
+    printInvoice: printEscPos,
+    error: escposError
+  } = useEscPosPrint({ openDrawer: true })
+
+  // Company data for ESC/POS printing
+  const company = {
+    name: process.env.NEXT_PUBLIC_COMPANY_NAME || 'FERRETERIA',
+    taxId: process.env.NEXT_PUBLIC_COMPANY_TAX_ID || '900000000-1',
+    address: process.env.NEXT_PUBLIC_COMPANY_ADDRESS || '',
+    city: process.env.NEXT_PUBLIC_COMPANY_CITY || '',
+    phone: process.env.NEXT_PUBLIC_COMPANY_PHONE || '',
+    email: process.env.NEXT_PUBLIC_COMPANY_EMAIL || '',
+    regime: process.env.NEXT_PUBLIC_COMPANY_REGIME || 'Responsable de IVA',
+  }
+
+  // Handle ESC/POS print
+  const handlePrintEscPos = async () => {
+    if (escposStatus !== 'connected') {
+      toast('Conecta una impresora primero usando el botón de configuración', 'warning')
+      return
+    }
+
+    try {
+      const invoiceData = {
+        number: invoice.number,
+        prefix: invoice.prefix,
+        customer: {
+          name: invoice.customer?.name || 'CONSUMIDOR FINAL',
+          taxId: invoice.customer?.taxId,
+          address: invoice.customer?.address,
+          phone: invoice.customer?.phone,
+          email: invoice.customer?.email,
+        },
+        items: (invoice.items || []).map((item: any) => ({
+          product: {
+            name: item.product?.name || 'Producto',
+            sku: item.product?.sku,
+          },
+          quantity: item.quantity || 0,
+          unitPrice: item.unitPrice || 0,
+          discount: item.discount || 0,
+          taxRate: item.taxRate || 0,
+          subtotal: item.subtotal || 0,
+        })),
+        subtotal: invoice.subtotal || 0,
+        discount: invoice.discount || 0,
+        tax: invoice.tax || 0,
+        total: invoice.total || 0,
+        issuedAt: invoice.issuedAt,
+        dueDate: invoice.dueDate,
+        paidAt: invoice.paidAt,
+        payments: invoice.payments,
+        cufe: invoice.cufe,
+        electronicStatus: invoice.electronicStatus,
+        notes: invoice.notes,
+      }
+
+      const success = await printEscPos(invoiceData, company)
+      if (success) {
+        toast('Ticket impreso correctamente', 'success')
+      } else {
+        toast(escposError || 'Error al imprimir', 'error')
+      }
+    } catch (error: any) {
+      toast(error.message || 'Error al imprimir', 'error')
+    }
+  }
 
   const handlePrintThermal = () => {
     try {
@@ -371,15 +445,29 @@ export function InvoiceDetails({ invoice }: { invoice: any }) {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
                 <DropdownMenuLabel>Imprimir</DropdownMenuLabel>
+                {escposSupported && escposStatus === 'connected' && (
+                  <DropdownMenuItem onClick={handlePrintEscPos}>
+                    <Usb className="h-4 w-4 mr-2" />
+                    🖨️ Imprimir Ticket (POS)
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem onClick={() => handlePrintOption('thermal')}>
                   <Printer className="h-4 w-4 mr-2" />
-                  Tirilla (80mm)
+                  Tirilla (80mm) - Navegador
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => handlePrintOption('normal')}>
                   <Printer className="h-4 w-4 mr-2" />
                   Hoja normal (A4)
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
+                {escposSupported && (
+                  <>
+                    <DropdownMenuLabel className="text-xs font-normal text-gray-500">
+                      Impresora POS: {escposStatus === 'connected' ? '✅ Conectada' : '❌ Desconectada'}
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                  </>
+                )}
                 <DropdownMenuItem onClick={() => setShowTicketPreview(true)}>
                   <FileText className="h-4 w-4 mr-2" />
                   Vista previa
@@ -410,6 +498,11 @@ export function InvoiceDetails({ invoice }: { invoice: any }) {
                 )}
               </DropdownMenuContent>
             </DropdownMenu>
+
+            {/* ESC/POS Printer Setup */}
+            {escposSupported && (
+              <PrinterSetupDialog />
+            )}
           </div>
         </div>
 
