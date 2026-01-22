@@ -364,76 +364,13 @@ export async function generateInvoicePDF(invoice: InvoicePDFData): Promise<Buffe
           display: flex;
           justify-content: space-between;
           margin-bottom: 30px;
-          border-bottom: 1px solid #e2e8f0;
           padding-bottom: 20px;
+          border-bottom: 1px solid #f1f5f9;
         }
         .company-info {
           flex: 1;
         }
-        .company-name {
-          font-size: 20px;
-          font-weight: 700;
-          color: #1e293b;
-          margin-bottom: 4px;
-          letter-spacing: -0.5px;
-        }
-        .company-details {
-          font-size: 9px;
-          color: #64748b;
-          line-height: 1.4;
-        }
-        .invoice-title {
-          text-align: right;
-        }
-        .invoice-label {
-          font-size: 12px;
-          text-transform: uppercase;
-          letter-spacing: 1px;
-          color: #64748b;
-          margin-bottom: 2px;
-        }
-        .invoice-number {
-          font-size: 20px;
-          font-weight: 700;
-          color: #0f172a;
-        }
-        .resolution-text {
-          font-size: 8px;
-          color: #94a3b8;
-          margin-top: 8px;
-          text-align: right;
-          max-width: 250px;
-          margin-left: auto;
-          line-height: 1.3;
-        }
-        
-        /* Information Grid - Clean layout without borders */
-        .info-grid {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 40px;
-          margin-bottom: 30px;
-        }
-        .info-column h3 {
-          font-size: 9px;
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
-          color: #94a3b8;
-          margin-bottom: 8px;
-          font-weight: 600;
-        }
-        .info-row {
-          margin-bottom: 4px;
-        }
-        .customer-name {
-          font-size: 14px;
-          font-weight: 600;
-          color: #0f172a;
-          margin-bottom: 4px;
-        }
-        .info-text {
-          color: #475569;
-        }
+        /* ... */
         
         /* Table */
         table {
@@ -444,7 +381,7 @@ export async function generateInvoicePDF(invoice: InvoicePDFData): Promise<Buffe
         th {
           text-align: left;
           padding: 8px 0;
-          border-bottom: 2px solid #e2e8f0;
+          border-bottom: 1px solid #e2e8f0;
           font-size: 8px;
           text-transform: uppercase;
           letter-spacing: 0.5px;
@@ -453,62 +390,28 @@ export async function generateInvoicePDF(invoice: InvoicePDFData): Promise<Buffe
         }
         td {
           padding: 10px 0;
-          border-bottom: 1px solid #f1f5f9;
+          border-bottom: 1px solid #f8fafc;
           vertical-align: top;
           color: #334155;
         }
-        th.right, td.right { text-align: right; }
-        th.center, td.center { text-align: center; }
         
-        .item-name {
-          font-weight: 500;
-          color: #1e293b;
-        }
-        .item-sku {
-          font-size: 8px;
-          color: #94a3b8;
-        }
+        /* ... */
 
         /* Totals */
-        .footer-section {
-          display: flex;
-          justify-content: space-between;
-          align-items: flex-start;
-          margin-top: 10px;
-        }
-        .payment-info {
-          flex: 1;
-          padding-right: 40px;
-        }
-        .totals-container {
-          width: 250px;
-        }
-        .total-row {
-          display: flex;
-          justify-content: space-between;
-          padding: 5px 0;
-        }
         .total-row.final {
-          border-top: 2px solid #e2e8f0;
+          border-top: 1px solid #e2e8f0;
           margin-top: 8px;
           padding-top: 8px;
           font-size: 14px;
           font-weight: 700;
           color: #0f172a;
         }
-        .total-label {
-          color: #64748b;
-        }
-        .total-value {
-          text-align: right;
-          font-weight: 500;
-        }
         
         /* Tax breakdown - minimalistic */
         .tax-details {
           margin-top: 8px;
           padding-top: 8px;
-          border-top: 1px dashed #e2e8f0;
+          border-top: 1px solid #f1f5f9;
         }
         .tax-row {
           display: flex;
