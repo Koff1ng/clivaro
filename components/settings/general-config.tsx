@@ -9,7 +9,8 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Settings as SettingsIcon, Loader2, Plus, Trash2, Printer, MapPin, Hash, Building2, Receipt, FileText, ShoppingCart } from 'lucide-react'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
+import { Settings as SettingsIcon, Loader2, Plus, Trash2, Printer, MapPin, Hash, Building2, Receipt, FileText, ShoppingCart, Search, Network } from 'lucide-react'
 import { useToast } from '@/components/ui/toast'
 
 // Interfaces for custom settings structure
@@ -126,6 +127,55 @@ export function GeneralConfig({ settings, onSave, isLoading }: GeneralConfigProp
 
   const [activeTab, setActiveTab] = useState('identity')
   const [printers, setPrinters] = useState<PrinterDefinition[]>(initialCustomSettings.printing?.printers || [])
+
+  // Scanner State
+  const [isScanning, setIsScanning] = useState(false)
+  const [showScanDialog, setShowScanDialog] = useState(false)
+  const [scannedDevices, setScannedDevices] = useState<{ ip: string, name: string, port: number }[]>([])
+
+  const scanNetwork = async () => {
+    try {
+      setIsScanning(true)
+      toast('Escaneando red local (puerto 9100)... Esto puede tardar unos segundos.', 'info')
+
+      const res = await fetch('/api/settings/scan-printers')
+      if (!res.ok) throw new Error('Error al escanear')
+      const data = await res.json()
+
+      if (data.devices) {
+        setScannedDevices(data.devices)
+        setShowScanDialog(true)
+        if (data.devices.length === 0) {
+          toast('No se encontraron dispositivos en el puerto 9100', 'warning')
+        } else {
+          toast(`Se encontraron ${data.devices.length} dispositivos`, 'success')
+        }
+      }
+    } catch (error: any) {
+      toast('Error al buscar impresoras: ' + error.message, 'error')
+    } finally {
+      setIsScanning(false)
+    }
+  }
+
+  const addScannedPrinter = (device: { ip: string, name: string }) => {
+    const newPrinter: PrinterDefinition = {
+      id: crypto.randomUUID(),
+      name: device.name,
+      type: 'thermal',
+      interfaceType: 'lan',
+      interfaceConfig: `${device.ip}:9100`, // Default RAW port
+      width: 80,
+      columns: 48,
+      active: true,
+      default: printers.length === 0
+    }
+    const updatedPrinters = [...printers, newPrinter]
+    setPrinters(updatedPrinters)
+    handlePrintingChange('printers', updatedPrinters)
+    setShowScanDialog(false)
+    toast('Impresora agregada exitosamente', 'success')
+  }
 
   // Initialize form
   const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm<GeneralFormData>({
@@ -447,15 +497,24 @@ export function GeneralConfig({ settings, onSave, isLoading }: GeneralConfigProp
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <h3 className="text-sm font-medium">Impresoras Registradas</h3>
-                  <Button type="button" variant="outline" size="sm" onClick={addPrinter} className="gap-2">
-                    <Plus className="h-3 w-3" /> Agregar Impresora
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button type="button" variant="outline" size="sm" onClick={scanNetwork} disabled={isScanning} className="gap-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50">
+                      {isScanning ? <Loader2 className="h-3 w-3 animate-spin" /> : <Search className="h-3 w-3" />}
+                      {isScanning ? 'Buscando...' : 'Escanear Red'}
+                    </Button>
+                    <Button type="button" variant="outline" size="sm" onClick={addPrinter} className="gap-2">
+                      <Plus className="h-3 w-3" /> Agregar Manual
+                    </Button>
+                  </div>
                 </div>
 
                 {printers.length === 0 && (
                   <div className="text-center py-8 border-2 border-dashed rounded-lg text-gray-400">
                     <Printer className="h-8 w-8 mx-auto mb-2 opacity-50" />
                     <p>No tienes impresoras configuradas</p>
+                    <Button type="button" variant="link" onClick={scanNetwork} className="mt-2 text-blue-500">
+                      Intentar búsqueda automática
+                    </Button>
                   </div>
                 )}
 
@@ -573,6 +632,44 @@ export function GeneralConfig({ settings, onSave, isLoading }: GeneralConfigProp
           </div>
         </form>
       </CardContent>
+
+      <Dialog open={showScanDialog} onOpenChange={setShowScanDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Dispositivos Encontrados</DialogTitle>
+            <DialogDescription>
+              Se encontraron los siguientes dispositivos escuchando en el puerto 9100.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 py-4">
+            {scannedDevices.map((device) => (
+              <div key={device.ip} className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
+                onClick={() => addScannedPrinter(device)}>
+                <div className="flex items-center gap-3">
+                  <div className="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center text-green-600">
+                    <Printer className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <div className="font-medium text-sm">{device.name}</div>
+                    <div className="text-xs text-gray-500">{device.ip}</div>
+                  </div>
+                </div>
+                <Button size="sm" variant="ghost" className="text-blue-600">
+                  + Agregar
+                </Button>
+              </div>
+            ))}
+            {scannedDevices.length === 0 && (
+              <div className="text-center text-gray-500 py-4">
+                No se encontraron resultados. Asegúrate que la impresora esté encendida y en la misma red.
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="secondary" onClick={() => setShowScanDialog(false)}>Cerrar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   )
 }
