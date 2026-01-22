@@ -171,7 +171,7 @@ export function POSScreen() {
   const [showShiftDialog, setShowShiftDialog] = useState(false)
   const [startingCash, setStartingCash] = useState('0')
   const searchInputRef = useRef<HTMLInputElement>(null)
-  
+
   // Hold / Parked tickets
   const [parkedSales, setParkedSales] = useState<ParkedSale[]>([])
   const [showParkDialog, setShowParkDialog] = useState(false)
@@ -188,7 +188,7 @@ export function POSScreen() {
   const [pendingDiscountChange, setPendingDiscountChange] = useState<{ productId: string; variantId?: string | null; value: number } | null>(null)
   const isOverrideValid = !!discountOverride && discountOverride.expiresAt > Date.now()
   const canDiscountNow = canApplyDiscounts || isOverrideValid
-  
+
   // Offline queue
   const [isOnline, setIsOnline] = useState(true)
   const [offlineQueue, setOfflineQueue] = useState<OfflineQueuedSale[]>([])
@@ -199,19 +199,19 @@ export function POSScreen() {
     stockByKey: Record<string, number>
     conflictsByKey: Record<string, any>
   } | null>(null)
-  
+
   const parkedStorageKey = useMemo(() => {
     const tenantId = (session?.user as any)?.tenantId || 'no-tenant'
     const userId = (session?.user as any)?.id || 'no-user'
     return `pos:parked:${tenantId}:${userId}`
   }, [session])
-  
+
   const discountOverrideKey = useMemo(() => {
     const tenantId = (session?.user as any)?.tenantId || 'no-tenant'
     const userId = (session?.user as any)?.id || 'no-user'
     return `pos:discountOverride:${tenantId}:${userId}`
   }, [session])
-  
+
   const offlineQueueKey = useMemo(() => {
     const tenantId = (session?.user as any)?.tenantId || 'no-tenant'
     const userId = (session?.user as any)?.id || 'no-user'
@@ -235,7 +235,7 @@ export function POSScreen() {
       setShowShiftDialog(false)
     }
   }, [activeShift])
-  
+
   // Load parked tickets
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -257,7 +257,7 @@ export function POSScreen() {
       // ignore
     }
   }, [parkedStorageKey])
-  
+
   // Load discount override
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -285,7 +285,7 @@ export function POSScreen() {
       // ignore
     }
   }, [discountOverrideKey])
-  
+
   // Online/offline state
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -298,7 +298,7 @@ export function POSScreen() {
       window.removeEventListener('offline', update)
     }
   }, [])
-  
+
   // Load offline queue
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -555,12 +555,12 @@ export function POSScreen() {
 
     // PRO: if failed with conflicts, fetch current stock for fast fixes and keep conflict context
     const conflictsByKey: Record<string, any> = {}
-    ;(item.conflicts || []).forEach((c: any) => {
-      if (c?.type === 'STOCK' && c?.productId) {
-        const k = keyOfStock(String(c.productId), c?.variantId || null)
-        conflictsByKey[k] = c
-      }
-    })
+      ; (item.conflicts || []).forEach((c: any) => {
+        if (c?.type === 'STOCK' && c?.productId) {
+          const k = keyOfStock(String(c.productId), c?.variantId || null)
+          conflictsByKey[k] = c
+        }
+      })
 
     if (isOnline && item.payload?.warehouseId && item.receipt.items?.length) {
       const toCheck = item.receipt.items.map((ci: any) => ({ productId: ci.productId, variantId: ci.variantId || null }))
@@ -723,7 +723,7 @@ export function POSScreen() {
   const [showReceipt, setShowReceipt] = useState(false)
   const [autoPrintPending, setAutoPrintPending] = useState(false)
   const [voiding, setVoiding] = useState(false)
-  const { print: printThermal } = useThermalPrint({ targetId: 'pos-thermal-print', styleId: 'thermal-print-style-pos', widthMm: 80 })
+  const { print: printThermal } = useThermalPrint({ targetId: 'pos-thermal-print', widthMm: 80 })
 
   const computeTotalsFromCart = useCallback((items: CartItem[]) => {
     const subtotal = items.reduce((sum, item) => sum + (item.quantity * item.unitPrice * (1 - (item.discount || 0) / 100)), 0)
@@ -926,7 +926,7 @@ export function POSScreen() {
       })
       setShowReceipt(true)
       setAutoPrintPending(true)
-      
+
       // Clear cart and reset form
       setCart([])
       setSearchQuery('')
@@ -935,12 +935,12 @@ export function POSScreen() {
       setPaymentMode('SINGLE')
       setPaymentMethod('CASH')
       setSplitPayments([{ id: 'p1', method: 'CASH', amount: '' }])
-      
+
       // Focus search for next sale
       if (searchInputRef.current) {
         searchInputRef.current.focus()
       }
-      
+
       // Invalidate queries to refresh data
       // Invalidar todas las queries relacionadas
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] })
@@ -989,7 +989,7 @@ export function POSScreen() {
       return item
     }))
   }
-  
+
   const updateCartItemDiscount = (productId: string, discount: number, variantId?: string | null) => {
     setCart(cart.map(item => {
       if (item.productId === productId && (item.variantId || null) === (variantId || null)) {
@@ -1039,7 +1039,7 @@ export function POSScreen() {
     if (paymentMode === 'SINGLE' && paymentMethod === 'CASH') {
       const total = calculateTotals().total
       const received = parseFloat(cashReceived || '0')
-      
+
       if (!cashReceived || isNaN(received) || received < total) {
         toast(`El efectivo recibido (${formatCurrency(received)}) debe ser mayor o igual al total (${formatCurrency(total)})`, 'warning')
         return
@@ -1068,7 +1068,7 @@ export function POSScreen() {
       items: validItems,
       discount: 0,
     }
-    
+
     const hasDiscounts = validItems.some((it: any) => (it.discount || 0) > 0)
     if (hasDiscounts && !canApplyDiscounts && isOverrideValid && discountOverride?.token) {
       saleData.discountOverrideToken = discountOverride.token
@@ -1168,7 +1168,7 @@ export function POSScreen() {
         if (products.length > 0) addToCart(products[0])
       })
   }
-  
+
   // Hold helpers
   const parkCurrentSale = useCallback(() => {
     if (cart.length === 0) {
@@ -1374,9 +1374,8 @@ export function POSScreen() {
                       key={product.id}
                       onClick={() => hasStock && addToCart(product)}
                       disabled={!hasStock}
-                      className={`p-4 border rounded-lg text-left hover:bg-muted transition-colors ${
-                        !hasStock ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
-                      }`}
+                      className={`p-4 border rounded-lg text-left hover:bg-muted transition-colors ${!hasStock ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
+                        }`}
                     >
                       <div className="font-semibold text-sm mb-1">{product.name}</div>
                       <div className="text-xs text-gray-500 mb-2">{product.sku}</div>
@@ -1484,124 +1483,124 @@ export function POSScreen() {
                           : null
 
                     return (
-                    <div
-                      key={item.productId}
-                      className={[
-                        'border rounded-lg p-3 bg-background shadow-sm hover:shadow transition-shadow',
-                        hasStockConflict ? 'border-red-300 bg-red-50/40' : '',
-                      ].join(' ')}
-                    >
-                      <div className="flex justify-between items-start mb-2">
-                        <div className="flex-1 min-w-0 pr-2">
-                          <div className="font-semibold text-sm mb-0.5 truncate">{item.productName}</div>
-                          <div className="text-xs text-gray-500">SKU: {item.sku}</div>
-                          <div className="text-xs text-gray-600 mt-0.5">
-                            {formatCurrency(item.unitPrice)} c/u
-                          </div>
-                          {hasStockConflict && (
-                            <div className="mt-2 rounded-md border border-red-200 bg-background p-2">
-                              <div className="text-xs font-semibold text-red-700">Conflicto: stock insuficiente</div>
-                              <div className="text-xs text-red-700 mt-0.5">
-                                Disponible: <span className="font-semibold">{typeof availableNow === 'number' ? availableNow : conflict?.available ?? '—'}</span>{' '}
-                                · Solicitado: <span className="font-semibold">{conflict?.requested ?? item.quantity}</span>
-                              </div>
-                              <div className="mt-2 flex items-center gap-2">
-                                {typeof suggestedQty === 'number' && (
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="h-7 px-2"
-                                    onClick={() => updateCartItemQuantity(item.productId, suggestedQty, item.variantId || null)}
-                                  >
-                                    Ajustar a {suggestedQty}
-                                  </Button>
-                                )}
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-7 px-2 text-red-700 hover:bg-red-100"
-                                  onClick={() => removeFromCart(item.productId, item.variantId || null)}
-                                >
-                                  Quitar item
-                                </Button>
-                              </div>
+                      <div
+                        key={item.productId}
+                        className={[
+                          'border rounded-lg p-3 bg-background shadow-sm hover:shadow transition-shadow',
+                          hasStockConflict ? 'border-red-300 bg-red-50/40' : '',
+                        ].join(' ')}
+                      >
+                        <div className="flex justify-between items-start mb-2">
+                          <div className="flex-1 min-w-0 pr-2">
+                            <div className="font-semibold text-sm mb-0.5 truncate">{item.productName}</div>
+                            <div className="text-xs text-gray-500">SKU: {item.sku}</div>
+                            <div className="text-xs text-gray-600 mt-0.5">
+                              {formatCurrency(item.unitPrice)} c/u
                             </div>
-                          )}
-                          <div className="mt-2 flex items-center gap-2">
-                            <span className="text-[11px] text-gray-500">Descuento %</span>
-                            <Input
-                              type="number"
-                              step="1"
-                              min={0}
-                              max={100}
-                              value={String(item.discount ?? 0)}
-                              onChange={(e) => {
-                                const v = parseFloat(e.target.value || '0')
-                                const next = isNaN(v) ? 0 : v
-                                if (!canDiscountNow && next > 0) {
-                                  setPendingDiscountChange({ productId: item.productId, variantId: item.variantId || null, value: next })
-                                  setShowDiscountOverrideDialog(true)
-                                  return
-                                }
-                                updateCartItemDiscount(item.productId, next, item.variantId || null)
-                              }}
-                              disabled={!canDiscountNow}
-                              className="h-7 w-20 text-xs"
-                            />
-                            {!canDiscountNow && (
-                              <span className="text-[11px] text-gray-400">Sin permiso</span>
+                            {hasStockConflict && (
+                              <div className="mt-2 rounded-md border border-red-200 bg-background p-2">
+                                <div className="text-xs font-semibold text-red-700">Conflicto: stock insuficiente</div>
+                                <div className="text-xs text-red-700 mt-0.5">
+                                  Disponible: <span className="font-semibold">{typeof availableNow === 'number' ? availableNow : conflict?.available ?? '—'}</span>{' '}
+                                  · Solicitado: <span className="font-semibold">{conflict?.requested ?? item.quantity}</span>
+                                </div>
+                                <div className="mt-2 flex items-center gap-2">
+                                  {typeof suggestedQty === 'number' && (
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="h-7 px-2"
+                                      onClick={() => updateCartItemQuantity(item.productId, suggestedQty, item.variantId || null)}
+                                    >
+                                      Ajustar a {suggestedQty}
+                                    </Button>
+                                  )}
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-7 px-2 text-red-700 hover:bg-red-100"
+                                    onClick={() => removeFromCart(item.productId, item.variantId || null)}
+                                  >
+                                    Quitar item
+                                  </Button>
+                                </div>
+                              </div>
+                            )}
+                            <div className="mt-2 flex items-center gap-2">
+                              <span className="text-[11px] text-gray-500">Descuento %</span>
+                              <Input
+                                type="number"
+                                step="1"
+                                min={0}
+                                max={100}
+                                value={String(item.discount ?? 0)}
+                                onChange={(e) => {
+                                  const v = parseFloat(e.target.value || '0')
+                                  const next = isNaN(v) ? 0 : v
+                                  if (!canDiscountNow && next > 0) {
+                                    setPendingDiscountChange({ productId: item.productId, variantId: item.variantId || null, value: next })
+                                    setShowDiscountOverrideDialog(true)
+                                    return
+                                  }
+                                  updateCartItemDiscount(item.productId, next, item.variantId || null)
+                                }}
+                                disabled={!canDiscountNow}
+                                className="h-7 w-20 text-xs"
+                              />
+                              {!canDiscountNow && (
+                                <span className="text-[11px] text-gray-400">Sin permiso</span>
+                              )}
+                            </div>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeFromCart(item.productId, item.variantId || null)}
+                            className="h-7 w-7 p-0 flex-shrink-0 hover:bg-red-50 hover:text-red-600"
+                            title="Eliminar del carrito"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                        <div className="flex items-center justify-between pt-2 border-t">
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-7 w-7 p-0"
+                              onClick={() => updateCartItemQuantity(item.productId, item.quantity - 1, item.variantId || null)}
+                              disabled={item.quantity <= 1}
+                              title="Disminuir cantidad"
+                            >
+                              <Minus className="h-3.5 w-3.5" />
+                            </Button>
+                            <div className="w-10 text-center">
+                              <span className="text-base font-semibold">{item.quantity}</span>
+                            </div>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-7 w-7 p-0"
+                              onClick={() => updateCartItemQuantity(item.productId, item.quantity + 1, item.variantId || null)}
+                              title="Aumentar cantidad"
+                            >
+                              <Plus className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-base font-bold text-blue-600">
+                              {formatCurrency(item.subtotal)}
+                            </div>
+                            {item.discount > 0 && (
+                              <div className="text-xs text-green-600">
+                                -{item.discount}%
+                              </div>
                             )}
                           </div>
                         </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => removeFromCart(item.productId, item.variantId || null)}
-                          className="h-7 w-7 p-0 flex-shrink-0 hover:bg-red-50 hover:text-red-600"
-                          title="Eliminar del carrito"
-                        >
-                          <X className="h-3.5 w-3.5" />
-                        </Button>
                       </div>
-                      <div className="flex items-center justify-between pt-2 border-t">
-                        <div className="flex items-center gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-7 w-7 p-0"
-                            onClick={() => updateCartItemQuantity(item.productId, item.quantity - 1, item.variantId || null)}
-                            disabled={item.quantity <= 1}
-                            title="Disminuir cantidad"
-                          >
-                            <Minus className="h-3.5 w-3.5" />
-                          </Button>
-                          <div className="w-10 text-center">
-                            <span className="text-base font-semibold">{item.quantity}</span>
-                          </div>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-7 w-7 p-0"
-                            onClick={() => updateCartItemQuantity(item.productId, item.quantity + 1, item.variantId || null)}
-                            title="Aumentar cantidad"
-                          >
-                            <Plus className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-base font-bold text-blue-600">
-                            {formatCurrency(item.subtotal)}
-                          </div>
-                          {item.discount > 0 && (
-                            <div className="text-xs text-green-600">
-                              -{item.discount}%
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  )
-                })}
+                    )
+                  })}
                 </div>
               )}
             </div>
@@ -1892,9 +1891,9 @@ export function POSScreen() {
                   </div>
                   <div className="flex flex-col">
                     <span className="text-muted-foreground text-xs mb-1">Fecha</span>
-                    <span className="font-medium text-foreground">{new Date().toLocaleString('es-CO', { 
-                      day: '2-digit', 
-                      month: '2-digit', 
+                    <span className="font-medium text-foreground">{new Date().toLocaleString('es-CO', {
+                      day: '2-digit',
+                      month: '2-digit',
                       year: 'numeric',
                       hour: '2-digit',
                       minute: '2-digit'
@@ -1923,7 +1922,7 @@ export function POSScreen() {
                   ) : (
                     <span className="font-medium text-foreground">
                       {saleResult.paymentMethod === 'CASH' ? 'Efectivo' :
-                      saleResult.paymentMethod === 'CARD' ? 'Tarjeta' : 'Transferencia'}
+                        saleResult.paymentMethod === 'CARD' ? 'Tarjeta' : 'Transferencia'}
                     </span>
                   )}
                 </div>
