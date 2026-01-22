@@ -348,13 +348,13 @@ export async function generateInvoicePDF(invoice: InvoicePDFData): Promise<Buffe
       <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { 
-          font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, 'Helvetica Neue', Arial, sans-serif;
+          font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
           line-height: 1.5;
-          color: #1e293b;
-          font-size: 11px;
+          color: #334155;
+          font-size: 10px;
         }
         .page {
-          padding: 30px 40px;
+          padding: 40px;
           max-width: 210mm;
           margin: 0 auto;
         }
@@ -363,241 +363,190 @@ export async function generateInvoicePDF(invoice: InvoicePDFData): Promise<Buffe
         .header {
           display: flex;
           justify-content: space-between;
-          align-items: flex-start;
-          border-bottom: 3px solid #1e40af;
+          margin-bottom: 30px;
+          border-bottom: 1px solid #e2e8f0;
           padding-bottom: 20px;
-          margin-bottom: 20px;
         }
         .company-info {
           flex: 1;
         }
         .company-name {
-          font-size: 22px;
+          font-size: 20px;
           font-weight: 700;
-          color: #1e40af;
-          margin-bottom: 8px;
+          color: #1e293b;
+          margin-bottom: 4px;
+          letter-spacing: -0.5px;
         }
         .company-details {
-          font-size: 10px;
-          color: #475569;
-          line-height: 1.6;
+          font-size: 9px;
+          color: #64748b;
+          line-height: 1.4;
         }
-        .company-details div {
-          margin: 2px 0;
-        }
-        .invoice-type {
+        .invoice-title {
           text-align: right;
-          min-width: 200px;
         }
-        .invoice-type-label {
-          font-size: 14px;
-          font-weight: 700;
-          color: #1e40af;
+        .invoice-label {
+          font-size: 12px;
           text-transform: uppercase;
-          margin-bottom: 5px;
+          letter-spacing: 1px;
+          color: #64748b;
+          margin-bottom: 2px;
         }
         .invoice-number {
-          font-size: 24px;
+          font-size: 20px;
           font-weight: 700;
           color: #0f172a;
         }
-        .resolution-info {
-          font-size: 9px;
-          color: #64748b;
-          margin-top: 10px;
+        .resolution-text {
+          font-size: 8px;
+          color: #94a3b8;
+          margin-top: 8px;
           text-align: right;
-          line-height: 1.5;
+          max-width: 250px;
+          margin-left: auto;
+          line-height: 1.3;
         }
         
-        /* Info Grid */
+        /* Information Grid - Clean layout without borders */
         .info-grid {
           display: grid;
           grid-template-columns: 1fr 1fr;
-          gap: 20px;
-          margin-bottom: 20px;
+          gap: 40px;
+          margin-bottom: 30px;
         }
-        .info-box {
-          background: #f8fafc;
-          border: 1px solid #e2e8f0;
-          border-radius: 8px;
-          padding: 15px;
-        }
-        .info-box-title {
-          font-size: 10px;
-          font-weight: 700;
-          color: #1e40af;
+        .info-column h3 {
+          font-size: 9px;
           text-transform: uppercase;
-          margin-bottom: 10px;
-          padding-bottom: 5px;
-          border-bottom: 2px solid #1e40af;
+          letter-spacing: 0.5px;
+          color: #94a3b8;
+          margin-bottom: 8px;
+          font-weight: 600;
         }
         .info-row {
-          display: flex;
-          justify-content: space-between;
-          margin: 4px 0;
-          font-size: 10px;
-        }
-        .info-label {
-          color: #64748b;
-          font-weight: 500;
-        }
-        .info-value {
-          color: #0f172a;
-          font-weight: 600;
-          text-align: right;
+          margin-bottom: 4px;
         }
         .customer-name {
-          font-size: 13px;
-          font-weight: 700;
+          font-size: 14px;
+          font-weight: 600;
           color: #0f172a;
-          margin-bottom: 8px;
+          margin-bottom: 4px;
+        }
+        .info-text {
+          color: #475569;
         }
         
         /* Table */
         table {
           width: 100%;
           border-collapse: collapse;
-          margin: 20px 0;
-          font-size: 10px;
-        }
-        thead tr {
-          background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+          margin-bottom: 20px;
         }
         th {
-          color: white;
-          padding: 10px 8px;
           text-align: left;
-          font-weight: 600;
-          font-size: 9px;
+          padding: 8px 0;
+          border-bottom: 2px solid #e2e8f0;
+          font-size: 8px;
           text-transform: uppercase;
           letter-spacing: 0.5px;
-        }
-        th.right { text-align: right; }
-        th.center { text-align: center; }
-        td {
-          padding: 10px 8px;
-          border-bottom: 1px solid #e2e8f0;
-          vertical-align: top;
-        }
-        td.right { text-align: right; }
-        td.center { text-align: center; }
-        tr:nth-child(even) {
-          background-color: #f8fafc;
-        }
-        .product-name {
-          font-weight: 600;
-          color: #0f172a;
-        }
-        .product-sku {
-          font-size: 9px;
           color: #64748b;
-          margin-top: 2px;
+          font-weight: 600;
         }
+        td {
+          padding: 10px 0;
+          border-bottom: 1px solid #f1f5f9;
+          vertical-align: top;
+          color: #334155;
+        }
+        th.right, td.right { text-align: right; }
+        th.center, td.center { text-align: center; }
         
+        .item-name {
+          font-weight: 500;
+          color: #1e293b;
+        }
+        .item-sku {
+          font-size: 8px;
+          color: #94a3b8;
+        }
+
         /* Totals */
-        .totals-section {
+        .footer-section {
           display: flex;
-          justify-content: flex-end;
+          justify-content: space-between;
+          align-items: flex-start;
           margin-top: 10px;
         }
-        .totals-box {
-          width: 280px;
-          background: #f8fafc;
-          border: 1px solid #e2e8f0;
-          border-radius: 8px;
-          padding: 15px;
+        .payment-info {
+          flex: 1;
+          padding-right: 40px;
         }
-        .totals-row {
+        .totals-container {
+          width: 250px;
+        }
+        .total-row {
           display: flex;
           justify-content: space-between;
           padding: 5px 0;
-          font-size: 11px;
         }
-        .totals-row.subtotal {
-          border-bottom: 1px solid #e2e8f0;
-          padding-bottom: 8px;
-          margin-bottom: 5px;
+        .total-row.final {
+          border-top: 2px solid #e2e8f0;
+          margin-top: 8px;
+          padding-top: 8px;
+          font-size: 14px;
+          font-weight: 700;
+          color: #0f172a;
         }
-        .tax-breakdown {
-          background: #eff6ff;
-          border-radius: 6px;
-          padding: 8px;
-          margin: 8px 0;
+        .total-label {
+          color: #64748b;
+        }
+        .total-value {
+          text-align: right;
+          font-weight: 500;
+        }
+        
+        /* Tax breakdown - minimalistic */
+        .tax-details {
+          margin-top: 8px;
+          padding-top: 8px;
+          border-top: 1px dashed #e2e8f0;
         }
         .tax-row {
           display: flex;
           justify-content: space-between;
-          font-size: 9px;
-          color: #475569;
-          padding: 2px 0;
-        }
-        .totals-row.total {
-          font-size: 16px;
-          font-weight: 700;
-          color: #1e40af;
-          border-top: 2px solid #1e40af;
-          padding-top: 10px;
-          margin-top: 8px;
-        }
-        
-        /* Electronic Invoice Info */
-        .electronic-section {
-          background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
-          border: 1px solid #93c5fd;
-          border-radius: 8px;
-          padding: 15px;
-          margin-top: 20px;
-        }
-        .electronic-title {
-          font-size: 11px;
-          font-weight: 700;
-          color: #1e40af;
-          margin-bottom: 10px;
-          display: flex;
-          align-items: center;
-          gap: 5px;
-        }
-        .cufe-code {
-          font-family: 'Courier New', monospace;
           font-size: 8px;
-          word-break: break-all;
-          background: white;
-          padding: 8px;
-          border-radius: 4px;
-          border: 1px solid #bfdbfe;
-          color: #1e3a8a;
+          color: #94a3b8;
+          margin-bottom: 2px;
         }
-        .qr-section {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          margin-top: 10px;
-        }
-        
-        /* Footer */
-        .footer {
-          margin-top: 30px;
-          padding-top: 15px;
-          border-top: 1px solid #e2e8f0;
-        }
-        .legal-text {
+
+        /* Electronic Info */
+        .electronic-info {
+          margin-top: 15px;
           font-size: 8px;
           color: #64748b;
+        }
+        .cufe-box {
+          background: #f8fafc;
+          padding: 8px;
+          border-radius: 4px;
+          word-break: break-all;
+          font-family: monospace;
+          margin-top: 4px;
+          border: 1px solid #e2e8f0;
+        }
+
+        /* Legal Footer */
+        .legal-footer {
+          margin-top: 40px;
           text-align: center;
-          line-height: 1.6;
+          font-size: 8px;
+          color: #94a3b8;
+          border-top: 1px solid #e2e8f0;
+          padding-top: 20px;
         }
-        .legal-text p {
-          margin: 3px 0;
+        .legal-text {
+          margin-bottom: 4px;
         }
-        .thank-you {
-          text-align: center;
-          margin-top: 20px;
-          font-size: 12px;
-          font-weight: 600;
-          color: #1e40af;
-        }
-        
-        /* Notes */
+      </style>
         .notes-section {
           background: #fefce8;
           border-left: 4px solid #eab308;
@@ -648,80 +597,59 @@ export async function generateInvoicePDF(invoice: InvoicePDFData): Promise<Buffe
           <div class="invoice-type">
             <div class="invoice-type-label">${isElectronic ? 'Factura Electrónica de Venta' : 'Factura de Venta'}</div>
             <div class="invoice-number">${invoice.prefix || 'FV'}-${invoice.number}</div>
+        <!-- Header -->
+        <div class="header">
+          <div class="company-info">
+            <div class="company-name">${companyName}</div>
+            <div class="company-details">
+              <div>NIT: ${companyNit}</div>
+              <div>${companyRegime}</div>
+              ${companyAddress ? `<div>${companyAddress}</div>` : ''}
+              ${companyCity ? `<div>${companyCity}</div>` : ''}
+              ${companyPhone ? `<div>Tel: ${companyPhone}</div>` : ''}
+              ${companyEmail ? `<div>${companyEmail}</div>` : ''}
+            </div>
+          </div>
+          <div class="invoice-title">
+            <div class="invoice-label">${isElectronic ? 'Factura Electrónica' : 'Factura de Venta'}</div>
+            <div class="invoice-number"># ${invoice.number || '------'}</div>
             ${resolutionNumber ? `
-            <div class="resolution-info">
-              <div>Res. DIAN No. ${resolutionNumber}</div>
-              ${resolutionDate ? `<div>Fecha: ${resolutionDate}</div>` : ''}
-              ${resolutionRangeFrom && resolutionRangeTo ? `<div>Rango: ${resolutionRangeFrom} - ${resolutionRangeTo}</div>` : ''}
-              ${resolutionValidUntil ? `<div>Vigente hasta: ${resolutionValidUntil}</div>` : ''}
+            <div class="resolution-text">
+              Resolución DIAN No. ${resolutionNumber}<br/>
+              ${resolutionValidUntil ? `Vigencia: ${resolutionValidUntil}<br/>` : ''}
+              Rango del ${resolutionRangeFrom} al ${resolutionRangeTo}
             </div>
             ` : ''}
           </div>
         </div>
-        
+
         <!-- Info Grid -->
         <div class="info-grid">
-          <!-- Customer Info -->
-          <div class="info-box">
-            <div class="info-box-title">Adquirente / Cliente</div>
+          <div class="info-column">
+            <h3>Cliente</h3>
             <div class="customer-name">${invoice.customer.name}</div>
-            ${invoice.customer.taxId ? `
-            <div class="info-row">
-              <span class="info-label">NIT/CC:</span>
-              <span class="info-value">${invoice.customer.taxId}</span>
-            </div>` : `
-            <div class="info-row">
-              <span class="info-label">Identificación:</span>
-              <span class="info-value">CONSUMIDOR FINAL</span>
-            </div>`}
-            ${invoice.customer.address ? `
-            <div class="info-row">
-              <span class="info-label">Dirección:</span>
-              <span class="info-value">${invoice.customer.address}</span>
-            </div>` : ''}
-            ${invoice.customer.phone ? `
-            <div class="info-row">
-              <span class="info-label">Teléfono:</span>
-              <span class="info-value">${invoice.customer.phone}</span>
-            </div>` : ''}
-            ${invoice.customer.email ? `
-            <div class="info-row">
-              <span class="info-label">Email:</span>
-              <span class="info-value">${invoice.customer.email}</span>
-            </div>` : ''}
+            <div class="info-text">
+              ${invoice.customer.taxId ? `<div>NIT/CC: ${invoice.customer.taxId}</div>` : `<div>CONSUMIDOR FINAL</div>`}
+              ${invoice.customer.phone ? `<div>Tel: ${invoice.customer.phone}</div>` : ''}
+              ${invoice.customer.email ? `<div>Email: ${invoice.customer.email}</div>` : ''}
+              ${invoice.customer.address ? `<div>Dir: ${invoice.customer.address}</div>` : ''}
+            </div>
           </div>
-          
-          <!-- Document Info -->
-          <div class="info-box">
-            <div class="info-box-title">Información del Documento</div>
-            <div class="info-row">
-              <span class="info-label">Fecha Emisión:</span>
-              <span class="info-value">${formatDateTime(invoice.issuedAt)}</span>
+          <div class="info-column" style="text-align: right;">
+            <h3>Detalles</h3>
+            <div class="info-text">
+              <div class="info-row">
+                <strong>Fecha Emisión:</strong> ${formatDateTime(invoice.issuedAt)}
+              </div>
+              ${invoice.dueDate ? `
+              <div class="info-row">
+                <strong>Vencimiento:</strong> ${formatDateTime(invoice.dueDate)}
+              </div>
+              ` : ''}
+              <div class="info-row">
+                <strong>Forma de Pago:</strong> ${paymentForm}
+              </div>
             </div>
-            ${invoice.dueDate ? `
-            <div class="info-row">
-              <span class="info-label">Fecha Vencimiento:</span>
-              <span class="info-value">${formatDateTime(invoice.dueDate)}</span>
-            </div>` : ''}
-            <div class="info-row">
-              <span class="info-label">Forma de Pago:</span>
-              <span class="info-value">${paymentForm}</span>
-            </div>
-            <div class="info-row">
-              <span class="info-label">Estado:</span>
-              <span class="info-value">
-                <span class="status-badge ${invoice.status === 'PAGADA' || invoice.status === 'PAID' ? 'status-paid' : invoice.status === 'ANULADA' || invoice.status === 'VOID' ? 'status-void' : 'status-pending'}">
-                  ${invoice.status === 'PAGADA' || invoice.status === 'PAID' ? 'PAGADA' :
-      invoice.status === 'ANULADA' || invoice.status === 'VOID' ? 'ANULADA' :
-        invoice.status === 'EMITIDA' ? 'EMITIDA' : invoice.status}
-                </span>
-              </span>
-            </div>
-            ${invoice.paidAt ? `
-            <div class="info-row">
-              <span class="info-label">Fecha Pago:</span>
-              <span class="info-value">${formatDateTime(invoice.paidAt)}</span>
-            </div>` : ''}
           </div>
         </div>
         
@@ -729,70 +657,71 @@ export async function generateInvoicePDF(invoice: InvoicePDFData): Promise<Buffe
         <table>
           <thead>
             <tr>
-              <th style="width: 15%;">Código</th>
-              <th style="width: 35%;">Descripción</th>
-              <th class="center" style="width: 10%;">Cant.</th>
-              <th class="right" style="width: 12%;">V. Unit.</th>
-              <th class="center" style="width: 8%;">Dcto</th>
-              <th class="center" style="width: 8%;">IVA</th>
-              <th class="right" style="width: 12%;">Subtotal</th>
+              <th>Descripción</th>
+              <th width="10%" class="center">Cant.</th>
+              <th width="15%" class="right">Precio Unit.</th>
+              <th width="10%" class="center">Desc.</th>
+              <th width="10%" class="center">IVA</th>
+              <th width="15%" class="right">Total</th>
             </tr>
           </thead>
           <tbody>
-            ${invoice.items.map(item => `
+            ${(invoice.items || []).map((item, index) => {
+    const basePrice = item.unitPrice * item.quantity;
+    const discountAmount = basePrice * ((item.discount || 0) / 100);
+    const finalPrice = basePrice - discountAmount;
+
+    return `
               <tr>
-                <td><span style="font-family: monospace; font-size: 9px;">${item.product.sku || '-'}</span></td>
                 <td>
-                  <div class="product-name">${item.product.name}</div>
-                  ${item.variant ? `<div class="product-sku">Variante: ${item.variant.name}</div>` : ''}
+                  <div class="item-name">${item.product?.name || 'Item'}</div>
+                  ${item.product?.sku ? `<div class="item-sku">SKU: ${item.product.sku}</div>` : ''}
                 </td>
                 <td class="center">${item.quantity}</td>
                 <td class="right">${formatCurrency(item.unitPrice)}</td>
-                <td class="center">${item.discount > 0 ? item.discount + '%' : '-'}</td>
-                <td class="center">${item.taxRate}%</td>
-                <td class="right" style="font-weight: 600;">${formatCurrency(item.subtotal)}</td>
+                <td class="center">${item.discount > 0 ? `${item.discount}%` : '-'}</td>
+                <td class="center">${item.taxRate > 0 ? `${item.taxRate}%` : '0%'}</td>
+                <td class="right" style="font-weight: 600;">${formatCurrency(finalPrice)}</td>
               </tr>
-            `).join('')}
+              `
+  }).join('')}
           </tbody>
         </table>
         
         <!-- Totals -->
-        <div class="totals-section">
-          <div class="totals-box">
-            <div class="totals-row subtotal">
-              <span>Subtotal Bruto:</span>
-              <span>${formatCurrency((invoice.subtotal || 0) + (invoice.discount || 0))}</span>
+        <div class="footer-section">
+          <div class="payment-info"></div>
+          <div class="totals-container">
+            <div class="total-row">
+              <span class="total-label">Subtotal</span>
+              <span class="total-value">${formatCurrency((invoice.subtotal || 0) + (invoice.discount || 0))}</span>
             </div>
             ${(invoice.discount || 0) > 0 ? `
-            <div class="totals-row" style="color: #dc2626;">
-              <span>(-) Descuentos:</span>
-              <span>${formatCurrency(invoice.discount || 0)}</span>
-            </div>` : ''}
-            <div class="totals-row">
-              <span>Base Gravable:</span>
-              <span>${formatCurrency(invoice.subtotal || 0)}</span>
+            <div class="total-row">
+              <span class="total-label">Descuento</span>
+              <span class="total-value">-${formatCurrency(invoice.discount || 0)}</span>
+            </div>
+            ` : ''}
+            <div class="total-row">
+              <span class="total-label">Base Gravable</span>
+              <span class="total-value">${formatCurrency(invoice.subtotal || 0)}</span>
+            </div>
+            <div class="total-row">
+              <span class="total-label">Total Impuestos</span>
+              <span class="total-value">${formatCurrency(invoice.tax || 0)}</span>
             </div>
             
-            <!-- Tax Breakdown -->
-            ${taxByRate.size > 0 ? `
-            <div class="tax-breakdown">
-              <div style="font-size: 9px; font-weight: 600; color: #1e40af; margin-bottom: 5px;">Discriminación IVA:</div>
-              ${Array.from(taxByRate.entries())
-        .sort((a, b) => a[0] - b[0])
-        .map(([rate, v]) => `
-                <div class="tax-row">
-                  <span>IVA ${rate}% (Base: ${formatCurrency(v.base)})</span>
-                  <span>${formatCurrency(v.tax)}</span>
-                </div>
+            <div class="tax-details">
+              ${Array.from(taxByRate.entries()).map(([rate, data]) => `
+              <div class="tax-row">
+                <span>IVA ${rate}% (Base: ${formatCurrency(data.base)})</span>
+                <span>${formatCurrency(data.tax)}</span>
+              </div>
               `).join('')}
-            </div>` : ''}
-            
-            <div class="totals-row">
-              <span>Total IVA:</span>
-              <span>${formatCurrency(invoice.tax || 0)}</span>
             </div>
-            <div class="totals-row total">
-              <span>TOTAL A PAGAR (COP):</span>
+            
+            <div class="total-row final">
+              <span>TOTAL A PAGAR</span>
               <span>${formatCurrency(invoice.total || 0)}</span>
             </div>
           </div>
