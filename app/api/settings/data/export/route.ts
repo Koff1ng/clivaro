@@ -9,12 +9,13 @@ export const dynamic = 'force-dynamic'
 export async function POST(req: Request) {
     try {
         const session = await getServerSession(authOptions)
-        if (!session?.user?.id || !session?.user?.tenantId) {
+        const user = session?.user as any
+        if (!user?.id || !user?.tenantId) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
         }
 
         const { entities, format } = await req.json()
-        const tenantId = session.user.tenantId
+        const tenantId = user.tenantId
 
         const wb = XLSX.utils.book_new()
         const jsonResult: Record<string, any[]> = {}

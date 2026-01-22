@@ -8,12 +8,13 @@ export const dynamic = 'force-dynamic'
 export async function POST(req: Request) {
     try {
         const session = await getServerSession(authOptions)
-        if (!session?.user?.id || !session?.user?.tenantId) {
+        const user = session?.user as any
+        if (!user?.id || !user?.tenantId) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
         }
 
         const { entityType, data, mapping } = await req.json() // data is valid array from preflight
-        const tenantId = session.user.tenantId
+        const tenantId = user.tenantId
 
         let results = { success: 0, failed: 0, errors: [] as string[] }
 
