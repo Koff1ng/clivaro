@@ -3,7 +3,13 @@
 /**
  * Thermal Printer Connection Manager
  * Uses WebSerial API to connect to USB thermal printers
+ * 
+ * Note: SerialPort is a browser-only API, so we use 'any' type
+ * to avoid TypeScript errors during server-side builds.
  */
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type SerialPortType = any
 
 export type PrinterStatus = 'disconnected' | 'connecting' | 'connected' | 'printing' | 'error'
 
@@ -11,7 +17,7 @@ export interface PrinterInfo {
     name: string
     vendorId?: number
     productId?: number
-    port?: SerialPort
+    port?: SerialPortType
 }
 
 export interface PrinterConfig {
@@ -55,7 +61,7 @@ export function isWebSerialSupported(): boolean {
  * Manages connection and communication with thermal printers
  */
 export class ThermalPrinter {
-    private port: SerialPort | null = null
+    private port: SerialPortType | null = null
     private writer: WritableStreamDefaultWriter<Uint8Array> | null = null
     private reader: ReadableStreamDefaultReader<Uint8Array> | null = null
     private config: PrinterConfig
