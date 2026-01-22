@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -107,16 +107,15 @@ const sampleInvoice = {
 export function TicketEditor({ settings: initialSettings, companyInfo, onChange, onClose }: TicketEditorProps) {
     const [settings, setSettings] = useState<TicketDesignSettings>({ ...defaultSettings, ...initialSettings })
 
-    useEffect(() => {
-        onChange(settings)
-    }, [settings, onChange])
-
     const updateSetting = <K extends keyof TicketDesignSettings>(key: K, value: TicketDesignSettings[K]) => {
-        setSettings(prev => ({ ...prev, [key]: value }))
+        const newSettings = { ...settings, [key]: value }
+        setSettings(newSettings)
+        onChange(newSettings)
     }
 
     const resetToDefaults = () => {
         setSettings(defaultSettings)
+        onChange(defaultSettings)
     }
 
     const formatCurrency = (amount: number) => {
