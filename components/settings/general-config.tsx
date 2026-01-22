@@ -253,9 +253,14 @@ export function GeneralConfig({ settings, onSave, isLoading }: GeneralConfigProp
       }
     }
 
+    // Filter out fields that are NOT in TenantSettings schema
+    // companyRegime, companyCity, companyWebsite are stored in customSettings JSON, 
+    // but the form has them as top-level inputs which causes Prisma "Unknown argument" error.
+    const { companyRegime, companyCity, companyWebsite, ...schemaData } = data;
+
     // Clean payload for API (API expects root fields + customSettings string)
     const payload = {
-      ...data,
+      ...schemaData,
       customSettings: JSON.stringify(finalCustom)
     }
     onSave(payload)
