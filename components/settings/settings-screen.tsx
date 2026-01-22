@@ -182,108 +182,107 @@ export function SettingsScreen() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="flex w-full overflow-x-auto h-auto p-1 gap-1 bg-muted/20">
-            <TabsTrigger value="users" className="flex items-center gap-2">
-              <Users className="h-4 w-4" />
-              Usuarios
-            </TabsTrigger>
-            <TabsTrigger value="billing" className="flex items-center gap-2">
-              <Receipt className="h-4 w-4" />
-              Facturación Electrónica
-            </TabsTrigger>
-            {isSuperAdmin && (
-              <TabsTrigger value="payments" className="flex items-center gap-2">
-                <CreditCard className="h-4 w-4" />
-                Mercado Pago
-              </TabsTrigger>
-            )}
-            <TabsTrigger value="subscription" className="flex items-center gap-2">
-              <CreditCard className="h-4 w-4" />
-              Suscripción
-            </TabsTrigger>
-            <TabsTrigger value="general" className="flex items-center gap-2">
-              <SettingsIcon className="h-4 w-4" />
-              General
-            </TabsTrigger>
-            <TabsTrigger value="data" className="flex items-center gap-2">
-              <SettingsIcon className="h-4 w-4" />
-              Datos / Backups
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="users" className="space-y-4">
-            <UsersConfig />
-          </TabsContent>
-
-          <TabsContent value="billing" className="space-y-4">
-            <ElectronicBillingConfig
-              settings={settings}
-              onSave={(data) => updateSettingsMutation.mutate(data)}
-              isLoading={updateSettingsMutation.isPending}
-            />
-          </TabsContent>
-
+        <TabsList className="flex w-full overflow-x-auto h-auto p-1 gap-1 bg-muted/20">
+          <TabsTrigger value="users" className="flex items-center gap-2">
+            <Users className="h-4 w-4" />
+            Usuarios
+          </TabsTrigger>
+          <TabsTrigger value="billing" className="flex items-center gap-2">
+            <Receipt className="h-4 w-4" />
+            Facturación Electrónica
+          </TabsTrigger>
           {isSuperAdmin && (
-            <TabsContent value="payments" className="space-y-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Mercado Pago - Configuración Global</CardTitle>
-                  <CardDescription>
-                    Las credenciales de Mercado Pago se configuran mediante variables de entorno.
-                    Los tenants no tienen acceso a esta configuración ya que los pagos se procesan
-                    directamente a Clivaro.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-                      <p className="text-sm text-blue-900 dark:text-blue-100 mb-2">
-                        <strong>Variables de entorno requeridas:</strong>
-                      </p>
-                      <ul className="text-sm text-blue-800 dark:text-blue-200 space-y-1 list-disc list-inside">
-                        <li><code>MERCADOPAGO_ACCESS_TOKEN</code> - Token de acceso de Mercado Pago</li>
-                        <li><code>MERCADOPAGO_PUBLIC_KEY</code> - Clave pública de Mercado Pago (opcional)</li>
-                      </ul>
-                    </div>
-                    <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
-                      <p className="text-sm text-green-900 dark:text-green-100">
-                        <strong>Estado:</strong> {process.env.NEXT_PUBLIC_MERCADOPAGO_ACCESS_TOKEN ? '✅ Configurado' : '⚠️ No configurado'}
-                      </p>
-                      <p className="text-xs text-green-800 dark:text-green-200 mt-1">
-                        Las credenciales se cargan desde las variables de entorno del servidor.
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
+            <TabsTrigger value="payments" className="flex items-center gap-2">
+              <CreditCard className="h-4 w-4" />
+              Mercado Pago
+            </TabsTrigger>
           )}
+          <TabsTrigger value="subscription" className="flex items-center gap-2">
+            <CreditCard className="h-4 w-4" />
+            Suscripción
+          </TabsTrigger>
+          <TabsTrigger value="general" className="flex items-center gap-2">
+            <SettingsIcon className="h-4 w-4" />
+            General
+          </TabsTrigger>
+          <TabsTrigger value="data" className="flex items-center gap-2">
+            <SettingsIcon className="h-4 w-4" />
+            Datos / Backups
+          </TabsTrigger>
+        </TabsList>
 
-          <TabsContent value="subscription" className="space-y-4">
-            <SubscriptionConfig
-              settings={settings}
-              onSave={(data) => updateSettingsMutation.mutate(data)}
-              isLoading={updateSettingsMutation.isPending}
-            />
-          </TabsContent>
+        <TabsContent value="users" className="space-y-4">
+          <UsersConfig />
+        </TabsContent>
 
-          <TabsContent value="general" className="space-y-4">
-            <GeneralConfig
-              settings={settings}
-              onSave={(data) => updateSettingsMutation.mutate(data)}
-              isLoading={updateSettingsMutation.isPending}
-            />
-          </TabsContent>
+        <TabsContent value="billing" className="space-y-4">
+          <ElectronicBillingConfig
+            settings={settings}
+            onSave={(data) => updateSettingsMutation.mutate(data)}
+            isLoading={updateSettingsMutation.isPending}
+          />
+        </TabsContent>
 
-          <TabsContent value="data" className="space-y-4">
-            <DataConfig
-              settings={settings}
-              onSave={(data) => updateSettingsMutation.mutate(data)}
-              isLoading={updateSettingsMutation.isPending}
-            />
+        {isSuperAdmin && (
+          <TabsContent value="payments" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Mercado Pago - Configuración Global</CardTitle>
+                <CardDescription>
+                  Las credenciales de Mercado Pago se configuran mediante variables de entorno.
+                  Los tenants no tienen acceso a esta configuración ya que los pagos se procesan
+                  directamente a Clivaro.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                    <p className="text-sm text-blue-900 dark:text-blue-100 mb-2">
+                      <strong>Variables de entorno requeridas:</strong>
+                    </p>
+                    <ul className="text-sm text-blue-800 dark:text-blue-200 space-y-1 list-disc list-inside">
+                      <li><code>MERCADOPAGO_ACCESS_TOKEN</code> - Token de acceso de Mercado Pago</li>
+                      <li><code>MERCADOPAGO_PUBLIC_KEY</code> - Clave pública de Mercado Pago (opcional)</li>
+                    </ul>
+                  </div>
+                  <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+                    <p className="text-sm text-green-900 dark:text-green-100">
+                      <strong>Estado:</strong> {process.env.NEXT_PUBLIC_MERCADOPAGO_ACCESS_TOKEN ? '✅ Configurado' : '⚠️ No configurado'}
+                    </p>
+                    <p className="text-xs text-green-800 dark:text-green-200 mt-1">
+                      Las credenciales se cargan desde las variables de entorno del servidor.
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
-        </Tabs>
+        )}
+
+        <TabsContent value="subscription" className="space-y-4">
+          <SubscriptionConfig
+            settings={settings}
+            onSave={(data) => updateSettingsMutation.mutate(data)}
+            isLoading={updateSettingsMutation.isPending}
+          />
+        </TabsContent>
+
+        <TabsContent value="general" className="space-y-4">
+          <GeneralConfig
+            settings={settings}
+            onSave={(data) => updateSettingsMutation.mutate(data)}
+            isLoading={updateSettingsMutation.isPending}
+          />
+        </TabsContent>
+
+        <TabsContent value="data" className="space-y-4">
+          <DataConfig
+            settings={settings}
+            onSave={(data) => updateSettingsMutation.mutate(data)}
+            isLoading={updateSettingsMutation.isPending}
+          />
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }
