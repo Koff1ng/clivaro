@@ -42,100 +42,155 @@ export function useThermalPrint(options: ThermalPrintOptions) {
   <meta charset="UTF-8">
   <title>Ticket de Venta</title>
   <style>
-    @page {
-      size: ${widthMm}mm auto;
-      margin: 0;
-    }
-    
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
-    
-    html, body {
-      width: ${widthMm}mm;
-      margin: 0;
-      padding: 4mm;
-      font-family: 'Courier New', Courier, monospace;
-      font-size: 9pt;
-      line-height: 1.2;
-      background: white;
-      color: black;
-    }
-    
-    .thermal-ticket {
-      width: 100%;
-    }
-    
-    /* Typography */
-    .text-center { text-align: center; }
-    .text-left { text-align: left; }
-    .text-right { text-align: right; }
-    .font-bold { font-weight: bold; }
-    .font-semibold { font-weight: 600; }
-    .font-mono { font-family: 'Courier New', Courier, monospace; }
-    
-    .text-xs { font-size: 8pt; }
-    .text-sm { font-size: 9pt; }
-    .text-\\[10px\\], .text-\\[9px\\], .text-\\[8px\\] { font-size: 8pt; }
-    
-    /* Spacing */
-    .mb-0\\.5 { margin-bottom: 1mm; }
-    .mb-1 { margin-bottom: 2mm; }
-    .mb-2 { margin-bottom: 3mm; }
-    .mt-1 { margin-top: 1mm; }
-    .mt-2 { margin-top: 2mm; }
-    .pb-1 { padding-bottom: 1mm; }
-    .pb-2 { padding-bottom: 2mm; }
-    .pt-1 { padding-top: 1mm; }
-    .pl-2 { padding-left: 2mm; }
-    .py-1 { padding-top: 1mm; padding-bottom: 1mm; }
-    .px-1 { padding-left: 1mm; padding-right: 1mm; }
-    .gap-0\\.5 { gap: 1mm; }
-    .space-y-0\\.5 > * + * { margin-top: 1mm; }
-    .space-y-1 > * + * { margin-top: 2mm; }
-    
-    /* Borders - Thinner and cleaner */
-    .border-b { border-bottom: 0.5px solid #000; }
-    .border-t { border-top: 0.5px solid #000; }
-    .border-dashed { border-style: dotted; } /* Dotted looks cleaner on thermal */
-    
-    /* Flexbox */
-    .flex { display: flex; }
-    .justify-between { justify-content: space-between; }
-    .items-center { align-items: center; }
-    .flex-1 { flex: 1; min-width: 0; } /* min-width 0 allows truncate to work */
-    
-    /* Width - Adjusted for better alignment */
-    .w-\\[12mm\\] { width: 12mm; min-width: 12mm; }
-    .w-\\[8mm\\] { width: 8mm; min-width: 8mm; }
-    .w-\\[14mm\\] { width: 14mm; min-width: 14mm; }
-    
-    /* Text utilities */
-    .truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .break-words { word-wrap: break-word; }
-    .break-all { word-break: break-all; }
-    .leading-tight { line-height: 1.1; }
-    .uppercase { text-transform: uppercase; }
-    
-    /* Colors */
-    .text-gray-500, .text-gray-600, .text-gray-700 { color: #000; }
-    .text-green-700 { color: #000; }
-    .text-blue-700 { color: #000; }
-    .bg-white { background: white; }
-    
-    .hidden { display: none !important; }
-    
-    @media print {
-      html, body {
-        width: ${widthMm}mm;
-        padding: 0; /* Remove padding for print to use full width */
-      }
-      @page {
-        margin: 2mm;
-      }
-    }
+   /* ============================================================
+      TICKET TERMICO 80MM – PRODUCCION
+      Compatible: Chrome, Edge, Google Print, Antigravity
+      Fuente: Monospace POS
+      ============================================================ */
+   
+   @page {
+     size: ${widthMm}mm auto;
+     margin: 0;
+   }
+   
+   @media print {
+     html, body {
+       width: ${widthMm}mm;
+       margin: 0;
+       padding: 0;
+       background: #fff;
+       color: #000;
+       font-family: "Courier New", Courier, monospace;
+       font-size: 11px;
+       line-height: 1.25;
+       -webkit-print-color-adjust: exact;
+       print-color-adjust: exact;
+     }
+   
+     /* Elimina cualquier borde o outline fantasma */
+     * {
+       border: 0 !important;
+       outline: 0 !important;
+       box-shadow: none !important;
+       background: transparent !important;
+     }
+   
+     /* Evita cortes raros */
+     div, p, span, table, tr, td {
+       page-break-inside: avoid;
+     }
+   }
+   
+   /* ============================================================
+      CONTENEDOR PRINCIPAL
+      ============================================================ */
+   
+   .ticket {
+     width: ${widthMm}mm;
+     padding: 6px 6px 10px 6px;
+   }
+   
+   /* ============================================================
+      TIPOGRAFIA
+      ============================================================ */
+   
+   .center { text-align: center; }
+   .right  { text-align: right; }
+   .bold   { font-weight: bold; }
+   .small  { font-size: 10px; }
+   
+   /* ============================================================
+      SEPARADORES POS (UNICA LINEA PERMITIDA)
+      ============================================================ */
+   
+   .separator {
+     border-top: 1px dashed #000 !important; /* Force border for separator */
+     margin: 6px 0;
+     width: 100%;
+     display: block;
+   }
+   
+   /* ============================================================
+      TABLA DE ITEMS
+      ============================================================ */
+   
+   .items {
+     width: 100%;
+     border-collapse: collapse;
+     margin-top: 4px;
+   }
+   
+   .items th {
+     text-align: left;
+     font-weight: bold;
+     font-size: 10px;
+     padding-bottom: 2px;
+   }
+   
+   .items td {
+     font-size: 11px;
+     padding: 2px 0;
+     vertical-align: top;
+   }
+   
+   .items .qty   { width: 15%; text-align: right; padding-right: 4px; }
+   .items .desc  { width: 55%; }
+   .items .price { width: 30%; text-align: right; }
+   
+   /* ============================================================
+      TOTALES
+      ============================================================ */
+   
+   .totals {
+     width: 100%;
+     margin-top: 6px;
+     border-collapse: collapse;
+   }
+   
+   .totals td {
+     padding: 2px 0;
+     font-size: 11px;
+   }
+   
+   .totals .label {
+     text-align: left;
+     width: 60%;
+   }
+   
+   .totals .value {
+     text-align: right;
+     width: 40%;
+   }
+   
+   /* ============================================================
+      QR DIAN / CODIGOS
+      ============================================================ */
+   
+   .qr {
+     display: block;
+     margin: 6px auto;
+     width: 140px;
+   }
+   
+   /* ============================================================
+      FOOTER
+      ============================================================ */
+   
+   .footer {
+     margin-top: 8px;
+     text-align: center;
+     font-size: 10px;
+   }
+   
+   /* Reset global styles in popup */
+   body {
+     background: #fff;
+     color: #000;
+     font-family: "Courier New", Courier, monospace;
+     font-size: 11px;
+     padding: 0;
+     margin: 0;
+   }
   </style>
 </head>
 <body>
