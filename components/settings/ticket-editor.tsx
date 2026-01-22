@@ -38,6 +38,11 @@ export interface TicketDesignSettings {
     showCufe: boolean
     footerText: string
     separator: 'dashes' | 'dots' | 'lines'
+    // Font settings for thermal print legibility
+    fontSize: 'small' | 'medium' | 'large'
+    fontWeight: 'normal' | 'bold'
+    headerFontSize: 'medium' | 'large' | 'xlarge'
+    lineSpacing: 'compact' | 'normal' | 'relaxed'
 }
 
 interface TicketEditorProps {
@@ -73,7 +78,12 @@ const defaultSettings: TicketDesignSettings = {
     showQr: true,
     showCufe: true,
     footerText: 'Gracias por su compra',
-    separator: 'dashes'
+    separator: 'dashes',
+    // Font defaults for better thermal print legibility
+    fontSize: 'medium',
+    fontWeight: 'bold',
+    headerFontSize: 'large',
+    lineSpacing: 'normal'
 }
 
 // Sample invoice data for preview
@@ -314,8 +324,69 @@ export function TicketEditor({ settings: initialSettings, companyInfo, onChange,
                             />
                         </div>
                     </div>
+                </div>
+
+                {/* Font Settings for Thermal Print Legibility */}
+                <div className="space-y-3 pt-4 border-t">
+                    <Label className="font-medium">Tipografía y legibilidad</Label>
+                    <p className="text-xs text-muted-foreground">
+                        Ajusta el tamaño y grosor de la letra para mejorar la legibilidad en impresoras térmicas
+                    </p>
+                    <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                            <Label className="text-xs">Tamaño de letra (contenido)</Label>
+                            <Select value={settings.fontSize} onValueChange={(val: any) => updateSetting('fontSize', val)}>
+                                <SelectTrigger className="h-9">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="small">Pequeña</SelectItem>
+                                    <SelectItem value="medium">Mediana</SelectItem>
+                                    <SelectItem value="large">Grande</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="space-y-1">
+                            <Label className="text-xs">Grosor de letra</Label>
+                            <Select value={settings.fontWeight} onValueChange={(val: any) => updateSetting('fontWeight', val)}>
+                                <SelectTrigger className="h-9">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="normal">Normal</SelectItem>
+                                    <SelectItem value="bold">Negrita (recomendado)</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="space-y-1">
+                            <Label className="text-xs">Tamaño del encabezado</Label>
+                            <Select value={settings.headerFontSize} onValueChange={(val: any) => updateSetting('headerFontSize', val)}>
+                                <SelectTrigger className="h-9">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="medium">Mediano</SelectItem>
+                                    <SelectItem value="large">Grande</SelectItem>
+                                    <SelectItem value="xlarge">Extra grande</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="space-y-1">
+                            <Label className="text-xs">Espaciado entre líneas</Label>
+                            <Select value={settings.lineSpacing} onValueChange={(val: any) => updateSetting('lineSpacing', val)}>
+                                <SelectTrigger className="h-9">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="compact">Compacto</SelectItem>
+                                    <SelectItem value="normal">Normal</SelectItem>
+                                    <SelectItem value="relaxed">Espaciado</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
                     <p className="text-xs text-muted-foreground italic">
-                        * Siempre será visible en tus documentos electrónicos.
+                        * Se recomienda usar letra Negrita y tamaño Mediano o Grande para impresoras térmicas.
                     </p>
                 </div>
 
@@ -362,8 +433,18 @@ export function TicketEditor({ settings: initialSettings, companyInfo, onChange,
                 <div className="flex-1 flex justify-center overflow-y-auto bg-gray-100 rounded-lg p-4">
                     <div
                         className={cn(
-                            "bg-white shadow-lg font-mono text-xs leading-tight",
-                            settings.paperSize === 80 ? "w-[300px]" : "w-[220px]"
+                            "bg-white shadow-lg font-mono",
+                            settings.paperSize === 80 ? "w-[300px]" : "w-[220px]",
+                            // Font size
+                            settings.fontSize === 'small' && "text-[10px]",
+                            settings.fontSize === 'medium' && "text-xs",
+                            settings.fontSize === 'large' && "text-sm",
+                            // Font weight
+                            settings.fontWeight === 'bold' && "font-semibold",
+                            // Line spacing
+                            settings.lineSpacing === 'compact' && "leading-tight",
+                            settings.lineSpacing === 'normal' && "leading-normal",
+                            settings.lineSpacing === 'relaxed' && "leading-relaxed"
                         )}
                         style={{
                             paddingLeft: `${settings.marginLeft * 2}px`,
@@ -382,7 +463,12 @@ export function TicketEditor({ settings: initialSettings, companyInfo, onChange,
                             {settings.showLogo && (
                                 <div className="text-2xl font-bold mb-2">🏪</div>
                             )}
-                            <div className="font-bold text-sm uppercase">{companyInfo.name || 'NOMBRE DE LA EMPRESA'}</div>
+                            <div className={cn(
+                                "font-bold uppercase",
+                                settings.headerFontSize === 'medium' && "text-sm",
+                                settings.headerFontSize === 'large' && "text-base",
+                                settings.headerFontSize === 'xlarge' && "text-lg"
+                            )}>{companyInfo.name || 'NOMBRE DE LA EMPRESA'}</div>
                             <div>NIT {companyInfo.nit || '900.000.000-1'}</div>
                             <div>{companyInfo.address || 'Calle 123 #45-67'}, {companyInfo.city || 'Bogotá'}</div>
                             <div>Teléfono: {companyInfo.phone || '+57 300 123 4567'}</div>
