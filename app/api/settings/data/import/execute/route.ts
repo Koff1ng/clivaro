@@ -9,58 +9,65 @@ export async function POST(req: Request) {
     try {
         const session = await getServerSession(authOptions)
         const user = session?.user as any
-        if (!user?.id || !user?.tenantId) {
+        if (!user?.id) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
         }
 
-        const { entityType, data, mapping } = await req.json() // data is valid array from preflight
-        const tenantId = user.tenantId
+        const { entityType, data } = await req.json() // data is valid array from preflight
 
         let results = { success: 0, failed: 0, errors: [] as string[] }
 
         if (entityType === 'clients') {
             for (const row of data) {
                 try {
-                    // Determine unique key (Email or TaxID)
-                    const uniqueKey = row['email'] || row['taxId'] || row['nit'] || row['cc']
-                    if (!uniqueKey) {
+                    // Determine unique key (Email or TaxID or name)
+                    const email = row['email']
+                    const name = row['name']
+
+                    if (!name) {
                         results.failed++
-                        results.errors.push(`Row skipped: No identifier (email/taxId) found for ${row['name'] || 'unknown'}`)
+                        results.errors.push(`Row skipped: No name found`)
                         continue
                     }
 
-                    // Map fields based on user selection or auto-match
-                    // Simple implementation: direct mapping for now
-                    await prisma.customer.upsert({
-                        where: {
-                            tenantId_email: row['email'] ? { tenantId, email: row['email'] } : undefined,
-                            // If no email, we ideally need another unique constraint. 
-                            // Prisma schema might use taxId as unique? Currently schema says: @@index([tenantId, email])
-                            // Let's rely on Create if not found for MVP if no unique constraint matches perfectly
-                        },
-                        update: {
-                            name: row['name'],
-                            phone: row['phone'],
-                            address: row['address'],
-                            city: row['city'],
-                            taxId: row['taxId'] || row['nit']
-                        },
-                        create: {
-                            tenantId,
-                            name: row['name'],
-                            email: row['email'],
-                            phone: row['phone'],
-                            address: row['address'],
-                            city: row['city'],
-                            taxId: row['taxId'] || row['nit'] || 'CONSUMIDOR_FINAL'
-                        }
-                    })
+                    // Try to find existing customer by email if provided
+                    let existingCustomer = null
+                    if (email) {
+                        existingCustomer = await prisma.customer.findFirst({
+                            where: { email }
+                        })
+                    }
+
+                    if (existingCustomer) {
+                        // Update existing
+                        await prisma.customer.update({
+                            where: { id: existingCustomer.id },
+                            data: {
+                                name: row['name'],
+                                phone: row['phone'] || null,
+                                address: row['address'] || null,
+                                taxId: row['taxId'] || row['nit'] || null,
+                                tags: row['tags'] || null,
+                                notes: row['notes'] || null
+                            }
+                        })
+                    } else {
+                        // Create new
+                        await prisma.customer.create({
+                            data: {
+                                name: row['name'],
+                                email: row['email'] || null,
+                                phone: row['phone'] || null,
+                                address: row['address'] || null,
+                                taxId: row['taxId'] || row['nit'] || null,
+                                tags: row['tags'] || null,
+                                notes: row['notes'] || null
+                            }
+                        })
+                    }
                     results.success++
                 } catch (e: any) {
-                    // If upsert fails (e.g. unique constraint on taxId not handled above), try generic create or log error
-                    // Fallback to simpler logic:
                     if (e.code === 'P2002') {
-                        // Constraint violation
                         results.failed++
                         results.errors.push(`Duplicate found for ${row['name']}`)
                     } else {
@@ -76,25 +83,32 @@ export async function POST(req: Request) {
                     const sku = row['sku'] || row['code']
                     if (!sku) {
                         results.failed++
+                        results.errors.push(`Row skipped: No SKU/code found for ${row['name'] || 'unknown'}`)
                         continue
                     }
 
                     await prisma.product.upsert({
-                        where: { tenantId_sku: { tenantId, sku } },
+                        where: { sku: String(sku) },
                         update: {
                             name: row['name'],
                             price: parseFloat(row['price'] || 0),
-                            stock: parseInt(row['stock'] || 0),
-                            description: row['description']
+                            cost: parseFloat(row['cost'] || 0),
+                            description: row['description'] || null,
+                            brand: row['brand'] || null,
+                            category: row['category'] || null,
+                            barcode: row['barcode'] || null,
+                            taxRate: parseFloat(row['taxRate'] || 0)
                         },
                         create: {
-                            tenantId,
                             sku: String(sku),
                             name: row['name'],
                             price: parseFloat(row['price'] || 0),
-                            stock: parseInt(row['stock'] || 0),
-                            description: row['description'],
-                            categoryId: 'uncategorized' // Placeholder, ideally findByCategoryName
+                            cost: parseFloat(row['cost'] || 0),
+                            description: row['description'] || null,
+                            brand: row['brand'] || null,
+                            category: row['category'] || null,
+                            barcode: row['barcode'] || null,
+                            taxRate: parseFloat(row['taxRate'] || 0)
                         }
                     })
                     results.success++

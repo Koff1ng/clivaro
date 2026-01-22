@@ -10,12 +10,11 @@ export async function POST(req: Request) {
     try {
         const session = await getServerSession(authOptions)
         const user = session?.user as any
-        if (!user?.id || !user?.tenantId) {
+        if (!user?.id) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
         }
 
         const { entities, format } = await req.json()
-        const tenantId = user.tenantId
 
         const wb = XLSX.utils.book_new()
         const jsonResult: Record<string, any[]> = {}
@@ -23,9 +22,17 @@ export async function POST(req: Request) {
         // CLIENTS
         if (entities.includes('clients')) {
             const clients = await prisma.customer.findMany({
-                where: { tenantId },
                 select: {
-                    id: true, name: true, taxId: true, email: true, phone: true, address: true, city: true, type: true, createdAt: true
+                    id: true,
+                    name: true,
+                    taxId: true,
+                    email: true,
+                    phone: true,
+                    address: true,
+                    tags: true,
+                    notes: true,
+                    active: true,
+                    createdAt: true
                 }
             })
             if (format === 'json') {
@@ -39,21 +46,28 @@ export async function POST(req: Request) {
         // PRODUCTS
         if (entities.includes('products')) {
             const products = await prisma.product.findMany({
-                where: { tenantId },
-                include: { category: { select: { name: true } }, brand: { select: { name: true } } }
+                select: {
+                    id: true,
+                    sku: true,
+                    barcode: true,
+                    name: true,
+                    brand: true,
+                    category: true,
+                    unitOfMeasure: true,
+                    cost: true,
+                    price: true,
+                    taxRate: true,
+                    trackStock: true,
+                    active: true,
+                    description: true,
+                    createdAt: true
+                }
             })
-            const flatProducts = products.map(p => ({
-                ...p,
-                categoryName: p.category?.name || '',
-                brandName: p.brand?.name || '',
-                category: undefined,
-                brand: undefined
-            }))
 
             if (format === 'json') {
-                jsonResult['products'] = flatProducts
+                jsonResult['products'] = products
             } else {
-                const ws = XLSX.utils.json_to_sheet(flatProducts)
+                const ws = XLSX.utils.json_to_sheet(products)
                 XLSX.utils.book_append_sheet(wb, ws, "Productos")
             }
         }
@@ -61,7 +75,6 @@ export async function POST(req: Request) {
         // SALES
         if (entities.includes('sales')) {
             const sales = await prisma.invoice.findMany({
-                where: { tenantId },
                 include: {
                     customer: { select: { name: true } },
                     items: {
@@ -72,11 +85,9 @@ export async function POST(req: Request) {
                 take: 1000 // Limit for safety
             })
 
-            // For Excel, we might want one row per invoice or per item. 
-            // Let's do simple header per invoice for now, or flat items.
-            // Doing flat items is usually better for analysis
-            const flatSales = sales.flatMap(sale =>
-                sale.items.map(item => ({
+            // Flat items for Excel export
+            const flatSales = sales.flatMap((sale: any) =>
+                sale.items.map((item: any) => ({
                     invoiceNumber: sale.number,
                     date: sale.issuedAt,
                     customer: sale.customer?.name,
@@ -102,7 +113,7 @@ export async function POST(req: Request) {
             return new NextResponse(JSON.stringify(jsonResult, null, 2), {
                 headers: {
                     'Content-Type': 'application/json',
-                    'Content-Disposition': `attachment; filename="backup-${tenantId}.json"`
+                    'Content-Disposition': `attachment; filename="backup-${new Date().toISOString().split('T')[0]}.json"`
                 }
             })
         } else {
@@ -112,7 +123,7 @@ export async function POST(req: Request) {
             return new NextResponse(buf, {
                 headers: {
                     'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                    'Content-Disposition': `attachment; filename="backup-${tenantId}.xlsx"`
+                    'Content-Disposition': `attachment; filename="backup-${new Date().toISOString().split('T')[0]}.xlsx"`
                 }
             })
         }
