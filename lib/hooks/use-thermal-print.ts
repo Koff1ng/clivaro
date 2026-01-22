@@ -25,55 +25,95 @@ export function useThermalPrint(options: ThermalPrintOptions) {
 
     const style = document.createElement('style')
     style.id = styleId
+    // More aggressive CSS to ensure print content is visible
     style.innerHTML = `
 @media print {
-  @page { size: ${widthMm}mm auto; margin: 0; }
+  @page { 
+    size: ${widthMm}mm auto; 
+    margin: 0mm; 
+  }
+  
+  /* Reset everything */
   html, body { 
     width: ${widthMm}mm !important; 
     height: auto !important;
     margin: 0 !important; 
     padding: 0 !important; 
-    background: #fff !important;
-    overflow: visible !important;
+    background: white !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
-  /* Hide everything first */
-  body > * { 
-    display: none !important; 
-    visibility: hidden !important; 
+  
+  /* Hide EVERYTHING by default */
+  body *, body > *, html > * {
+    visibility: hidden !important;
   }
-  /* Force show the print container - override Tailwind .hidden */
-  #${targetId} { 
+  
+  /* Hide specific elements that might have display:block */
+  header, footer, nav, aside, .print\\:hidden, [class*="print:hidden"] {
+    display: none !important;
+  }
+  
+  /* Show the print container and ALL its ancestors */
+  #${targetId},
+  #${targetId} *,
+  #${targetId}-ancestor,
+  #${targetId}-ancestor * {
+    visibility: visible !important;
+  }
+  
+  /* Force the container to display even if it has .hidden class */
+  #${targetId} {
     display: block !important;
     visibility: visible !important;
-    position: fixed !important; 
-    left: 0 !important; 
-    top: 0 !important; 
-    width: ${widthMm}mm !important; 
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: ${widthMm}mm !important;
     max-width: ${widthMm}mm !important;
+    min-height: 100vh !important;
     height: auto !important;
     z-index: 999999 !important;
-    background: #fff !important;
+    background: white !important;
+    padding: 2mm !important;
+    margin: 0 !important;
     overflow: visible !important;
+    color: black !important;
   }
-  #${targetId}.hidden {
+  
+  /* Override Tailwind .hidden class specifically */
+  #${targetId}.hidden,
+  .hidden#${targetId},
+  div#${targetId}.hidden,
+  [id="${targetId}"].hidden {
     display: block !important;
-  }
-  /* Make all children visible */
-  #${targetId} * { 
     visibility: visible !important;
   }
-  #${targetId} > * {
-    display: revert !important;
+  
+  /* Make all children in the print container visible with proper display */
+  #${targetId} div { display: block !important; visibility: visible !important; }
+  #${targetId} span { display: inline !important; visibility: visible !important; }
+  #${targetId} p { display: block !important; visibility: visible !important; }
+  #${targetId} h1, #${targetId} h2, #${targetId} h3 { display: block !important; visibility: visible !important; }
+  #${targetId} table { display: table !important; visibility: visible !important; }
+  #${targetId} thead { display: table-header-group !important; visibility: visible !important; }
+  #${targetId} tbody { display: table-row-group !important; visibility: visible !important; }
+  #${targetId} tr { display: table-row !important; visibility: visible !important; }
+  #${targetId} th, #${targetId} td { display: table-cell !important; visibility: visible !important; }
+  
+  /* Ensure text is visible */
+  #${targetId}, #${targetId} * {
+    color: black !important;
+    background-color: white !important;
   }
-  #${targetId} div {
-    display: block !important;
+  
+  /* Thermal ticket specific styles */
+  #${targetId} .thermal-ticket {
+    width: 100% !important;
+    font-family: 'Courier New', Courier, monospace !important;
+    font-size: 10pt !important;
+    line-height: 1.3 !important;
   }
-  #${targetId} table { display: table !important; }
-  #${targetId} thead { display: table-header-group !important; }
-  #${targetId} tbody { display: table-row-group !important; }
-  #${targetId} tr { display: table-row !important; }
-  #${targetId} th, #${targetId} td { display: table-cell !important; }
-  #${targetId} span { display: inline !important; }
 }`
     document.head.appendChild(style)
   }, [styleId, targetId, widthMm, clearAllPrintStyles])
@@ -87,8 +127,8 @@ export function useThermalPrint(options: ThermalPrintOptions) {
   const print = useCallback(() => {
     try {
       injectStyle()
-      // Let the browser apply styles before printing
-      setTimeout(() => window.print(), 50)
+      // Give browser time to apply styles
+      setTimeout(() => window.print(), 100)
     } catch {
       // Swallow: UI layer should toast.
     }
@@ -143,94 +183,88 @@ export function useLetterPrint(options: LetterPrintOptions) {
     size: letter ${orientation}; 
     margin: 15mm 10mm; 
   }
+  
+  /* Reset everything */
   html, body { 
     width: 100% !important; 
     height: auto !important;
     margin: 0 !important; 
     padding: 0 !important; 
-    background: #fff !important; 
+    background: white !important; 
     font-size: 11pt !important;
     line-height: 1.4 !important;
-    overflow: visible !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
-  /* Hide everything first */
-  body > * { 
-    display: none !important; 
-    visibility: hidden !important; 
+  
+  /* Hide EVERYTHING by default */
+  body *, body > *, html > * {
+    visibility: hidden !important;
   }
-  /* Force show the print container - override Tailwind .hidden */
+  
+  /* Hide specific elements */
+  header, footer, nav, aside, .print\\:hidden, [class*="print:hidden"] {
+    display: none !important;
+  }
+  
+  /* Show the print container and ALL its children */
+  #${targetId},
+  #${targetId} * {
+    visibility: visible !important;
+  }
+  
+  /* Force the container to display */
   #${targetId} { 
     display: block !important;
     visibility: visible !important;
-    position: fixed !important; 
+    position: absolute !important; 
     left: 0 !important; 
     top: 0 !important; 
     width: 100% !important;
     height: auto !important;
     z-index: 999999 !important;
-    background: #fff !important;
-    overflow: visible !important;
+    background: white !important;
+    color: black !important;
   }
-  #${targetId}.hidden {
+  
+  /* Override Tailwind .hidden class */
+  #${targetId}.hidden,
+  .hidden#${targetId},
+  div#${targetId}.hidden,
+  [id="${targetId}"].hidden {
     display: block !important;
-  }
-  /* Make all children visible */
-  #${targetId} * { 
     visibility: visible !important;
   }
-  #${targetId} > * {
-    display: revert !important;
-  }
-  /* Restore specific display types */
-  #${targetId} .grid {
-    display: grid !important;
-  }
-  #${targetId} .flex {
-    display: flex !important;
-  }
-  #${targetId} div {
-    display: block !important;
-  }
-  #${targetId} span {
-    display: inline !important;
-  }
-  #${targetId} table {
-    display: table !important;
-    width: 100% !important;
-    border-collapse: collapse !important;
-  }
-  #${targetId} thead { display: table-header-group !important; }
-  #${targetId} tbody { display: table-row-group !important; }
-  #${targetId} tr { display: table-row !important; }
-  #${targetId} th, #${targetId} td {
-    display: table-cell !important;
-    border: 1px solid #ddd !important;
-    padding: 6px 8px !important;
-    font-size: 10pt !important;
-  }
-  #${targetId} th {
-    background-color: #f5f5f5 !important;
-    font-weight: bold !important;
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-  }
-  #${targetId} h1, #${targetId} h2, #${targetId} h3 {
+  
+  /* Make all children visible with proper display */
+  #${targetId} div { display: block !important; visibility: visible !important; }
+  #${targetId} span { display: inline !important; visibility: visible !important; }
+  #${targetId} p { display: block !important; visibility: visible !important; }
+  #${targetId} h1, #${targetId} h2, #${targetId} h3 { 
+    display: block !important; 
+    visibility: visible !important;
     page-break-after: avoid !important;
-    display: block !important;
   }
+  
+  /* Tables */
+  #${targetId} table { display: table !important; visibility: visible !important; width: 100% !important; }
+  #${targetId} thead { display: table-header-group !important; visibility: visible !important; }
+  #${targetId} tbody { display: table-row-group !important; visibility: visible !important; }
+  #${targetId} tr { display: table-row !important; visibility: visible !important; }
+  #${targetId} th, #${targetId} td { display: table-cell !important; visibility: visible !important; }
+  
+  /* Grid and Flex */
+  #${targetId} .grid { display: grid !important; }
+  #${targetId} .flex { display: flex !important; }
+  
+  /* Ensure text is visible */
+  #${targetId}, #${targetId} * {
+    color: black !important;
+  }
+  
+  /* Page breaks */
   #${targetId} table, #${targetId} .avoid-break {
     page-break-inside: avoid !important;
-  }
-  #${targetId} .bg-gray-50, #${targetId} .bg-gray-100, #${targetId} .bg-blue-50, #${targetId} .bg-green-50 {
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-  }
-  #${targetId} .letter-print-content {
-    display: block !important;
-    padding: 0 !important;
-  }
-  #${targetId} .letter-print-content * {
-    visibility: visible !important;
   }
 }`
     document.head.appendChild(style)
