@@ -28,16 +28,52 @@ export function useThermalPrint(options: ThermalPrintOptions) {
     style.innerHTML = `
 @media print {
   @page { size: ${widthMm}mm auto; margin: 0; }
-  body { width: ${widthMm}mm !important; margin: 0 !important; padding: 0 !important; background: #fff !important; }
-  body * { visibility: hidden !important; }
-  #${targetId}, #${targetId} * { visibility: visible !important; display: block !important; }
-  #${targetId} { position: absolute !important; left: 0 !important; top: 0 !important; width: ${widthMm}mm !important; max-width: ${widthMm}mm !important; display: block !important; }
-  #${targetId} .hidden { display: block !important; }
+  html, body { 
+    width: ${widthMm}mm !important; 
+    height: auto !important;
+    margin: 0 !important; 
+    padding: 0 !important; 
+    background: #fff !important;
+    overflow: visible !important;
+  }
+  /* Hide everything first */
+  body > * { 
+    display: none !important; 
+    visibility: hidden !important; 
+  }
+  /* Force show the print container - override Tailwind .hidden */
+  #${targetId} { 
+    display: block !important;
+    visibility: visible !important;
+    position: fixed !important; 
+    left: 0 !important; 
+    top: 0 !important; 
+    width: ${widthMm}mm !important; 
+    max-width: ${widthMm}mm !important;
+    height: auto !important;
+    z-index: 999999 !important;
+    background: #fff !important;
+    overflow: visible !important;
+  }
+  #${targetId}.hidden {
+    display: block !important;
+  }
+  /* Make all children visible */
+  #${targetId} * { 
+    visibility: visible !important;
+  }
+  #${targetId} > * {
+    display: revert !important;
+  }
+  #${targetId} div {
+    display: block !important;
+  }
   #${targetId} table { display: table !important; }
   #${targetId} thead { display: table-header-group !important; }
   #${targetId} tbody { display: table-row-group !important; }
   #${targetId} tr { display: table-row !important; }
   #${targetId} th, #${targetId} td { display: table-cell !important; }
+  #${targetId} span { display: inline !important; }
 }`
     document.head.appendChild(style)
   }, [styleId, targetId, widthMm, clearAllPrintStyles])
@@ -107,34 +143,56 @@ export function useLetterPrint(options: LetterPrintOptions) {
     size: letter ${orientation}; 
     margin: 15mm 10mm; 
   }
-  body { 
+  html, body { 
     width: 100% !important; 
+    height: auto !important;
     margin: 0 !important; 
     padding: 0 !important; 
     background: #fff !important; 
     font-size: 11pt !important;
     line-height: 1.4 !important;
+    overflow: visible !important;
   }
-  body * { visibility: hidden !important; }
-  #${targetId}, #${targetId} * { 
-    visibility: visible !important; 
-    display: revert !important;
+  /* Hide everything first */
+  body > * { 
+    display: none !important; 
+    visibility: hidden !important; 
   }
+  /* Force show the print container - override Tailwind .hidden */
   #${targetId} { 
-    position: absolute !important; 
+    display: block !important;
+    visibility: visible !important;
+    position: fixed !important; 
     left: 0 !important; 
     top: 0 !important; 
-    width: 100% !important; 
+    width: 100% !important;
+    height: auto !important;
+    z-index: 999999 !important;
+    background: #fff !important;
+    overflow: visible !important;
+  }
+  #${targetId}.hidden {
     display: block !important;
   }
-  #${targetId} .hidden {
-    display: block !important;
+  /* Make all children visible */
+  #${targetId} * { 
+    visibility: visible !important;
   }
+  #${targetId} > * {
+    display: revert !important;
+  }
+  /* Restore specific display types */
   #${targetId} .grid {
     display: grid !important;
   }
   #${targetId} .flex {
     display: flex !important;
+  }
+  #${targetId} div {
+    display: block !important;
+  }
+  #${targetId} span {
+    display: inline !important;
   }
   #${targetId} table {
     display: table !important;
@@ -167,8 +225,12 @@ export function useLetterPrint(options: LetterPrintOptions) {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
-  #${targetId} span {
-    display: inline !important;
+  #${targetId} .letter-print-content {
+    display: block !important;
+    padding: 0 !important;
+  }
+  #${targetId} .letter-print-content * {
+    visibility: visible !important;
   }
 }`
     document.head.appendChild(style)
