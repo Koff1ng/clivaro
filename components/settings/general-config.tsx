@@ -10,8 +10,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
-import { Settings as SettingsIcon, Loader2, Plus, Trash2, Printer, MapPin, Hash, Building2, Receipt, FileText, ShoppingCart, Search, Network } from 'lucide-react'
+import { Settings as SettingsIcon, Loader2, Plus, Trash2, Printer, MapPin, Hash, Building2, Receipt, FileText, ShoppingCart, Search, Network, Edit } from 'lucide-react'
 import { useToast } from '@/components/ui/toast'
+import { TicketEditor, TicketDesignSettings } from './ticket-editor'
 
 // Interfaces for custom settings structure
 interface PrinterDefinition {
@@ -41,14 +42,7 @@ interface CustomSettings {
     font?: 'monospace'
     autoCut: boolean
     printers: PrinterDefinition[]
-    ticketDesign: {
-      showLogo: boolean
-      logoWidth?: number
-      showQr: boolean
-      showCufe: boolean
-      footerText: string
-      separator: 'dashes' | 'dots' | 'lines'
-    }
+    ticketDesign: TicketDesignSettings
     posBehavior: {
       autoPrint: boolean
       previewBeforePrint: boolean
@@ -131,6 +125,7 @@ export function GeneralConfig({ settings, onSave, isLoading }: GeneralConfigProp
   // Scanner State
   const [isScanning, setIsScanning] = useState(false)
   const [showScanDialog, setShowScanDialog] = useState(false)
+  const [showTicketEditor, setShowTicketEditor] = useState(false)
   const [scannedDevices, setScannedDevices] = useState<{ ip: string, name: string, port: number }[]>([])
 
   const scanNetwork = async () => {
@@ -586,31 +581,47 @@ export function GeneralConfig({ settings, onSave, isLoading }: GeneralConfigProp
                 </div>
               </div>
 
-              {/* Diseño del Ticket - To be implemented fully, placeholder for now */}
+              {/* Diseño del Ticket */}
               <div className="pt-4 border-t">
-                <h3 className="font-medium mb-3">Diseño del Ticket</h3>
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <h3 className="font-medium">Diseño del Ticket</h3>
+                    <p className="text-sm text-muted-foreground">Personaliza la apariencia de tus tirillas de impresión</p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setShowTicketEditor(true)}
+                    className="gap-2"
+                  >
+                    <Edit className="h-4 w-4" />
+                    Editar Diseño
+                  </Button>
+                </div>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="flex items-center justify-between p-3 border rounded">
-                    <Label className="text-xs">Mostrar Logo</Label>
-                    <Switch
-                      checked={initialCustomSettings.printing?.ticketDesign?.showLogo}
-                      onCheckedChange={(chk) => handleTicketDesignChange('showLogo', chk)}
-                    />
+                  <div className="flex items-center justify-between p-3 border rounded bg-gray-50">
+                    <Label className="text-xs">Logo</Label>
+                    <span className="text-xs text-muted-foreground">
+                      {initialCustomSettings.printing?.ticketDesign?.showLogo ? '✓ Visible' : 'Oculto'}
+                    </span>
                   </div>
-                  <div className="flex items-center justify-between p-3 border rounded">
-                    <Label className="text-xs">Mostrar QR</Label>
-                    <Switch
-                      checked={initialCustomSettings.printing?.ticketDesign?.showQr}
-                      onCheckedChange={(chk) => handleTicketDesignChange('showQr', chk)}
-                    />
+                  <div className="flex items-center justify-between p-3 border rounded bg-gray-50">
+                    <Label className="text-xs">QR</Label>
+                    <span className="text-xs text-muted-foreground">
+                      {initialCustomSettings.printing?.ticketDesign?.showQr ? '✓ Visible' : 'Oculto'}
+                    </span>
                   </div>
-                  <div className="col-span-2">
-                    <Label className="text-xs">Texto Pie de Página</Label>
-                    <Input
-                      value={initialCustomSettings.printing?.ticketDesign?.footerText || ''}
-                      onChange={(e) => handleTicketDesignChange('footerText', e.target.value)}
-                      className="h-8 mt-1"
-                    />
+                  <div className="flex items-center justify-between p-3 border rounded bg-gray-50">
+                    <Label className="text-xs">Tamaño</Label>
+                    <span className="text-xs text-muted-foreground">
+                      {(initialCustomSettings.printing?.ticketDesign as any)?.paperSize || 80}mm
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between p-3 border rounded bg-gray-50">
+                    <Label className="text-xs">Estilo</Label>
+                    <span className="text-xs text-muted-foreground capitalize">
+                      {(initialCustomSettings.printing?.ticketDesign as any)?.templateStyle || 'Clásico'}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -667,6 +678,45 @@ export function GeneralConfig({ settings, onSave, isLoading }: GeneralConfigProp
           </div>
           <DialogFooter>
             <Button variant="secondary" onClick={() => setShowScanDialog(false)}>Cerrar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Ticket Editor Dialog */}
+      <Dialog open={showTicketEditor} onOpenChange={setShowTicketEditor}>
+        <DialogContent className="max-w-6xl h-[90vh] overflow-hidden">
+          <DialogHeader>
+            <DialogTitle>Configurar Plantilla de Impresión</DialogTitle>
+            <DialogDescription>
+              Personaliza el diseño de tus tirillas de impresión. Los cambios se verán reflejados en tiempo real.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex-1 overflow-y-auto py-4">
+            <TicketEditor
+              settings={initialCustomSettings.printing?.ticketDesign as any || {}}
+              companyInfo={{
+                name: watch('companyName'),
+                nit: watch('companyNit'),
+                address: watch('companyAddress'),
+                city: watch('companyCity'),
+                phone: watch('companyPhone'),
+                email: watch('companyEmail'),
+                regime: watch('companyRegime')
+              }}
+              onChange={(newSettings) => {
+                updateCustomSettings(prev => ({
+                  ...prev,
+                  printing: {
+                    ...(prev.printing as any),
+                    ticketDesign: newSettings
+                  }
+                }))
+              }}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="secondary" onClick={() => setShowTicketEditor(false)}>Cancelar</Button>
+            <Button onClick={() => setShowTicketEditor(false)}>Guardar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
