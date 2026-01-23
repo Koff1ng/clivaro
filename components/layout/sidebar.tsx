@@ -180,7 +180,7 @@ export function Sidebar() {
       {/* Sidebar */}
       <aside
         className={cn(
-          'fixed md:static top-0 left-0 z-50 h-screen flex flex-col border-r bg-[#0F172A] text-slate-100 transition-all duration-300 ease-in-out',
+          'fixed md:static top-0 left-0 z-50 h-screen flex flex-col border-r border-slate-800 bg-[#0F172A] text-slate-100 transition-all duration-300 ease-in-out',
           isOpen ? 'w-64 translate-x-0' : 'w-0 -translate-x-full md:translate-x-0 md:w-16'
         )}
       >
@@ -271,8 +271,8 @@ export function Sidebar() {
               className={cn(
                 'flex items-center gap-3 rounded-lg text-sm font-medium transition-colors relative group',
                 pathname?.startsWith('/admin/tenants')
-                  ? 'bg-primary/20 text-primary dark:bg-primary/30'
-                  : 'text-muted-foreground/60 hover:bg-accent/50 hover:text-muted-foreground',
+                  ? 'bg-[#0EA5E9]/20 text-[#0EA5E9]'
+                  : 'text-slate-500 hover:bg-slate-800 hover:text-slate-300',
                 isOpen ? 'px-3 py-2' : 'px-2 py-2 md:justify-center'
               )}
               title={!isOpen ? 'Admin' : undefined}
@@ -293,18 +293,18 @@ export function Sidebar() {
           )}
         </nav>
         <div className={cn(
-          'border-t space-y-2 transition-opacity duration-300',
+          'border-t border-slate-800 space-y-2 transition-opacity duration-300',
           isOpen ? 'opacity-100 p-4' : 'opacity-0 md:opacity-100 p-2'
         )}>
           {isOpen && (
-            <div className="px-3 text-sm text-muted-foreground">
+            <div className="px-3 text-sm text-slate-400">
               {session?.user?.name}
             </div>
           )}
           <button
             onClick={() => signOut({ callbackUrl: '/login' })}
             className={cn(
-              'flex w-full items-center gap-3 rounded-lg text-sm font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors relative group',
+              'flex w-full items-center gap-3 rounded-lg text-sm font-medium text-slate-400 hover:bg-slate-800 hover:text-white transition-colors relative group',
               isOpen ? 'px-3 py-2' : 'px-2 py-2 md:justify-center'
             )}
             title={!isOpen ? 'Cerrar Sesión' : undefined}
