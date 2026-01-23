@@ -99,11 +99,16 @@ async function initializePostgresTenant(databaseUrl: string, tenantSlug: string)
   const startTime = Date.now()
 
   // Create a pg Client directly (not through Prisma) for multi-statement execution
-  const pgClient = new Client({ connectionString: tenantSchemaUrl })
+  // Use the direct URL without schema param, we'll set search_path manually
+  const pgClient = new Client({ connectionString: directUrlForSchema })
 
   try {
     await pgClient.connect()
     console.log('[STEP 3/3] Conexión pg directa establecida')
+
+    // Set search_path to the tenant schema
+    await pgClient.query(`SET search_path TO "${schemaName}"`)
+    console.log(`[STEP 3/3] search_path establecido a: ${schemaName}`)
 
     const sqlPath = path.join(process.cwd(), 'prisma', 'supabase-init.sql')
     console.log(`[STEP 3/3] Ruta del archivo: ${sqlPath}`)
