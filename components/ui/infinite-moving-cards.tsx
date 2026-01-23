@@ -3,11 +3,8 @@
 import React, { useRef } from 'react'
 import {
     motion,
-    useScroll,
-    useSpring,
     useTransform,
     useMotionValue,
-    useVelocity,
     useAnimationFrame
 } from 'framer-motion'
 import { cn } from '@/lib/utils'
@@ -24,67 +21,14 @@ interface ParallaxProps {
 
 function ParallaxText({ children, baseVelocity = 100 }: ParallaxProps) {
     const baseX = useMotionValue(0)
-    const { scrollY } = useScroll()
-    const scrollVelocity = useVelocity(scrollY)
-    const smoothVelocity = useSpring(scrollVelocity, {
-        damping: 50,
-        stiffness: 400
-    })
 
-    // Use a transform to convert velocity to a factor. 
-    // We keep the direction somewhat constant but speed up.
-    // The 'velocity' from scroll can be positive or negative. 
-    // We want to add magnitude to our base velocity, but keep direction consistent if desired.
-    // However, scroll velocity effect usually implies "scrolling down makes it go faster left", "scrolling up makes it go faster right" (or faster left).
-    // The user said: "vaya en una sola direccion" (go in a single direction).
-    // This implies: Default moves left. Scroll Down -> Moves FASTER left. Scroll Up -> Still moves left (maybe faster or slower).
-
-    // Let's assume we always move left (baseVelocity > 0 implies moving right with logic below, so we start negative).
-    // Standard logic: x -= moveBy.
-
-    const velocityFactor = useTransform(smoothVelocity, [0, 1000], [0, 5], {
-        clamp: false
-    })
-
-    // We need to know the wrapping bounds. Since we don't know exact width inside this component easily without measuring,
-    // we can use percentages if we assume the children are duplicated enough to fill 100% and we wrap at -25% or -50%.
-    // But a more robust way for "infinite cards" is using a percentage based wrap assuming 
-    // the children are rendered multiple times (e.g. 4 times) to cover the screen.
-
-    // A standard trick for these text marquees is wrapping -20% to -45% based on content length.
-    // Given we are rendering the items 4 times (implied below), we can wrap at -25% (one full set).
-    // Wait, if we render 2 sets, we wrap at -50%.
-    // Let's render 4 sets to be safe and wrap at -25%.
-
+    // We loop between -25% and -50% because we render 4 copies.
     const x = useTransform(baseX, (v) => `${wrap(-25, -50, v)}%`)
 
     const directionFactor = useRef<number>(1)
 
     useAnimationFrame((t, delta) => {
         let moveBy = directionFactor.current * baseVelocity * (delta / 1000)
-
-        // Add scroll velocity effect. 
-        // If we want single direction, we ensure (moveBy + velocity) is always same sign, or we apply velocity magnitude in same direction.
-        // If baseVelocity is positive (moving right?), wait.
-        // Let's say base is moving Left.
-        // Scroll Down (velocity > 0) -> Should move faster Left?
-        // Scroll Up (velocity < 0) -> Should move faster Left? Or Slower?
-        // Usually "Velocity" style means it reacts to the direction of scroll.
-        // "Single direction" might mean "Don't reverse direction".
-        // So we take absolute value of velocity?
-
-        // The link provided shows text moving right, then left when scrolling up.
-        // User says "Infinite animation like this BUT SINGLE DIRECTION".
-        // So if I scroll down, it speeds up. If I scroll up, it also speeds up (or just keeps going), but DOES NOT REVERSE.
-
-        // So we take `Math.abs(velocityFactor.get())`.
-
-        if (velocityFactor.get() < 0) {
-            // directionFactor.current = -1; // This would reverse it. We DON'T want this.
-        }
-
-        moveBy += directionFactor.current * Math.abs(velocityFactor.get()) * moveBy
-
         baseX.set(baseX.get() + moveBy)
     })
 
@@ -115,21 +59,11 @@ export const InfiniteMovingCards = ({
     pauseOnHover?: boolean
     className?: string
 }) => {
-    // Determine base velocity
-    // If direction is left, we want negative velocity usually for "x".
-    // But our wrap logic above: wrap(-25, -50, v).
-    // If v decreases (negative velocity), it goes -25 -> -50 -> wrap to -25.
-    // This looks like moving LEFT.
-
-    // If v increases (positive velocity), it goes -25 -> -20 -> wrap (wait bounds).
-    // wrap(min, max, v).
-
-    // Let's stick to: Moving Left = v moves negative.
-
-    let baseVelocity = -1 // default
-    if (speed === 'fast') baseVelocity = -5
-    if (speed === 'normal') baseVelocity = -2
-    if (speed === 'slow') baseVelocity = -0.5
+    // Very slow speeds for "flujo lento"
+    let baseVelocity = -0.5 // slow default
+    if (speed === 'fast') baseVelocity = -1
+    if (speed === 'normal') baseVelocity = -0.5
+    if (speed === 'slow') baseVelocity = -0.25
 
     // If direction is right, invert.
     if (direction === 'right') baseVelocity = -baseVelocity

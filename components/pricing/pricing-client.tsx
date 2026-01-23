@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -13,7 +13,6 @@ import { HeroPreview } from './hero-preview'
 import { SpotlightCard } from '@/components/ui/spotlight-card'
 import { InfiniteMovingCards } from '@/components/ui/infinite-moving-cards'
 
-// ... (plans array stays same)
 const plans = [
   {
     name: 'Starter',
@@ -163,6 +162,39 @@ export function PricingClient() {
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('monthly')
   const [showContactForm, setShowContactForm] = useState(false)
   const [selectedPlan, setSelectedPlan] = useState<string | undefined>(undefined)
+
+  // Force system theme preference for Pricing Page
+  useEffect(() => {
+    // Save current state
+    const wasDark = document.documentElement.classList.contains('dark')
+
+    const applySystemTheme = () => {
+      const isSystemDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+      if (isSystemDark) {
+        document.documentElement.classList.add('dark')
+      } else {
+        document.documentElement.classList.remove('dark')
+      }
+    }
+
+    // Apply initially
+    applySystemTheme()
+
+    // Listen for system changes
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
+    const handler = () => applySystemTheme()
+    mediaQuery.addEventListener('change', handler)
+
+    // Cleanup: Restore previous state (approximate)
+    return () => {
+      mediaQuery.removeEventListener('change', handler)
+      if (wasDark) {
+        document.documentElement.classList.add('dark')
+      } else {
+        document.documentElement.classList.remove('dark')
+      }
+    }
+  }, [])
 
   const formatPrice = (price: number): string => {
     return new Intl.NumberFormat('es-CO', {
@@ -382,7 +414,7 @@ export function PricingClient() {
       <ScrollReveal delay={100}>
         <div id="features" className="mx-auto max-w-full px-6 py-20 lg:px-8 overflow-hidden bg-slate-50/50 dark:bg-slate-900/50">
           <div className="text-center mb-16 mx-auto max-w-3xl">
-            <h2 className="text-3xl lg:text-4xl font-bold mb-6">Todo lo que Necesitas en un Solo Lugar</h2>
+            <h2 className="text-3xl lg:text-4xl font-bold mb-6">Todo lo que necesitas en un solo lugar</h2>
             <p className="text-lg text-gray-600 dark:text-gray-400">
               Hemos integrado las herramientas más potentes del mercado en una sola plataforma intuitiva,
               diseñada para escalar con tu negocio.
@@ -459,7 +491,7 @@ export function PricingClient() {
         <div className="mx-auto max-w-7xl px-6 py-16 lg:px-8">
           <Card className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white border-0">
             <CardContent className="p-12 text-center">
-              <h2 className="text-3xl font-bold mb-4">¿Listo para Transformar tu Negocio?</h2>
+              <h2 className="text-3xl font-bold mb-4">¿Listo para transformar tu negocio?</h2>
               <p className="text-blue-100 mb-8 text-lg">
                 Únete a los negocios que ya están creciendo con Clivaro
               </p>
