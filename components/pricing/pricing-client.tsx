@@ -196,18 +196,14 @@ export function PricingClient() {
               className="relative inline-flex h-6 w-11 items-center rounded-full bg-blue-600 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
             >
               <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                  billingCycle === 'annual' ? 'translate-x-6' : 'translate-x-1'
-                }`}
+                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${billingCycle === 'annual' ? 'translate-x-6' : 'translate-x-1'
+                  }`}
               />
             </button>
             <div className="flex items-center gap-2">
               <span className={`text-sm font-medium ${billingCycle === 'annual' ? 'text-gray-900 dark:text-white' : 'text-gray-500'}`}>
                 Anual
               </span>
-              <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100">
-                Ahorra 20%
-              </Badge>
             </div>
           </div>
         </div>
@@ -217,179 +213,146 @@ export function PricingClient() {
       <ScrollReveal delay={100}>
         <div id="pricing" className="mx-auto max-w-7xl px-6 py-12 lg:px-8">
           <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
-          {plans.map((plan) => {
-            const Icon = plan.icon
-            const displayPrice = billingCycle === 'annual' 
-              ? Math.round(plan.price * 12 * 0.8) 
-              : plan.price
-            const displayOriginalPrice = billingCycle === 'annual'
-              ? Math.round(plan.originalPrice * 12 * 0.8)
-              : plan.originalPrice
+            {plans.map((plan, index) => {
+              const Icon = plan.icon
+              const displayPrice = billingCycle === 'annual'
+                ? Math.round(plan.price * 12) // No annual discount for now to keep it premium/simple or add back if needed
+                : plan.price
 
-            return (
-              <Card
-                key={plan.name}
-                className={`relative flex flex-col ${
-                  plan.popular
-                    ? 'border-2 border-blue-500 shadow-xl scale-105'
-                    : 'border'
-                }`}
-              >
-                {plan.popular && (
-                  <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-                    <Badge className="bg-gradient-to-r from-blue-500 to-cyan-500 text-white px-4 py-1">
-                      {plan.badge}
-                    </Badge>
-                  </div>
-                )}
-                <CardHeader>
-                  <div className={`inline-flex items-center justify-center w-12 h-12 rounded-lg bg-gradient-to-r ${plan.color} mb-4`}>
-                    <Icon className="h-6 w-6 text-white" />
-                  </div>
-                  <CardTitle className="text-2xl">{plan.name}</CardTitle>
-                  <CardDescription className="mt-2">{plan.description}</CardDescription>
-                  <div className="mt-6">
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-4xl font-bold">
-                        {formatPrice(displayPrice)}
-                      </span>
-                      {billingCycle === 'annual' ? (
-                        <span className="text-sm text-gray-500">/año</span>
-                      ) : (
-                        <span className="text-sm text-gray-500">/mes</span>
-                      )}
-                    </div>
-                    {displayOriginalPrice > displayPrice && (
-                      <div className="flex items-center gap-2 mt-2">
-                        <span className="text-sm text-gray-400 line-through">
-                          {formatPrice(displayOriginalPrice)}
-                        </span>
-                        <Badge variant="outline" className="text-xs">
-                          {Math.round(((displayOriginalPrice - displayPrice) / displayOriginalPrice) * 100)}% OFF
+              return (
+                <ScrollReveal key={plan.name} delay={index * 100} width="100%">
+                  <Card
+                    className={`relative flex flex-col h-full transition-all duration-300 hover:shadow-2xl hover:-translate-y-2 ${plan.popular
+                      ? 'border-2 border-blue-500 shadow-xl z-10'
+                      : 'border border-gray-200 dark:border-gray-800'
+                      }`}
+                  >
+                    {plan.popular && (
+                      <div className="absolute -top-4 left-1/2 -translate-x-1/2">
+                        <Badge className="bg-gradient-to-r from-blue-600 to-cyan-600 text-white px-4 py-1 text-sm font-medium shadow-lg">
+                          {plan.badge}
                         </Badge>
                       </div>
                     )}
-                    {billingCycle === 'annual' && (
-                      <p className="text-sm text-gray-500 mt-1">
-                        ≈ {formatPrice(Math.round(displayPrice / 12))}/mes
-                      </p>
-                    )}
-                  </div>
-                </CardHeader>
-                <CardContent className="flex-1 flex flex-col">
-                  <Button
-                    className={`w-full mb-6 font-semibold shadow-lg transition-all duration-300 ${
-                      plan.popular
-                        ? 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-blue-500/50 hover:shadow-xl hover:shadow-blue-500/60'
-                        : 'bg-gradient-to-r from-gray-700 to-gray-800 hover:from-gray-800 hover:to-gray-900 text-white shadow-gray-500/30 hover:shadow-xl hover:shadow-gray-500/40'
-                    }`}
-                    size="lg"
-                    onClick={() => {
-                      setSelectedPlan(plan.name)
-                      setShowContactForm(true)
-                    }}
-                  >
-                    {plan.cta}
-                  </Button>
-                  <ul className="space-y-3 flex-1">
-                    {plan.features.map((feature, index) => (
-                      <li key={index} className="flex items-start gap-3">
-                        <Check className="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" />
-                        <span className="text-sm">{feature}</span>
-                      </li>
-                    ))}
-                    {plan.limitations.map((limitation, index) => (
-                      <li key={index} className="flex items-start gap-3 opacity-60">
-                        <X className="h-5 w-5 text-gray-400 flex-shrink-0 mt-0.5" />
-                        <span className="text-sm text-gray-500">{limitation}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </CardContent>
-              </Card>
-            )
-          })}
+                    <CardHeader>
+                      <div className={`inline-flex items-center justify-center w-14 h-14 rounded-xl bg-gradient-to-br ${plan.color} mb-6 shadow-inner`}>
+                        <Icon className="h-7 w-7 text-white" />
+                      </div>
+                      <CardTitle className="text-2xl font-bold">{plan.name}</CardTitle>
+                      <CardDescription className="mt-2 text-base">{plan.description}</CardDescription>
+                      <div className="mt-8">
+                        <div className="flex items-baseline gap-1">
+                          <span className="text-4xl lg:text-5xl font-extrabold tracking-tight">
+                            {formatPrice(displayPrice)}
+                          </span>
+                          {billingCycle === 'annual' ? (
+                            <span className="text-sm font-medium text-gray-500">/año</span>
+                          ) : (
+                            <span className="text-sm font-medium text-gray-500">/mes</span>
+                          )}
+                        </div>
+                        {billingCycle === 'annual' && (
+                          <p className="text-sm text-gray-500 mt-2 font-medium">
+                            Facturado anualmente
+                          </p>
+                        )}
+                      </div>
+                    </CardHeader>
+                    <CardContent className="flex-1 flex flex-col">
+                      <Button
+                        className={`w-full mb-8 font-semibold text-lg py-6 shadow-lg transition-all duration-300 ${plan.popular
+                          ? 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-blue-500/30 hover:shadow-blue-500/50'
+                          : 'bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-800 dark:hover:bg-slate-700'
+                          }`}
+                        onClick={() => {
+                          setSelectedPlan(plan.name)
+                          setShowContactForm(true)
+                        }}
+                      >
+                        {plan.cta}
+                      </Button>
+                      <div className="space-y-4 flex-1">
+                        <p className="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wider">
+                          Incluye:
+                        </p>
+                        <ul className="space-y-3">
+                          {plan.features.map((feature, featureIndex) => (
+                            <li key={featureIndex} className="flex items-start gap-3">
+                              <Check className="h-5 w-5 text-blue-500 flex-shrink-0 mt-0.5" />
+                              <span className="text-sm text-gray-700 dark:text-gray-300">{feature}</span>
+                            </li>
+                          ))}
+                        </ul>
+                        {plan.limitations.length > 0 && (
+                          <>
+                            <div className="h-px bg-gray-100 dark:bg-gray-800 my-4" />
+                            <ul className="space-y-3">
+                              {plan.limitations.map((limitation, i) => (
+                                <li key={i} className="flex items-start gap-3 opacity-50">
+                                  <X className="h-5 w-5 text-gray-400 flex-shrink-0 mt-0.5" />
+                                  <span className="text-sm text-gray-500">{limitation}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </ScrollReveal>
+              )
+            })}
           </div>
         </div>
       </ScrollReveal>
 
-      {/* Special Offer Banner */}
-      <ScrollReveal delay={200}>
-        <div className="mx-auto max-w-7xl px-6 py-8 lg:px-8">
-          <Card className="bg-gradient-to-r from-orange-500 to-red-500 text-white border-0">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between flex-wrap gap-4">
-              <div className="flex items-center gap-3">
-                <Sparkles className="h-8 w-8" />
-                <div>
-                  <h3 className="text-xl font-bold">Oferta de Lanzamiento</h3>
-                  <p className="text-orange-100">
-                    Primeros 100 clientes obtienen 50% de descuento permanente
-                  </p>
-                </div>
-              </div>
-              <Button
-                variant="secondary"
-                size="lg"
-                className="bg-white text-orange-600 hover:bg-orange-50"
-                onClick={() => {
-                  setSelectedPlan(undefined)
-                  setShowContactForm(true)
-                }}
-              >
-                Aprovechar Oferta
-              </Button>
-            </div>
-          </CardContent>
-          </Card>
-        </div>
-      </ScrollReveal>
+      {/* Offer Banner Removed as requested */}
 
       {/* Comparison Table */}
       <ScrollReveal delay={100}>
         <div id="comparison" className="mx-auto max-w-7xl px-6 py-16 lg:px-8">
           <div className="text-center mb-12">
-          <h2 className="text-3xl font-bold mb-4">Clivaro vs Otras Soluciones</h2>
-          <p className="text-gray-600 dark:text-gray-400">
-            Compara y descubre por qué Clivaro es la mejor opción para tu negocio
-          </p>
-        </div>
-        <Card>
-          <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b">
-                    <th className="text-left p-4 font-semibold">Característica</th>
-                    <th className="text-center p-4 font-semibold">Otras Soluciones</th>
-                    <th className="text-center p-4 font-semibold bg-blue-50 dark:bg-blue-900/20">
-                      Clivaro Business
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {comparison.map((item, index) => (
-                    <tr key={index} className="border-b last:border-b-0">
-                      <td className="p-4 font-medium">{item.feature}</td>
-                      <td className="p-4 text-center text-gray-600 dark:text-gray-400">
-                        {item.competencia}
-                      </td>
-                      <td className="p-4 text-center bg-blue-50 dark:bg-blue-900/20">
-                        <div className="flex items-center justify-center gap-2">
-                          <span className="font-semibold text-blue-600 dark:text-blue-400">
-                            {item.clivaro}
-                          </span>
-                          {item.winner === 'clivaro' && (
-                            <Check className="h-5 w-5 text-green-500" />
-                          )}
-                        </div>
-                      </td>
+            <h2 className="text-3xl font-bold mb-4">Clivaro vs Otras Soluciones</h2>
+            <p className="text-gray-600 dark:text-gray-400">
+              Compara y descubre por qué Clivaro es la mejor opción para tu negocio
+            </p>
+          </div>
+          <Card>
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b">
+                      <th className="text-left p-4 font-semibold">Característica</th>
+                      <th className="text-center p-4 font-semibold">Otras Soluciones</th>
+                      <th className="text-center p-4 font-semibold bg-blue-50 dark:bg-blue-900/20">
+                        Clivaro Business
+                      </th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </CardContent>
+                  </thead>
+                  <tbody>
+                    {comparison.map((item, index) => (
+                      <tr key={index} className="border-b last:border-b-0">
+                        <td className="p-4 font-medium">{item.feature}</td>
+                        <td className="p-4 text-center text-gray-600 dark:text-gray-400">
+                          {item.competencia}
+                        </td>
+                        <td className="p-4 text-center bg-blue-50 dark:bg-blue-900/20">
+                          <div className="flex items-center justify-center gap-2">
+                            <span className="font-semibold text-blue-600 dark:text-blue-400">
+                              {item.clivaro}
+                            </span>
+                            {item.winner === 'clivaro' && (
+                              <Check className="h-5 w-5 text-green-500" />
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
           </Card>
         </div>
       </ScrollReveal>
@@ -405,26 +368,26 @@ export function PricingClient() {
       <ScrollReveal delay={100}>
         <div id="features" className="mx-auto max-w-7xl px-6 py-16 lg:px-8">
           <div className="text-center mb-12">
-          <h2 className="text-3xl font-bold mb-4">Todo lo que Necesitas en un Solo Lugar</h2>
-          <p className="text-gray-600 dark:text-gray-400">
-            Módulos integrados diseñados para cualquier tipo de negocio
-          </p>
-        </div>
-        <div className="grid grid-cols-2 gap-6 md:grid-cols-3 lg:grid-cols-6">
-          {features.map((feature) => {
-            const Icon = feature.icon
-            return (
-              <div
-                key={feature.name}
-                className="flex flex-col items-center p-6 rounded-lg border bg-card hover:shadow-lg transition-shadow"
-              >
-                <div className="w-12 h-12 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center mb-4">
-                  <Icon className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+            <h2 className="text-3xl font-bold mb-4">Todo lo que Necesitas en un Solo Lugar</h2>
+            <p className="text-gray-600 dark:text-gray-400">
+              Módulos integrados diseñados para cualquier tipo de negocio
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-6 md:grid-cols-3 lg:grid-cols-6">
+            {features.map((feature) => {
+              const Icon = feature.icon
+              return (
+                <div
+                  key={feature.name}
+                  className="flex flex-col items-center p-6 rounded-lg border bg-card hover:shadow-lg transition-shadow"
+                >
+                  <div className="w-12 h-12 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center mb-4">
+                    <Icon className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                  </div>
+                  <p className="text-sm font-medium text-center">{feature.name}</p>
                 </div>
-                <p className="text-sm font-medium text-center">{feature.name}</p>
-              </div>
-            )
-          })}
+              )
+            })}
           </div>
         </div>
       </ScrollReveal>
@@ -433,53 +396,53 @@ export function PricingClient() {
       <ScrollReveal delay={100}>
         <div id="faq" className="mx-auto max-w-3xl px-6 py-16 lg:px-8">
           <div className="text-center mb-12">
-          <h2 className="text-3xl font-bold mb-4">Preguntas Frecuentes</h2>
-        </div>
-        <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">¿Hay período de prueba?</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-gray-600 dark:text-gray-400">
-                Contáctanos para conocer nuestras opciones de implementación y planes personalizados 
-                adaptados a las necesidades de tu negocio.
-              </p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">¿Puedo cambiar de plan después?</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-gray-600 dark:text-gray-400">
-                Sí, puedes actualizar o degradar tu plan en cualquier momento. 
-                Los cambios se aplican de forma prorrateada.
-              </p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">¿Qué incluye el soporte?</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-gray-600 dark:text-gray-400">
-                Todos los planes incluyen soporte por email. Los planes Business y Enterprise 
-                incluyen soporte prioritario y 24/7 respectivamente.
-              </p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">¿Hay costos ocultos?</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-gray-600 dark:text-gray-400">
-                No. El precio que ves es el precio que pagas. Incluye hosting, actualizaciones, 
-                soporte y todas las funcionalidades del plan.
-              </p>
-            </CardContent>
-          </Card>
+            <h2 className="text-3xl font-bold mb-4">Preguntas Frecuentes</h2>
+          </div>
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">¿Hay período de prueba?</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-gray-600 dark:text-gray-400">
+                  Contáctanos para conocer nuestras opciones de implementación y planes personalizados
+                  adaptados a las necesidades de tu negocio.
+                </p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">¿Puedo cambiar de plan después?</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-gray-600 dark:text-gray-400">
+                  Sí, puedes actualizar o degradar tu plan en cualquier momento.
+                  Los cambios se aplican de forma prorrateada.
+                </p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">¿Qué incluye el soporte?</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-gray-600 dark:text-gray-400">
+                  Todos los planes incluyen soporte por email. Los planes Business y Enterprise
+                  incluyen soporte prioritario y 24/7 respectivamente.
+                </p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">¿Hay costos ocultos?</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-gray-600 dark:text-gray-400">
+                  No. El precio que ves es el precio que pagas. Incluye hosting, actualizaciones,
+                  soporte y todas las funcionalidades del plan.
+                </p>
+              </CardContent>
+            </Card>
           </div>
         </div>
       </ScrollReveal>
@@ -488,24 +451,24 @@ export function PricingClient() {
       <ScrollReveal delay={100}>
         <div className="mx-auto max-w-7xl px-6 py-16 lg:px-8">
           <Card className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white border-0">
-          <CardContent className="p-12 text-center">
-            <h2 className="text-3xl font-bold mb-4">¿Listo para Transformar tu Negocio?</h2>
-            <p className="text-blue-100 mb-8 text-lg">
-              Únete a los negocios que ya están creciendo con Clivaro
-            </p>
-            <div className="flex items-center justify-center gap-4 flex-wrap">
-              <Button
-                size="lg"
-                className="bg-white text-blue-600 hover:bg-blue-50 text-lg px-8 py-6 font-semibold shadow-xl shadow-blue-500/20 hover:shadow-2xl hover:shadow-blue-500/30 transition-all duration-300"
-                onClick={() => {
-                  setSelectedPlan(undefined)
-                  setShowContactForm(true)
-                }}
-              >
-                Comenzar Ahora
-              </Button>
-            </div>
-          </CardContent>
+            <CardContent className="p-12 text-center">
+              <h2 className="text-3xl font-bold mb-4">¿Listo para Transformar tu Negocio?</h2>
+              <p className="text-blue-100 mb-8 text-lg">
+                Únete a los negocios que ya están creciendo con Clivaro
+              </p>
+              <div className="flex items-center justify-center gap-4 flex-wrap">
+                <Button
+                  size="lg"
+                  className="bg-white text-blue-600 hover:bg-blue-50 text-lg px-8 py-6 font-semibold shadow-xl shadow-blue-500/20 hover:shadow-2xl hover:shadow-blue-500/30 transition-all duration-300"
+                  onClick={() => {
+                    setSelectedPlan(undefined)
+                    setShowContactForm(true)
+                  }}
+                >
+                  Comenzar Ahora
+                </Button>
+              </div>
+            </CardContent>
           </Card>
         </div>
       </ScrollReveal>

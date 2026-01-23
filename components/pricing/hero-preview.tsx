@@ -27,11 +27,15 @@ export function HeroPreview({ onContactClick, onViewPreview }: HeroPreviewProps)
             <div>
               <h1 className="text-4xl lg:text-5xl xl:text-6xl font-bold tracking-tight text-gray-900 dark:text-white">
                 Impulsa tu negocio con{' '}
-                <span className="text-blue-600 dark:text-blue-400">software</span>{' '}
-                <span className="text-blue-500 dark:text-blue-300">hecho a tu medida</span>
+                <span className="relative inline-block">
+                  <span className="text-blue-600 dark:text-blue-400 relative z-10">software</span>
+                  <span className="absolute -bottom-2 left-0 w-full h-3 bg-blue-200/50 dark:bg-blue-900/50 -z-10 -rotate-2"></span>
+                </span>{' '}
+                <br className="hidden lg:block" />
+                <span className="text-slate-700 dark:text-slate-300">hecho a tu medida</span>
               </h1>
             </div>
-            
+
             <p className="text-lg lg:text-xl text-gray-600 dark:text-gray-300 leading-relaxed">
               Creamos sistemas web, CRMs y plataformas empresariales que simplifican tu operación y aumentan tus resultados.
             </p>
@@ -82,7 +86,7 @@ export function HeroPreview({ onContactClick, onViewPreview }: HeroPreviewProps)
                   </div>
                 </div>
               </div>
-              
+
               {/* Screen Content */}
               <div className="bg-white dark:bg-gray-800 rounded-b-lg overflow-hidden">
                 <div className="h-[500px] overflow-hidden">
@@ -96,11 +100,10 @@ export function HeroPreview({ onContactClick, onViewPreview }: HeroPreviewProps)
                         {['Dashboard', 'Productos', 'Inventario', 'Clientes', 'Oportunidades', 'Cotizaciones', 'Facturas', 'Punto de Venta', 'Caja'].map((item, i) => (
                           <div
                             key={i}
-                            className={`px-2 py-1.5 rounded ${
-                              i === 0
+                            className={`px-2 py-1.5 rounded ${i === 0
                                 ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
                                 : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'
-                            }`}
+                              }`}
                           >
                             {item}
                           </div>
@@ -115,7 +118,7 @@ export function HeroPreview({ onContactClick, onViewPreview }: HeroPreviewProps)
                           <h2 className="text-lg font-bold text-gray-900 dark:text-white">Dashboard</h2>
                           <p className="text-sm text-gray-600 dark:text-gray-400">Resumen general</p>
                         </div>
-                        
+
                         {/* KPIs */}
                         <div className="grid grid-cols-3 gap-3">
                           <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg">
