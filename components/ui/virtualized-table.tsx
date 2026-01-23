@@ -30,7 +30,7 @@ export function VirtualizedTable<T extends { id: string }>({
         style={style}
         {...(ariaAttributes || {})}
         onClick={() => onRowClick?.(item)}
-        className={`flex items-center border-b hover:bg-gray-50 cursor-pointer ${onRowClick ? '' : 'cursor-default'}`}
+        className={`flex items-center border-b hover:bg-gray-50 dark:hover:bg-gray-800/50 cursor-pointer ${onRowClick ? '' : 'cursor-default'}`}
       >
         {columns.map((col, colIndex) => (
           <div

@@ -103,7 +103,7 @@ export function SupplierDetails({ supplierData }: { supplierData: any }) {
             )}
           </div>
         </div>
-        
+
         <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-6 rounded-lg border shadow-sm">
           <div className="flex items-center gap-2 mb-4">
             <TrendingUp className="h-5 w-5 text-blue-600" />
@@ -151,14 +151,14 @@ export function SupplierDetails({ supplierData }: { supplierData: any }) {
       <div className="bg-white rounded-lg border shadow-sm">
         <Tabs defaultValue="orders" className="w-full">
           <TabsList className="w-full justify-start border-b bg-transparent p-0 h-auto">
-            <TabsTrigger 
-              value="orders" 
+            <TabsTrigger
+              value="orders"
               className="px-6 py-3 data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:bg-transparent"
             >
               <Package className="h-4 w-4 mr-2" />
               Órdenes de Compra ({safeOrders.length})
             </TabsTrigger>
-            <TabsTrigger 
+            <TabsTrigger
               value="receipts"
               className="px-6 py-3 data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:bg-transparent"
             >
@@ -166,12 +166,12 @@ export function SupplierDetails({ supplierData }: { supplierData: any }) {
               Recepciones ({safeReceipts.length})
             </TabsTrigger>
           </TabsList>
-          
+
           <TabsContent value="orders" className="p-0 m-0">
             <div className="border-t">
               <Table>
                 <TableHeader>
-                  <TableRow className="bg-gray-50">
+                  <TableRow className="bg-gray-50 dark:bg-gray-800/50">
                     <TableHead className="font-semibold">Número</TableHead>
                     <TableHead className="font-semibold">Fecha</TableHead>
                     <TableHead className="font-semibold">Estado</TableHead>
@@ -188,7 +188,7 @@ export function SupplierDetails({ supplierData }: { supplierData: any }) {
                     </TableRow>
                   ) : (
                     safeOrders.map((order: any) => (
-                      <TableRow key={order.id} className="hover:bg-gray-50">
+                      <TableRow key={order.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
                         <TableCell className="font-medium">{order.number || '-'}</TableCell>
                         <TableCell>{order.createdAt ? formatDate(order.createdAt) : '-'}</TableCell>
                         <TableCell>
@@ -211,7 +211,7 @@ export function SupplierDetails({ supplierData }: { supplierData: any }) {
             <div className="border-t">
               <Table>
                 <TableHeader>
-                  <TableRow className="bg-gray-50">
+                  <TableRow className="bg-gray-50 dark:bg-gray-800/50">
                     <TableHead className="font-semibold">Número</TableHead>
                     <TableHead className="font-semibold">Fecha</TableHead>
                     <TableHead className="font-semibold text-right">Total</TableHead>
@@ -227,7 +227,7 @@ export function SupplierDetails({ supplierData }: { supplierData: any }) {
                     </TableRow>
                   ) : (
                     safeReceipts.map((receipt: any) => (
-                      <TableRow key={receipt.id} className="hover:bg-gray-50">
+                      <TableRow key={receipt.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
                         <TableCell className="font-medium">{receipt.number || '-'}</TableCell>
                         <TableCell>{receipt.createdAt ? formatDate(receipt.createdAt) : '-'}</TableCell>
                         <TableCell className="text-right font-semibold">

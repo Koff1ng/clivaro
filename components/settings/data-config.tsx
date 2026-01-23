@@ -241,7 +241,7 @@ export function DataConfig({ settings, onSave, isLoading }: DataConfigProps) {
                     {/* === IMPORTAR === */}
                     <TabsContent value="import" className="space-y-4 pt-4">
                         {!importData ? (
-                            <div className="border-2 border-dashed border-gray-300 rounded-lg p-10 text-center space-y-4 hover:bg-gray-50 transition-colors relative">
+                            <div className="border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg p-10 text-center space-y-4 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors relative">
                                 <Input
                                     type="file"
                                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
@@ -292,14 +292,14 @@ export function DataConfig({ settings, onSave, isLoading }: DataConfigProps) {
                                 {/* Preview Table */}
                                 <div className="border rounded-md overflow-x-auto max-h-[300px]">
                                     <table className="w-full text-sm text-left relative">
-                                        <thead className="bg-gray-50 border-b sticky top-0">
+                                        <thead className="bg-gray-50 dark:bg-gray-800/50 border-b sticky top-0">
                                             <tr>
                                                 {importData.headers.map((h: string) => <th key={h} className="px-4 py-2 font-medium">{h}</th>)}
                                             </tr>
                                         </thead>
                                         <tbody>
                                             {importData.preview.map((row: any, i: number) => (
-                                                <tr key={i} className="border-b last:border-0 hover:bg-gray-50">
+                                                <tr key={i} className="border-b last:border-0 hover:bg-gray-50 dark:hover:bg-gray-800/50">
                                                     {importData.headers.map((h: string) => <td key={`${i}-${h}`} className="px-4 py-2 truncate max-w-[200px]">{String(row[h] || '')}</td>)}
                                                 </tr>
                                             ))}
