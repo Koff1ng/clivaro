@@ -13,6 +13,7 @@ import { FileDown, FileUp, Database, Download, Upload, AlertCircle, Loader2, Fil
 import { useToast } from '@/components/ui/toast'
 import { useMutation } from '@tanstack/react-query'
 import * as XLSX from 'xlsx'
+import { ResetDatabaseDialog } from './reset-database-dialog'
 
 interface DataConfigProps {
     settings: any
@@ -340,17 +341,42 @@ export function DataConfig({ settings, onSave, isLoading }: DataConfigProps) {
                         )}
                     </TabsContent>
 
-                    {/* === BACKUPS (Placeholder) === */}
-                    <TabsContent value="backups" className="space-y-4 pt-4">
-                        <div className="flex items-center justify-between p-4 border rounded-lg bg-yellow-50/50">
+                    {/* === BACKUPS & RESET === */}
+                    <TabsContent value="backups" className="space-y-6 pt-4">
+                        <div className="flex items-center justify-between p-4 border rounded-lg bg-yellow-50/50 dark:bg-yellow-900/10 border-yellow-200 dark:border-yellow-800">
                             <div className="space-y-1">
-                                <h3 className="font-medium flex items-center gap-2">
-                                    <AlertCircle className="h-4 w-4 text-yellow-600" />
+                                <h3 className="font-medium flex items-center gap-2 text-yellow-800 dark:text-yellow-200">
+                                    <AlertCircle className="h-4 w-4" />
                                     Backups Automáticos
                                 </h3>
-                                <p className="text-sm text-gray-500">Configura la frecuencia de copias de seguridad automáticas.</p>
+                                <p className="text-sm text-yellow-700/80 dark:text-yellow-300/80">
+                                    Configura la frecuencia de copias de seguridad automáticas.
+                                </p>
                             </div>
                             <Switch disabled />
+                        </div>
+
+                        {/* Danger Zone */}
+                        <div className="border border-red-200 dark:border-red-900 rounded-lg overflow-hidden">
+                            <div className="bg-red-50 dark:bg-red-900/20 p-4 border-b border-red-200 dark:border-red-900">
+                                <h3 className="font-semibold text-red-900 dark:text-red-200 flex items-center gap-2">
+                                    <AlertCircle className="h-5 w-5" />
+                                    Zona de Peligro
+                                </h3>
+                            </div>
+                            <div className="p-6 bg-white dark:bg-slate-950 space-y-4">
+                                <div>
+                                    <h4 className="font-medium text-slate-900 dark:text-slate-100">Resetear Base de Datos</h4>
+                                    <p className="text-sm text-slate-500 mt-1">
+                                        Esta acción eliminará permanentemente todos los datos transaccionales (Ventas, Compras, Inventario, Clientes, etc.).
+                                        La configuración de la empresa y los usuarios se mantendrán.
+                                    </p>
+                                </div>
+
+                                <div className="pt-2">
+                                    <ResetDatabaseDialog />
+                                </div>
+                            </div>
                         </div>
                     </TabsContent>
 

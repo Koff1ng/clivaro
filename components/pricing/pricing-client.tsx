@@ -4,14 +4,16 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Check, X, Zap, Building2, Rocket, TrendingUp, Users, Package, ShoppingCart, BarChart3, Mail, Sparkles } from 'lucide-react'
+import { Check, X, Zap, Building2, Rocket, TrendingUp, Users, Package, ShoppingCart, BarChart3, Mail, Sparkles, Database, Smartphone, Cloud, Lock, Globe, Headphones, Settings, Printer, Wallet, Truck, FileText, LayoutDashboard, MessageSquare, Calendar, Bell, Search } from 'lucide-react'
 import { ContactForm } from './contact-form'
 import { ScrollNavbar } from './scroll-navbar'
 import { ScrollReveal } from './scroll-reveal'
 import { SoftwarePreview } from './software-preview'
 import { HeroPreview } from './hero-preview'
 import { SpotlightCard } from '@/components/ui/spotlight-card'
+import { InfiniteMovingCards } from '@/components/ui/infinite-moving-cards'
 
+// ... (plans array stays same)
 const plans = [
   {
     name: 'Starter',
@@ -102,6 +104,20 @@ const features = [
   { name: 'CRM Completo', icon: Users },
   { name: 'Marketing Campaigns', icon: Mail },
   { name: 'Reportes Avanzados', icon: TrendingUp },
+  { name: 'Facturación Electrónica', icon: FileText },
+  { name: 'Apps Móviles', icon: Smartphone },
+  { name: 'Base de Datos Segura', icon: Database },
+  { name: 'Backups Automáticos', icon: Cloud },
+  { name: 'Seguridad Bancaria', icon: Lock },
+  { name: 'Soporte 24/7', icon: Headphones },
+  { name: 'API para Desarrolladores', icon: Settings },
+  { name: 'Control de Caja', icon: Wallet },
+  { name: 'Gestión de Envíos', icon: Truck },
+  { name: 'Impresión de Tickets', icon: Printer },
+  { name: 'Notificaciones', icon: Bell },
+  { name: 'Búsqueda Inteligente', icon: Search },
+  { name: 'Agenda y Citas', icon: Calendar },
+  { name: 'Chat Interno', icon: MessageSquare },
 ]
 
 const comparison = [
@@ -362,35 +378,23 @@ export function PricingClient() {
         </div>
       </ScrollReveal>
 
-      {/* Features Grid */}
+      {/* Features Carousel */}
       <ScrollReveal delay={100}>
-        <div id="features" className="mx-auto max-w-7xl px-6 py-16 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold mb-4">Todo lo que Necesitas en un Solo Lugar</h2>
-            <p className="text-gray-600 dark:text-gray-400">
-              Módulos integrados diseñados para cualquier tipo de negocio
+        <div id="features" className="mx-auto max-w-full px-6 py-20 lg:px-8 overflow-hidden bg-slate-50/50 dark:bg-slate-900/50">
+          <div className="text-center mb-16 mx-auto max-w-3xl">
+            <h2 className="text-3xl lg:text-4xl font-bold mb-6">Todo lo que Necesitas en un Solo Lugar</h2>
+            <p className="text-lg text-gray-600 dark:text-gray-400">
+              Hemos integrado las herramientas más potentes del mercado en una sola plataforma intuitiva,
+              diseñada para escalar con tu negocio.
             </p>
           </div>
-          <div className="grid grid-cols-2 gap-6 md:grid-cols-3 lg:grid-cols-6">
-            {features.map((feature) => {
-              const Icon = feature.icon
-              return (
-                <div
-                  key={feature.name}
-                  className="flex flex-col items-center"
-                >
-                  <SpotlightCard
-                    className="w-full h-full flex flex-col items-center p-6 border bg-card hover:shadow-lg transition-all duration-300 hover:-translate-y-1"
-                    spotlightColor="rgba(59, 130, 246, 0.15)"
-                  >
-                    <div className="w-12 h-12 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center mb-4 mx-auto transition-transform group-hover:scale-110">
-                      <Icon className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-                    </div>
-                    <p className="text-sm font-medium text-center">{feature.name}</p>
-                  </SpotlightCard>
-                </div>
-              )
-            })}
+
+          <div className="relative">
+            {/* Gradient Overlays for smooth fade */}
+            <div className="absolute left-0 top-0 bottom-0 w-20 bg-gradient-to-r from-gray-50/50 dark:from-gray-900/50 to-transparent z-10 pointer-events-none"></div>
+            <div className="absolute right-0 top-0 bottom-0 w-20 bg-gradient-to-l from-gray-50/50 dark:from-gray-900/50 to-transparent z-10 pointer-events-none"></div>
+
+            <InfiniteMovingCards items={features} direction="left" speed="normal" />
           </div>
         </div>
       </ScrollReveal>
