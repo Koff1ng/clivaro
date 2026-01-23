@@ -307,11 +307,18 @@ export function DataConfig({ settings, onSave, isLoading }: DataConfigProps) {
                                     </table>
                                 </div>
 
+                                {importData.validationError && (
+                                    <div className="bg-red-50 p-4 rounded-md border border-red-200 text-red-700 text-sm flex items-start gap-2">
+                                        <AlertCircle className="h-5 w-5 mt-0.5 shrink-0" />
+                                        <span><strong>Error de Validación:</strong> {importData.validationError}</span>
+                                    </div>
+                                )}
+
                                 {importData.missingFields.length > 0 ? (
                                     <div className="bg-red-50 p-4 rounded-md border border-red-200 text-red-700 text-sm">
                                         <strong>Error:</strong> Faltan columnas requeridas: {importData.missingFields.join(', ')}
                                     </div>
-                                ) : (
+                                ) : !importData.validationError && (
                                     <div className="bg-green-50 p-4 rounded-md border border-green-200 text-green-700 text-sm flex items-center gap-2">
                                         <CheckCircle2 className="h-4 w-4" /> Estructura válida. Listo para importar.
                                     </div>
@@ -320,7 +327,7 @@ export function DataConfig({ settings, onSave, isLoading }: DataConfigProps) {
                                 <div className="flex justify-end pt-4">
                                     <Button
                                         onClick={() => executeImportMutation.mutate()}
-                                        disabled={executeImportMutation.isPending || importData.missingFields.length > 0}
+                                        disabled={executeImportMutation.isPending || importData.missingFields.length > 0 || !!importData.validationError}
                                     >
                                         {executeImportMutation.isPending ? (
                                             <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Importando...</>

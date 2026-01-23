@@ -52,18 +52,37 @@ export async function POST(req: Request) {
 
         // Simple Validation based on Entity Type
         const requiredFields: Record<string, string[]> = {
-            'clients': ['name'], // Minimal requirement
+            'clients': ['name'],
             'products': ['name', 'price'],
         }
 
+        // Fields that strongly suggest user is importing the WRONG type
+        const forbiddenFields: Record<string, string[]> = {
+            'clients': ['sku', 'price', 'cost', 'taxRate', 'barcode'], // If these exist, it's likely a product list
+            'products': ['email', 'phone', 'address', 'nit', 'taxId'], // If these exist, it's likely a customer list
+        }
+
         const missingFields = requiredFields[entityType]?.filter(field => !headers.includes(field)) || []
+
+        // Check for forbidden fields to warn user
+        const detectedForbidden = forbiddenFields[entityType]?.filter(field => headers.includes(field)) || []
+
+        let error = null
+        if (detectedForbidden.length > 0) {
+            if (entityType === 'clients') {
+                error = `Parece que estás intentando importar PRODUCTOS como CLIENTES. Se detectaron columnas: ${detectedForbidden.join(', ')}.`
+            } else if (entityType === 'products') {
+                error = `Parece que estás intentando importar CLIENTES como PRODUCTOS. Se detectaron columnas: ${detectedForbidden.join(', ')}.`
+            }
+        }
 
         return NextResponse.json({
             preview: data.slice(0, 5),
             totalRows: data.length,
             headers,
             missingFields,
-            isValid: missingFields.length === 0
+            validationError: error, // Use separate key so frontend doesn't auto-throw
+            isValid: missingFields.length === 0 && !error
         })
 
     } catch (error: any) {
