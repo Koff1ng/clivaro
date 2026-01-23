@@ -35,17 +35,22 @@ async function initializePostgresTenant(databaseUrl: string, tenantSlug: string)
   const schemaName = getTenantSchemaName(tenantSlug)
   const schemaUrl = withSchemaParam(baseUrl, schemaName)
 
+  // Use DIRECT_DATABASE_URL for DDL operations if available (avoids PgBouncer issues)
+  // Otherwise fall back to the regular DATABASE_URL
+  const directUrl = process.env.DIRECT_DATABASE_URL || baseUrl
+  const directUrlForSchema = stripSchemaParam(directUrl)
+
   console.log('='.repeat(60))
   console.log('[TENANT INIT] Iniciando inicialización de tenant PostgreSQL')
   console.log(`[TENANT INIT] Slug: ${tenantSlug}`)
   console.log(`[TENANT INIT] Schema: ${schemaName}`)
-  console.log(`[TENANT INIT] Base URL (sin schema): ${baseUrl.replace(/:[^:@]+@/, ':****@')}`) // Ocultar password
+  console.log(`[TENANT INIT] Usando conexión directa: ${process.env.DIRECT_DATABASE_URL ? 'Sí' : 'No (pooler)'}`)
   console.log('='.repeat(60))
 
-  // Step 1: Create schema
+  // Step 1: Create schema using DIRECT connection (DDL doesn't work well with PgBouncer)
   console.log('[STEP 1/4] Conectando a PostgreSQL para crear schema...')
   const adminPrisma = new PrismaClient({
-    datasources: { db: { url: baseUrl } },
+    datasources: { db: { url: directUrlForSchema } },
     log: ['error', 'warn'],
   })
 
@@ -58,16 +63,23 @@ async function initializePostgresTenant(databaseUrl: string, tenantSlug: string)
     console.error(`  Mensaje: ${schemaError?.message || schemaError}`)
     console.error(`  Código: ${schemaError?.code || 'N/A'}`)
     console.error(`  Meta: ${JSON.stringify(schemaError?.meta || {})}`)
+
+    // If using pooler and it failed, suggest using DIRECT_DATABASE_URL
+    if (!process.env.DIRECT_DATABASE_URL && (schemaError?.message || '').includes('prepared statement')) {
+      console.error('  💡 SUGERENCIA: Configura DIRECT_DATABASE_URL en Vercel con la URL directa (puerto 5432) para DDL')
+    }
+
     throw new Error(`Error creando schema "${schemaName}": ${schemaError?.message || schemaError}`)
   } finally {
     await adminPrisma.$disconnect()
     console.log('[STEP 1/4] Conexión admin cerrada')
   }
 
-  // Step 2: Connect to tenant schema
+  // Step 2: Connect to tenant schema using DIRECT connection for DDL
   console.log('[STEP 2/4] Conectando al schema del tenant...')
+  const tenantSchemaUrl = withSchemaParam(directUrlForSchema, schemaName)
   const tenantPrisma = new PrismaClient({
-    datasources: { db: { url: schemaUrl } },
+    datasources: { db: { url: tenantSchemaUrl } },
     log: ['error', 'warn'],
   })
 
