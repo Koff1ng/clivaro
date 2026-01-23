@@ -124,60 +124,67 @@ async function initializePostgresTenant(databaseUrl: string, tenantSlug: string)
     throw new Error(`Error parseando supabase-init.sql: ${parseError?.message || parseError}`)
   }
 
-  // Step 4: Execute SQL statements
-  console.log('[STEP 4/4] Ejecutando sentencias SQL...')
+  // Step 4: Execute SQL statements in batches for speed
+  console.log('[STEP 4/4] Ejecutando sentencias SQL en lotes...')
+  const startTime = Date.now()
   let executed = 0
-  let failed = 0
+  let skipped = 0
+  const BATCH_SIZE = 20 // Process 20 statements at a time
 
-  for (let i = 0; i < statements.length; i++) {
-    const stmt = statements[i]
-    const stmtPreview = stmt.length > 80 ? `${stmt.slice(0, 80)}...` : stmt
+  // Process in batches
+  for (let batchStart = 0; batchStart < statements.length; batchStart += BATCH_SIZE) {
+    const batchEnd = Math.min(batchStart + BATCH_SIZE, statements.length)
+    const batch = statements.slice(batchStart, batchEnd)
 
-    try {
-      await tenantPrisma.$executeRawUnsafe(stmt)
-      executed++
-      // Log progress every 10 statements or at the end
-      if ((i + 1) % 10 === 0 || i === statements.length - 1) {
-        console.log(`[STEP 4/4] Progreso: ${i + 1}/${statements.length} sentencias ejecutadas`)
+    console.log(`[STEP 4/4] Procesando lote ${Math.floor(batchStart / BATCH_SIZE) + 1}/${Math.ceil(statements.length / BATCH_SIZE)} (${batchStart + 1}-${batchEnd}/${statements.length})`)
+
+    // Execute each statement in the batch
+    for (let i = 0; i < batch.length; i++) {
+      const stmt = batch[i]
+      const globalIdx = batchStart + i
+      const stmtPreview = stmt.length > 80 ? `${stmt.slice(0, 80)}...` : stmt
+
+      try {
+        await tenantPrisma.$executeRawUnsafe(stmt)
+        executed++
+      } catch (error: any) {
+        const errorCode = error?.code || 'UNKNOWN'
+        const errorMsg = error?.message || String(error)
+
+        // Check if it's a "relation already exists" error - ignore these
+        if (errorCode === '42P07' || errorMsg.includes('already exists')) {
+          skipped++
+          continue
+        }
+
+        // Check if it's a duplicate key error - ignore these
+        if (errorCode === '23505' || errorMsg.includes('duplicate key')) {
+          skipped++
+          continue
+        }
+
+        // For other errors, log and throw
+        console.error(`[STEP 4/4] ❌ Error en sentencia ${globalIdx + 1}/${statements.length}:`)
+        console.error(`  Código: ${errorCode}`)
+        console.error(`  Mensaje: ${errorMsg}`)
+        console.error(`  SQL: ${stmtPreview}`)
+
+        await tenantPrisma.$disconnect()
+        throw new Error(
+          `Fallo en SQL (stmt ${globalIdx + 1}/${statements.length}):\n` +
+          `  SQL: ${stmtPreview}\n` +
+          `  Código: ${errorCode}\n` +
+          `  Error: ${errorMsg}`
+        )
       }
-    } catch (error: any) {
-      failed++
-      const errorCode = error?.code || 'UNKNOWN'
-      const errorMsg = error?.message || String(error)
-
-      // Log detailed error
-      console.error(`[STEP 4/4] ❌ Error en sentencia ${i + 1}/${statements.length}:`)
-      console.error(`  Código: ${errorCode}`)
-      console.error(`  Mensaje: ${errorMsg}`)
-      console.error(`  SQL: ${stmtPreview}`)
-
-      // Check if it's a "relation already exists" error - ignore these
-      if (errorCode === '42P07' || errorMsg.includes('already exists')) {
-        console.log(`[STEP 4/4] ⚠️ Tabla/relación ya existe, continuando...`)
-        continue
-      }
-
-      // Check if it's a duplicate key error - ignore these
-      if (errorCode === '23505' || errorMsg.includes('duplicate key')) {
-        console.log(`[STEP 4/4] ⚠️ Registro duplicado, continuando...`)
-        continue
-      }
-
-      // For other errors, throw
-      await tenantPrisma.$disconnect()
-      throw new Error(
-        `Fallo en SQL (stmt ${i + 1}/${statements.length}):\n` +
-        `  SQL: ${stmtPreview}\n` +
-        `  Código: ${errorCode}\n` +
-        `  Error: ${errorMsg}`
-      )
     }
   }
 
+  const elapsed = ((Date.now() - startTime) / 1000).toFixed(2)
   console.log('='.repeat(60))
-  console.log(`[TENANT INIT] ✓ Inicialización de schema completada`)
+  console.log(`[TENANT INIT] ✓ Inicialización de schema completada en ${elapsed}s`)
   console.log(`[TENANT INIT] Sentencias ejecutadas: ${executed}`)
-  console.log(`[TENANT INIT] Sentencias ignoradas (ya existían): ${failed}`)
+  console.log(`[TENANT INIT] Sentencias ignoradas (ya existían): ${skipped}`)
   console.log('='.repeat(60))
 
   return { tenantPrisma }
