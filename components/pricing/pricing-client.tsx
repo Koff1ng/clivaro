@@ -12,6 +12,8 @@ import { SoftwarePreview } from './software-preview'
 import { HeroPreview } from './hero-preview'
 import { SpotlightCard } from '@/components/ui/spotlight-card'
 import { InfiniteMovingCards } from '@/components/ui/infinite-moving-cards'
+import { BusinessTypes } from '@/components/marketing/business-types'
+import { Testimonials } from '@/components/marketing/testimonials'
 
 const plans = [
   {
@@ -437,64 +439,17 @@ export function PricingClient() {
         </div>
       </ScrollReveal>
 
-      {/* Use Cases Section */}
+      {/* Use Cases Section / Business Types */}
       <ScrollReveal delay={100}>
-        <div id="use-cases" className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl font-bold mb-4">Adaptable a tu tipo de negocio</h2>
-            <p className="text-gray-600 dark:text-gray-400">
-              Clivaro está diseñado para simplificar la gestión en múltiples industrias
-            </p>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {useCases.map((useCase, index) => {
-              const Icon = useCase.icon
-              return (
-                <SpotlightCard key={index} className="h-full hover:border-blue-500/50 transition-colors" spotlightColor="rgba(59, 130, 246, 0.1)">
-                  <CardContent className="flex flex-col items-start p-6">
-                    <div className={`p-3 rounded-lg mb-4 ${useCase.bg}`}>
-                      <Icon className={`h-6 w-6 ${useCase.color}`} />
-                    </div>
-                    <h3 className="text-lg font-semibold mb-2">{useCase.name}</h3>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 text-left">
-                      {useCase.description}
-                    </p>
-                  </CardContent>
-                </SpotlightCard>
-              )
-            })}
-          </div>
+        <div id="use-cases">
+          <BusinessTypes />
         </div>
       </ScrollReveal>
 
       {/* Testimonials Section */}
       <ScrollReveal delay={100}>
-        <div id="testimonials" className="mx-auto max-w-7xl px-6 py-16 lg:px-8">
-          <div className="relative rounded-3xl overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 shadow-2xl">
-            <div className="absolute top-0 right-0 -mr-20 -mt-20 w-[500px] h-[500px] bg-teal-500/10 rounded-full blur-3xl pointer-events-none"></div>
-            <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-[500px] h-[500px] bg-blue-500/10 rounded-full blur-3xl pointer-events-none"></div>
-
-            <div className="relative grid grid-cols-1 lg:grid-cols-2 gap-12 items-center p-8 lg:p-16">
-              <div className="space-y-8">
-                <Quote className="h-12 w-12 text-teal-400 opacity-50" />
-                <h3 className="text-2xl lg:text-3xl font-medium text-white leading-relaxed">
-                  "Alegra con respecto al precio, calidad y servicio, es excelente. Una de las cosas que más me gusta es la rapidez para facturar. Con el POS puedo agilizar mis ventas y analizar qué producto se vende más en cada tienda. Configurar mis productos fue increíblemente rápido y amigable."
-                </h3>
-                <div>
-                  <div className="font-bold text-white text-lg">Isabel Uribe Correa</div>
-                  <div className="text-teal-400">CEO</div>
-                  <div className="mt-2 text-slate-400 font-serif italic text-xl">milamores</div>
-                </div>
-              </div>
-              <div className="relative h-full min-h-[300px] lg:min-h-[400px] rounded-2xl overflow-hidden bg-slate-800/50">
-                {/* Placeholder for testimonial image - using a generic professional gradient for now until image provided */}
-                <div className="absolute inset-0 bg-gradient-to-tr from-teal-500/20 to-blue-500/20 flex items-center justify-center">
-                  <Users className="h-24 w-24 text-white/20" />
-                </div>
-                {/* Note: In a real app we'd use <Image src="..." /> here */}
-              </div>
-            </div>
-          </div>
+        <div id="testimonials">
+          <Testimonials />
         </div>
       </ScrollReveal>
 
