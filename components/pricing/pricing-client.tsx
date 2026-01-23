@@ -220,7 +220,7 @@ export function PricingClient() {
                 : plan.price
 
               return (
-                <ScrollReveal key={plan.name} delay={index * 100} width="100%">
+                <ScrollReveal key={plan.name} delay={index * 100} className="h-full w-full">
                   <Card
                     className={`relative flex flex-col h-full transition-all duration-300 hover:shadow-2xl hover:-translate-y-2 ${plan.popular
                       ? 'border-2 border-blue-500 shadow-xl z-10'
