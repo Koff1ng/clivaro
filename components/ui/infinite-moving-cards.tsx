@@ -10,8 +10,12 @@ import {
     useVelocity,
     useAnimationFrame
 } from 'framer-motion'
-import { wrap } from '@motionone/utils'
 import { cn } from '@/lib/utils'
+
+const wrap = (min: number, max: number, v: number) => {
+    const rangeSize = max - min
+    return ((((v - min) % rangeSize) + rangeSize) % rangeSize) + min
+}
 
 interface ParallaxProps {
     children: React.ReactNode
