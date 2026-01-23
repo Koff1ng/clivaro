@@ -75,7 +75,7 @@ export function HeroPreview({ onContactClick, onViewPreview }: HeroPreviewProps)
               <h1 className="text-4xl lg:text-5xl xl:text-6xl font-bold tracking-tight text-gray-900 dark:text-white leading-tight">
                 Impulsa tu negocio con{' '}
                 <br className="lg:hidden" />
-                <TypingText words={["Software", "Sistemas CRM", "Plataformas ERP", "Apps Web"]} />
+                <TypingText words={["POS", "Sistemas CRM", "Plataforma ERP", "Facturacion Electronica"]} />
                 <br />
                 <span className="text-slate-700 dark:text-slate-300">hecho a tu medida</span>
               </h1>
