@@ -5,10 +5,10 @@ import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Building2, AlertCircle, Loader2, ArrowRight } from 'lucide-react'
+import { Building2, AlertCircle, Loader2, ArrowRight, CheckCircle2 } from 'lucide-react'
 import { Logo } from '@/components/ui/logo'
 import Link from 'next/link'
+import { SpotlightCard } from '@/components/ui/spotlight-card'
 
 export default function HomePage() {
   const router = useRouter()
@@ -19,7 +19,7 @@ export default function HomePage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
-    
+
     if (!tenantSlug.trim()) {
       setError('Por favor ingrese el identificador de su empresa')
       return
@@ -30,7 +30,7 @@ export default function HomePage() {
     try {
       // Verificar que el tenant existe
       const response = await fetch(`/api/tenants/verify?slug=${encodeURIComponent(tenantSlug.trim())}`)
-      
+
       if (!response.ok) {
         const data = await response.json()
         setError(data.error || 'Empresa no encontrada. Verifique el identificador.')
@@ -39,7 +39,7 @@ export default function HomePage() {
       }
 
       const { tenant } = await response.json()
-      
+
       if (!tenant.active) {
         setError('Su cuenta está inactiva. Contacte al administrador.')
         setLoading(false)
@@ -55,47 +55,81 @@ export default function HomePage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-indigo-50 p-4">
-      {/* Background decoration */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-blue-200 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-blob"></div>
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-indigo-200 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-blob animation-delay-2000"></div>
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-purple-200 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-blob animation-delay-4000"></div>
-      </div>
-
-      <div className="relative z-10 w-full max-w-md">
-        {/* Logo/Brand */}
-        <div className="text-center mb-8">
-          <div className="flex justify-center mb-4" style={{ padding: 0, margin: 0 }}>
-            <Logo size="lg" showByline={true} />
-          </div>
-          <p className="text-gray-600 text-sm">Sistema de Gestión Integral</p>
+    <div className="w-full h-screen grid lg:grid-cols-2 overflow-hidden">
+      {/* Left Panel - Brand & Visuals */}
+      <div className="hidden lg:flex relative flex-col justify-between p-12 bg-slate-950 text-white overflow-hidden">
+        {/* Abstract Background Effects */}
+        <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
+          <div className="absolute top-[-20%] right-[-10%] w-[600px] h-[600px] bg-blue-600/20 rounded-full blur-3xl" />
+          <div className="absolute bottom-[-20%] left-[-10%] w-[500px] h-[500px] bg-indigo-600/20 rounded-full blur-3xl" />
         </div>
 
-        <Card className="shadow-2xl border-0 backdrop-blur-sm bg-white/95">
-          <CardHeader className="space-y-1 pb-4">
-            <CardTitle className="text-2xl font-bold text-center text-gray-900 flex items-center justify-center gap-2">
-              <Building2 className="w-6 h-6" />
-              Acceso a su Empresa
-            </CardTitle>
-            <CardDescription className="text-center text-gray-600">
-              Ingrese el identificador de su empresa para continuar
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-5">
-              {error && (
-                <div className="bg-red-50 border border-red-200 text-red-700 text-sm p-4 rounded-lg flex items-start gap-2 animate-in slide-in-from-top-2">
-                  <AlertCircle className="w-5 h-5 mt-0.5 flex-shrink-0" />
-                  <p>{error}</p>
-                </div>
-              )}
+        {/* Header content */}
+        <div className="relative z-10">
+          <Logo size="lg" className="w-fit" />
+        </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="tenantSlug" className="text-gray-700 font-medium flex items-center gap-2">
-                  <Building2 className="w-4 h-4" />
-                  Identificador de Empresa
-                </Label>
+        {/* Feature/Testimonial Content */}
+        <div className="relative z-10 max-w-lg">
+          <h2 className="text-4xl font-bold tracking-tight mb-6 leading-tight">
+            La plataforma definitiva para escalar tu negocio.
+          </h2>
+          <div className="space-y-4">
+            <div className="flex items-center gap-3 text-slate-300">
+              <CheckCircle2 className="w-5 h-5 text-blue-500" />
+              <span>Gestión integral de inventario y ventas</span>
+            </div>
+            <div className="flex items-center gap-3 text-slate-300">
+              <CheckCircle2 className="w-5 h-5 text-blue-500" />
+              <span>Facturación electrónica automatizada</span>
+            </div>
+            <div className="flex items-center gap-3 text-slate-300">
+              <CheckCircle2 className="w-5 h-5 text-blue-500" />
+              <span>CRM y análisis de datos en tiempo real</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Footer content */}
+        <div className="relative z-10 text-sm text-slate-500">
+          © 2026 Clivaro by Clientum Studio.
+        </div>
+      </div>
+
+      {/* Right Panel - Login Form */}
+      <div className="flex flex-col items-center justify-center p-8 bg-gray-50 dark:bg-gray-900 w-full">
+        <div className="w-full max-w-md space-y-8">
+
+          {/* Header Mobile Only Logo */}
+          <div className="lg:hidden flex justify-center mb-8">
+            <Logo size="lg" />
+          </div>
+
+          <div className="text-center lg:text-left space-y-2">
+            <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
+              Acceso a su Empresa
+            </h1>
+            <p className="text-gray-500 dark:text-gray-400">
+              Ingrese el identificador único de su organización
+            </p>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {error && (
+              <div className="p-4 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm flex items-start gap-3 animate-in fade-in slide-in-from-top-2">
+                <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                <p>{error}</p>
+              </div>
+            )}
+
+            <div className="space-y-2.5">
+              <Label htmlFor="tenantSlug" className="text-gray-700 dark:text-gray-300 font-medium">
+                Identificador de Empresa
+              </Label>
+              <div className="relative group">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400 group-focus-within:text-blue-600 transition-colors">
+                  <Building2 className="w-5 h-5" />
+                </div>
                 <Input
                   id="tenantSlug"
                   type="text"
@@ -104,60 +138,45 @@ export default function HomePage() {
                   onChange={(e) => setTenantSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
                   required
                   disabled={loading}
-                  className="h-11 border-gray-300 focus:border-blue-500 focus:ring-blue-500 transition-colors"
+                  className="pl-10 h-12 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 focus:border-blue-500 focus:ring-blue-500/20 transition-all text-base"
                   autoComplete="organization"
                 />
-                <p className="text-xs text-gray-500">
-                  El identificador es único para cada empresa (ej: mi-empresa, ferreteria-central)
-                </p>
               </div>
+            </div>
 
-              <Button 
-                type="submit" 
-                className="w-full h-11 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98]" 
-                disabled={loading}
+            <Button
+              type="submit"
+              className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-lg shadow-lg hover:shadow-blue-500/25 transition-all duration-200"
+              disabled={loading}
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                  Verificando...
+                </>
+              ) : (
+                <>
+                  Continuar
+                  <ArrowRight className="w-5 h-5 ml-2" />
+                </>
+              )}
+            </Button>
+          </form>
+
+          <div className="pt-6 border-t border-gray-100 dark:border-gray-800 text-center">
+            <div className="mb-4">
+              <Link
+                href="/pricing"
+                className="text-blue-600 hover:text-blue-700 font-medium hover:underline inline-flex items-center gap-1"
               >
-                {loading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Verificando...
-                  </>
-                ) : (
-                  <>
-                    Continuar
-                    <ArrowRight className="w-4 h-4 ml-2" />
-                  </>
-                )}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
-
-        {/* Links */}
-        <div className="text-center mt-6 space-y-2">
-          <Link 
-            href="/pricing" 
-            className="text-sm text-blue-600 hover:text-blue-700 font-medium hover:underline transition-colors block"
-          >
-            Ver Planes y Precios →
-          </Link>
-          <p className="text-xs text-gray-500">
-            ¿No tiene una cuenta? <Link href="/pricing" className="text-blue-600 hover:underline">Contáctenos</Link>
-          </p>
-          {/* Acceso discreto a super admin */}
-          <Link 
-            href="/admin/login" 
-            className="text-xs text-gray-400 hover:text-gray-500 transition-colors opacity-50 hover:opacity-70"
-            title="Acceso Administrativo"
-          >
-            Admin
-          </Link>
+                Ver Planes y Precios <ArrowRight className="w-4 h-4" />
+              </Link>
+            </div>
+            <p className="text-sm text-gray-500">
+              ¿No tiene una cuenta? <Link href="/pricing" className="text-gray-900 dark:text-gray-200 font-medium hover:underline">Contáctenos</Link>
+            </p>
+          </div>
         </div>
-
-        {/* Footer */}
-        <p className="text-center text-sm text-gray-500 mt-6">
-          © 2026 Clivaro by Clientum Studio. Todos los derechos reservados.
-        </p>
       </div>
     </div>
   )
