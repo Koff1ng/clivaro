@@ -319,15 +319,15 @@ export function InvoiceList() {
       ) : (
         <div className="border rounded-2xl bg-card/80 backdrop-blur-sm shadow-sm">
           <Table>
-            <TableHeader>
+            <TableHeader className="bg-gray-50 dark:bg-gray-800/50">
               <TableRow>
-                <TableHead>Número</TableHead>
-                <TableHead>Cliente</TableHead>
-                <TableHead>Fecha</TableHead>
-                <TableHead>Estado</TableHead>
-                <TableHead>Fact. Electrónica</TableHead>
-                <TableHead>Total</TableHead>
-                <TableHead>Acciones</TableHead>
+                <TableHead className="py-3 px-4 font-semibold text-sm">Número</TableHead>
+                <TableHead className="py-3 px-4 font-semibold text-sm">Cliente</TableHead>
+                <TableHead className="py-3 px-4 font-semibold text-sm">Fecha</TableHead>
+                <TableHead className="py-3 px-4 font-semibold text-sm">Estado</TableHead>
+                <TableHead className="py-3 px-4 font-semibold text-sm">Fact. Electrónica</TableHead>
+                <TableHead className="py-3 px-4 font-semibold text-sm">Total</TableHead>
+                <TableHead className="py-3 px-4 font-semibold text-sm">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -343,7 +343,7 @@ export function InvoiceList() {
                   return (
                     <TableRow
                       key={invoice.id}
-                      className={isDeleting ? 'animate-slide-up-out' : ''}
+                      className={`${isDeleting ? 'animate-slide-up-out' : ''} hover:bg-gray-50 dark:hover:bg-gray-800/50 border-b transition-colors`}
                     >
                       <TableCell className="font-medium">
                         <div className="flex items-center gap-2">

@@ -26,7 +26,7 @@ async function fetchCustomers(page: number, search: string) {
     limit: '50',
   })
   if (search) params.append('search', search)
-  
+
   const res = await fetch(`/api/customers?${params}`)
   if (!res.ok) throw new Error('Failed to fetch customers')
   return res.json()
@@ -84,7 +84,7 @@ export function CustomerList() {
 
     try {
       const url = `/api/customers/${customer.id}`
-      
+
       const res = await fetch(url, {
         method: 'GET',
         headers: {
@@ -92,7 +92,7 @@ export function CustomerList() {
         },
         credentials: 'include',
       })
-      
+
       if (!res.ok) {
         let errorMessage = 'Error al cargar los detalles del cliente'
         try {
@@ -104,29 +104,29 @@ export function CustomerList() {
         toast(errorMessage, 'error')
         return
       }
-      
+
       const data = await res.json().catch(() => null)
-      
+
       // Verificar que la estructura sea correcta
       if (!data || !data.customer) {
         toast('Error: Los datos del cliente no tienen la estructura esperada', 'error')
         return
       }
-      
+
       setViewCustomer(data)
     } catch (error: any) {
       console.error('Error loading customer details:', error)
       console.error('Error name:', error.name)
       console.error('Error message:', error.message)
       console.error('Error stack:', error.stack)
-      
+
       let errorMessage = 'Error de conexión al cargar los detalles del cliente'
       if (error.name === 'TypeError' && error.message.includes('fetch')) {
         errorMessage = 'Error de conexión: No se pudo conectar al servidor. Verifica que el servidor esté corriendo.'
       } else if (error.message) {
         errorMessage = error.message
       }
-      
+
       toast(errorMessage, 'error')
     }
   }, [])
@@ -169,112 +169,112 @@ export function CustomerList() {
           <span className="text-muted-foreground">Cargando clientes...</span>
         </div>
       ) : (
-      <div className="border rounded-2xl bg-card/80 backdrop-blur-sm shadow-sm">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Nombre</TableHead>
-              <TableHead>Contacto</TableHead>
-              <TableHead>Email</TableHead>
-              <TableHead>Teléfono</TableHead>
-              <TableHead>Tags</TableHead>
-              <TableHead>Estado</TableHead>
-              <TableHead>Acciones</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {customers.length === 0 ? (
+        <div className="border rounded-2xl bg-card/80 backdrop-blur-sm shadow-sm">
+          <Table>
+            <TableHeader className="bg-gray-50 dark:bg-gray-800/50">
               <TableRow>
-                <TableCell colSpan={7} className="text-center text-gray-500">
-                  No hay clientes
-                </TableCell>
+                <TableHead className="py-3 px-4 font-semibold text-sm">Nombre</TableHead>
+                <TableHead className="py-3 px-4 font-semibold text-sm">Contacto</TableHead>
+                <TableHead className="py-3 px-4 font-semibold text-sm">Email</TableHead>
+                <TableHead className="py-3 px-4 font-semibold text-sm">Teléfono</TableHead>
+                <TableHead className="py-3 px-4 font-semibold text-sm">Tags</TableHead>
+                <TableHead className="py-3 px-4 font-semibold text-sm">Estado</TableHead>
+                <TableHead className="py-3 px-4 font-semibold text-sm">Acciones</TableHead>
               </TableRow>
-            ) : (
-              customers.map((customer: any) => (
-                <TableRow key={customer.id}>
-                  <TableCell className="font-medium">{customer.name}</TableCell>
-                  <TableCell>
-                    {customer.taxId && (
-                      <div className="text-sm text-gray-600">NIT: {customer.taxId}</div>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {customer.email ? (
-                      <div className="flex items-center gap-1 text-sm">
-                        <Mail className="h-3 w-3" />
-                        {customer.email}
-                      </div>
-                    ) : (
-                      <span className="text-gray-400">-</span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {customer.phone ? (
-                      <div className="flex items-center gap-1 text-sm">
-                        <Phone className="h-3 w-3" />
-                        {customer.phone}
-                      </div>
-                    ) : (
-                      <span className="text-gray-400">-</span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {customer.tags ? (
-                      <div className="flex gap-1 flex-wrap">
-                        {customer.tags.split(',').filter(Boolean).map((tag: string, i: number) => (
-                          <span key={i} className="px-2 py-0.5 text-xs bg-blue-100 text-blue-800 rounded">
-                            {tag.trim()}
-                          </span>
-                        ))}
-                      </div>
-                    ) : (
-                      <span className="text-gray-400">-</span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {customer.active ? (
-                      <span className="px-2 py-1 text-xs bg-green-100 text-green-800 rounded">Activo</span>
-                    ) : (
-                      <span className="px-2 py-1 text-xs bg-gray-100 text-gray-800 rounded">Inactivo</span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex gap-1 sm:gap-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleView(customer)}
-                        title="Ver detalles"
-                        className="h-8 w-8 p-0"
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleEdit(customer)}
-                        title="Editar"
-                        className="h-8 w-8 p-0"
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDelete(customer)}
-                        title="Desactivar"
-                        className="h-8 w-8 p-0"
-                      >
-                        <Trash2 className="h-4 w-4 text-red-500" />
-                      </Button>
-                    </div>
+            </TableHeader>
+            <TableBody>
+              {customers.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center text-gray-500">
+                    No hay clientes
                   </TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+              ) : (
+                customers.map((customer: any) => (
+                  <TableRow key={customer.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 border-b">
+                    <TableCell className="font-medium">{customer.name}</TableCell>
+                    <TableCell>
+                      {customer.taxId && (
+                        <div className="text-sm text-gray-600">NIT: {customer.taxId}</div>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {customer.email ? (
+                        <div className="flex items-center gap-1 text-sm">
+                          <Mail className="h-3 w-3" />
+                          {customer.email}
+                        </div>
+                      ) : (
+                        <span className="text-gray-400">-</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {customer.phone ? (
+                        <div className="flex items-center gap-1 text-sm">
+                          <Phone className="h-3 w-3" />
+                          {customer.phone}
+                        </div>
+                      ) : (
+                        <span className="text-gray-400">-</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {customer.tags ? (
+                        <div className="flex gap-1 flex-wrap">
+                          {customer.tags.split(',').filter(Boolean).map((tag: string, i: number) => (
+                            <span key={i} className="px-2 py-0.5 text-xs bg-blue-100 text-blue-800 rounded">
+                              {tag.trim()}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="text-gray-400">-</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {customer.active ? (
+                        <span className="px-2 py-1 text-xs bg-green-100 text-green-800 rounded">Activo</span>
+                      ) : (
+                        <span className="px-2 py-1 text-xs bg-gray-100 text-gray-800 rounded">Inactivo</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-1 sm:gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleView(customer)}
+                          title="Ver detalles"
+                          className="h-8 w-8 p-0"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleEdit(customer)}
+                          title="Editar"
+                          className="h-8 w-8 p-0"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDelete(customer)}
+                          title="Desactivar"
+                          className="h-8 w-8 p-0"
+                        >
+                          <Trash2 className="h-4 w-4 text-red-500" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
       )}
 
       {pagination.totalPages > 1 && (
