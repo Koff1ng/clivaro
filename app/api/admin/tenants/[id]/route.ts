@@ -16,7 +16,7 @@ async function executeWithRetry<T>(
     } catch (error: any) {
       lastError = error
       const errorMessage = error?.message || String(error)
-      
+
       // Si es error de límite de conexiones, esperar y reintentar
       if (errorMessage.includes('MaxClientsInSessionMode') || errorMessage.includes('max clients reached')) {
         if (attempt < maxRetries - 1) {
@@ -26,7 +26,7 @@ async function executeWithRetry<T>(
           continue
         }
       }
-      
+
       // Si no es error de conexión, lanzar inmediatamente
       throw error
     }
@@ -40,15 +40,15 @@ export async function GET(
 ) {
   try {
     const session = await requireAuth(request)
-    
+
     if (session instanceof NextResponse) {
       return session
     }
 
 
-  const user = session.user as any
+    const user = session.user as any
     const { id } = await params
-    
+
     // Verificar si es super admin
     const dbUser = await prisma.user.findUnique({
       where: { id: user.id },
@@ -99,15 +99,15 @@ export async function PUT(
 ) {
   try {
     const session = await requireAuth(request)
-    
+
     if (session instanceof NextResponse) {
       return session
     }
 
 
-  const user = session.user as any
+    const user = session.user as any
     const { id } = await params
-    
+
     // Verificar si es super admin
     const dbUser = await prisma.user.findUnique({
       where: { id: user.id },
@@ -159,15 +159,15 @@ export async function DELETE(
 ) {
   try {
     const session = await requireAuth(request)
-    
+
     if (session instanceof NextResponse) {
       return session
     }
 
 
-  const user = session.user as any
+    const user = session.user as any
     const { id } = await params
-    
+
     // Verificar si es super admin
     const dbUser = await prisma.user.findUnique({
       where: { id: user.id },
@@ -181,11 +181,53 @@ export async function DELETE(
       )
     }
 
+    // Get tenant info before deleting
+    const tenant = await prisma.tenant.findUnique({
+      where: { id },
+      select: { slug: true, databaseUrl: true }
+    })
+
+    if (!tenant) {
+      return NextResponse.json(
+        { error: 'Tenant no encontrado' },
+        { status: 404 }
+      )
+    }
+
+    // Delete the PostgreSQL schema if using Postgres
+    const isPostgres = tenant.databaseUrl?.startsWith('postgresql://') || tenant.databaseUrl?.startsWith('postgres://')
+
+    if (isPostgres && tenant.slug) {
+      const schemaName = `tenant_${tenant.slug.toLowerCase().replace(/[^a-z0-9_]/g, '_')}`
+
+      // Use DIRECT_DATABASE_URL for DDL operations
+      const directUrl = process.env.DIRECT_DATABASE_URL || process.env.DATABASE_URL
+
+      if (directUrl) {
+        const { PrismaClient } = await import('@prisma/client')
+        const adminPrisma = new PrismaClient({
+          datasources: { db: { url: directUrl } },
+        })
+
+        try {
+          console.log(`[DELETE TENANT] Eliminando schema: ${schemaName}`)
+          await adminPrisma.$executeRawUnsafe(`DROP SCHEMA IF EXISTS "${schemaName}" CASCADE`)
+          console.log(`[DELETE TENANT] ✓ Schema ${schemaName} eliminado`)
+        } catch (schemaError: any) {
+          console.error(`[DELETE TENANT] ⚠️ Error eliminando schema: ${schemaError?.message}`)
+          // Continue with tenant deletion even if schema deletion fails
+        } finally {
+          await adminPrisma.$disconnect()
+        }
+      }
+    }
+
+    // Delete the tenant record from master database
     await prisma.tenant.delete({
       where: { id }
     })
 
-    return NextResponse.json({ success: true })
+    return NextResponse.json({ success: true, schemaDeleted: isPostgres })
   } catch (error: any) {
     console.error('Error deleting tenant:', error)
     return NextResponse.json(
