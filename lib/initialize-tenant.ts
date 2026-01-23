@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs'
 import { execSync } from 'child_process'
 import * as fs from 'fs'
 import * as path from 'path'
+import { Client } from 'pg'
 
 function getTenantSchemaName(tenantSlug: string): string {
   const safeSlug = tenantSlug.toLowerCase().replace(/[^a-z0-9_]/g, '_')
@@ -93,11 +94,17 @@ async function initializePostgresTenant(databaseUrl: string, tenantSlug: string)
     throw new Error(`Error conectando al schema "${schemaName}": ${connError?.message || connError}`)
   }
 
-  // Step 3: Read SQL file and execute ALL at once (much faster than statement by statement)
+  // Step 3: Read SQL file and execute using pg Client (supports multiple statements)
   console.log('[STEP 3/3] Leyendo y ejecutando supabase-init.sql...')
   const startTime = Date.now()
 
+  // Create a pg Client directly (not through Prisma) for multi-statement execution
+  const pgClient = new Client({ connectionString: tenantSchemaUrl })
+
   try {
+    await pgClient.connect()
+    console.log('[STEP 3/3] Conexión pg directa establecida')
+
     const sqlPath = path.join(process.cwd(), 'prisma', 'supabase-init.sql')
     console.log(`[STEP 3/3] Ruta del archivo: ${sqlPath}`)
 
@@ -132,8 +139,8 @@ async function initializePostgresTenant(databaseUrl: string, tenantSlug: string)
 
     console.log(`[STEP 3/3] Ejecutando SQL completo (${sql.length} chars)...`)
 
-    // Execute all SQL in a single call - PostgreSQL handles multiple statements
-    await tenantPrisma.$executeRawUnsafe(sql)
+    // Execute all SQL using pg Client - it supports multiple statements natively
+    await pgClient.query(sql)
 
     const elapsed = ((Date.now() - startTime) / 1000).toFixed(2)
     console.log('='.repeat(60))
@@ -152,9 +159,13 @@ async function initializePostgresTenant(databaseUrl: string, tenantSlug: string)
     if (errorCode === '42P07' || errorMsg.includes('already exists')) {
       console.log('[STEP 3/3] ⚠️ Algunas tablas ya existían, continuando...')
     } else {
+      await pgClient.end().catch(() => { })
       await tenantPrisma.$disconnect()
       throw new Error(`Error creando tablas del tenant: ${errorMsg}`)
     }
+  } finally {
+    await pgClient.end().catch(() => { })
+    console.log('[STEP 3/3] Conexión pg cerrada')
   }
 
   return { tenantPrisma }
