@@ -1,57 +1,16 @@
-import { SpotlightCard } from '@/components/ui/spotlight-card'
+'use client'
 
-// ... (keep existing imports)
-
-// Inside PricingClient function:
-return (
-  <ScrollReveal key={plan.name} delay={index * 100} className="h-full w-full">
-    <SpotlightCard
-      spotlightColor={plan.popular ? 'rgba(14, 165, 233, 0.25)' : undefined}
-      className={`flex flex-col h-full transition-all duration-300 hover:shadow-2xl hover:-translate-y-2 ${plan.popular
-        ? 'border-2 border-blue-500 shadow-xl z-10'
-        : 'border border-gray-200 dark:border-gray-800'
-        }`}
-    >
-      <CardHeader>
-        <div className={`inline-flex items-center justify-center w-14 h-14 rounded-xl bg-gradient-to-br ${plan.color} mb-6 shadow-inner`}>
-          <Icon className="h-7 w-7 text-white" />
-        </div>
-        <CardTitle className="text-2xl font-bold">{plan.name}</CardTitle>
-        <CardDescription className="mt-2 text-base">{plan.description}</CardDescription>
-        <div className="mt-8">
-          <div className="flex items-baseline gap-1">
-            <span className="text-4xl lg:text-5xl font-extrabold tracking-tight">
-              {formatPrice(displayPrice)}
-            </span>
-                        // ... rest of price calculation
-            {billingCycle === 'annual' ? (
-              <span className="text-sm font-medium text-gray-500">/año</span>
-            ) : (
-              <span className="text-sm font-medium text-gray-500">/mes</span>
-            )}
-          </div>
-          {billingCycle === 'annual' && (
-            <p className="text-sm text-gray-500 mt-2 font-medium">
-              Facturado anualmente
-            </p>
-          )}
-        </div>
-      </CardHeader>
-      <CardContent className="flex-1 flex flex-col">
-                    // ... content (Buttons, features lists)
-      </CardContent>
-    </SpotlightCard>
-  </ScrollReveal>
-)
+import { useState } from 'react'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Check, X, Zap, Building2, Rocket, TrendingUp, Users, Package, ShoppingCart, BarChart3, Mail, Sparkles } from 'lucide-react'
-import Link from 'next/link'
-import { Logo } from '@/components/ui/logo'
 import { ContactForm } from './contact-form'
 import { ScrollNavbar } from './scroll-navbar'
 import { ScrollReveal } from './scroll-reveal'
 import { SoftwarePreview } from './software-preview'
 import { HeroPreview } from './hero-preview'
+import { SpotlightCard } from '@/components/ui/spotlight-card'
 
 const plans = [
   {
@@ -347,8 +306,6 @@ export function PricingClient() {
         </div>
       </ScrollReveal>
 
-      {/* Offer Banner Removed as requested */}
-
       {/* Comparison Table */}
       <ScrollReveal delay={100}>
         <div id="comparison" className="mx-auto max-w-7xl px-6 py-16 lg:px-8">
@@ -422,10 +379,12 @@ export function PricingClient() {
                   key={feature.name}
                   className="flex flex-col items-center p-6 rounded-lg border bg-card hover:shadow-lg transition-shadow"
                 >
-                  <div className="w-12 h-12 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center mb-4">
-                    <Icon className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-                  </div>
-                  <p className="text-sm font-medium text-center">{feature.name}</p>
+                  <SpotlightCard className="w-full flex flex-col items-center p-6 border-0 bg-transparent shadow-none hover:shadow-none hover:translate-y-0" spotlightColor="rgba(59, 130, 246, 0.1)">
+                    <div className="w-12 h-12 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center mb-4 mx-auto">
+                      <Icon className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                    </div>
+                    <p className="text-sm font-medium text-center">{feature.name}</p>
+                  </SpotlightCard>
                 </div>
               )
             })}
@@ -523,4 +482,3 @@ export function PricingClient() {
     </div>
   )
 }
-
