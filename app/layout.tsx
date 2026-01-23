@@ -12,7 +12,7 @@ const fontSans = Plus_Jakarta_Sans({
 })
 
 export const metadata: Metadata = {
-  title: 'ClientumExpress',
+  title: 'Clivaro',
   description: 'Sistema de gestion empresarial',
   icons: {
     icon: '/clivaro-logo.webp',
