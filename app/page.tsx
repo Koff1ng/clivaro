@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Building2, AlertCircle, Loader2, ArrowRight, CheckCircle2 } from 'lucide-react'
+import { Building2, AlertCircle, Loader2, ArrowRight, CheckCircle2, Lock } from 'lucide-react'
 import { Logo } from '@/components/ui/logo'
 import Link from 'next/link'
 import { SpotlightCard } from '@/components/ui/spotlight-card'
@@ -97,8 +97,11 @@ export default function HomePage() {
           </div>
 
           {/* Footer content */}
-          <div className="relative z-10 text-sm text-slate-500">
-            © 2026 Clivaro by Clientum Studio.
+          <div className="relative z-10 text-sm text-slate-500 flex items-center gap-4">
+            <span>© 2026 Clivaro by <Link href="/pricing" className="hover:text-blue-500 transition-colors">Clientum Studio</Link>.</span>
+            <Link href="/admin/login" className="opacity-50 hover:opacity-100 transition-opacity" title="Administración">
+              <Lock className="w-3 h-3" />
+            </Link>
           </div>
         </div>
 
@@ -193,8 +196,11 @@ export default function HomePage() {
       {/* Scroll to bottom footer if needed, or rely on page flow. 
           Given the current design, the "simple footer" is part of the hero left panel.
           We might want a global footer later, but for now this meets the requirement. */}
-      <footer className="py-8 bg-slate-950 text-center text-slate-500 text-sm lg:hidden">
-        © 2026 Clivaro by Clientum Studio.
+      <footer className="py-8 bg-slate-950 text-center text-slate-500 text-sm lg:hidden flex flex-col items-center gap-2">
+        <span>© 2026 Clivaro by <Link href="/pricing" className="hover:text-blue-500 transition-colors">Clientum Studio</Link>.</span>
+        <Link href="/admin/login" className="opacity-50 hover:opacity-100 transition-opacity" title="Administración">
+          <Lock className="w-3 h-3" />
+        </Link>
       </footer>
     </div>
   )
