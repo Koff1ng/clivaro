@@ -1,4 +1,5 @@
 @import '../styles/tokens.css';
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -9,6 +10,7 @@
     transform: translateX(100%);
     opacity: 0;
   }
+
   to {
     transform: translateX(0);
     opacity: 1;
@@ -20,6 +22,7 @@
     transform: translateX(0);
     opacity: 1;
   }
+
   to {
     transform: translateX(100%);
     opacity: 0;
@@ -31,6 +34,7 @@
     opacity: 1;
     transform: scale(1);
   }
+
   to {
     opacity: 0;
     transform: scale(0.95);
@@ -43,6 +47,7 @@
     transform: translateY(0);
     max-height: 200px;
   }
+
   to {
     opacity: 0;
     transform: translateY(-20px);
@@ -63,6 +68,7 @@
   from {
     transform: rotate(0deg);
   }
+
   to {
     transform: rotate(360deg);
   }
@@ -91,97 +97,136 @@
 @layer base {
   :root {
     /* Base */
-    --bg-main: #F8FAFC;          /* Ghost White */
-    --bg-card: #FFFFFF;          /* Pure White */
-    --bg-soft: #F1F5F9;          /* Slate 100 */
+    --bg-main: #F8FAFC;
+    /* Clean Slate */
+    --bg-card: #FFFFFF;
+    /* Pure White */
+    --bg-soft: #F1F5F9;
+    /* Soft Slate */
 
     /* Bordes */
-    --border-light: #E2E8F0;     /* Slate 200 */
-    --border-muted: #CBD5E1;     /* Slate 300 */
+    --border-light: #E2E8F0;
+    /* Slate 200 */
+    --border-muted: #CBD5E1;
+    /* Slate 300 */
 
     /* Texto */
-    --text-primary: #0F172A;     /* Deep Navy (Slate 900) */
-    --text-secondary: #475569;   /* Slate Grey (Slate 600) */
-    --text-muted: #94A3B8;       /* Slate 400 */
+    --text-primary: #1B365D;
+    /* Oxford Blue - Trust & Enterprise */
+    --text-secondary: #64748B;
+    /* Slate - Modern Tech */
+    --text-muted: #94A3B8;
+    /* Slate 400 */
 
     /* Marca / Acción */
-    --primary: #0EA5E9;          /* Electric Cyan (Sky 500) */
-    --primary-soft: #E0F2FE;     /* Sky 100 */
-    --primary-hover: #0284C7;    /* Sky 600 */
+    --primary: #1B365D;
+    /* Oxford Blue */
+    --primary-soft: #E0F2FE;
+    --primary-hover: #0EA5E9;
+    /* Sky Blue (Accent) */
 
     /* Estados */
-    --success: #10B981;          /* Emerald 500 */
+    --success: #10B981;
+    /* Emerald */
     --success-soft: #ECFDF5;
-    
-    --warning: #F59E0B;          /* Amber 500 */
+
+    --warning: #F59E0B;
+    /* Amber */
     --warning-soft: #FFFBEB;
 
-    --danger: #EF4444;           /* Red 500 */
+    --danger: #EF4444;
+    /* Red */
     --danger-soft: #FEF2F2;
 
     /* Tailwind CSS Variables (compatibilidad) */
-    --background: 210 40% 98%;   /* Slate 50 (#F8FAFC) */
-    --foreground: 222 47% 11%;   /* Slate 900 (#0F172A) */
-    --card: 0 0% 100%;           /* White */
-    --card-foreground: 222 47% 11%;
+    --background: 210 40% 98%;
+    /* #F8FAFC */
+    --foreground: 215 55% 24%;
+    /* #1B365D */
+    --card: 0 0% 100%;
+    --card-foreground: 215 55% 24%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
-    --primary: 199 89% 48%;      /* Sky 500 (#0EA5E9) */
+    --popover-foreground: 215 55% 24%;
+    --primary: 215 55% 24%;
+    /* #1B365D (Oxford Blue) */
     --primary-foreground: 0 0% 100%;
-    --secondary: 215 16% 47%;    /* Slate 500 (#64748B) */
+    --secondary: 215 16% 47%;
+    /* #64748B (Slate) */
     --secondary-foreground: 0 0% 100%;
-    --muted: 210 40% 96%;        /* Slate 100 */
+    --muted: 210 40% 96%;
     --muted-foreground: 215 16% 47%;
-    --accent: 199 89% 48%;       /* Match Primary */
+    --accent: 199 89% 48%;
+    /* #0EA5E9 (Sky Blue) */
     --accent-foreground: 0 0% 100%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
-    --border: 214 32% 91%;       /* Slate 200 */
+    --border: 214 32% 91%;
     --input: 214 32% 91%;
-    --ring: 199 89% 48%;         /* Sky 500 */
+    --ring: 215 55% 24%;
+    /* #1B365D */
     --radius: 0.5rem;
   }
 
   .dark {
     /* Base (Dark Mode) */
-    --bg-main: #0F172A;          /* Deep Navy (Slate 900) */
-    --bg-card: #1E293B;          /* Slate 800 */
-    --bg-soft: #334155;          /* Slate 700 */
+    --bg-main: #0F172A;
+    /* Deep Navy (Slate 900) */
+    --bg-card: #1E293B;
+    /* Slate 800 */
+    --bg-soft: #334155;
+    /* Slate 700 */
 
     /* Bordes (Dark Mode) */
-    --border-light: #334155;     /* Slate 700 */
-    --border-muted: #475569;     /* Slate 600 */
+    --border-light: #334155;
+    /* Slate 700 */
+    --border-muted: #475569;
+    /* Slate 600 */
 
     /* Texto (Dark Mode) */
-    --text-primary: #F8FAFC;     /* Slate 50 */
-    --text-secondary: #CBD5E1;   /* Slate 300 */
-    --text-muted: #94A3B8;       /* Slate 400 */
+    --text-primary: #F8FAFC;
+    /* Slate 50 */
+    --text-secondary: #CBD5E1;
+    /* Slate 300 */
+    --text-muted: #94A3B8;
+    /* Slate 400 */
 
     /* Marca / Acción (Dark Mode) */
-    --primary: #38BDF8;          /* Sky 400 (Lighter for Dark Mode) */
-    --primary-soft: #0C4A6E;     /* Sky 900 */
-    --primary-hover: #0EA5E9;    /* Sky 500 */
+    --primary: #38BDF8;
+    /* Sky 400 (Lighter for Dark Mode) */
+    --primary-soft: #0C4A6E;
+    /* Sky 900 */
+    --primary-hover: #0EA5E9;
+    /* Sky 500 */
 
     /* Tailwind CSS Variables (Dark Mode) */
-    --background: 222 47% 11%;   /* Slate 900 (#0F172A) */
-    --foreground: 210 40% 98%;   /* Slate 50 */
-    --card: 215 28% 17%;         /* Slate 800 (#1E293B) */
+    --background: 222 47% 11%;
+    /* Slate 900 (#0F172A) */
+    --foreground: 210 40% 98%;
+    /* Slate 50 */
+    --card: 215 28% 17%;
+    /* Slate 800 (#1E293B) */
     --card-foreground: 210 40% 98%;
     --popover: 215 28% 17%;
     --popover-foreground: 210 40% 98%;
-    --primary: 199 89% 60%;      /* Sky 400 (#38BDF8) */
+    --primary: 199 89% 60%;
+    /* Sky 400 (#38BDF8) */
     --primary-foreground: 222 47% 11%;
-    --secondary: 215 16% 47%;    /* Slate 600 */
+    --secondary: 215 16% 47%;
+    /* Slate 600 */
     --secondary-foreground: 0 0% 100%;
-    --muted: 217 33% 18%;        /* Slate 800 */
+    --muted: 217 33% 18%;
+    /* Slate 800 */
     --muted-foreground: 215 20% 65%;
-    --accent: 199 89% 60%;       /* Match Primary */
+    --accent: 199 89% 60%;
+    /* Match Primary */
     --accent-foreground: 222 47% 11%;
     --destructive: 0 63% 50%;
     --destructive-foreground: 0 0% 100%;
-    --border: 215 28% 17%;       /* Slate 800 */
+    --border: 215 28% 17%;
+    /* Slate 800 */
     --input: 215 28% 17%;
-    --ring: 199 89% 60%;         /* Sky 400 */
+    --ring: 199 89% 60%;
+    /* Sky 400 */
   }
 }
 
@@ -189,6 +234,7 @@
   * {
     @apply border-border;
   }
+
   body {
     @apply bg-background text-foreground;
   }
@@ -207,36 +253,42 @@
 
 /* Modo claro - scrollbar claro (blanco/gris claro) */
 ::-webkit-scrollbar-thumb {
-  background: #e5e7eb; /* Gris claro */
+  background: #e5e7eb;
+  /* Gris claro */
   border-radius: 5px;
   border: 2px solid transparent;
   background-clip: padding-box;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #d1d5db; /* Gris más oscuro al hover */
+  background: #d1d5db;
+  /* Gris más oscuro al hover */
   background-clip: padding-box;
 }
 
 /* Modo oscuro - scrollbar oscuro */
 .dark ::-webkit-scrollbar-thumb {
-  background: #374151; /* Gris oscuro */
+  background: #374151;
+  /* Gris oscuro */
   background-clip: padding-box;
 }
 
 .dark ::-webkit-scrollbar-thumb:hover {
-  background: #4b5563; /* Gris más claro al hover */
+  background: #4b5563;
+  /* Gris más claro al hover */
   background-clip: padding-box;
 }
 
 /* Firefox */
 * {
   scrollbar-width: thin;
-  scrollbar-color: #e5e7eb transparent; /* Gris claro para modo claro */
+  scrollbar-color: #e5e7eb transparent;
+  /* Gris claro para modo claro */
 }
 
 .dark * {
-  scrollbar-color: #374151 transparent; /* Gris oscuro para modo oscuro */
+  scrollbar-color: #374151 transparent;
+  /* Gris oscuro para modo oscuro */
 }
 
 /* Estilos de impresión para contenido tipo tirilla (ticket). 
@@ -306,12 +358,16 @@
 }
 
 @keyframes blob {
-  0%, 100% {
+
+  0%,
+  100% {
     transform: translate(0, 0) scale(1);
   }
+
   33% {
     transform: translate(30px, -50px) scale(1.1);
   }
+
   66% {
     transform: translate(-20px, 20px) scale(0.9);
   }
@@ -334,9 +390,8 @@
   .print\\:hidden {
     display: none !important;
   }
-  
+
   .print\\:block {
     display: block !important;
   }
 }
-

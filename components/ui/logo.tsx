@@ -26,15 +26,29 @@ export function Logo({ className = '', showText = true, size = 'md', showByline 
       <svg
         width={width}
         height={height}
-        viewBox="0 0 150 40"
+        viewBox="0 0 200 60"
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
-        className="text-slate-900 dark:text-white" // Default colors
+        className="text-slate-900 dark:text-white"
       >
-        <path d="M30 20L25 11.34H15L10 20L15 28.66H25L30 20Z" stroke="#0EA5E9" strokeWidth="3" />
-        <path d="M25 11.34L30 2.68H20L10 20L20 37.32H30L25 28.66" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+        <style>
+          {`
+            @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@700;500&display=swap');
+            .logo-text { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; fill: #1B365D; }
+            .tagline { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 500; fill: #64748B; }
+          `}
+        </style>
+        <g transform="translate(5, 8) scale(0.85)">
+          <path d="M30 0L10 15V45L30 60" stroke="#1B365D" strokeWidth="8" strokeLinecap="square" strokeLinejoin="miter" />
+          <path d="M30 15L22 21V39L30 45" stroke="#1B365D" strokeWidth="3" strokeLinecap="butt" />
+          <path d="M30 0H45L55 10" stroke="#374151" strokeWidth="8" strokeLinecap="square" />
+          <path d="M30 60H45L55 50" stroke="#374151" strokeWidth="8" strokeLinecap="square" />
+        </g>
         {showText && (
-          <text x="45" y="26" fontFamily="Inter, sans-serif" fontSize="24" fontWeight="700" fill="currentColor">clivaro</text>
+          <>
+            <text x="65" y="38" className="logo-text" fontSize="32" letterSpacing="-0.8">clivaro</text>
+            <text x="66" y="53" className="tagline" fontSize="10" letterSpacing="0.5">by clientum studio</text>
+          </>
         )}
       </svg>
     </div>
