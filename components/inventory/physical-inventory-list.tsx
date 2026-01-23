@@ -149,7 +149,7 @@ export function PhysicalInventoryList() {
           <div className="border rounded-lg">
             <table className="w-full">
               <thead>
-                <tr className="border-b bg-gray-50">
+                <tr className="border-b bg-gray-50 dark:bg-gray-800/50">
                   <th className="text-left p-3 text-sm font-medium">Número</th>
                   <th className="text-left p-3 text-sm font-medium">Almacén</th>
                   <th className="text-left p-3 text-sm font-medium">Estado</th>

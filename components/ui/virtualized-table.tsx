@@ -24,7 +24,7 @@ export function VirtualizedTable<T extends { id: string }>({
 }: VirtualizedTableProps<T>) {
   const Row = ({ index, style, ariaAttributes }: { index: number; style: React.CSSProperties; ariaAttributes?: any }) => {
     const item = data[index]
-    
+
     return (
       <div
         style={style}
@@ -55,7 +55,7 @@ export function VirtualizedTable<T extends { id: string }>({
 
   return (
     <div className="border rounded-lg">
-      <div className="flex items-center border-b bg-gray-50">
+      <div className="flex items-center border-b bg-gray-50 dark:bg-gray-800/50">
         {columns.map((col) => (
           <div
             key={col.key}
