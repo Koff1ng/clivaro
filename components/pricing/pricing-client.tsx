@@ -97,26 +97,21 @@ const plans = [
 ]
 
 const features = [
+  { name: 'Dashboard Corporativo', icon: LayoutDashboard },
   { name: 'Gestión de Productos', icon: Package },
   { name: 'Control de Inventario', icon: BarChart3 },
+  { name: 'CRM & Clientes', icon: Users },
+  { name: 'Oportunidades (Leads)', icon: TrendingUp },
+  { name: 'Campañas de Marketing', icon: Mail },
+  { name: 'Cotizaciones', icon: FileText },
+  { name: 'Facturación Electrónica', icon: Printer },
+  { name: 'Gestión de Proveedores', icon: Truck },
+  { name: 'Órdenes de Compra', icon: ShoppingCart },
+  { name: 'Recepción de Mercancía', icon: Check },
   { name: 'Punto de Venta (POS)', icon: ShoppingCart },
-  { name: 'CRM Completo', icon: Users },
-  { name: 'Marketing Campaigns', icon: Mail },
-  { name: 'Reportes Avanzados', icon: TrendingUp },
-  { name: 'Facturación Electrónica', icon: FileText },
-  { name: 'Apps Móviles', icon: Smartphone },
-  { name: 'Base de Datos Segura', icon: Database },
-  { name: 'Backups Automáticos', icon: Cloud },
-  { name: 'Seguridad Bancaria', icon: Lock },
-  { name: 'Soporte 24/7', icon: Headphones },
-  { name: 'API para Desarrolladores', icon: Settings },
   { name: 'Control de Caja', icon: Wallet },
-  { name: 'Gestión de Envíos', icon: Truck },
-  { name: 'Impresión de Tickets', icon: Printer },
-  { name: 'Notificaciones', icon: Bell },
-  { name: 'Búsqueda Inteligente', icon: Search },
-  { name: 'Agenda y Citas', icon: Calendar },
-  { name: 'Chat Interno', icon: MessageSquare },
+  { name: 'Gestión de Usuarios', icon: Users },
+  { name: 'Configuración del Sistema', icon: Settings },
 ]
 
 const comparison = [
@@ -426,7 +421,7 @@ export function PricingClient() {
             <div className="absolute left-0 top-0 bottom-0 w-20 bg-gradient-to-r from-gray-50/50 dark:from-gray-900/50 to-transparent z-10 pointer-events-none"></div>
             <div className="absolute right-0 top-0 bottom-0 w-20 bg-gradient-to-l from-gray-50/50 dark:from-gray-900/50 to-transparent z-10 pointer-events-none"></div>
 
-            <InfiniteMovingCards items={features} direction="left" speed="normal" />
+            <InfiniteMovingCards items={features} direction="left" speed="normal" className="mx-auto" />
           </div>
         </div>
       </ScrollReveal>
