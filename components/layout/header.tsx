@@ -17,14 +17,14 @@ import { signOut } from 'next-auth/react'
 import { useQuery } from '@tanstack/react-query'
 import { formatDateTime } from '@/lib/utils'
 import { useState, useEffect } from 'react'
-import { 
-  Package, 
-  DollarSign, 
-  ArrowUpCircle, 
-  ArrowDownCircle, 
-  FileText, 
-  ShoppingBag, 
-  Truck, 
+import {
+  Package,
+  DollarSign,
+  ArrowUpCircle,
+  ArrowDownCircle,
+  FileText,
+  ShoppingBag,
+  Truck,
   FileSearch,
   Phone,
   Mail,
@@ -46,7 +46,7 @@ export function Header() {
   const { data: session } = useSession()
   const [lastReadTimestamp, setLastReadTimestamp] = useState<string | null>(null)
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
-  
+
   // Cargar el timestamp de última lectura desde localStorage
   useEffect(() => {
     const stored = localStorage.getItem(LAST_READ_KEY)
@@ -54,7 +54,7 @@ export function Header() {
       setLastReadTimestamp(stored)
     }
   }, [])
-  
+
   const { data: activityData, isLoading: isLoadingActivities } = useQuery({
     queryKey: ['activity-feed-notifications'],
     queryFn: fetchActivityFeed,
@@ -64,7 +64,7 @@ export function Header() {
   })
 
   const activities = activityData?.activities || []
-  
+
   // Verificar si hay notificaciones no leídas
   const hasUnreadNotifications = activities.some((activity: any) => {
     if (!lastReadTimestamp) return true // Si nunca se ha leído, todas son no leídas
@@ -80,7 +80,7 @@ export function Header() {
       // Obtener la fecha más reciente de las actividades
       const mostRecentActivity = activities[0] // Ya están ordenadas por fecha descendente
       const newLastRead = mostRecentActivity.createdAt
-      
+
       // Guardar en localStorage
       localStorage.setItem(LAST_READ_KEY, newLastRead)
       setLastReadTimestamp(newLastRead)
@@ -152,7 +152,7 @@ export function Header() {
   }
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <header className="sticky top-0 z-40 w-full border-b border-slate-800 bg-[#0F172A] text-slate-100 backdrop-blur supports-[backdrop-filter]:bg-[#0F172A]/95">
       <div className="flex h-14 sm:h-16 items-center justify-between px-3 sm:px-4 md:px-6">
         {/* Left side: Menu */}
         <div className="flex items-center gap-2 sm:gap-4">
@@ -160,7 +160,7 @@ export function Header() {
             variant="ghost"
             size="icon"
             onClick={toggle}
-            className="h-8 w-8 sm:h-9 sm:w-9"
+            className="h-8 w-8 sm:h-9 sm:w-9 text-slate-100 hover:bg-slate-800 hover:text-white"
           >
             <Menu className="h-4 w-4 sm:h-5 sm:w-5" />
           </Button>
@@ -170,11 +170,11 @@ export function Header() {
         <div className="flex items-center gap-1 sm:gap-2">
           {/* Theme Toggle */}
           <ThemeToggle />
-          
+
           {/* Notifications */}
           <DropdownMenu open={isDropdownOpen} onOpenChange={handleDropdownOpenChange}>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="relative h-8 w-8 sm:h-9 sm:w-9">
+              <Button variant="ghost" size="icon" className="relative h-8 w-8 sm:h-9 sm:w-9 text-slate-100 hover:bg-slate-800 hover:text-white">
                 <Bell className="h-4 w-4" />
                 {hasUnreadNotifications && (
                   <span className="absolute top-0.5 right-0.5 sm:top-1 sm:right-1 h-2 w-2 bg-red-500 rounded-full"></span>
@@ -229,7 +229,7 @@ export function Header() {
           {/* User Menu */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="rounded-full h-8 w-8 sm:h-9 sm:w-9">
+              <Button variant="ghost" size="icon" className="rounded-full h-8 w-8 sm:h-9 sm:w-9 text-slate-100 hover:bg-slate-800 hover:text-white">
                 <User className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>

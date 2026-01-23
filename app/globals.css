@@ -91,127 +91,97 @@
 @layer base {
   :root {
     /* Base */
-    --bg-main: #F7F9FC;          /* fondo general */
-    --bg-card: #FFFFFF;         /* tarjetas / paneles */
-    --bg-soft: #F2F5FA;          /* fondos secundarios */
+    --bg-main: #F8FAFC;          /* Ghost White */
+    --bg-card: #FFFFFF;          /* Pure White */
+    --bg-soft: #F1F5F9;          /* Slate 100 */
 
     /* Bordes */
-    --border-light: #E5EAF1;
-    --border-muted: #EEF1F6;
+    --border-light: #E2E8F0;     /* Slate 200 */
+    --border-muted: #CBD5E1;     /* Slate 300 */
 
     /* Texto */
-    --text-primary: #0F172A;     /* títulos */
-    --text-secondary: #475569;   /* descripciones */
-    --text-muted: #94A3B8;       /* labels suaves */
+    --text-primary: #0F172A;     /* Deep Navy (Slate 900) */
+    --text-secondary: #475569;   /* Slate Grey (Slate 600) */
+    --text-muted: #94A3B8;       /* Slate 400 */
 
     /* Marca / Acción */
-    --primary: #3B82F6;          /* azul SaaS */
-    --primary-soft: #E8F0FF;
-    --primary-hover: #2563EB;
+    --primary: #0EA5E9;          /* Electric Cyan (Sky 500) */
+    --primary-soft: #E0F2FE;     /* Sky 100 */
+    --primary-hover: #0284C7;    /* Sky 600 */
 
     /* Estados */
-    --success: #10B981;          /* verde */
+    --success: #10B981;          /* Emerald 500 */
     --success-soft: #ECFDF5;
+    
+    --warning: #F59E0B;          /* Amber 500 */
+    --warning-soft: #FFFBEB;
 
-    --warning: #F59E0B;          /* naranja */
-    --warning-soft: #FFF7ED;
-
-    --danger: #EF4444;           /* rojo */
+    --danger: #EF4444;           /* Red 500 */
     --danger-soft: #FEF2F2;
 
-    /* Iconos / Chips */
-    --icon-blue: #3B82F6;
-    --icon-green: #10B981;
-    --icon-yellow: #F59E0B;
-    --icon-purple: #6366F1;
-
-    /* Sombras */
-    --shadow-soft: 0 8px 20px rgba(15, 23, 42, 0.06);
-    --shadow-card: 0 4px 12px rgba(15, 23, 42, 0.05);
-
     /* Tailwind CSS Variables (compatibilidad) */
-    --background: 0 0% 100%;
-    --foreground: 222 47% 11%;
-    --card: 0 0% 100%;
+    --background: 210 40% 98%;   /* Slate 50 (#F8FAFC) */
+    --foreground: 222 47% 11%;   /* Slate 900 (#0F172A) */
+    --card: 0 0% 100%;           /* White */
     --card-foreground: 222 47% 11%;
     --popover: 0 0% 100%;
     --popover-foreground: 222 47% 11%;
-    --primary: 217 91% 60%;
+    --primary: 199 89% 48%;      /* Sky 500 (#0EA5E9) */
     --primary-foreground: 0 0% 100%;
-    --secondary: 180 60% 50%;
+    --secondary: 215 16% 47%;    /* Slate 500 (#64748B) */
     --secondary-foreground: 0 0% 100%;
-    --muted: 210 40% 96%;
+    --muted: 210 40% 96%;        /* Slate 100 */
     --muted-foreground: 215 16% 47%;
-    --accent: 25 95% 53%;
+    --accent: 199 89% 48%;       /* Match Primary */
     --accent-foreground: 0 0% 100%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
-    --border: 214 32% 91%;
+    --border: 214 32% 91%;       /* Slate 200 */
     --input: 214 32% 91%;
-    --ring: 217 91% 60%;
+    --ring: 199 89% 48%;         /* Sky 500 */
     --radius: 0.5rem;
   }
 
   .dark {
     /* Base (Dark Mode) */
-    --bg-main: #0F172A;
-    --bg-card: #1E293B;
-    --bg-soft: #1E293B;
+    --bg-main: #0F172A;          /* Deep Navy (Slate 900) */
+    --bg-card: #1E293B;          /* Slate 800 */
+    --bg-soft: #334155;          /* Slate 700 */
 
     /* Bordes (Dark Mode) */
-    --border-light: #334155;
-    --border-muted: #334155;
+    --border-light: #334155;     /* Slate 700 */
+    --border-muted: #475569;     /* Slate 600 */
 
     /* Texto (Dark Mode) */
-    --text-primary: #F1F5F9;
-    --text-secondary: #CBD5E1;
-    --text-muted: #94A3B8;
+    --text-primary: #F8FAFC;     /* Slate 50 */
+    --text-secondary: #CBD5E1;   /* Slate 300 */
+    --text-muted: #94A3B8;       /* Slate 400 */
 
     /* Marca / Acción (Dark Mode) */
-    --primary: #3B82F6;
-    --primary-soft: #1E3A8A;
-    --primary-hover: #60A5FA;
-
-    /* Estados (Dark Mode) */
-    --success: #10B981;
-    --success-soft: #065F46;
-
-    --warning: #F59E0B;
-    --warning-soft: #92400E;
-
-    --danger: #EF4444;
-    --danger-soft: #991B1B;
-
-    /* Iconos / Chips (Dark Mode) */
-    --icon-blue: #60A5FA;
-    --icon-green: #34D399;
-    --icon-yellow: #FBBF24;
-    --icon-purple: #818CF8;
-
-    /* Sombras (Dark Mode) */
-    --shadow-soft: 0 8px 20px rgba(0, 0, 0, 0.4);
-    --shadow-card: 0 4px 12px rgba(0, 0, 0, 0.3);
+    --primary: #38BDF8;          /* Sky 400 (Lighter for Dark Mode) */
+    --primary-soft: #0C4A6E;     /* Sky 900 */
+    --primary-hover: #0EA5E9;    /* Sky 500 */
 
     /* Tailwind CSS Variables (Dark Mode) */
-    --background: 222 47% 11%;
-    --foreground: 210 40% 98%;
-    --card: 222 47% 11%;
+    --background: 222 47% 11%;   /* Slate 900 (#0F172A) */
+    --foreground: 210 40% 98%;   /* Slate 50 */
+    --card: 215 28% 17%;         /* Slate 800 (#1E293B) */
     --card-foreground: 210 40% 98%;
-    --popover: 222 47% 11%;
+    --popover: 215 28% 17%;
     --popover-foreground: 210 40% 98%;
-    --primary: 217 91% 65%;
+    --primary: 199 89% 60%;      /* Sky 400 (#38BDF8) */
     --primary-foreground: 222 47% 11%;
-    --secondary: 180 60% 55%;
-    --secondary-foreground: 222 47% 11%;
-    --muted: 217 33% 18%;
+    --secondary: 215 16% 47%;    /* Slate 600 */
+    --secondary-foreground: 0 0% 100%;
+    --muted: 217 33% 18%;        /* Slate 800 */
     --muted-foreground: 215 20% 65%;
-    --accent: 25 95% 58%;
+    --accent: 199 89% 60%;       /* Match Primary */
     --accent-foreground: 222 47% 11%;
     --destructive: 0 63% 50%;
     --destructive-foreground: 0 0% 100%;
-    --border: 217 33% 18%;
-    --input: 217 33% 18%;
-    --ring: 217 91% 65%;
+    --border: 215 28% 17%;       /* Slate 800 */
+    --input: 215 28% 17%;
+    --ring: 199 89% 60%;         /* Sky 400 */
   }
 }
 

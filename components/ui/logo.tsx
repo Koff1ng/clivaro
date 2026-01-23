@@ -11,54 +11,32 @@ interface LogoProps {
 }
 
 export function Logo({ className = '', showText = true, size = 'md', showByline = false }: LogoProps) {
-  const [imgError, setImgError] = useState(false)
-  
-  // Tamaños ajustados para mejor visualización en el sidebar
-  const logoDimensions = {
-    sm: { width: 160, height: 60 },  // Sidebar: tamaño más compacto
-    md: { width: 240, height: 160 },  // Header: 240 × 160
-    lg: { width: 360, height: 240 },  // Login: 360 × 240
-    xl: { width: 400, height: 267 },  // Extra large manteniendo 3:2
+  // Map size prop to SVG dimensions
+  const dimensions = {
+    sm: { width: 100, height: 26 },
+    md: { width: 150, height: 40 },
+    lg: { width: 200, height: 53 },
+    xl: { width: 250, height: 66 },
   }
 
-  const dimensions = logoDimensions[size]
+  const { width, height } = dimensions[size]
 
   return (
-    <div className={`flex flex-col items-center justify-center ${className}`} style={{ padding: 0, margin: 0 }}>
-      <div 
-        className="relative flex-shrink-0" 
-        style={{ 
-          width: `${dimensions.width}px`, 
-          height: `${dimensions.height}px`,
-          minWidth: `${dimensions.width}px`,
-          minHeight: `${dimensions.height}px`,
-          padding: 0,
-          margin: 0
-        }}
+    <div className={`flex items-center justify-center ${className}`}>
+      <svg
+        width={width}
+        height={height}
+        viewBox="0 0 150 40"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+        className="text-slate-900 dark:text-white" // Default colors
       >
-        {!imgError ? (
-          <Image
-            src="/clivaro-logo.webp"
-            alt="Clivaro Logo"
-            width={dimensions.width}
-            height={dimensions.height}
-            className="object-contain"
-            priority
-            unoptimized
-            onError={() => setImgError(true)}
-            style={{ 
-              width: `${dimensions.width}px`,
-              height: `${dimensions.height}px`,
-              maxWidth: `${dimensions.width}px`,
-              maxHeight: `${dimensions.height}px`
-            }}
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center bg-gray-100 rounded text-xs text-gray-500">
-            Logo
-          </div>
+        <path d="M30 20L25 11.34H15L10 20L15 28.66H25L30 20Z" stroke="#0EA5E9" strokeWidth="3" />
+        <path d="M25 11.34L30 2.68H20L10 20L20 37.32H30L25 28.66" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+        {showText && (
+          <text x="45" y="26" fontFamily="Inter, sans-serif" fontSize="24" fontWeight="700" fill="currentColor">clivaro</text>
         )}
-      </div>
+      </svg>
     </div>
   )
 }
@@ -71,9 +49,9 @@ export function LogoIcon({ className = '', size = 'md' }: { className?: string; 
     md: 'h-8 w-8',
     lg: 'h-10 w-10',
   }
-  
+
   const iconSize = size === 'sm' ? 24 : size === 'md' ? 32 : 40
-  
+
   return (
     <div className={`${sizeClasses[size]} ${className} flex-shrink-0 relative`}>
       {!imgError ? (

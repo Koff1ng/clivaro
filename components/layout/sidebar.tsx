@@ -81,10 +81,10 @@ export function Sidebar() {
   // Marcar feature como visitada cuando se hace click en ella
   const handleFeatureClick = (feature: string) => {
     if (!isNewFeature(feature as any)) return
-    
+
     const featureKey = feature
     const now = Date.now()
-    
+
     // Si no está visitada, marcar timestamp de click
     if (!visitedFeatures[featureKey]) {
       const updated = { ...visitedFeatures, [featureKey]: now }
@@ -92,7 +92,7 @@ export function Sidebar() {
       if (typeof window !== 'undefined') {
         localStorage.setItem('visited-new-features', JSON.stringify(updated))
       }
-      
+
       // Después de 1 minuto, marcar como permanentemente visitada
       setTimeout(() => {
         setVisitedFeatures(prev => {
@@ -125,10 +125,10 @@ export function Sidebar() {
   // Función para verificar si una feature debe mostrar la etiqueta "NUEVO"
   const shouldShowNewBadge = (feature: string) => {
     if (!isNewFeature(feature as any)) return false
-    
+
     const visitTime = visitedFeatures[feature]
     if (!visitTime) return true // No ha sido visitada, mostrar
-    
+
     // Si fue visitada hace menos de 1 minuto, aún mostrar el badge
     // Después de 1 minuto, desaparecer permanentemente
     const now = Date.now()
@@ -176,17 +176,17 @@ export function Sidebar() {
           onClick={toggle}
         />
       )}
-      
+
       {/* Sidebar */}
       <aside
         className={cn(
-          'fixed md:static top-0 left-0 z-50 h-screen flex flex-col border-r bg-card transition-all duration-300 ease-in-out',
+          'fixed md:static top-0 left-0 z-50 h-screen flex flex-col border-r bg-[#0F172A] text-slate-100 transition-all duration-300 ease-in-out',
           isOpen ? 'w-64 translate-x-0' : 'w-0 -translate-x-full md:translate-x-0 md:w-16'
         )}
       >
         {isOpen && (
           <div className={cn(
-            'flex items-center justify-center border-b px-1 transition-opacity duration-300 opacity-100'
+            'flex items-center justify-center border-b border-slate-800 px-1 transition-opacity duration-300 opacity-100'
           )} style={{ height: '100px' }}>
             <Link href="/dashboard" prefetch className="w-full flex justify-center py-2">
               <div
@@ -207,7 +207,9 @@ export function Sidebar() {
                     marginBottom: 0,
                   }}
                 >
-                  <Logo size="md" showByline={false} />
+                  <div className="text-white">
+                    <Logo size="md" showByline={false} />
+                  </div>
                 </div>
               </div>
             </Link>
@@ -235,8 +237,8 @@ export function Sidebar() {
                 className={cn(
                   'flex items-center gap-3 rounded-lg text-sm font-medium transition-colors relative group',
                   isActive
-                    ? 'bg-primary text-primary-foreground'
-                    : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
+                    ? 'bg-[#0EA5E9] text-white shadow-lg shadow-cyan-500/20'
+                    : 'text-slate-400 hover:bg-slate-800 hover:text-white',
                   isOpen ? 'px-3 py-2' : 'px-2 py-2 md:justify-center'
                 )}
                 title={!isOpen ? item.label : undefined}
