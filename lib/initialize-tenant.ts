@@ -93,111 +93,69 @@ async function initializePostgresTenant(databaseUrl: string, tenantSlug: string)
     throw new Error(`Error conectando al schema "${schemaName}": ${connError?.message || connError}`)
   }
 
-  // Step 3: Read and parse SQL file
-  console.log('[STEP 3/4] Leyendo archivo supabase-init.sql...')
-  let statements: string[] = []
+  // Step 3: Read SQL file and execute ALL at once (much faster than statement by statement)
+  console.log('[STEP 3/3] Leyendo y ejecutando supabase-init.sql...')
+  const startTime = Date.now()
+
   try {
     const sqlPath = path.join(process.cwd(), 'prisma', 'supabase-init.sql')
-    console.log(`[STEP 3/4] Ruta del archivo: ${sqlPath}`)
+    console.log(`[STEP 3/3] Ruta del archivo: ${sqlPath}`)
 
     if (!fs.existsSync(sqlPath)) {
       throw new Error(`Archivo SQL no encontrado: ${sqlPath}`)
     }
 
     const sqlBuf = fs.readFileSync(sqlPath)
-    console.log(`[STEP 3/4] Archivo leído: ${sqlBuf.length} bytes`)
+    console.log(`[STEP 3/3] Archivo leído: ${sqlBuf.length} bytes`)
 
     // PowerShell redirection can write UTF-16LE; detect BOM / NUL bytes and decode accordingly.
     const looksUtf16Le =
       (sqlBuf.length >= 2 && sqlBuf[0] === 0xff && sqlBuf[1] === 0xfe) ||
       sqlBuf.slice(0, Math.min(sqlBuf.length, 200)).includes(0x00)
 
-    console.log(`[STEP 3/4] Encoding detectado: ${looksUtf16Le ? 'UTF-16LE' : 'UTF-8'}`)
+    console.log(`[STEP 3/3] Encoding: ${looksUtf16Le ? 'UTF-16LE' : 'UTF-8'}`)
 
     const sqlRaw = looksUtf16Le ? sqlBuf.toString('utf16le') : sqlBuf.toString('utf8')
 
     // Remove BOM and normalize line endings
-    const sql = sqlRaw.replace(/^\uFEFF/, '').replace(/\r\n/g, '\n')
+    let sql = sqlRaw.replace(/^\uFEFF/, '').replace(/\r\n/g, '\n')
 
-    // Remove full-line comments to avoid dropping statements that start with "-- CreateTable"
-    const sqlNoComments = sql.replace(/^\s*--.*$/gm, '').trim()
+    // Remove full-line comments
+    sql = sql.replace(/^\s*--.*$/gm, '').trim()
 
-    // Naive split by semicolon is OK for Prisma diff output (DDL only).
-    statements = sqlNoComments
-      .split(';')
-      .map(stmt => stmt.trim())
-      .filter(Boolean)
+    // Add IF NOT EXISTS to CREATE TABLE statements to make idempotent
+    sql = sql.replace(/CREATE TABLE\s+/gi, 'CREATE TABLE IF NOT EXISTS ')
 
-    console.log(`[STEP 3/4] ✓ ${statements.length} sentencias SQL parseadas`)
-  } catch (parseError: any) {
-    console.error('[STEP 3/4] ❌ Error parseando archivo SQL:')
-    console.error(`  Mensaje: ${parseError?.message || parseError}`)
-    await tenantPrisma.$disconnect()
-    throw new Error(`Error parseando supabase-init.sql: ${parseError?.message || parseError}`)
-  }
+    // Add IF NOT EXISTS to CREATE INDEX statements
+    sql = sql.replace(/CREATE INDEX\s+/gi, 'CREATE INDEX IF NOT EXISTS ')
+    sql = sql.replace(/CREATE UNIQUE INDEX\s+/gi, 'CREATE UNIQUE INDEX IF NOT EXISTS ')
 
-  // Step 4: Execute SQL statements in batches for speed
-  console.log('[STEP 4/4] Ejecutando sentencias SQL en lotes...')
-  const startTime = Date.now()
-  let executed = 0
-  let skipped = 0
-  const BATCH_SIZE = 20 // Process 20 statements at a time
+    console.log(`[STEP 3/3] Ejecutando SQL completo (${sql.length} chars)...`)
 
-  // Process in batches
-  for (let batchStart = 0; batchStart < statements.length; batchStart += BATCH_SIZE) {
-    const batchEnd = Math.min(batchStart + BATCH_SIZE, statements.length)
-    const batch = statements.slice(batchStart, batchEnd)
+    // Execute all SQL in a single call - PostgreSQL handles multiple statements
+    await tenantPrisma.$executeRawUnsafe(sql)
 
-    console.log(`[STEP 4/4] Procesando lote ${Math.floor(batchStart / BATCH_SIZE) + 1}/${Math.ceil(statements.length / BATCH_SIZE)} (${batchStart + 1}-${batchEnd}/${statements.length})`)
+    const elapsed = ((Date.now() - startTime) / 1000).toFixed(2)
+    console.log('='.repeat(60))
+    console.log(`[TENANT INIT] ✓ Schema creado en ${elapsed}s`)
+    console.log('='.repeat(60))
 
-    // Execute each statement in the batch
-    for (let i = 0; i < batch.length; i++) {
-      const stmt = batch[i]
-      const globalIdx = batchStart + i
-      const stmtPreview = stmt.length > 80 ? `${stmt.slice(0, 80)}...` : stmt
+  } catch (error: any) {
+    const errorCode = error?.code || 'UNKNOWN'
+    const errorMsg = error?.message || String(error)
 
-      try {
-        await tenantPrisma.$executeRawUnsafe(stmt)
-        executed++
-      } catch (error: any) {
-        const errorCode = error?.code || 'UNKNOWN'
-        const errorMsg = error?.message || String(error)
+    console.error('[STEP 3/3] ❌ Error ejecutando SQL:')
+    console.error(`  Código: ${errorCode}`)
+    console.error(`  Mensaje: ${errorMsg}`)
 
-        // Check if it's a "relation already exists" error - ignore these
-        if (errorCode === '42P07' || errorMsg.includes('already exists')) {
-          skipped++
-          continue
-        }
-
-        // Check if it's a duplicate key error - ignore these
-        if (errorCode === '23505' || errorMsg.includes('duplicate key')) {
-          skipped++
-          continue
-        }
-
-        // For other errors, log and throw
-        console.error(`[STEP 4/4] ❌ Error en sentencia ${globalIdx + 1}/${statements.length}:`)
-        console.error(`  Código: ${errorCode}`)
-        console.error(`  Mensaje: ${errorMsg}`)
-        console.error(`  SQL: ${stmtPreview}`)
-
-        await tenantPrisma.$disconnect()
-        throw new Error(
-          `Fallo en SQL (stmt ${globalIdx + 1}/${statements.length}):\n` +
-          `  SQL: ${stmtPreview}\n` +
-          `  Código: ${errorCode}\n` +
-          `  Error: ${errorMsg}`
-        )
-      }
+    // If it's "already exists" errors, that's OK - schema was already set up
+    if (errorCode === '42P07' || errorMsg.includes('already exists')) {
+      console.log('[STEP 3/3] ⚠️ Algunas tablas ya existían, continuando...')
+    } else {
+      await tenantPrisma.$disconnect()
+      throw new Error(`Error creando tablas del tenant: ${errorMsg}`)
     }
   }
-
-  const elapsed = ((Date.now() - startTime) / 1000).toFixed(2)
-  console.log('='.repeat(60))
-  console.log(`[TENANT INIT] ✓ Inicialización de schema completada en ${elapsed}s`)
-  console.log(`[TENANT INIT] Sentencias ejecutadas: ${executed}`)
-  console.log(`[TENANT INIT] Sentencias ignoradas (ya existían): ${skipped}`)
-  console.log('='.repeat(60))
 
   return { tenantPrisma }
 }
