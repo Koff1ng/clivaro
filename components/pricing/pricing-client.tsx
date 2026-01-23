@@ -223,8 +223,8 @@ export function PricingClient() {
                   <SpotlightCard
                     spotlightColor={plan.popular ? 'rgba(14, 165, 233, 0.25)' : undefined}
                     className={`flex flex-col h-full transition-all duration-300 hover:shadow-2xl hover:-translate-y-2 ${plan.popular
-                        ? 'border-2 border-blue-500 shadow-xl z-10'
-                        : 'border border-gray-200 dark:border-gray-800'
+                      ? 'border-2 border-blue-500 shadow-xl z-10'
+                      : 'border border-gray-200 dark:border-gray-800'
                       }`}
                   >
                     {plan.popular && (
@@ -315,7 +315,7 @@ export function PricingClient() {
               Compara y descubre por qué Clivaro es la mejor opción para tu negocio
             </p>
           </div>
-          <Card>
+          <SpotlightCard className="border-slate-200 dark:border-slate-800" spotlightColor="rgba(59, 130, 246, 0.1)">
             <CardContent className="p-0">
               <div className="overflow-x-auto">
                 <table className="w-full">
@@ -330,12 +330,12 @@ export function PricingClient() {
                   </thead>
                   <tbody>
                     {comparison.map((item, index) => (
-                      <tr key={index} className="border-b last:border-b-0">
+                      <tr key={index} className="border-b last:border-b-0 hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-colors">
                         <td className="p-4 font-medium">{item.feature}</td>
                         <td className="p-4 text-center text-gray-600 dark:text-gray-400">
                           {item.competencia}
                         </td>
-                        <td className="p-4 text-center bg-blue-50 dark:bg-blue-900/20">
+                        <td className="p-4 text-center bg-blue-50/50 dark:bg-blue-900/10">
                           <div className="flex items-center justify-center gap-2">
                             <span className="font-semibold text-blue-600 dark:text-blue-400">
                               {item.clivaro}
@@ -351,7 +351,7 @@ export function PricingClient() {
                 </table>
               </div>
             </CardContent>
-          </Card>
+          </SpotlightCard>
         </div>
       </ScrollReveal>
 
@@ -377,10 +377,13 @@ export function PricingClient() {
               return (
                 <div
                   key={feature.name}
-                  className="flex flex-col items-center p-6 rounded-lg border bg-card hover:shadow-lg transition-shadow"
+                  className="flex flex-col items-center"
                 >
-                  <SpotlightCard className="w-full flex flex-col items-center p-6 border-0 bg-transparent shadow-none hover:shadow-none hover:translate-y-0" spotlightColor="rgba(59, 130, 246, 0.1)">
-                    <div className="w-12 h-12 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center mb-4 mx-auto">
+                  <SpotlightCard
+                    className="w-full h-full flex flex-col items-center p-6 border bg-card hover:shadow-lg transition-all duration-300 hover:-translate-y-1"
+                    spotlightColor="rgba(59, 130, 246, 0.15)"
+                  >
+                    <div className="w-12 h-12 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center mb-4 mx-auto transition-transform group-hover:scale-110">
                       <Icon className="h-6 w-6 text-blue-600 dark:text-blue-400" />
                     </div>
                     <p className="text-sm font-medium text-center">{feature.name}</p>
@@ -399,7 +402,7 @@ export function PricingClient() {
             <h2 className="text-3xl font-bold mb-4">Preguntas Frecuentes</h2>
           </div>
           <div className="space-y-6">
-            <Card>
+            <SpotlightCard className="text-left" spotlightColor="rgba(59, 130, 246, 0.05)">
               <CardHeader>
                 <CardTitle className="text-lg">¿Hay período de prueba?</CardTitle>
               </CardHeader>
@@ -409,8 +412,8 @@ export function PricingClient() {
                   adaptados a las necesidades de tu negocio.
                 </p>
               </CardContent>
-            </Card>
-            <Card>
+            </SpotlightCard>
+            <SpotlightCard className="text-left" spotlightColor="rgba(59, 130, 246, 0.05)">
               <CardHeader>
                 <CardTitle className="text-lg">¿Puedo cambiar de plan después?</CardTitle>
               </CardHeader>
@@ -420,8 +423,8 @@ export function PricingClient() {
                   Los cambios se aplican de forma prorrateada.
                 </p>
               </CardContent>
-            </Card>
-            <Card>
+            </SpotlightCard>
+            <SpotlightCard className="text-left" spotlightColor="rgba(59, 130, 246, 0.05)">
               <CardHeader>
                 <CardTitle className="text-lg">¿Qué incluye el soporte?</CardTitle>
               </CardHeader>
@@ -431,8 +434,8 @@ export function PricingClient() {
                   incluyen soporte prioritario y 24/7 respectivamente.
                 </p>
               </CardContent>
-            </Card>
-            <Card>
+            </SpotlightCard>
+            <SpotlightCard className="text-left" spotlightColor="rgba(59, 130, 246, 0.05)">
               <CardHeader>
                 <CardTitle className="text-lg">¿Hay costos ocultos?</CardTitle>
               </CardHeader>
@@ -442,7 +445,7 @@ export function PricingClient() {
                   soporte y todas las funcionalidades del plan.
                 </p>
               </CardContent>
-            </Card>
+            </SpotlightCard>
           </div>
         </div>
       </ScrollReveal>

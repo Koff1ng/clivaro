@@ -41,19 +41,21 @@ export function SpotlightCard({
             onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}
             className={cn(
-                'relative overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950',
+                'relative rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950',
                 className
             )}
             {...props}
         >
-            {/* Background Spotlights */}
-            <div
-                className="pointer-events-none absolute -inset-px opacity-0 transition duration-300"
-                style={{
-                    opacity,
-                    background: `radial-gradient(600px circle at ${position.x}px ${position.y}px, ${spotlightColor}, transparent 40%)`,
-                }}
-            />
+            {/* Background Spotlights - Clipped to shape */}
+            <div className="absolute inset-0 overflow-hidden rounded-xl pointer-events-none">
+                <div
+                    className="absolute -inset-px opacity-0 transition duration-300 pointer-events-none"
+                    style={{
+                        opacity,
+                        background: `radial-gradient(600px circle at ${position.x}px ${position.y}px, ${spotlightColor}, transparent 40%)`,
+                    }}
+                />
+            </div>
 
             {/* Content */}
             <div className="relative h-full">
