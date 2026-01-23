@@ -6,8 +6,7 @@ import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Lock, Mail, AlertCircle, Loader2, Shield } from 'lucide-react'
+import { Lock, Mail, AlertCircle, Loader2, Shield, CheckCircle2, ArrowRight } from 'lucide-react'
 import { Logo } from '@/components/ui/logo'
 import { LoadingScreen } from '@/components/ui/loading-screen'
 import Link from 'next/link'
@@ -34,10 +33,9 @@ export default function AdminLoginPage() {
       })
 
       if (result?.error) {
-        // Mostrar mensaje de error más específico
         const errorMessage = result.error
         let displayMessage = 'Credenciales inválidas. Verifique su usuario y contraseña.'
-        
+
         if (errorMessage.includes('USER_INACTIVE')) {
           displayMessage = 'Su cuenta está inactiva. Contacte al administrador.'
         } else if (errorMessage.includes('INVALID_CREDENTIALS')) {
@@ -47,14 +45,12 @@ export default function AdminLoginPage() {
         } else if (errorMessage.includes('TENANT_NOT_READY')) {
           displayMessage = 'El sistema aún no está completamente configurado.'
         } else if (errorMessage) {
-          // Mostrar el mensaje de error específico si está disponible
           displayMessage = errorMessage.replace(/^(INVALID_CREDENTIALS|USER_INACTIVE|TENANT_DB_ERROR|TENANT_NOT_READY):\s*/i, '')
         }
-        
+
         setError(displayMessage)
         setLoading(false)
       } else if (result?.ok) {
-        // Wait a bit to ensure session is fully established
         await new Promise(resolve => setTimeout(resolve, 300))
         window.location.href = '/dashboard'
       } else {
@@ -67,77 +63,113 @@ export default function AdminLoginPage() {
     }
   }
 
-  // Show loading screen when loading
   if (loading) {
     return <LoadingScreen />
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-indigo-50 p-4">
-      {/* Background decoration */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-blue-200 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-blob"></div>
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-indigo-200 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-blob animation-delay-2000"></div>
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-purple-200 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-blob animation-delay-4000"></div>
-      </div>
-
-      <div className="relative z-10 w-full max-w-md">
-        {/* Logo/Brand */}
-        <div className="text-center mb-8">
-          <div className="flex justify-center mb-4" style={{ padding: 0, margin: 0 }}>
-            <Logo size="lg" showByline={true} />
-          </div>
-          <div className="mb-2">
-            <p className="text-gray-500 text-xs flex items-center justify-center gap-2 opacity-70">
-              <Shield className="w-3 h-3" />
-              Acceso Administrativo
-            </p>
-          </div>
-          <p className="text-gray-600 text-sm">Sistema de Gestión Integral</p>
+    <div className="w-full h-screen grid lg:grid-cols-2 overflow-hidden">
+      {/* Left Panel - Brand & Visuals */}
+      <div className="hidden lg:flex relative flex-col justify-between p-12 bg-slate-950 text-white overflow-hidden">
+        {/* Abstract Background Effects */}
+        <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
+          <div className="absolute top-[-20%] right-[-10%] w-[600px] h-[600px] bg-indigo-600/20 rounded-full blur-3xl" />
+          <div className="absolute bottom-[-20%] left-[-10%] w-[500px] h-[500px] bg-purple-600/20 rounded-full blur-3xl" />
         </div>
 
-        <Card className="shadow-2xl border-0 backdrop-blur-sm bg-white/95">
-          <CardHeader className="space-y-1 pb-4">
-            <CardTitle className="text-2xl font-bold text-center text-gray-900 flex items-center justify-center gap-2">
-              <Shield className="w-5 h-5 opacity-70" />
-              Iniciar Sesión
-            </CardTitle>
-            <CardDescription className="text-center text-gray-600">
-              Ingrese sus credenciales de administrador
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-5">
-              {error && (
-                <div className="bg-red-50 border border-red-200 text-red-700 text-sm p-4 rounded-lg flex items-start gap-2 animate-in slide-in-from-top-2">
-                  <AlertCircle className="w-5 h-5 mt-0.5 flex-shrink-0" />
-                  <p>{error}</p>
-                </div>
-              )}
+        {/* Header content */}
+        <div className="relative z-10 flex items-center justify-between">
+          <Logo size="lg" className="w-fit" />
+          <div className="px-3 py-1 rounded-full bg-slate-800/50 border border-slate-700 text-xs font-medium text-slate-300 flex items-center gap-2">
+            <Shield className="w-3 h-3" />
+            Acceso Administrativo
+          </div>
+        </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="username" className="text-gray-700 font-medium flex items-center gap-2">
-                  <Mail className="w-4 h-4" />
-                  Usuario o Email
-                </Label>
+        {/* Feature/Testimonial Content */}
+        <div className="relative z-10 max-w-lg">
+          <h2 className="text-4xl font-bold tracking-tight mb-6 leading-tight">
+            Panel de Control Centralizado.
+          </h2>
+          <div className="space-y-4">
+            <div className="flex items-center gap-3 text-slate-300">
+              <CheckCircle2 className="w-5 h-5 text-indigo-500" />
+              <span>Gestión global de inquilinos y suscripciones</span>
+            </div>
+            <div className="flex items-center gap-3 text-slate-300">
+              <CheckCircle2 className="w-5 h-5 text-indigo-500" />
+              <span>Monitoreo de sistema y auditoría</span>
+            </div>
+            <div className="flex items-center gap-3 text-slate-300">
+              <CheckCircle2 className="w-5 h-5 text-indigo-500" />
+              <span>Configuración avanzada de plataforma</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Footer content */}
+        <div className="relative z-10 text-sm text-slate-500">
+          © 2026 Clivaro by Clientum Studio.
+        </div>
+      </div>
+
+      {/* Right Panel - Login Form */}
+      <div className="flex flex-col items-center justify-center p-8 bg-gray-50 dark:bg-gray-900 w-full">
+        <div className="w-full max-w-md space-y-8">
+
+          {/* Header Mobile Only Logo */}
+          <div className="lg:hidden flex justify-center mb-8">
+            <Logo size="lg" />
+          </div>
+
+          <div className="text-center lg:text-left space-y-2">
+            <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white flex items-center gap-2">
+              <Shield className="w-8 h-8 text-indigo-600 hidden lg:block" />
+              Portal de Administración
+            </h1>
+            <p className="text-gray-500 dark:text-gray-400">
+              Ingrese sus credenciales de super-administrador
+            </p>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {error && (
+              <div className="p-4 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm flex items-start gap-3 animate-in fade-in slide-in-from-top-2">
+                <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                <p>{error}</p>
+              </div>
+            )}
+
+            <div className="space-y-2.5">
+              <Label htmlFor="username" className="text-gray-700 dark:text-gray-300 font-medium">
+                Usuario o Email
+              </Label>
+              <div className="relative group">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400 group-focus-within:text-indigo-600 transition-colors">
+                  <Mail className="w-5 h-5" />
+                </div>
                 <Input
                   id="username"
                   type="text"
-                  placeholder="nombre_usuario o usuario@ejemplo.com"
+                  placeholder="admin@clivaro.com"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   required
                   disabled={loading}
-                  className="h-11 border-gray-300 focus:border-blue-500 focus:ring-blue-500 transition-colors"
+                  className="pl-10 h-12 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 focus:border-indigo-500 focus:ring-indigo-500/20 transition-all text-base"
                   autoComplete="username"
                 />
               </div>
+            </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="password" className="text-gray-700 font-medium flex items-center gap-2">
-                  <Lock className="w-4 h-4" />
-                  Contraseña
-                </Label>
+            <div className="space-y-2.5">
+              <Label htmlFor="password" className="text-gray-700 dark:text-gray-300 font-medium">
+                Contraseña
+              </Label>
+              <div className="relative group">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400 group-focus-within:text-indigo-600 transition-colors">
+                  <Lock className="w-5 h-5" />
+                </div>
                 <Input
                   id="password"
                   type="password"
@@ -146,46 +178,41 @@ export default function AdminLoginPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   disabled={loading}
-                  className="h-11 border-gray-300 focus:border-blue-500 focus:ring-blue-500 transition-colors"
+                  className="pl-10 h-12 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 focus:border-indigo-500 focus:ring-indigo-500/20 transition-all text-base"
                   autoComplete="current-password"
                 />
               </div>
+            </div>
 
-              <Button 
-                type="submit" 
-                className="w-full h-11 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98]" 
-                disabled={loading}
-              >
-                {loading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Iniciando sesión...
-                  </>
-                ) : (
-                  'Iniciar Sesión'
-                )}
-              </Button>
+            <Button
+              type="submit"
+              className="w-full h-12 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-lg shadow-lg hover:shadow-indigo-500/25 transition-all duration-200"
+              disabled={loading}
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                  Iniciando...
+                </>
+              ) : (
+                <>
+                  Ingresar al Sistema
+                  <ArrowRight className="w-5 h-5 ml-2" />
+                </>
+              )}
+            </Button>
+          </form>
 
-            </form>
-          </CardContent>
-        </Card>
-
-        {/* Back link */}
-        <div className="text-center mt-6">
-          <Link 
-            href="/" 
-            className="text-sm text-blue-600 hover:text-blue-700 font-medium hover:underline transition-colors"
-          >
-            ← Volver a acceso de empresa
-          </Link>
+          <div className="pt-6 border-t border-gray-100 dark:border-gray-800 text-center">
+            <Link
+              href="/"
+              className="text-sm text-gray-500 hover:text-indigo-600 font-medium hover:underline inline-flex items-center gap-1 transition-colors"
+            >
+              ← Volver al inicio
+            </Link>
+          </div>
         </div>
-
-        {/* Footer */}
-        <p className="text-center text-sm text-gray-500 mt-6">
-          © 2026 Clivaro by Clientum Studio. Todos los derechos reservados.
-        </p>
       </div>
-
     </div>
   )
 }
