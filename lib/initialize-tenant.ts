@@ -35,27 +35,72 @@ async function initializePostgresTenant(databaseUrl: string, tenantSlug: string)
   const schemaName = getTenantSchemaName(tenantSlug)
   const schemaUrl = withSchemaParam(baseUrl, schemaName)
 
+  console.log('='.repeat(60))
+  console.log('[TENANT INIT] Iniciando inicialización de tenant PostgreSQL')
+  console.log(`[TENANT INIT] Slug: ${tenantSlug}`)
+  console.log(`[TENANT INIT] Schema: ${schemaName}`)
+  console.log(`[TENANT INIT] Base URL (sin schema): ${baseUrl.replace(/:[^:@]+@/, ':****@')}`) // Ocultar password
+  console.log('='.repeat(60))
+
+  // Step 1: Create schema
+  console.log('[STEP 1/4] Conectando a PostgreSQL para crear schema...')
   const adminPrisma = new PrismaClient({
     datasources: { db: { url: baseUrl } },
+    log: ['error', 'warn'],
   })
 
   try {
+    console.log(`[STEP 1/4] Ejecutando: CREATE SCHEMA IF NOT EXISTS "${schemaName}"`)
     await adminPrisma.$executeRawUnsafe(`CREATE SCHEMA IF NOT EXISTS "${schemaName}"`)
+    console.log('[STEP 1/4] ✓ Schema creado/verificado exitosamente')
+  } catch (schemaError: any) {
+    console.error('[STEP 1/4] ❌ Error creando schema:')
+    console.error(`  Mensaje: ${schemaError?.message || schemaError}`)
+    console.error(`  Código: ${schemaError?.code || 'N/A'}`)
+    console.error(`  Meta: ${JSON.stringify(schemaError?.meta || {})}`)
+    throw new Error(`Error creando schema "${schemaName}": ${schemaError?.message || schemaError}`)
   } finally {
     await adminPrisma.$disconnect()
+    console.log('[STEP 1/4] Conexión admin cerrada')
   }
 
+  // Step 2: Connect to tenant schema
+  console.log('[STEP 2/4] Conectando al schema del tenant...')
   const tenantPrisma = new PrismaClient({
     datasources: { db: { url: schemaUrl } },
+    log: ['error', 'warn'],
   })
 
   try {
+    // Test connection
+    await tenantPrisma.$connect()
+    console.log('[STEP 2/4] ✓ Conexión al schema del tenant exitosa')
+  } catch (connError: any) {
+    console.error('[STEP 2/4] ❌ Error conectando al schema del tenant:')
+    console.error(`  Mensaje: ${connError?.message || connError}`)
+    throw new Error(`Error conectando al schema "${schemaName}": ${connError?.message || connError}`)
+  }
+
+  // Step 3: Read and parse SQL file
+  console.log('[STEP 3/4] Leyendo archivo supabase-init.sql...')
+  let statements: string[] = []
+  try {
     const sqlPath = path.join(process.cwd(), 'prisma', 'supabase-init.sql')
+    console.log(`[STEP 3/4] Ruta del archivo: ${sqlPath}`)
+
+    if (!fs.existsSync(sqlPath)) {
+      throw new Error(`Archivo SQL no encontrado: ${sqlPath}`)
+    }
+
     const sqlBuf = fs.readFileSync(sqlPath)
+    console.log(`[STEP 3/4] Archivo leído: ${sqlBuf.length} bytes`)
+
     // PowerShell redirection can write UTF-16LE; detect BOM / NUL bytes and decode accordingly.
     const looksUtf16Le =
       (sqlBuf.length >= 2 && sqlBuf[0] === 0xff && sqlBuf[1] === 0xfe) ||
       sqlBuf.slice(0, Math.min(sqlBuf.length, 200)).includes(0x00)
+
+    console.log(`[STEP 3/4] Encoding detectado: ${looksUtf16Le ? 'UTF-16LE' : 'UTF-8'}`)
 
     const sqlRaw = looksUtf16Le ? sqlBuf.toString('utf16le') : sqlBuf.toString('utf8')
 
@@ -66,26 +111,74 @@ async function initializePostgresTenant(databaseUrl: string, tenantSlug: string)
     const sqlNoComments = sql.replace(/^\s*--.*$/gm, '').trim()
 
     // Naive split by semicolon is OK for Prisma diff output (DDL only).
-    const statements = sqlNoComments
+    statements = sqlNoComments
       .split(';')
       .map(stmt => stmt.trim())
       .filter(Boolean)
 
-    for (let i = 0; i < statements.length; i++) {
-      const stmt = statements[i]
-      try {
-        await tenantPrisma.$executeRawUnsafe(stmt)
-      } catch (error: any) {
-        const preview = stmt.length > 300 ? `${stmt.slice(0, 300)}...` : stmt
-        throw new Error(
-          `Fallo en SQL (stmt ${i + 1}/${statements.length}): ${preview}\n` +
-          `Error: ${error?.message || error}`
-        )
-      }
-    }
-  } catch (error: any) {
-    throw new Error(`Error creando esquema del tenant en Postgres: ${error?.message || error}`)
+    console.log(`[STEP 3/4] ✓ ${statements.length} sentencias SQL parseadas`)
+  } catch (parseError: any) {
+    console.error('[STEP 3/4] ❌ Error parseando archivo SQL:')
+    console.error(`  Mensaje: ${parseError?.message || parseError}`)
+    await tenantPrisma.$disconnect()
+    throw new Error(`Error parseando supabase-init.sql: ${parseError?.message || parseError}`)
   }
+
+  // Step 4: Execute SQL statements
+  console.log('[STEP 4/4] Ejecutando sentencias SQL...')
+  let executed = 0
+  let failed = 0
+
+  for (let i = 0; i < statements.length; i++) {
+    const stmt = statements[i]
+    const stmtPreview = stmt.length > 80 ? `${stmt.slice(0, 80)}...` : stmt
+
+    try {
+      await tenantPrisma.$executeRawUnsafe(stmt)
+      executed++
+      // Log progress every 10 statements or at the end
+      if ((i + 1) % 10 === 0 || i === statements.length - 1) {
+        console.log(`[STEP 4/4] Progreso: ${i + 1}/${statements.length} sentencias ejecutadas`)
+      }
+    } catch (error: any) {
+      failed++
+      const errorCode = error?.code || 'UNKNOWN'
+      const errorMsg = error?.message || String(error)
+
+      // Log detailed error
+      console.error(`[STEP 4/4] ❌ Error en sentencia ${i + 1}/${statements.length}:`)
+      console.error(`  Código: ${errorCode}`)
+      console.error(`  Mensaje: ${errorMsg}`)
+      console.error(`  SQL: ${stmtPreview}`)
+
+      // Check if it's a "relation already exists" error - ignore these
+      if (errorCode === '42P07' || errorMsg.includes('already exists')) {
+        console.log(`[STEP 4/4] ⚠️ Tabla/relación ya existe, continuando...`)
+        continue
+      }
+
+      // Check if it's a duplicate key error - ignore these
+      if (errorCode === '23505' || errorMsg.includes('duplicate key')) {
+        console.log(`[STEP 4/4] ⚠️ Registro duplicado, continuando...`)
+        continue
+      }
+
+      // For other errors, throw
+      await tenantPrisma.$disconnect()
+      throw new Error(
+        `Fallo en SQL (stmt ${i + 1}/${statements.length}):\n` +
+        `  SQL: ${stmtPreview}\n` +
+        `  Código: ${errorCode}\n` +
+        `  Error: ${errorMsg}`
+      )
+    }
+  }
+
+  console.log('='.repeat(60))
+  console.log(`[TENANT INIT] ✓ Inicialización de schema completada`)
+  console.log(`[TENANT INIT] Sentencias ejecutadas: ${executed}`)
+  console.log(`[TENANT INIT] Sentencias ignoradas (ya existían): ${failed}`)
+  console.log('='.repeat(60))
 
   return { tenantPrisma }
 }
@@ -105,10 +198,10 @@ export async function initializeTenantDatabase(databaseUrl: string, tenantName: 
 
   // Extraer la ruta del archivo de la URL
   let dbPath = databaseUrl.replace(/^file:/, '').trim()
-  
+
   // Normalizar separadores de ruta (Windows usa \, Unix usa /)
   dbPath = dbPath.replace(/\\/g, '/')
-  
+
   // Si comienza con ./ o ../, es relativa
   if (dbPath.startsWith('./') || dbPath.startsWith('../')) {
     dbPath = path.resolve(process.cwd(), dbPath)
@@ -116,15 +209,15 @@ export async function initializeTenantDatabase(databaseUrl: string, tenantName: 
     // Si no es absoluta y no tiene prefijo, asumir relativa desde cwd
     dbPath = path.resolve(process.cwd(), dbPath)
   }
-  
+
   // Normalizar la ruta (resolver .. y .)
   dbPath = path.normalize(dbPath)
-  
+
   // Asegurar que la extensión sea .db
   if (!dbPath.endsWith('.db')) {
     dbPath = `${dbPath}.db`
   }
-  
+
   const dbDir = path.dirname(dbPath)
 
   // Crear directorio si no existe
@@ -166,12 +259,12 @@ export async function initializeTenantDatabase(databaseUrl: string, tenantName: 
     console.log(`Ejecutando: npx prisma db push --schema=prisma/schema.prisma --accept-data-loss --skip-generate`)
     console.log(`Con DATABASE_URL: ${absoluteDatabaseUrl}`)
     console.log(`Desde directorio: ${process.cwd()}`)
-    
+
     // Crear un schema temporal que use la BD del tenant
     // Esto evita que Prisma use la BD del .env
     const tempSchemaPath = path.join(process.cwd(), 'prisma', `schema.${tenantName.toLowerCase().replace(/\s+/g, '-')}.temp.prisma`)
     const originalSchema = fs.readFileSync(path.join(process.cwd(), 'prisma', 'schema.prisma'), 'utf-8')
-    
+
     // Reemplazar la URL en el schema temporal
     // Si el schema usa env("DATABASE_URL"), lo reemplazamos con la URL del tenant
     let tempSchema = originalSchema
@@ -190,10 +283,10 @@ export async function initializeTenantDatabase(databaseUrl: string, tenantName: 
       )
       console.log('✓ Schema temporal creado con URL del tenant (reemplazando URL hardcodeada)')
     }
-    
+
     fs.writeFileSync(tempSchemaPath, tempSchema, 'utf-8')
     console.log(`✓ Schema temporal guardado en: ${tempSchemaPath}`)
-    
+
     try {
       const output = execSync(
         `npx prisma db push --schema=${tempSchemaPath} --accept-data-loss --skip-generate`,
@@ -206,10 +299,10 @@ export async function initializeTenantDatabase(databaseUrl: string, tenantName: 
           shell: process.platform === 'win32' ? (process.env.COMSPEC || 'cmd.exe') : '/bin/bash',
         }
       )
-    
+
       const stdout = output.toString().trim()
       const stderr = (output as any).stderr?.toString()?.trim() || ''
-      
+
       console.log('✓ Comando ejecutado')
       if (stdout) {
         console.log('STDOUT:', stdout)
@@ -228,7 +321,7 @@ export async function initializeTenantDatabase(databaseUrl: string, tenantName: 
         console.warn('⚠️ No se pudo eliminar el schema temporal:', cleanupError)
       }
     }
-    
+
     // IMPORTANTE: Siempre verificar la BD del tenant directamente
     // El mensaje "already in sync" puede referirse a dev.db (del .env), no a la BD del tenant
     console.log('Verificando base de datos del tenant directamente...')
@@ -240,13 +333,13 @@ export async function initializeTenantDatabase(databaseUrl: string, tenantName: 
       })
       await testPrisma.$connect()
       await testPrisma.$queryRaw`SELECT 1`
-      
+
       const tables = await testPrisma.$queryRaw<Array<{ name: string }>>`
         SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'
       `
-      
+
       await testPrisma.$disconnect()
-      
+
       if (tables && tables.length > 0) {
         console.log(`✓ Base de datos del tenant existe y tiene ${tables.length} tabla(s)`)
         schemaCreated = true
@@ -269,7 +362,7 @@ export async function initializeTenantDatabase(databaseUrl: string, tenantName: 
     const stdout = error.stdout?.toString()?.trim() || ''
     const stderr = error.stderr?.toString()?.trim() || ''
     const status = error.status || error.code || 'unknown'
-    
+
     console.error('❌ Error ejecutando prisma db push:')
     console.error(`  Status/Code: ${status}`)
     console.error(`  Message: ${errorMessage}`)
@@ -279,7 +372,7 @@ export async function initializeTenantDatabase(databaseUrl: string, tenantName: 
     if (stderr) {
       console.error(`  STDERR: ${stderr}`)
     }
-    
+
     // Verificar si la BD ya está creada y tiene tablas
     console.log('Verificando si la base de datos ya existe...')
     try {
@@ -291,14 +384,14 @@ export async function initializeTenantDatabase(databaseUrl: string, tenantName: 
       await testPrisma.$connect()
       // Intentar una query simple para verificar que la BD funciona
       await testPrisma.$queryRaw`SELECT 1`
-      
+
       // Intentar verificar si hay tablas
       const tables = await testPrisma.$queryRaw<Array<{ name: string }>>`
         SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'
       `
-      
+
       await testPrisma.$disconnect()
-      
+
       if (tables && tables.length > 0) {
         console.log(`✓ Base de datos existe y tiene ${tables.length} tabla(s), continuando...`)
         schemaCreated = true
@@ -322,7 +415,7 @@ export async function initializeTenantDatabase(databaseUrl: string, tenantName: 
       throw fullError
     }
   }
-  
+
   if (!schemaCreated) {
     throw new Error('No se pudo crear o verificar el esquema de la base de datos')
   }
