@@ -1,8 +1,48 @@
-'use client'
+import { SpotlightCard } from '@/components/ui/spotlight-card'
 
-import { useState } from 'react'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+// ... (keep existing imports)
+
+// Inside PricingClient function:
+return (
+  <ScrollReveal key={plan.name} delay={index * 100} className="h-full w-full">
+    <SpotlightCard
+      spotlightColor={plan.popular ? 'rgba(14, 165, 233, 0.25)' : undefined}
+      className={`flex flex-col h-full transition-all duration-300 hover:shadow-2xl hover:-translate-y-2 ${plan.popular
+        ? 'border-2 border-blue-500 shadow-xl z-10'
+        : 'border border-gray-200 dark:border-gray-800'
+        }`}
+    >
+      <CardHeader>
+        <div className={`inline-flex items-center justify-center w-14 h-14 rounded-xl bg-gradient-to-br ${plan.color} mb-6 shadow-inner`}>
+          <Icon className="h-7 w-7 text-white" />
+        </div>
+        <CardTitle className="text-2xl font-bold">{plan.name}</CardTitle>
+        <CardDescription className="mt-2 text-base">{plan.description}</CardDescription>
+        <div className="mt-8">
+          <div className="flex items-baseline gap-1">
+            <span className="text-4xl lg:text-5xl font-extrabold tracking-tight">
+              {formatPrice(displayPrice)}
+            </span>
+                        // ... rest of price calculation
+            {billingCycle === 'annual' ? (
+              <span className="text-sm font-medium text-gray-500">/año</span>
+            ) : (
+              <span className="text-sm font-medium text-gray-500">/mes</span>
+            )}
+          </div>
+          {billingCycle === 'annual' && (
+            <p className="text-sm text-gray-500 mt-2 font-medium">
+              Facturado anualmente
+            </p>
+          )}
+        </div>
+      </CardHeader>
+      <CardContent className="flex-1 flex flex-col">
+                    // ... content (Buttons, features lists)
+      </CardContent>
+    </SpotlightCard>
+  </ScrollReveal>
+)
 import { Badge } from '@/components/ui/badge'
 import { Check, X, Zap, Building2, Rocket, TrendingUp, Users, Package, ShoppingCart, BarChart3, Mail, Sparkles } from 'lucide-react'
 import Link from 'next/link'
@@ -221,14 +261,15 @@ export function PricingClient() {
 
               return (
                 <ScrollReveal key={plan.name} delay={index * 100} className="h-full w-full">
-                  <Card
-                    className={`relative flex flex-col h-full transition-all duration-300 hover:shadow-2xl hover:-translate-y-2 ${plan.popular
-                      ? 'border-2 border-blue-500 shadow-xl z-10'
-                      : 'border border-gray-200 dark:border-gray-800'
+                  <SpotlightCard
+                    spotlightColor={plan.popular ? 'rgba(14, 165, 233, 0.25)' : undefined}
+                    className={`flex flex-col h-full transition-all duration-300 hover:shadow-2xl hover:-translate-y-2 ${plan.popular
+                        ? 'border-2 border-blue-500 shadow-xl z-10'
+                        : 'border border-gray-200 dark:border-gray-800'
                       }`}
                   >
                     {plan.popular && (
-                      <div className="absolute -top-4 left-1/2 -translate-x-1/2">
+                      <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-20">
                         <Badge className="bg-gradient-to-r from-blue-600 to-cyan-600 text-white px-4 py-1 text-sm font-medium shadow-lg">
                           {plan.badge}
                         </Badge>
@@ -298,7 +339,7 @@ export function PricingClient() {
                         )}
                       </div>
                     </CardContent>
-                  </Card>
+                  </SpotlightCard>
                 </ScrollReveal>
               )
             })}
