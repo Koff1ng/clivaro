@@ -282,6 +282,7 @@ model Lead {
   phone           String?
   email           String?
   company         String?
+  instagram       String?     // Usuario o URL de Instagram
   stage           String      @default("NEW")
   value           Float?
   expectedRevenue Float?
@@ -300,6 +301,7 @@ model Lead {
   createdBy       User?       @relation("LeadCreatedBy", fields: [createdById], references: [id])
   customer        Customer?   @relation(fields: [customerId], references: [id])
   quotations      Quotation[]
+  chatMessages    ChatMessage[]
 }
 
 model LeadStageHistory {
@@ -793,9 +795,34 @@ model TenantSettings {
   mercadoPagoPublicKey   String?    // Public Key de Mercado Pago
   mercadoPagoEnabled     Boolean?   @default(false) // Habilitar pagos con Mercado Pago
   mercadoPagoWebhookUrl  String?    // URL del webhook configurado en MP
+  
+  // Meta (WhatsApp / Instagram)
+  metaBusinessId         String?    // ID del negocio en Meta
+  metaAccessToken        String?    // Token de acceso permanente (System User)
+  whatsappPhoneNumberId  String?    // ID del número de teléfono de WhatsApp
+  instagramAccountId     String?    // ID de la cuenta de Instagram vinculada
+
   createdAt             DateTime    @default(now())
   updatedAt             DateTime    @updatedAt
   tenant                Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   
   @@index([tenantId])
+}
+
+model ChatMessage {
+  id          String   @id @default(cuid())
+  leadId      String
+  direction   String   // "INBOUND" | "OUTBOUND"
+  channel     String   // "WHATSAPP" | "INSTAGRAM"
+  type        String   @default("text") // "text", "image", "document", etc.
+  content     String   // Texto del mensaje
+  mediaUrl    String?  // URL si es imagen/doc
+  externalId  String?  @unique // ID del mensaje en Meta (wamid...)
+  status      String   @default("SENT") // "SENT", "DELIVERED", "READ", "FAILED"
+  createdAt   DateTime @default(now())
+  
+  lead        Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@index([leadId])
+  @@index([externalId])
 }
