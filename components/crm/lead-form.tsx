@@ -17,6 +17,7 @@ const leadSchema = z.object({
   company: z.string().optional(),
   email: z.string().email('Email inválido').optional().or(z.literal('')),
   phone: z.string().optional(),
+  instagram: z.string().optional(),
   source: z.string().optional(),
   stage: z.enum(['NEW', 'CONTACTED', 'QUOTED', 'WON', 'LOST']),
   expectedRevenue: z.number().min(0).optional(),
@@ -39,6 +40,7 @@ export function LeadForm({ lead, users, onSuccess }: { lead: any; users: any[]; 
       company: '',
       email: '',
       phone: '',
+      instagram: '',
       source: '',
       stage: 'NEW',
       expectedRevenue: 0,
@@ -55,6 +57,7 @@ export function LeadForm({ lead, users, onSuccess }: { lead: any; users: any[]; 
       setValue('company', lead.company || '')
       setValue('email', lead.email || '')
       setValue('phone', lead.phone || '')
+      setValue('instagram', lead.instagram || '')
       setValue('source', lead.source || '')
       setValue('stage', lead.stage || 'NEW')
       setValue('expectedRevenue', lead.expectedRevenue || 0)
@@ -69,7 +72,7 @@ export function LeadForm({ lead, users, onSuccess }: { lead: any; users: any[]; 
     mutationFn: async (data: LeadFormData) => {
       const url = lead ? `/api/leads/${lead.id}` : '/api/leads'
       const method = lead ? 'PUT' : 'POST'
-      
+
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
@@ -151,6 +154,14 @@ export function LeadForm({ lead, users, onSuccess }: { lead: any; users: any[]; 
 
       <div className="grid grid-cols-2 gap-4">
         <div>
+          <Label htmlFor="instagram">Instagram</Label>
+          <Input
+            id="instagram"
+            {...register('instagram')}
+            placeholder="Usuario o URL (ej: @usuario)"
+          />
+        </div>
+        <div>
           <Label htmlFor="source">Origen</Label>
           <Input
             id="source"
@@ -158,6 +169,9 @@ export function LeadForm({ lead, users, onSuccess }: { lead: any; users: any[]; 
             placeholder="Ej: Web, Referido, Publicidad"
           />
         </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
         <div>
           <Label htmlFor="stage">Estado *</Label>
           <select

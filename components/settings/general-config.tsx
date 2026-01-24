@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Settings as SettingsIcon, Loader2, Plus, Trash2, Printer, MapPin, Hash, Building2, Receipt, FileText, ShoppingCart, Search, Network, Edit } from 'lucide-react'
 import { useToast } from '@/components/ui/toast'
 import { TicketEditor, TicketDesignSettings } from './ticket-editor'
+import { MetaConfig } from './meta-config'
 
 // Interfaces for custom settings structure
 interface PrinterDefinition {
@@ -331,6 +332,7 @@ export function GeneralConfig({ settings, onSave, isLoading }: GeneralConfigProp
               <TabsTrigger value="localization" className="gap-2"><MapPin className="h-4 w-4" /> Localización</TabsTrigger>
               <TabsTrigger value="numbering" className="gap-2"><Hash className="h-4 w-4" /> Numeración</TabsTrigger>
               <TabsTrigger value="printing" className="gap-2"><Printer className="h-4 w-4" /> Impresión</TabsTrigger>
+              <TabsTrigger value="meta" className="gap-2"><Network className="h-4 w-4" /> Meta API</TabsTrigger>
             </TabsList>
 
             {/* === IDENTIDAD === */}
@@ -626,6 +628,11 @@ export function GeneralConfig({ settings, onSave, isLoading }: GeneralConfigProp
                 </div>
               </div>
 
+            </TabsContent>
+
+            {/* === META API === */}
+            <TabsContent value="meta" className="space-y-4 pt-4 animate-in fade-in slide-in-from-left-1 duration-300">
+              <MetaConfig />
             </TabsContent>
           </Tabs>
 

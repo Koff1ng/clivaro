@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { ActivityForm } from './activity-form'
 import { formatCurrency, formatDate, formatDateTime } from '@/lib/utils'
-import { Mail, Phone, Building, User, Calendar, CheckCircle, XCircle, Plus } from 'lucide-react'
+import { Mail, Phone, Building, User, Calendar, CheckCircle, XCircle, Plus, MessageCircle, Instagram } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 export function LeadDetails({ lead: initialLead }: { lead: any }) {
@@ -71,6 +71,18 @@ export function LeadDetails({ lead: initialLead }: { lead: any }) {
     return labels[type] || type
   }
 
+  const getWhatsAppLink = (phone: string) => {
+    const cleanPhone = phone.replace(/[^0-9]/g, '')
+    return `https://wa.me/${cleanPhone}`
+  }
+
+  const getInstagramLink = (handle: string) => {
+    let cleanHandle = handle.trim()
+    if (cleanHandle.startsWith('http')) return cleanHandle
+    if (cleanHandle.startsWith('@')) cleanHandle = cleanHandle.substring(1)
+    return `https://instagram.com/${cleanHandle}`
+  }
+
   return (
     <div className="space-y-6">
       {/* Header Info */}
@@ -105,6 +117,31 @@ export function LeadDetails({ lead: initialLead }: { lead: any }) {
                 <span>Asignado a: {lead.assignedTo.name}</span>
               </div>
             )}
+
+            <div className="flex gap-2 pt-2">
+              {lead.phone && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-2 text-green-600 hover:text-green-700 hover:bg-green-50"
+                  onClick={() => window.open(getWhatsAppLink(lead.phone), '_blank')}
+                >
+                  <MessageCircle className="h-4 w-4" />
+                  WhatsApp
+                </Button>
+              )}
+              {lead.instagram && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-2 text-pink-600 hover:text-pink-700 hover:bg-pink-50"
+                  onClick={() => window.open(getInstagramLink(lead.instagram), '_blank')}
+                >
+                  <Instagram className="h-4 w-4" />
+                  Instagram
+                </Button>
+              )}
+            </div>
           </div>
         </div>
         <div>
@@ -146,7 +183,7 @@ export function LeadDetails({ lead: initialLead }: { lead: any }) {
           <TabsTrigger value="quotations">Cotizaciones</TabsTrigger>
           <TabsTrigger value="history">Historial</TabsTrigger>
         </TabsList>
-        
+
         <TabsContent value="activities" className="space-y-4">
           <div className="flex justify-end">
             <Button onClick={() => setIsActivityFormOpen(true)}>
@@ -256,13 +293,12 @@ export function LeadDetails({ lead: initialLead }: { lead: any }) {
                       <TableCell className="font-medium">{quotation.number}</TableCell>
                       <TableCell>{formatDate(quotation.createdAt)}</TableCell>
                       <TableCell>
-                        <span className={`px-2 py-1 text-xs rounded ${
-                          quotation.status === 'ACCEPTED' ? 'bg-green-100 text-green-800' :
-                          quotation.status === 'SENT' ? 'bg-blue-100 text-blue-800' :
-                          'bg-gray-100 text-gray-800'
-                        }`}>
+                        <span className={`px-2 py-1 text-xs rounded ${quotation.status === 'ACCEPTED' ? 'bg-green-100 text-green-800' :
+                            quotation.status === 'SENT' ? 'bg-blue-100 text-blue-800' :
+                              'bg-gray-100 text-gray-800'
+                          }`}>
                           {quotation.status === 'ACCEPTED' ? 'Aceptada' :
-                           quotation.status === 'SENT' ? 'Enviada' : 'Borrador'}
+                            quotation.status === 'SENT' ? 'Enviada' : 'Borrador'}
                         </span>
                       </TableCell>
                       <TableCell>{formatCurrency(quotation.total)}</TableCell>
@@ -299,24 +335,22 @@ export function LeadDetails({ lead: initialLead }: { lead: any }) {
                     <TableRow key={history.id}>
                       <TableCell>{formatDateTime(history.changedAt)}</TableCell>
                       <TableCell>
-                        <span className={`px-2 py-1 text-xs rounded ${
-                          history.fromStage === 'WON' ? 'bg-green-100 text-green-800' :
-                          history.fromStage === 'LOST' ? 'bg-red-100 text-red-800' :
-                          history.fromStage === 'QUOTED' ? 'bg-purple-100 text-purple-800' :
-                          history.fromStage === 'CONTACTED' ? 'bg-yellow-100 text-yellow-800' :
-                          'bg-blue-100 text-blue-800'
-                        }`}>
+                        <span className={`px-2 py-1 text-xs rounded ${history.fromStage === 'WON' ? 'bg-green-100 text-green-800' :
+                            history.fromStage === 'LOST' ? 'bg-red-100 text-red-800' :
+                              history.fromStage === 'QUOTED' ? 'bg-purple-100 text-purple-800' :
+                                history.fromStage === 'CONTACTED' ? 'bg-yellow-100 text-yellow-800' :
+                                  'bg-blue-100 text-blue-800'
+                          }`}>
                           {history.fromStage || 'N/A'}
                         </span>
                       </TableCell>
                       <TableCell>
-                        <span className={`px-2 py-1 text-xs rounded ${
-                          history.toStage === 'WON' ? 'bg-green-100 text-green-800' :
-                          history.toStage === 'LOST' ? 'bg-red-100 text-red-800' :
-                          history.toStage === 'QUOTED' ? 'bg-purple-100 text-purple-800' :
-                          history.toStage === 'CONTACTED' ? 'bg-yellow-100 text-yellow-800' :
-                          'bg-blue-100 text-blue-800'
-                        }`}>
+                        <span className={`px-2 py-1 text-xs rounded ${history.toStage === 'WON' ? 'bg-green-100 text-green-800' :
+                            history.toStage === 'LOST' ? 'bg-red-100 text-red-800' :
+                              history.toStage === 'QUOTED' ? 'bg-purple-100 text-purple-800' :
+                                history.toStage === 'CONTACTED' ? 'bg-yellow-100 text-yellow-800' :
+                                  'bg-blue-100 text-blue-800'
+                          }`}>
                           {history.toStage}
                         </span>
                       </TableCell>
