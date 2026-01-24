@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Search, Send, Phone, User, MoreVertical, MessageCircle, Instagram, CheckCircle2, Circle } from 'lucide-react'
+import { Search, Send, Phone, User, MoreVertical, MessageCircle, Instagram, CheckCircle2, Circle, Plus, AlertCircle } from 'lucide-react'
 import { formatCurrency, formatDateTime } from '@/lib/utils'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -120,12 +120,12 @@ export function CrmInbox() {
 
             {/* Left Sidebar: Lead List */}
             <div className="w-80 border-r flex flex-col bg-slate-50/50 dark:bg-slate-900/50">
-                <div className="p-4 border-b">
+                <div className="p-3 border-b bg-white dark:bg-slate-950">
                     <div className="relative">
                         <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
                         <Input
-                            placeholder="Buscar chats..."
-                            className="pl-9 bg-white dark:bg-slate-800"
+                            placeholder="Buscar conversación..."
+                            className="pl-9 h-9 bg-slate-50 border-slate-200 dark:bg-slate-900 dark:border-slate-800 focus-visible:ring-1"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                         />
@@ -133,119 +133,124 @@ export function CrmInbox() {
                 </div>
                 <ScrollArea className="flex-1">
                     <div className="flex flex-col">
-                        {leads.map((lead: any) => (
-                            <button
-                                key={lead.id}
-                                onClick={() => setSelectedLeadId(lead.id)}
-                                className={cn(
-                                    "flex items-start gap-3 p-4 text-left hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors border-b border-transparent",
-                                    selectedLeadId === lead.id && "bg-white dark:bg-slate-800 border-l-4 border-l-blue-500 shadow-sm"
-                                )}
-                            >
-                                <Avatar>
-                                    <AvatarFallback className="bg-blue-100 text-blue-700">
-                                        {lead.name.substring(0, 2).toUpperCase()}
-                                    </AvatarFallback>
-                                </Avatar>
-                                <div className="flex-1 min-w-0">
-                                    <div className="flex justify-between items-baseline mb-1">
-                                        <span className="font-semibold truncate text-sm">{lead.name}</span>
-                                        <span className="text-[10px] text-gray-400">{formatDateTime(lead.updatedAt).split(' ')[0]}</span>
+                        {leads.map((lead: any) => {
+                            // Smart Preview: Last message or activity
+                            // For demo we grab the stage or static text if no relations loaded in list
+                            const preview = lead.company || 'Nueva oportunidad'
+
+                            return (
+                                <button
+                                    key={lead.id}
+                                    onClick={() => setSelectedLeadId(lead.id)}
+                                    className={cn(
+                                        "flex gap-3 p-3 text-left transition-all border-b border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800/50",
+                                        selectedLeadId === lead.id && "bg-blue-50/50 dark:bg-blue-900/10 border-l-4 border-l-blue-600 pl-[11px]"
+                                    )}
+                                >
+                                    <Avatar className="h-10 w-10 mt-1">
+                                        <AvatarFallback className={cn(
+                                            "text-xs font-bold",
+                                            selectedLeadId === lead.id ? "bg-blue-600 text-white" : "bg-slate-200 text-slate-600"
+                                        )}>
+                                            {lead.name.substring(0, 2).toUpperCase()}
+                                        </AvatarFallback>
+                                    </Avatar>
+                                    <div className="flex-1 min-w-0 grid gap-0.5">
+                                        <div className="flex justify-between items-center">
+                                            <span className={cn("font-medium truncate text-sm", selectedLeadId === lead.id && "text-blue-700 dark:text-blue-400")}>
+                                                {lead.name}
+                                            </span>
+                                            <span className="text-[10px] text-gray-400 tabular-nums">
+                                                {formatDateTime(lead.updatedAt).split(' ')[0]} // Simplified date
+                                            </span>
+                                        </div>
+                                        <p className="text-xs text-gray-500 truncate">{preview}</p>
+                                        <div className="flex items-center gap-2 mt-1">
+                                            <Badge variant="outline" className={cn(
+                                                "text-[9px] h-4 px-1 rounded-sm border-0 font-medium",
+                                                stages.find(s => s.id === lead.stage)?.color.replace('bg-', 'text-')
+                                            )}>
+                                                {stages.find(s => s.id === lead.stage)?.label}
+                                            </Badge>
+                                            {lead.phone && <MessageCircle className="w-3 h-3 text-green-500 opacity-80" />}
+                                            {lead.instagram && <Instagram className="w-3 h-3 text-pink-500 opacity-80" />}
+                                        </div>
                                     </div>
-                                    <p className="text-xs text-gray-500 truncate">{lead.company || 'Sin empresa'}</p>
-                                    <div className="mt-2 flex gap-1">
-                                        <Badge variant="secondary" className="text-[10px] h-5 px-1.5 font-normal">
-                                            {stages.find(s => s.id === lead.stage)?.label || lead.stage}
-                                        </Badge>
-                                        {lead.phone && <MessageCircle className="w-3 h-3 text-green-500" />}
-                                        {lead.instagram && <Instagram className="w-3 h-3 text-pink-500" />}
-                                    </div>
-                                </div>
-                            </button>
-                        ))}
+                                </button>
+                            )
+                        })}
                     </div>
                 </ScrollArea>
             </div>
 
             {/* Main Chat Area */}
-            <div className="flex-1 flex flex-col min-w-0 bg-white dark:bg-slate-950">
+            <div className="flex-1 flex flex-col min-w-0 bg-[#e5ddd5]/30 dark:bg-slate-950/50">
+                {/* WhatsApp-ish background color hint */}
                 {selectedLead ? (
                     <>
                         {/* Header */}
-                        <div className="p-4 border-b flex justify-between items-center bg-white dark:bg-slate-950 z-10 shadow-sm">
+                        <div className="h-16 px-4 border-b flex justify-between items-center bg-white dark:bg-slate-950 shadow-sm z-20">
                             <div className="flex items-center gap-3">
-                                <Avatar className="h-10 w-10">
+                                <Avatar>
                                     <AvatarFallback className="bg-blue-600 text-white font-bold">
                                         {selectedLead.name.substring(0, 2).toUpperCase()}
                                     </AvatarFallback>
                                 </Avatar>
                                 <div>
-                                    <h2 className="font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                                    <h2 className="font-semibold text-sm text-gray-900 dark:text-white flex items-center gap-2">
                                         {selectedLead.name}
-                                        {selectedLead.company && <span className="text-xs font-normal text-gray-500">({selectedLead.company})</span>}
                                     </h2>
-                                    <p className="text-xs text-gray-500 flex items-center gap-1">
-                                        <User className="w-3 h-3" />
-                                        Asignado a: {selectedLead.assignedTo?.name || 'Nadie'}
-                                    </p>
+                                    <div className="flex items-center gap-2">
+                                        {/* Status Dropdown - Compact */}
+                                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                            <div className={cn("w-2 h-2 rounded-full", stages.find(s => s.id === selectedLead.stage)?.color)} />
+                                            <select
+                                                className="bg-transparent border-none p-0 h-auto text-xs focus:ring-0 cursor-pointer font-medium hover:underline"
+                                                value={selectedLead.stage}
+                                                onChange={(e) => updateStageMutation.mutate({ id: selectedLead.id, stage: e.target.value })}
+                                            >
+                                                {stages.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
+                                            </select>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1">
                                 {selectedLead.phone && (
                                     <Button
-                                        size="sm"
-                                        variant="outline"
-                                        className="text-green-600 border-green-200 hover:bg-green-50 hidden md:flex gap-2"
+                                        size="icon"
+                                        variant="ghost"
+                                        className="text-green-600 hover:bg-green-50 h-9 w-9"
+                                        title="Abrir WhatsApp Web"
                                         onClick={() => window.open(getWhatsAppLink(selectedLead.phone), '_blank')}
                                     >
-                                        <MessageCircle className="w-4 h-4" /> WhatsApp
+                                        <MessageCircle className="w-5 h-5" />
                                     </Button>
                                 )}
                                 {selectedLead.instagram && (
                                     <Button
-                                        size="sm"
-                                        variant="outline"
-                                        className="text-pink-600 border-pink-200 hover:bg-pink-50 hidden md:flex gap-2"
+                                        size="icon"
+                                        variant="ghost"
+                                        className="text-pink-600 hover:bg-pink-50 h-9 w-9"
+                                        title="Perfil Instagram"
                                         onClick={() => window.open(getInstagramLink(selectedLead.instagram), '_blank')}
                                     >
-                                        <Instagram className="w-4 h-4" /> Instagram
+                                        <Instagram className="w-5 h-5" />
                                     </Button>
                                 )}
-                                <Button variant="ghost" size="icon">
-                                    <MoreVertical className="w-4 h-4" />
+                                <div className="w-px h-6 bg-slate-200 mx-2" />
+                                <Button variant="ghost" size="icon" className="h-9 w-9">
+                                    <MoreVertical className="w-5 h-5 text-gray-500" />
                                 </Button>
                             </div>
                         </div>
 
-                        {/* Pipeline Progress Bar */}
-                        <div className="px-6 py-3 bg-slate-50 dark:bg-slate-900 border-b flex items-center justify-between gap-2 overflow-x-auto">
-                            {stages.map((stage, idx) => {
-                                const isCurrent = selectedLead.stage === stage.id
-                                const isPast = stages.findIndex(s => s.id === selectedLead.stage) > idx
-                                return (
-                                    <button
-                                        key={stage.id}
-                                        onClick={() => updateStageMutation.mutate({ id: selectedLead.id, stage: stage.id })}
-                                        className={cn(
-                                            "flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium transition-all whitespace-nowrap",
-                                            isCurrent ? `${stage.color} text-white shadow-md scale-105` :
-                                                isPast ? "bg-slate-200 text-slate-600 dark:bg-slate-800 dark:text-slate-400 opacity-70 hover:opacity-100" :
-                                                    "bg-white border text-slate-400 hover:bg-slate-100 dark:bg-transparent dark:border-slate-800"
-                                        )}
-                                    >
-                                        {isCurrent || isPast ? <CheckCircle2 className="w-3 h-3" /> : <Circle className="w-3 h-3" />}
-                                        {stage.label}
-                                    </button>
-                                )
-                            })}
-                        </div>
-
                         {/* Chat Timeline Body */}
-                        <ScrollArea className="flex-1 p-6 bg-slate-50/30 dark:bg-slate-900/10">
-                            <div className="space-y-4">
-                                <div className="flex justify-center">
-                                    <span className="text-[10px] uppercase tracking-wider text-gray-400 font-medium bg-slate-100 dark:bg-slate-800 px-3 py-1 rounded-full">
-                                        Inicio de la conversación ({formatDateTime(selectedLead.createdAt)})
+                        <ScrollArea className="flex-1 p-4 sm:p-6">
+                            <div className="flex flex-col space-y-4 max-w-3xl mx-auto">
+                                <div className="flex justify-center my-4">
+                                    <span className="text-[10px] text-gray-500 bg-white/80 dark:bg-slate-800/80 px-3 py-1 rounded-full shadow-sm border border-gray-100 dark:border-slate-700 backdrop-blur-sm">
+                                        Conversación iniciada el {formatDateTime(selectedLead.createdAt)}
                                     </span>
                                 </div>
 
@@ -255,31 +260,37 @@ export function CrmInbox() {
                                         const isOutbound = item.direction === 'OUTBOUND'
                                         return (
                                             <div key={item.id} className={cn(
-                                                "flex flex-col max-w-[80%]",
+                                                "flex flex-col max-w-[85%] md:max-w-[70%]",
                                                 isOutbound ? "ml-auto items-end" : "mr-auto items-start"
                                             )}>
                                                 <div className={cn(
-                                                    "p-3 rounded-2xl text-sm shadow-sm",
+                                                    "px-3 py-2 rounded-lg text-sm shadow-sm relative group border",
                                                     isOutbound
-                                                        ? "bg-green-100 text-green-900 rounded-tr-sm"
-                                                        : "bg-white dark:bg-slate-800 border rounded-tl-sm"
+                                                        ? "bg-[#d9fdd3] dark:bg-green-900/30 border-green-100 dark:border-green-900 text-gray-800 dark:text-gray-100 rounded-tr-none"
+                                                        : "bg-white dark:bg-slate-800 border-white dark:border-slate-800 text-gray-800 dark:text-gray-100 rounded-tl-none"
                                                 )}>
-                                                    <p className="leading-relaxed whitespace-pre-wrap">{item.content}</p>
-                                                    <span className="text-[9px] mt-1 block w-full text-right opacity-60">
-                                                        {formatDateTime(item.createdAt)}
-                                                        {item.status && <span className="ml-1 uppercase">· {item.status}</span>}
-                                                    </span>
+                                                    <p className="whitespace-pre-wrap leading-snug">{item.content}</p>
+                                                    <div className="flex items-center justify-end gap-1 mt-1 opacity-60 select-none">
+                                                        <span className="text-[10px]">
+                                                            {new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                        </span>
+                                                        {isOutbound && item.status && (
+                                                            <CheckCircle2 className="w-3 h-3 text-blue-500" />
+                                                            // Simplified "Read" indicator logic (can be nuanced based on status)
+                                                        )}
+                                                    </div>
                                                 </div>
                                             </div>
                                         )
                                     }
 
-                                    // Activity Log
+                                    // Activity Log (System Notes)
                                     return (
-                                        <div key={item.id} className="flex flex-col max-w-[80%] mx-auto items-center w-full my-4">
-                                            <div className="text-[10px] text-gray-400 bg-slate-100 dark:bg-slate-800 px-3 py-1 rounded-full flex items-center gap-2">
+                                        <div key={item.id} className="flex justify-center w-full my-2">
+                                            <div className="bg-slate-100 dark:bg-slate-800/50 text-slate-500 text-xs px-4 py-2 rounded-lg flex items-center gap-2 border border-slate-200/50">
                                                 <User className="w-3 h-3" />
-                                                <span>{item.type}: {item.subject}</span>
+                                                <span className="font-medium">{item.type}: {item.subject}</span>
+                                                <span className="opacity-50 text-[10px]">{formatDateTime(item.createdAt)}</span>
                                             </div>
                                         </div>
                                     )
@@ -288,9 +299,12 @@ export function CrmInbox() {
                         </ScrollArea>
 
                         {/* Input Area */}
-                        <div className="p-4 bg-white dark:bg-slate-950 border-t">
+                        <div className="p-3 bg-white dark:bg-slate-950 border-t min-h-[70px] flex items-end gap-2">
+                            <Button size="icon" variant="ghost" className="text-gray-500 shrink-0 h-10 w-10">
+                                <Plus className="w-5 h-5" />
+                            </Button>
                             <form
-                                className="flex gap-2"
+                                className="flex-1 flex items-end gap-2 bg-slate-50 dark:bg-slate-900 p-1.5 rounded-xl border border-transparent focus-within:border-slate-300 dark:focus-within:border-slate-700 transition-colors"
                                 onSubmit={(e) => {
                                     e.preventDefault()
                                     if (!newMessage.trim()) return
@@ -298,29 +312,40 @@ export function CrmInbox() {
                                 }}
                             >
                                 <Input
-                                    placeholder="Escribe un mensaje de WhatsApp..."
-                                    className="flex-1 bg-slate-50 border-slate-200 focus-visible:ring-green-500"
+                                    placeholder="Escribe un mensaje..."
+                                    className="flex-1 bg-transparent border-none focus-visible:ring-0 px-2 py-0 h-auto min-h-[36px] max-h-32 resize-none"
                                     value={newMessage}
                                     onChange={(e) => setNewMessage(e.target.value)}
                                 />
                                 <Button
                                     type="submit"
                                     size="icon"
-                                    className="bg-green-600 hover:bg-green-700 text-white shrink-0"
+                                    className={cn(
+                                        "h-8 w-8 shrink-0 transition-opacity",
+                                        newMessage.trim() ? "opacity-100 bg-green-600 hover:bg-green-700 text-white" : "opacity-0 pointer-events-none"
+                                    )}
                                     disabled={sendMessageMutation.isPending}
                                 >
                                     <Send className="w-4 h-4" />
                                 </Button>
                             </form>
+                            <div className="w-2" /> {/* Spacer */}
                         </div>
                     </>
                 ) : (
-                    <div className="flex-1 flex flex-col items-center justify-center text-gray-400 p-8 text-center">
-                        <div className="w-16 h-16 bg-slate-100 dark:bg-slate-900 rounded-full flex items-center justify-center mb-4">
-                            <MessageCircle className="w-8 h-8 opacity-50" />
+                    <div className="flex-1 flex flex-col items-center justify-center text-gray-400 p-8 text-center bg-[#f0f2f5] dark:bg-slate-950">
+
+                        <div className="max-w-md space-y-4">
+                            <div className="w-32 h-32 bg-slate-200 dark:bg-slate-900 rounded-full mx-auto flex items-center justify-center opacity-50 grayscale">
+                                <MessageCircle className="w-16 h-16" />
+                            </div>
+                            <h2 className="text-2xl font-light text-gray-600 dark:text-gray-300">Social Inbox</h2>
+                            <p className="text-sm text-gray-500">Selecciona un chat para comenzar a gestionar tus oportunidades de venta de manera centralizada.</p>
+                            <div className="flex justify-center gap-4 text-xs mt-8 opacity-50">
+                                <span className="flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> WhatsApp Business</span>
+                                <span className="flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> Instagram Direct</span>
+                            </div>
                         </div>
-                        <h3 className="text-lg font-medium text-gray-900 dark:text-white">Social Inbox</h3>
-                        <p className="max-w-sm mt-2">Selecciona una conversación de la izquierda para ver el historial y gestionar la oportunidad.</p>
                     </div>
                 )}
             </div>
