@@ -20,6 +20,7 @@ async function main() {
   await prisma.purchaseOrderItem.deleteMany()
   await prisma.purchaseOrder.deleteMany()
   await prisma.leadStageHistory.deleteMany()
+  await prisma.chatMessage.deleteMany()
   await prisma.activity.deleteMany()
   await prisma.lead.deleteMany()
   await prisma.marketingCampaignRecipient.deleteMany()
@@ -40,7 +41,7 @@ async function main() {
   let adminUser = await prisma.user.findFirst({
     where: { isSuperAdmin: true }
   })
-  
+
   if (!adminUser) {
     adminUser = await prisma.user.findFirst({
       where: { email: 'admin@local' }
@@ -88,29 +89,29 @@ async function main() {
     { sku: 'ALIC-003', barcode: '7701234567892', name: 'Alicates Universales 8"', brand: 'Herramientas Pro', category: 'Herramientas', unitOfMeasure: 'UNIT', cost: 12.00, price: 22.00, taxRate: 19, trackStock: true },
     { sku: 'LLAV-004', barcode: '7701234567893', name: 'Juego de Llaves Mixtas 10pcs', brand: 'Herramientas Pro', category: 'Herramientas', unitOfMeasure: 'SET', cost: 35.00, price: 65.00, taxRate: 19, trackStock: true },
     { sku: 'TALAD-005', barcode: '7701234567894', name: 'Taladro Eléctrico 750W', brand: 'PowerTool', category: 'Herramientas Eléctricas', unitOfMeasure: 'UNIT', cost: 85.00, price: 150.00, taxRate: 19, trackStock: true },
-    
+
     // Fijaciones
     { sku: 'CLAV-006', barcode: '7701234567895', name: 'Clavos 2.5" x 1kg', brand: 'Ferretería', category: 'Fijaciones', unitOfMeasure: 'KILO', cost: 3.50, price: 6.50, taxRate: 19, trackStock: true },
     { sku: 'TORN-007', barcode: '7701234567896', name: 'Tornillos 3/8" x 1kg', brand: 'Ferretería', category: 'Fijaciones', unitOfMeasure: 'KILO', cost: 4.50, price: 8.50, taxRate: 19, trackStock: true },
     { sku: 'TUER-008', barcode: '7701234567897', name: 'Tuercas y Arandelas Juego', brand: 'Ferretería', category: 'Fijaciones', unitOfMeasure: 'BOX', cost: 8.00, price: 15.00, taxRate: 19, trackStock: true },
-    
+
     // Plomería
     { sku: 'TUBO-009', barcode: '7701234567898', name: 'Tubo PVC 1/2" x 6m', brand: 'Plomería Plus', category: 'Plomería', unitOfMeasure: 'METER', cost: 2.00, price: 4.00, taxRate: 19, trackStock: true },
     { sku: 'CODO-010', barcode: '7701234567899', name: 'Codo PVC 1/2" 90°', brand: 'Plomería Plus', category: 'Plomería', unitOfMeasure: 'UNIT', cost: 0.80, price: 1.50, taxRate: 19, trackStock: true },
     { sku: 'VALV-011', barcode: '7701234567900', name: 'Válvula de Compuerta 1/2"', brand: 'Plomería Plus', category: 'Plomería', unitOfMeasure: 'UNIT', cost: 12.00, price: 22.00, taxRate: 19, trackStock: true },
-    
+
     // Pinturas
     { sku: 'PINT-012', barcode: '7701234567901', name: 'Pintura Blanca Mate 1L', brand: 'Color Plus', category: 'Pinturas', unitOfMeasure: 'UNIT', cost: 12.00, price: 22.00, taxRate: 19, trackStock: true },
     { sku: 'PINT-013', barcode: '7701234567902', name: 'Pintura Blanca Mate 4L', brand: 'Color Plus', category: 'Pinturas', unitOfMeasure: 'UNIT', cost: 45.00, price: 80.00, taxRate: 19, trackStock: true },
     { sku: 'BROC-014', barcode: '7701234567903', name: 'Brocha 4" Profesional', brand: 'Pinturas', category: 'Pinturas', unitOfMeasure: 'UNIT', cost: 4.00, price: 8.00, taxRate: 19, trackStock: true },
     { sku: 'RODL-015', barcode: '7701234567904', name: 'Rodillo 9" con Mango', brand: 'Pinturas', category: 'Pinturas', unitOfMeasure: 'UNIT', cost: 6.00, price: 12.00, taxRate: 19, trackStock: true },
-    
+
     // Eléctricos
     { sku: 'CABL-016', barcode: '7701234567905', name: 'Cable Eléctrico 2.5mm x 100m', brand: 'Electric Pro', category: 'Eléctricos', unitOfMeasure: 'METER', cost: 1.50, price: 3.00, taxRate: 19, trackStock: true },
     { sku: 'LAMP-017', barcode: '7701234567906', name: 'Lámpara LED 12W E27', brand: 'Iluminación LED', category: 'Eléctricos', unitOfMeasure: 'UNIT', cost: 8.00, price: 15.00, taxRate: 19, trackStock: true },
     { sku: 'TOMA-018', barcode: '7701234567907', name: 'Tomacorriente Simple', brand: 'Electric Pro', category: 'Eléctricos', unitOfMeasure: 'UNIT', cost: 3.50, price: 7.00, taxRate: 19, trackStock: true },
     { sku: 'BREAK-019', barcode: '7701234567908', name: 'Breaker 20A Monopolar', brand: 'Electric Pro', category: 'Eléctricos', unitOfMeasure: 'UNIT', cost: 15.00, price: 28.00, taxRate: 19, trackStock: true },
-    
+
     // Materiales de Construcción
     { sku: 'CEM-020', barcode: '7701234567909', name: 'Cemento Gris 50kg', brand: 'Construcción', category: 'Construcción', unitOfMeasure: 'BAG', cost: 18.00, price: 32.00, taxRate: 19, trackStock: true },
     { sku: 'AREN-021', barcode: '7701234567910', name: 'Arena Fina x m³', brand: 'Construcción', category: 'Construcción', unitOfMeasure: 'CUBIC_METER', cost: 25.00, price: 45.00, taxRate: 19, trackStock: true },
@@ -321,6 +322,40 @@ async function main() {
         },
       })
     }
+
+    // Crear Mensajes de Chat Demo (WhatsApp/Instagram)
+    console.log('💬 Creando conversaciones de chat demo...')
+    const chatMessagesData = [
+      // Lead 1: Proyecto Residencial (CONTACTED)
+      { leadIndex: 0, content: 'Hola, vi su publicidad sobre materiales de construcción.', direction: 'INBOUND', channel: 'WHATSAPP', status: 'READ', timeOffset: 24 * 60 },
+      { leadIndex: 0, content: '¡Hola! Claro que sí. ¿Qué materiales está necesitando específicamente?', direction: 'OUTBOUND', channel: 'WHATSAPP', status: 'READ', timeOffset: 23 * 60 },
+      { leadIndex: 0, content: 'Necesito cemento, ladrillos y varilla para un proyecto de 50 casas.', direction: 'INBOUND', channel: 'WHATSAPP', status: 'READ', timeOffset: 22 * 60 },
+      { leadIndex: 0, content: 'Perfecto. Le puedo ofrecer un precio especial por volumen. ¿Le gustaría una cotización formal?', direction: 'OUTBOUND', channel: 'WHATSAPP', status: 'DELIVERED', timeOffset: 10 },
+
+      // Lead 2: Remodelación Oficinas (QUOTED)
+      { leadIndex: 1, content: 'Buenas tardes, ¿tienen disponibilidad de pintura blanca industrial?', direction: 'INBOUND', channel: 'INSTAGRAM', status: 'READ', timeOffset: 48 * 60 },
+      { leadIndex: 1, content: 'Sí, tenemos en stock para entrega inmediata. ¿Cuántos galones necesita?', direction: 'OUTBOUND', channel: 'INSTAGRAM', status: 'READ', timeOffset: 47 * 60 },
+      { leadIndex: 1, content: 'Unos 20 galones. ¿Me pueden enviar al norte?', direction: 'INBOUND', channel: 'INSTAGRAM', status: 'READ', timeOffset: 46 * 60 },
+      { leadIndex: 1, content: 'Claro, el envío es gratis. Ya le genero la cotización adjunta.', direction: 'OUTBOUND', channel: 'INSTAGRAM', status: 'READ', timeOffset: 45 * 60 },
+
+      // Lead 3: Instalación Eléctrica (NEW)
+      { leadIndex: 2, content: 'Hola, precio del cable #12?', direction: 'INBOUND', channel: 'WHATSAPP', status: 'DELIVERED', timeOffset: 5 },
+    ]
+
+    for (const msg of chatMessagesData) {
+      if (createdLeads[msg.leadIndex]) {
+        await prisma.chatMessage.create({
+          data: {
+            leadId: createdLeads[msg.leadIndex].id,
+            content: msg.content,
+            direction: msg.direction,
+            channel: msg.channel,
+            status: msg.status,
+            createdAt: new Date(Date.now() - msg.timeOffset * 60 * 1000)
+          }
+        })
+      }
+    }
   }
 
   // Crear actividades demo
@@ -352,7 +387,7 @@ async function main() {
     const lead = i < createdLeads.length ? createdLeads[i] : null
     const statuses = ['DRAFT', 'SENT', 'ACCEPTED', 'EXPIRED']
     const status = statuses[Math.floor(Math.random() * statuses.length)]
-    
+
     const validUntil = new Date()
     validUntil.setDate(validUntil.getDate() + 30)
 
@@ -419,7 +454,7 @@ async function main() {
     const supplier = createdSuppliers[Math.floor(Math.random() * createdSuppliers.length)]
     const statuses = ['DRAFT', 'SENT', 'CONFIRMED', 'RECEIVED']
     const status = statuses[Math.floor(Math.random() * statuses.length)]
-    
+
     const expectedDate = new Date()
     expectedDate.setDate(expectedDate.getDate() + 7)
 
@@ -554,7 +589,7 @@ async function main() {
     const customer = createdCustomers[Math.floor(Math.random() * createdCustomers.length)]
     const statuses = ['ISSUED', 'PAID', 'PARTIAL']
     const status = statuses[Math.floor(Math.random() * statuses.length)]
-    
+
     const invoice = await prisma.invoice.create({
       data: {
         number: `FV-${String(1000 + i).padStart(4, '0')}`,
@@ -707,14 +742,14 @@ async function main() {
 
   // Crear acciones recientes para el historial
   console.log('📋 Creando acciones recientes para el historial...')
-  
+
   // Ajustes manuales de inventario (aparecen en el historial)
   const recentProducts = createdProducts.slice(0, 5)
   for (let i = 0; i < recentProducts.length; i++) {
     const product = recentProducts[i]
     const hoursAgo = i + 1 // Hace 1, 2, 3, 4, 5 horas
     const createdAt = new Date(Date.now() - hoursAgo * 60 * 60 * 1000)
-    
+
     await prisma.stockMovement.create({
       data: {
         warehouseId: warehouse1.id,
@@ -742,7 +777,7 @@ async function main() {
   for (let i = 0; i < cashMovementReasons.length; i++) {
     const hoursAgo = i + 2
     const createdAt = new Date(Date.now() - hoursAgo * 60 * 60 * 1000)
-    
+
     await prisma.cashMovement.create({
       data: {
         cashShiftId: cashShift.id,
@@ -765,7 +800,7 @@ async function main() {
     const invoice = recentInvoices[i]
     const hoursAgo = i + 1
     const createdAt = new Date(Date.now() - hoursAgo * 60 * 60 * 1000)
-    
+
     await prisma.payment.create({
       data: {
         invoiceId: invoice.id,
