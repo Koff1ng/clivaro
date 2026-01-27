@@ -7,6 +7,7 @@ import { z } from 'zod'
 import { toDecimal } from '@/lib/numbers'
 import { updateStockLevel, checkStock } from '@/lib/inventory'
 import jwt from 'jsonwebtoken'
+import { prisma as masterPrisma } from '@/lib/db'
 
 // Función helper para ejecutar consultas con retry y manejo de errores de conexión
 async function executeWithRetry<T>(
@@ -21,7 +22,7 @@ async function executeWithRetry<T>(
     } catch (error: any) {
       lastError = error
       const errorMessage = error?.message || String(error)
-      
+
       // Si es error de límite de conexiones, esperar y reintentar
       if (errorMessage.includes('MaxClientsInSessionMode') || errorMessage.includes('max clients reached')) {
         if (attempt < maxRetries - 1) {
@@ -31,7 +32,7 @@ async function executeWithRetry<T>(
           continue
         }
       }
-      
+
       // Si no es error de conexión, lanzar inmediatamente
       throw error
     }
@@ -85,7 +86,7 @@ async function getUserPermissions(prisma: any, userId: string) {
 
 export async function POST(request: Request) {
   const session = await requirePermission(request as any, PERMISSIONS.MANAGE_SALES)
-  
+
   if (session instanceof NextResponse) {
     return session
   }
@@ -96,7 +97,7 @@ export async function POST(request: Request) {
   try {
     const body = await request.json()
     const data = createPOSSaleSchema.parse(body)
-    
+
     // Validación de forma de pago (paymentMethod vs payments)
     if (!data.payments?.length && !data.paymentMethod) {
       return NextResponse.json(
@@ -104,7 +105,7 @@ export async function POST(request: Request) {
         { status: 400 }
       )
     }
-    
+
     // Enforce discounts permission (or override token)
     const hasAnyDiscount = data.items.some((it) => (it.discount || 0) > 0)
     if (hasAnyDiscount) {
@@ -221,7 +222,7 @@ export async function POST(request: Request) {
         return sum + (itemSubtotal * item.taxRate / 100)
       }, 0)
       const total = subtotalAfterDiscount + tax
-      
+
       // Validar pagos (si vienen en el request) contra el total calculado
       const tenderedTotal = data.payments?.reduce((sum, p) => sum + p.amount, 0)
       if (data.payments?.length) {
@@ -255,9 +256,28 @@ export async function POST(request: Request) {
       }
 
       // Create invoice directly (no sales order needed)
+
+      // Create invoice directly (no sales order needed)
+      // Fetch tenant settings (passed from outside or fetched here? We need masterPrisma)
+      // Since we are inside a transaction on tenant DB, we can't query master DB easily if not passed.
+      // But we can query masterPrisma outside the transaction?
+      // No, we are inside a closure. We can access masterPrisma from closure scope.
+
+      const user = session.user as any
+      // Optimization: Fetch settings outside transaction if possible, but here is fine for now provided it doesn't block transaction too long.
+      // For safety/speed, let's assume we can fetch it.
+
+      // Nota: idealmente pasaríamos esto como argumento al transaction handler, pero JS permite access closure.
+      const tenantSettings = await masterPrisma.tenantSettings.findUnique({
+        where: { tenantId: user.tenantId }
+      })
+
       const invoiceCount = await tx.invoice.count()
-      const prefix = process.env.BILLING_RESOLUTION_PREFIX || 'FV'
-      const consecutive = String(invoiceCount + 1).padStart(6, '0')
+      const prefix = tenantSettings?.invoicePrefix || process.env.BILLING_RESOLUTION_PREFIX || 'FV'
+      const format = tenantSettings?.invoiceNumberFormat || '000000'
+      const padLength = format.length > 0 ? format.length : 6
+
+      const consecutive = String(invoiceCount + 1).padStart(padLength, '0')
       const invoiceNumber = `${prefix}-${consecutive}`
 
       // Crear factura con items
@@ -399,7 +419,7 @@ export async function POST(request: Request) {
 
         if (product?.trackStock) {
           logger.debug('[POS Sale] Processing stock', { productId: item.productId, quantity: item.quantity })
-          
+
           // Create OUT movement
           const movement = await tx.stockMovement.create({
             data: {
@@ -448,22 +468,22 @@ export async function POST(request: Request) {
             })
             logger.debug('[POS Sale] Stock record created')
           }
-          
+
           // Verificar que el stock se actualizó correctamente
           const updatedStock = await tx.stockLevel.findFirst({
             where: whereClause,
           })
-          
+
           if (!updatedStock) {
             logger.error('[POS Sale] Critical: could not verify updated stock', undefined, { productId: item.productId })
             throw new Error(`Error al actualizar stock para producto ${product.name}. La transacción será revertida.`)
           }
-          
+
           // Verificar que el stock se actualizó correctamente
-          const expectedQuantity = existingStock 
-            ? existingStock.quantity - item.quantity 
+          const expectedQuantity = existingStock
+            ? existingStock.quantity - item.quantity
             : -item.quantity
-            
+
           if (Math.abs(updatedStock.quantity - expectedQuantity) > 0.01) {
             logger.error('[POS Sale] Critical: stock mismatch', undefined, {
               productId: item.productId,
@@ -472,7 +492,7 @@ export async function POST(request: Request) {
             })
             throw new Error(`Error: El stock no se actualizó correctamente para ${product.name}. Esperado: ${expectedQuantity}, Actual: ${updatedStock.quantity}`)
           }
-          
+
           logger.debug('[POS Sale] Stock verified', { productId: item.productId, quantity: updatedStock.quantity })
         }
       }
@@ -494,8 +514,8 @@ export async function POST(request: Request) {
     if (error instanceof z.ZodError) {
       logger.warn('POS sale validation error', { errors: error.errors })
       return NextResponse.json(
-        { 
-          error: 'Error de validación', 
+        {
+          error: 'Error de validación',
           code: 'VALIDATION_ERROR',
           details: error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ')
         },
@@ -504,7 +524,7 @@ export async function POST(request: Request) {
     }
     logger.error('Error creating POS sale', error, { endpoint: '/api/pos/sale', method: 'POST' })
     return NextResponse.json(
-      { 
+      {
         error: error.message || 'Error al procesar la venta',
         code: 'SERVER_ERROR',
         details: process.env.NODE_ENV === 'development' ? error.stack : undefined

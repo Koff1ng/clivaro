@@ -3,8 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider = "postgresql"
+  url      = env("DATABASE_URL") // Transaction pooler para runtime
+  directUrl = env("DIRECT_URL") // Conexión directa para migraciones (opcional, solo en planes pagos de Supabase)
 }
 
 model User {
@@ -725,7 +726,7 @@ model Plan {
 
 model Subscription {
   id            String    @id @default(cuid())
-  tenantId      String
+  tenantId      String    @unique // Un tenant solo puede tener una suscripción activa
   planId        String
   status        String    // "active" | "cancelled" | "expired" | "trial" | "pending_payment"
   startDate     DateTime
