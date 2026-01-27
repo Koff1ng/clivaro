@@ -139,6 +139,13 @@ async function fetchActiveShift() {
   return data.shifts?.[0] || null
 }
 
+async function fetchSettings() {
+  const res = await fetch('/api/settings')
+  if (!res.ok) return null
+  const data = await res.json()
+  return data.settings || null
+}
+
 async function openShift(startingCash: number) {
   const res = await fetch('/api/cash/shifts', {
     method: 'POST',
@@ -694,6 +701,13 @@ export function POSScreen() {
       setSelectedWarehouse(warehouses[0].id)
     }
   }, [warehouses, selectedWarehouse])
+
+  const { data: settings } = useQuery({
+    queryKey: ['pos-settings'],
+    queryFn: fetchSettings,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+  })
 
   // Debounce customer search
   const debouncedCustomerSearch = useDebounce(customerSearch, 300)
@@ -1878,8 +1892,10 @@ export function POSScreen() {
             <div className="space-y-0">
               {/* Receipt Header */}
               <div className="px-6 pt-6 pb-4 text-center bg-muted/30">
-                <div className="text-xl font-bold text-foreground">Ferretería</div>
-                <div className="text-sm text-muted-foreground mt-1">Punto de Venta</div>
+                <div className="text-xl font-bold text-foreground">{settings?.companyName || 'Ferretería'}</div>
+                <div className="text-sm text-muted-foreground mt-1">{settings?.companyNit ? `NIT: ${settings.companyNit}` : 'Punto de Venta'}</div>
+                {settings?.companyAddress && <div className="text-xs text-muted-foreground">{settings.companyAddress}</div>}
+                {settings?.companyPhone && <div className="text-xs text-muted-foreground">{settings.companyPhone}</div>}
               </div>
 
               {/* Sale Info */}
