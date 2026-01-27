@@ -24,7 +24,7 @@ const createLeadSchema = z.object({
 
 export async function GET(request: Request) {
   const session = await requirePermission(request as any, PERMISSIONS.MANAGE_CRM)
-  
+
   if (session instanceof NextResponse) {
     return session
   }
@@ -39,7 +39,7 @@ export async function GET(request: Request) {
 
   // Obtener el cliente Prisma correcto (tenant o master según el usuario)
   const prisma = await getPrismaForRequest(request, session)
-  
+
   // Verificar qué base de datos estamos usando
   const dbUrl = (prisma as any)._connectionString || (prisma as any)._engine?.datasources?.db?.url || 'unknown'
   logger.debug('[Leads API GET] DB in use', { dbUrl, tenantId: user.tenantId, isSuperAdmin: user.isSuperAdmin })
@@ -103,16 +103,15 @@ export async function GET(request: Request) {
     })
   } catch (error) {
     logger.error('Error fetching leads', error, { endpoint: '/api/leads', method: 'GET' })
-    return NextResponse.json(
-      { error: 'Failed to fetch leads' },
-      { status: 500 }
+    { error: 'Failed to fetch leads', details: error instanceof Error ? error.message : String(error) },
+    { status: 500 }
     )
   }
 }
 
 export async function POST(request: Request) {
   const session = await requirePermission(request as any, PERMISSIONS.MANAGE_CRM)
-  
+
   if (session instanceof NextResponse) {
     return session
   }
@@ -188,7 +187,7 @@ export async function POST(request: Request) {
     }
     logger.error('Error creating lead', error, { endpoint: '/api/leads', method: 'POST' })
     return NextResponse.json(
-      { error: 'Failed to create lead' },
+      { error: 'Failed to create lead', details: error instanceof Error ? error.message : String(error) },
       { status: 500 }
     )
   }
