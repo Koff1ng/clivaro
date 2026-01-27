@@ -48,6 +48,6 @@ export async function GET(request: Request) {
         })
     } catch (error: any) {
         logger.error('[Transmissions API Error]:', error)
-        return NextResponse.json({ error: 'Error al cargar las transmisiones' }, { status: 500 })
+        return NextResponse.json({ error: error.message || 'Error al cargar las transmisiones' }, { status: 500 })
     }
 }
