@@ -5,6 +5,7 @@ import { getPrismaForRequest } from '@/lib/get-tenant-prisma'
 import { z } from 'zod'
 import { toDecimal } from '@/lib/numbers'
 import { updateStockLevel } from '@/lib/inventory'
+import { logActivity } from '@/lib/activity'
 
 const adjustmentSchema = z.object({
   warehouseId: z.string(),
@@ -16,7 +17,7 @@ const adjustmentSchema = z.object({
 
 export async function POST(request: Request) {
   const session = await requirePermission(request as any, PERMISSIONS.MANAGE_INVENTORY)
-  
+
   if (session instanceof NextResponse) {
     return session
   }
@@ -62,6 +63,16 @@ export async function POST(request: Request) {
         quantity,
         tx // Pasar el cliente de transacción
       )
+
+      // Audit Log
+      await logActivity({
+        prisma: tx,
+        type: 'INVENTORY_ADJUSTMENT',
+        subject: `Ajuste de inventario: ${data.reason}`,
+        description: `${movementType === 'IN' ? 'Entrada' : 'Salida'} de ${Math.abs(quantity)} unidades.`,
+        userId: (session.user as any).id,
+        metadata: { warehouseId: data.warehouseId, productId: data.productId, variantId: data.variantId, quantity }
+      })
     })
 
     return NextResponse.json({ success: true })

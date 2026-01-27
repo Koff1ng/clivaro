@@ -5,6 +5,7 @@ import { getPrismaForRequest } from '@/lib/get-tenant-prisma'
 import { z } from 'zod'
 import { parseDateOnlyToDate } from '@/lib/date-only'
 import { toDecimal } from '@/lib/numbers'
+import { logActivity } from '@/lib/activity'
 
 const updatePurchaseOrderSchema = z.object({
   supplierId: z.string().min(1).optional(),
@@ -26,7 +27,7 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   const session = await requirePermission(request as any, PERMISSIONS.MANAGE_PURCHASES)
-  
+
   if (session instanceof NextResponse) {
     return session
   }
@@ -100,7 +101,7 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   const session = await requirePermission(request as any, PERMISSIONS.MANAGE_PURCHASES)
-  
+
   if (session instanceof NextResponse) {
     return session
   }
@@ -228,6 +229,15 @@ export async function PUT(
         },
       })
 
+      // Audit Log for Full Update
+      await logActivity({
+        prisma,
+        type: 'PURCHASE_ORDER_UPDATE',
+        subject: `Orden de Compra actualizada: ${params.id}`,
+        userId: (session.user as any).id,
+        metadata: { orderId: params.id, updates: { items: data.items?.length, status: data.status, notes: data.notes } }
+      })
+
       return NextResponse.json(updatedOrder)
     } else {
       // Just update basic fields
@@ -260,6 +270,15 @@ export async function PUT(
         data: updateData,
       })
 
+      // Audit Log for Partial Update
+      await logActivity({
+        prisma,
+        type: 'PURCHASE_ORDER_UPDATE',
+        subject: `Orden de Compra actualizada: ${params.id}`,
+        userId: (session.user as any).id,
+        metadata: { orderId: params.id, updates: { discount: data.discount, status: data.status, notes: data.notes } }
+      })
+
       return NextResponse.json(order)
     }
   } catch (error) {
@@ -282,7 +301,7 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   const session = await requirePermission(request as any, PERMISSIONS.MANAGE_PURCHASES)
-  
+
   if (session instanceof NextResponse) {
     return session
   }
@@ -311,6 +330,15 @@ export async function DELETE(
 
     await prisma.purchaseOrder.delete({
       where: { id: params.id },
+    })
+
+    // Audit Log
+    await logActivity({
+      prisma,
+      type: 'PURCHASE_ORDER_DELETE',
+      subject: `Orden de Compra eliminada: ${order.number}`,
+      userId: (session.user as any).id,
+      metadata: { orderId: params.id, orderNumber: order.number }
     })
 
     return NextResponse.json({ success: true })

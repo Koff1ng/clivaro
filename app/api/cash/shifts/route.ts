@@ -3,6 +3,7 @@ import { requireAnyPermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
 import { getPrismaForRequest } from '@/lib/get-tenant-prisma'
 import { z } from 'zod'
+import { logActivity } from '@/lib/activity'
 
 // Helper function to safely serialize dates
 function serializeDate(date: Date | null | undefined): string | null {
@@ -66,15 +67,15 @@ export async function GET(request: Request) {
   try {
     // Allow both MANAGE_CASH and MANAGE_SALES permissions for POS
     const session = await requireAnyPermission(request as any, [PERMISSIONS.MANAGE_CASH, PERMISSIONS.MANAGE_SALES])
-    
+
     if (session instanceof NextResponse) {
       return session
     }
 
-  // Obtener el cliente Prisma correcto (tenant o master según el usuario)
-  const prisma = await getPrismaForRequest(request, session)
+    // Obtener el cliente Prisma correcto (tenant o master según el usuario)
+    const prisma = await getPrismaForRequest(request, session)
 
-  const user = session.user as any
+    const user = session.user as any
     if (!user || !user.id) {
       return NextResponse.json(
         { error: 'User ID is required' },
@@ -129,15 +130,15 @@ export async function POST(request: Request) {
   try {
     // Allow both MANAGE_CASH and MANAGE_SALES permissions for POS
     const session = await requireAnyPermission(request as any, [PERMISSIONS.MANAGE_CASH, PERMISSIONS.MANAGE_SALES])
-    
+
     if (session instanceof NextResponse) {
       return session
     }
 
-  // Obtener el cliente Prisma correcto (tenant o master según el usuario)
-  const prisma = await getPrismaForRequest(request, session)
+    // Obtener el cliente Prisma correcto (tenant o master según el usuario)
+    const prisma = await getPrismaForRequest(request, session)
 
-  const user = session.user as any
+    const user = session.user as any
     if (!user) {
       console.error('No user in session:', { session })
       return NextResponse.json(
@@ -220,6 +221,16 @@ export async function POST(request: Request) {
           },
         })
 
+        // Audit Log
+        await logActivity({
+          prisma,
+          type: 'CASH_SHIFT_OPEN',
+          subject: `Turno de caja abierto`,
+          description: `Base inicial: ${startingCash}`,
+          userId,
+          metadata: { shiftId: shift.id, startingCash }
+        })
+
         const serializedShift = serializeShift(shift)
         return NextResponse.json({ shift: serializedShift }, { status: 201 })
       } catch (error) {
@@ -257,11 +268,11 @@ export async function POST(request: Request) {
         // Calculate expected cash
         const totalMovements = Array.isArray(openShift.movements)
           ? openShift.movements.reduce((sum: number, m: any) => {
-              const amount = Number(m.amount || 0)
-              return sum + (m.type === 'IN' ? amount : -amount)
-            }, 0)
+            const amount = Number(m.amount || 0)
+            return sum + (m.type === 'IN' ? amount : -amount)
+          }, 0)
           : 0
-        
+
         const expectedCash = Number(openShift.startingCash || 0) + totalMovements
         const difference = Number(countedCash) - expectedCash
 
@@ -288,6 +299,16 @@ export async function POST(request: Request) {
           },
         })
 
+        // Audit Log
+        await logActivity({
+          prisma,
+          type: 'CASH_SHIFT_CLOSE',
+          subject: `Turno de caja cerrado`,
+          description: `Esperado: ${expectedCash}, Contado: ${countedCash}, Diferencia: ${difference}`,
+          userId,
+          metadata: { shiftId: shift.id, expectedCash, countedCash, difference }
+        })
+
         const serializedShift = serializeShift(shift)
         return NextResponse.json({ shift: serializedShift })
       } catch (error) {
@@ -307,10 +328,10 @@ export async function POST(request: Request) {
     )
   } catch (error) {
     console.error('Error managing cash shift:', error)
-    
+
     // Ensure error message is serializable
     const errorMessage = error instanceof Error ? error.message : 'Failed to manage cash shift'
-    
+
     return NextResponse.json(
       { error: errorMessage },
       { status: 500 }

@@ -5,6 +5,7 @@ import { getPrismaForRequest } from '@/lib/get-tenant-prisma'
 import { z } from 'zod'
 import { toDecimal } from '@/lib/numbers'
 import { logger } from '@/lib/logger'
+import { logActivity } from '@/lib/activity'
 
 // Función helper para ejecutar consultas con retry y manejo de errores de conexión
 async function executeWithRetry<T>(
@@ -19,7 +20,7 @@ async function executeWithRetry<T>(
     } catch (error: any) {
       lastError = error
       const errorMessage = error?.message || String(error)
-      
+
       // Si es error de límite de conexiones, esperar y reintentar
       if (errorMessage.includes('MaxClientsInSessionMode') || errorMessage.includes('max clients reached')) {
         if (attempt < maxRetries - 1) {
@@ -29,7 +30,7 @@ async function executeWithRetry<T>(
           continue
         }
       }
-      
+
       // Si no es error de conexión, lanzar inmediatamente
       throw error
     }
@@ -51,12 +52,20 @@ const createProductSchema = z.object({
   minStock: z.union([z.number().min(0), z.undefined()]).optional(),
   maxStock: z.union([z.number().min(0), z.null(), z.undefined()]).optional().nullable(),
   description: z.string().optional().nullable(),
+  // Variants
+  variants: z.array(z.object({
+    name: z.string().min(1),
+    sku: z.string().optional().nullable(),
+    barcode: z.string().optional().nullable(),
+    price: z.number().min(0).optional(),
+    cost: z.number().min(0).optional(),
+  })).optional(),
 })
 
 export async function GET(request: Request) {
   // Allow both MANAGE_PRODUCTS and MANAGE_SALES (for POS cashiers)
   const session = await requireAnyPermission(request as any, [PERMISSIONS.MANAGE_PRODUCTS, PERMISSIONS.MANAGE_SALES])
-  
+
   if (session instanceof NextResponse) {
     return session
   }
@@ -132,7 +141,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   const session = await requirePermission(request as any, PERMISSIONS.MANAGE_PRODUCTS)
-  
+
   if (session instanceof NextResponse) {
     return session
   }
@@ -146,73 +155,96 @@ export async function POST(request: Request) {
     const data = createProductSchema.parse(requestBody)
 
     // Extraer minStock y maxStock antes de crear el producto (no son campos del modelo Product)
-    const { minStock, maxStock, ...productData } = data
+    const { minStock, maxStock, variants, ...productData } = data
 
-    const product = await prisma.product.create({
-      data: {
-        ...productData,
-        cost: productData.cost,
-        price: productData.price,
-        taxRate: productData.taxRate,
-        barcode: productData.barcode || null,
-        brand: productData.brand || null,
-        category: productData.category && productData.category.trim() !== '' ? productData.category.trim() : null,
-        description: productData.description || null,
-        createdById: (session.user as any).id,
-      },
-    })
-
-    // Create/update stock settings for default warehouse
-    if (data.trackStock) {
-      const warehouse = await prisma.warehouse.findFirst({
-        where: { active: true },
-        orderBy: { createdAt: 'asc' },
+    // Use transaction for product + variants + audit
+    const product = await prisma.$transaction(async (tx) => {
+      const p = await tx.product.create({
+        data: {
+          ...productData,
+          cost: productData.cost,
+          price: productData.price,
+          taxRate: productData.taxRate,
+          barcode: productData.barcode || null,
+          brand: productData.brand || null,
+          category: productData.category && productData.category.trim() !== '' ? productData.category.trim() : null,
+          description: productData.description || null,
+          createdById: (session.user as any).id,
+          variants: variants && variants.length > 0 ? {
+            create: variants.map(v => ({
+              name: v.name,
+              sku: v.sku || undefined, // Allow Prisma to handle null/undefined if unique
+              barcode: v.barcode || null,
+              price: v.price ?? productData.price, // Inherit if not set
+              cost: v.cost ?? productData.cost,     // Inherit if not set
+            }))
+          } : undefined
+        },
+        include: {
+          variants: true
+        }
       })
-      if (warehouse) {
-        // Prisma does not allow `null` in compound-unique `where` for upsert in some generated types.
-        // Use findFirst + update/create to safely handle variantId = null.
-        const existing = await prisma.stockLevel.findFirst({
-          where: {
-            warehouseId: warehouse.id,
-            productId: product.id,
-            variantId: null,
-          },
-          select: { id: true },
+
+      // Log activity
+      await logActivity({
+        prisma: tx,
+        type: 'PRODUCT_CREATE',
+        subject: `Producto creado: ${p.name}`,
+        description: `Creado con SKU: ${p.sku}. ${variants?.length ? `Con ${variants.length} variantes.` : ''}`,
+        userId: (session.user as any).id,
+        metadata: { productId: p.id, sku: p.sku, variantsCount: variants?.length }
+      })
+
+      // Create/update stock settings for default warehouse
+      if (data.trackStock) {
+        const warehouse = await tx.warehouse.findFirst({
+          where: { active: true },
+          orderBy: { createdAt: 'asc' },
         })
+        if (warehouse) {
+          // Asegurar que minStock y maxStock sean números válidos
+          // minStock es requerido si trackStock es true
+          const minStockValue = minStock !== undefined && minStock !== null && !isNaN(Number(minStock))
+            ? Number(minStock)
+            : 0 // Default a 0 si no se proporciona
 
-        // Asegurar que minStock y maxStock sean números válidos
-        // minStock es requerido si trackStock es true
-        const minStockValue = minStock !== undefined && minStock !== null && !isNaN(Number(minStock)) 
-          ? Number(minStock) 
-          : 0 // Default a 0 si no se proporciona
-        
-        // maxStock es opcional: si está vacío, undefined o null, usar 0 (sin máximo configurado)
-        const maxStockValue = maxStock !== undefined && maxStock !== null && !isNaN(Number(maxStock)) && Number(maxStock) > 0 
-          ? Number(maxStock) 
-          : 0 // 0 significa sin máximo configurado
+          // maxStock es opcional: si está vacío, undefined o null, usar 0 (sin máximo configurado)
+          const maxStockValue = maxStock !== undefined && maxStock !== null && !isNaN(Number(maxStock)) && Number(maxStock) > 0
+            ? Number(maxStock)
+            : 0 // 0 significa sin máximo configurado
 
-        if (existing) {
-          await prisma.stockLevel.update({
-            where: { id: existing.id },
-            data: {
-              minStock: minStockValue,
-              maxStock: maxStockValue,
-            },
-          })
-        } else {
-          await prisma.stockLevel.create({
+          // Crear stock para el producto principal (si trackStock activado)
+          await tx.stockLevel.create({
             data: {
               warehouseId: warehouse.id,
-              productId: product.id,
+              productId: p.id,
               variantId: null,
               quantity: 0,
               minStock: minStockValue,
               maxStock: maxStockValue,
             },
           })
+
+          // También crear stock para variantes si existen
+          if (p.variants && p.variants.length > 0) {
+            for (const v of p.variants) {
+              await tx.stockLevel.create({
+                data: {
+                  warehouseId: warehouse.id,
+                  productId: p.id,
+                  variantId: v.id,
+                  quantity: 0,
+                  minStock: minStockValue, // Heredar configuración por ahora
+                  maxStock: maxStockValue,
+                }
+              })
+            }
+          }
         }
       }
-    }
+
+      return p
+    })
 
     return NextResponse.json(product, { status: 201 })
   } catch (error: any) {
@@ -222,13 +254,13 @@ export async function POST(request: Request) {
         { status: 400 }
       )
     }
-    
+
     // Log detailed error information
     const errorMessage = error instanceof Error ? error.message : String(error)
     const errorStack = error instanceof Error ? error.stack : undefined
     const errorName = error instanceof Error ? error.name : 'Unknown'
     const errorCode = error?.code || error?.meta?.code || undefined
-    
+
     // Check for Prisma unique constraint violations
     if (error?.code === 'P2002') {
       const target = error?.meta?.target
@@ -237,7 +269,7 @@ export async function POST(request: Request) {
         field = target[0] || 'campo'
       }
       return NextResponse.json(
-        { 
+        {
           error: 'Error de validación',
           details: `Ya existe un producto con este ${field === 'sku' ? 'SKU' : field === 'barcode' ? 'código de barras' : field}`,
           code: errorCode,
@@ -245,7 +277,7 @@ export async function POST(request: Request) {
         { status: 400 }
       )
     }
-    
+
     console.error('Error creating product:', {
       error: errorMessage,
       name: errorName,
@@ -254,9 +286,9 @@ export async function POST(request: Request) {
       body: requestBody,
       prismaError: error,
     })
-    
+
     return NextResponse.json(
-      { 
+      {
         error: 'Failed to create product',
         details: errorMessage,
         name: errorName,

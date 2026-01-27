@@ -4,6 +4,8 @@ import { PERMISSIONS } from '@/lib/permissions'
 import { getPrismaForRequest } from '@/lib/get-tenant-prisma'
 import { z } from 'zod'
 import { toDecimal } from '@/lib/numbers'
+import { logger } from '@/lib/logger'
+import { logActivity } from '@/lib/activity'
 
 const updateProductSchema = z.object({
   sku: z.string().min(1).optional(),
@@ -20,6 +22,15 @@ const updateProductSchema = z.object({
   maxStock: z.number().min(0).optional().nullable(),
   description: z.string().optional().nullable(),
   active: z.boolean().optional(),
+  // Variants (Upsert)
+  variants: z.array(z.object({
+    id: z.string().optional(), // If present, update. If missing, create.
+    name: z.string().min(1),
+    sku: z.string().optional().nullable(),
+    barcode: z.string().optional().nullable(),
+    price: z.number().min(0).optional(),
+    cost: z.number().min(0).optional(),
+  })).optional(),
 })
 
 export async function GET(
@@ -27,7 +38,7 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   const session = await requirePermission(request as any, PERMISSIONS.MANAGE_PRODUCTS)
-  
+
   if (session instanceof NextResponse) {
     return session
   }
@@ -80,7 +91,7 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   const session = await requirePermission(request as any, PERMISSIONS.MANAGE_PRODUCTS)
-  
+
   if (session instanceof NextResponse) {
     return session
   }
@@ -92,90 +103,134 @@ export async function PATCH(
     const body = await request.json()
     const data = updateProductSchema.parse(body)
 
+    // Extract variants explicitly
+    const { variants, minStock, maxStock, trackStock, ...directUpdateData } = data
+
     const updateData: any = {
-      ...data,
+      ...directUpdateData,
       updatedById: (session.user as any).id,
     }
 
-    if (data.cost !== undefined) {
-      updateData.cost = data.cost
-    }
-    if (data.price !== undefined) {
-      updateData.price = data.price
-    }
-    if (data.taxRate !== undefined) {
-      updateData.taxRate = data.taxRate
-    }
+    if (data.cost !== undefined) updateData.cost = data.cost
+    if (data.price !== undefined) updateData.price = data.price
+    if (data.taxRate !== undefined) updateData.taxRate = data.taxRate
 
-    const product = await prisma.product.update({
-      where: { id: params.id },
-      data: updateData,
-    })
-
-    // Actualizar stock levels si se proporcionaron minStock o maxStock
-    if (data.trackStock !== undefined || data.minStock !== undefined || data.maxStock !== undefined) {
-      const warehouse = await prisma.warehouse.findFirst({
-        where: { active: true },
-        orderBy: { createdAt: 'asc' },
+    // Transaction for Update + Variants + Audit
+    const product = await prisma.$transaction(async (tx) => {
+      const p = await tx.product.update({
+        where: { id: params.id },
+        data: updateData,
       })
-      
-      if (warehouse) {
-        const existing = await prisma.stockLevel.findFirst({
-          where: {
-            warehouseId: warehouse.id,
-            productId: product.id,
-            variantId: null,
-          },
-          select: { id: true },
-        })
 
-        // Si trackStock está desactivado, eliminar el stock level
-        if (data.trackStock === false) {
-          if (existing) {
-            await prisma.stockLevel.delete({
-              where: { id: existing.id },
-            })
-          }
-        } else {
-          // Si trackStock está activado o no se especificó, actualizar/crear stock level
-          const minStock = data.minStock !== undefined && !isNaN(Number(data.minStock)) 
-            ? Number(data.minStock) 
-            : existing 
-              ? undefined // Mantener el valor existente si no se proporciona
-              : 0
-          
-          const maxStock = data.maxStock !== undefined && data.maxStock !== null && !isNaN(Number(data.maxStock)) && Number(data.maxStock) > 0
-            ? Number(data.maxStock)
-            : data.maxStock === null || (data.maxStock === 0 && data.maxStock !== undefined)
-              ? 0 // 0 significa sin máximo configurado
-              : undefined // Mantener el valor existente si no se proporciona
-
-          const stockData: any = {}
-          if (minStock !== undefined) stockData.minStock = minStock
-          if (maxStock !== undefined) stockData.maxStock = maxStock
-
-          if (existing) {
-            if (Object.keys(stockData).length > 0) {
-              await prisma.stockLevel.update({
-                where: { id: existing.id },
-                data: stockData,
-              })
-            }
-          } else {
-            await prisma.stockLevel.create({
+      // Handle Variants
+      if (variants && variants.length > 0) {
+        for (const v of variants) {
+          if (v.id) {
+            // Update existing
+            await tx.productVariant.update({
+              where: { id: v.id, productId: p.id }, // Security: enforce productId
               data: {
-                warehouseId: warehouse.id,
-                productId: product.id,
-                variantId: null,
-                quantity: 0,
-                minStock: minStock ?? 0,
-                maxStock: maxStock ?? 0,
-              },
+                name: v.name,
+                sku: v.sku,
+                barcode: v.barcode,
+                price: v.price,
+                cost: v.cost,
+              }
+            })
+          } else {
+            // Create new
+            await tx.productVariant.create({
+              data: {
+                productId: p.id,
+                name: v.name,
+                sku: v.sku,
+                barcode: v.barcode,
+                price: v.price ?? p.price,
+                cost: v.cost ?? p.cost,
+              }
             })
           }
         }
       }
-    }
+
+      // Handle Stock Levels (moved inside transaction)
+      // Actualizar stock levels si se proporcionaron minStock o maxStock
+      if (trackStock !== undefined || minStock !== undefined || maxStock !== undefined) {
+        const warehouse = await tx.warehouse.findFirst({
+          where: { active: true },
+          orderBy: { createdAt: 'asc' },
+        })
+
+        if (warehouse) {
+          const existing = await tx.stockLevel.findFirst({
+            where: {
+              warehouseId: warehouse.id,
+              productId: p.id,
+              variantId: null,
+            },
+            select: { id: true },
+          })
+
+          // Si trackStock está desactivado, eliminar el stock level
+          if (trackStock === false) {
+            if (existing) {
+              await tx.stockLevel.delete({
+                where: { id: existing.id },
+              })
+            }
+          } else {
+            // Si trackStock está activado o no se especificó, actualizar/crear stock level
+            const minStockVal = minStock !== undefined && !isNaN(Number(minStock))
+              ? Number(minStock)
+              : existing
+                ? undefined // Mantener el valor existente si no se proporciona
+                : 0
+
+            const maxStockVal = maxStock !== undefined && maxStock !== null && !isNaN(Number(maxStock)) && Number(maxStock) > 0
+              ? Number(maxStock)
+              : maxStock === null || (maxStock === 0 && maxStock !== undefined)
+                ? 0 // 0 significa sin máximo configurado
+                : undefined // Mantener el valor existente si no se proporciona
+
+            const stockData: any = {}
+            if (minStockVal !== undefined) stockData.minStock = minStockVal
+            if (maxStockVal !== undefined) stockData.maxStock = maxStockVal
+
+            if (existing) {
+              if (Object.keys(stockData).length > 0) {
+                await tx.stockLevel.update({
+                  where: { id: existing.id },
+                  data: stockData,
+                })
+              }
+            } else {
+              await tx.stockLevel.create({
+                data: {
+                  warehouseId: warehouse.id,
+                  productId: p.id,
+                  variantId: null,
+                  quantity: 0,
+                  minStock: minStockVal ?? 0,
+                  maxStock: maxStockVal ?? 0,
+                },
+              })
+            }
+          }
+        }
+      }
+
+      // Audit Log
+      await logActivity({
+        prisma: tx,
+        type: 'PRODUCT_UPDATE',
+        subject: `Producto actualizado: ${p.name}`,
+        description: `Actualizado por usuario. ${variants ? `Variantes procesadas: ${variants.length}` : ''}`,
+        userId: (session.user as any).id,
+        metadata: { productId: p.id, updates: Object.keys(directUpdateData) }
+      })
+
+      return p
+    })
 
     return NextResponse.json(product)
   } catch (error) {
@@ -198,7 +253,7 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   const session = await requirePermission(request as any, PERMISSIONS.MANAGE_PRODUCTS)
-  
+
   if (session instanceof NextResponse) {
     return session
   }
@@ -207,12 +262,23 @@ export async function DELETE(
   const prisma = await getPrismaForRequest(request, session)
 
   try {
-    await prisma.product.update({
-      where: { id: params.id },
-      data: {
-        active: false,
-        updatedById: (session.user as any).id,
-      },
+    await prisma.$transaction(async (tx) => {
+      const p = await tx.product.update({
+        where: { id: params.id },
+        data: {
+          active: false,
+          updatedById: (session.user as any).id,
+        },
+      })
+
+      await logActivity({
+        prisma: tx,
+        type: 'PRODUCT_DELETE',
+        subject: `Producto eliminado (soft): ${p.name}`,
+        description: `El producto fue marcado como inactivo.`,
+        userId: (session.user as any).id,
+        metadata: { productId: p.id, sku: p.sku }
+      })
     })
 
     return NextResponse.json({ success: true })

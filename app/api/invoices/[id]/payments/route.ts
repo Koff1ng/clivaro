@@ -3,6 +3,7 @@ import { requirePermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
 import { getPrismaForRequest } from '@/lib/get-tenant-prisma'
 import { z } from 'zod'
+import { logActivity } from '@/lib/activity'
 
 const createPaymentSchema = z.object({
   amount: z.number().min(0.01),
@@ -19,7 +20,7 @@ export async function POST(
   const invoiceId = resolvedParams.id
 
   const session = await requirePermission(request as any, PERMISSIONS.MANAGE_SALES)
-  
+
   if (session instanceof NextResponse) {
     return session
   }
@@ -105,6 +106,17 @@ export async function POST(
       })
 
       return { payment, newStatus }
+    })
+
+    // Audit Log
+    await logActivity({
+      prisma,
+      type: 'PAYMENT_RECEIVE',
+      subject: `Pago recibido: ${invoice.number}`,
+      description: `Monto: ${data.amount}. Método: ${data.method}. Factura: ${invoice.number}`,
+      userId: (session.user as any).id,
+      customerId: invoice.customerId,
+      metadata: { invoiceId: invoice.id, paymentId: result.payment.id, amount: data.amount }
     })
 
     return NextResponse.json({

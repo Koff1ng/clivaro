@@ -6,6 +6,7 @@ import { logger } from '@/lib/logger'
 import { z } from 'zod'
 import { toDecimal } from '@/lib/numbers'
 import { updateStockLevel, checkStock } from '@/lib/inventory'
+import { logActivity } from '@/lib/activity'
 import jwt from 'jsonwebtoken'
 import { prisma as masterPrisma } from '@/lib/db'
 
@@ -137,6 +138,25 @@ export async function POST(request: Request) {
           return NextResponse.json({ error: 'Token de autorización expirado o inválido', code: 'DISCOUNT_OVERRIDE_EXPIRED' }, { status: 403 })
         }
       }
+    }
+
+    // Check for Open Cash Shift (Strict Mode)
+    // We require an open shift to perform any POS sale to ensure traceability
+    const openShift = await prisma.cashShift.findFirst({
+      where: {
+        userId: (session.user as any).id,
+        status: 'OPEN',
+      },
+    })
+
+    if (!openShift) {
+      return NextResponse.json(
+        {
+          error: 'No hay un turno de caja abierto. Por favor, abra un turno antes de realizar ventas.',
+          code: 'NO_OPEN_SHIFT'
+        },
+        { status: 400 }
+      )
     }
 
     // Check stock availability
@@ -378,20 +398,18 @@ export async function POST(request: Request) {
       }
 
       // Update cash shift for all payment methods (track all sales)
-      const openShift = await tx.cashShift.findFirst({
-        where: {
-          userId: (session.user as any).id,
-          status: 'OPEN',
-        },
+      // We already fetched openShift outside transaction, but we need to fetch it inside tx to lock/update
+      const txOpenShift = await tx.cashShift.findUnique({
+        where: { id: openShift.id }
       })
 
-      if (openShift) {
+      if (txOpenShift) {
         // For CASH payments, create cash movement and update expected cash
         if (cashApplied > 0) {
           // Create cash movement IN
           await tx.cashMovement.create({
             data: {
-              cashShiftId: openShift.id,
+              cashShiftId: txOpenShift.id,
               type: 'IN',
               amount: cashApplied,
               reason: `Venta POS - ${invoiceNumber}${change > 0 ? ` (cambio ${change})` : ''}`,
@@ -401,9 +419,9 @@ export async function POST(request: Request) {
 
           // Update expected cash
           await tx.cashShift.update({
-            where: { id: openShift.id },
+            where: { id: txOpenShift.id },
             data: {
-              expectedCash: openShift.expectedCash + cashApplied,
+              expectedCash: txOpenShift.expectedCash + cashApplied,
             },
           })
         }
@@ -496,6 +514,17 @@ export async function POST(request: Request) {
           logger.debug('[POS Sale] Stock verified', { productId: item.productId, quantity: updatedStock.quantity })
         }
       }
+
+      // Audit Log
+      await logActivity({
+        prisma: tx,
+        type: 'SALE_CREATE',
+        subject: `Venta POS: ${invoiceNumber}`,
+        description: `Total: ${total}. Pagado con: ${(data.payments || []).map(p => p.method).join(', ') || data.paymentMethod}.`,
+        userId: (session.user as any).id,
+        customerId: customerId,
+        metadata: { invoiceId: invoice.id, invoiceNumber, total, cashierId: (session.user as any).id }
+      })
 
       logger.debug('[POS Sale] Transaction completed')
       return {

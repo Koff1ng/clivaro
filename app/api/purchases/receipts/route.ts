@@ -6,6 +6,7 @@ import { logger } from '@/lib/logger'
 import { z } from 'zod'
 import { toDecimal } from '@/lib/numbers'
 import { updateStockLevel, updateProductCost } from '@/lib/inventory'
+import { logActivity } from '@/lib/activity'
 
 const createReceiptSchema = z.object({
   purchaseOrderId: z.string(),
@@ -22,7 +23,7 @@ const createReceiptSchema = z.object({
 
 export async function GET(request: Request) {
   const session = await requirePermission(request as any, PERMISSIONS.MANAGE_PURCHASES)
-  
+
   if (session instanceof NextResponse) {
     return session
   }
@@ -121,7 +122,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   const session = await requirePermission(request as any, PERMISSIONS.MANAGE_PURCHASES)
-  
+
   if (session instanceof NextResponse) {
     return session
   }
@@ -149,7 +150,7 @@ export async function POST(request: Request) {
     }
 
     // Use transaction
-    await prisma.$transaction(async (tx) => {
+    const receipt = await prisma.$transaction(async (tx) => {
       // Create goods receipt
       const receiptCount = await tx.goodsReceipt.count()
       const receiptNumber = `GR-${String(receiptCount + 1).padStart(6, '0')}`
@@ -276,6 +277,22 @@ export async function POST(request: Request) {
             data: { status: 'SENT' },
           })
         }
+      }
+      return receipt
+    })
+
+
+
+    // Audit Log
+    await logActivity({
+      prisma,
+      type: 'PURCHASE_RECEIPT',
+      subject: `Recepción de mercancía: ${receipt.number}`,
+      userId: (session.user as any).id,
+      metadata: {
+        receiptId: receipt.id,
+        receiptNumber: receipt.number,
+        purchaseOrderId: data.purchaseOrderId
       }
     })
 

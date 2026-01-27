@@ -19,7 +19,7 @@ async function executeWithRetry<T>(
     } catch (error: any) {
       lastError = error
       const errorMessage = error?.message || String(error)
-      
+
       // Si es error de límite de conexiones, esperar y reintentar
       if (errorMessage.includes('MaxClientsInSessionMode') || errorMessage.includes('max clients reached')) {
         if (attempt < maxRetries - 1) {
@@ -29,7 +29,7 @@ async function executeWithRetry<T>(
           continue
         }
       }
-      
+
       // Si no es error de conexión, lanzar inmediatamente
       throw error
     }
@@ -40,7 +40,7 @@ async function executeWithRetry<T>(
 export async function GET(request: Request) {
   // Permitir acceso con VIEW_REPORTS o MANAGE_CRM
   const session = await requireAnyPermission(request as any, [PERMISSIONS.VIEW_REPORTS, PERMISSIONS.MANAGE_CRM])
-  
+
   if (session instanceof NextResponse) {
     return session
   }
@@ -50,6 +50,8 @@ export async function GET(request: Request) {
 
   try {
     const { searchParams } = new URL(request.url)
+    const customerId = searchParams.get('customerId')
+    const leadId = searchParams.get('leadId')
     const rawLimit = parseInt(searchParams.get('limit') || '30')
     const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(rawLimit, 50) : 30
 
@@ -72,6 +74,8 @@ export async function GET(request: Request) {
           prisma.stockMovement.findMany({
             take: limit * 2,
             where: {
+              // Stock Movements are usually internal. Skip if filtering by Customer/Lead.
+              id: (customerId || leadId) ? 'none' : undefined,
               OR: [
                 { reference: { startsWith: 'ADJ-' } },
                 { reason: { contains: 'Ajuste' } },
@@ -107,6 +111,11 @@ export async function GET(request: Request) {
                 },
               },
             },
+            where: {
+              invoice: {
+                customerId: customerId || undefined,
+              }
+            },
             orderBy: { createdAt: 'desc' },
           }),
         2,
@@ -135,6 +144,12 @@ export async function GET(request: Request) {
         () =>
           prisma.product.findMany({
             take: limit,
+            where: {
+              active: true, // Products don't have customerId, but we could skip if filtering by customer?
+              // For now, if filtering by customer, maybe we don't want "New Product" events unless they were specifically for them?
+              // Actually, simplified: skip these if customerId filter is present.
+              id: customerId ? 'none' : undefined
+            },
             orderBy: { createdAt: 'desc' },
           }),
         2,
@@ -151,6 +166,9 @@ export async function GET(request: Request) {
               customer: { select: { id: true, name: true } },
               createdBy: { select: { id: true, name: true } },
             },
+            where: {
+              customerId: customerId || undefined,
+            },
             orderBy: { createdAt: 'desc' },
           }),
         2,
@@ -165,6 +183,10 @@ export async function GET(request: Request) {
             take: limit,
             include: {
               supplier: { select: { id: true, name: true } },
+            },
+            where: {
+              // POs are linked to Suppliers, not Customers. Skip if filtering by Customer.
+              id: customerId ? 'none' : undefined
             },
             orderBy: { createdAt: 'desc' },
           }),
@@ -181,6 +203,10 @@ export async function GET(request: Request) {
             include: {
               purchaseOrder: { select: { id: true, number: true } },
             },
+            where: {
+              // GRs are linked to POs. Skip if filtering by Customer.
+              id: customerId ? 'none' : undefined
+            },
             orderBy: { createdAt: 'desc' },
           }),
         2,
@@ -195,6 +221,10 @@ export async function GET(request: Request) {
             take: limit,
             include: {
               customer: { select: { id: true, name: true } },
+            },
+            where: {
+              customerId: customerId || undefined,
+              leadId: leadId || undefined,
             },
             orderBy: { createdAt: 'desc' },
           }),
@@ -227,6 +257,10 @@ export async function GET(request: Request) {
                   name: true,
                 },
               },
+            },
+            where: {
+              customerId: customerId || undefined,
+              leadId: leadId || undefined,
             },
             orderBy: { createdAt: 'desc' },
           }),
@@ -282,10 +316,10 @@ export async function GET(request: Request) {
 
     // 3. Cash Movements
     cashMovements.forEach(cm => {
-      const shiftInfo = cm.cashShift 
+      const shiftInfo = cm.cashShift
         ? `Turno ${cm.cashShift.status === 'OPEN' ? 'Abierto' : 'Cerrado'} (${new Date(cm.cashShift.openedAt).toLocaleDateString()})`
         : 'N/A'
-      
+
       activities.push({
         id: `cash-movement-${cm.id}`,
         type: 'CASH_MOVEMENT',
@@ -465,16 +499,16 @@ export async function GET(request: Request) {
       total: activities.length,
     })
   } catch (error: any) {
-    logger.error('Error fetching activity feed', error, { 
-      endpoint: '/api/activity-feed', 
+    logger.error('Error fetching activity feed', error, {
+      endpoint: '/api/activity-feed',
       method: 'GET',
       errorMessage: error?.message,
       errorCode: error?.code,
       errorName: error?.name,
     })
     return NextResponse.json(
-      { 
-        error: 'Failed to fetch activity feed', 
+      {
+        error: 'Failed to fetch activity feed',
         details: error?.message || String(error),
         code: error?.code || 'UNKNOWN_ERROR',
       },

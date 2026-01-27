@@ -70,3 +70,10 @@ export function dateInputToIso(dateOnly: string | null | undefined): string | nu
   return localNoon.toISOString()
 }
 
+export function formatNumber(num: number | string | null | undefined): string {
+  if (num === null || num === undefined) return '0'
+  const n = typeof num === 'string' ? parseFloat(num) : num
+  return new Intl.NumberFormat('es-CO', {
+    maximumFractionDigits: 2,
+  }).format(n)
+}

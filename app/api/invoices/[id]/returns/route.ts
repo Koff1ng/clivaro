@@ -4,6 +4,7 @@ import { requirePermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
 import { getPrismaForRequest } from '@/lib/get-tenant-prisma'
 import { logger } from '@/lib/logger'
+import { logActivity } from '@/lib/activity'
 
 const createReturnSchema = z.object({
   reason: z.string().min(3),
@@ -41,7 +42,7 @@ export async function POST(
   try {
     const body = await request.json()
     const data = createReturnSchema.parse(body)
-    
+
     if (!data.refundPayments?.length && !data.refundMethod) {
       return NextResponse.json({ error: 'Debe indicar refundMethod o refundPayments' }, { status: 400 })
     }
@@ -159,22 +160,22 @@ export async function POST(
           },
           payments: refundLines?.length
             ? {
-                create: refundLines.map((p) => ({
-                  amount: p.amount,
-                  method: p.method,
-                  reference: p.reference,
-                  notes: p.notes || `Devolución parcial - ${invoice.number}`,
-                  createdById: userId,
-                })),
-              }
+              create: refundLines.map((p) => ({
+                amount: p.amount,
+                method: p.method,
+                reference: p.reference,
+                notes: p.notes || `Devolución parcial - ${invoice.number}`,
+                createdById: userId,
+              })),
+            }
             : {
-                create: {
-                  amount: returnTotal,
-                  method: data.refundMethod!,
-                  notes: `Devolución parcial - ${invoice.number}`,
-                  createdById: userId,
-                },
+              create: {
+                amount: returnTotal,
+                method: data.refundMethod!,
+                notes: `Devolución parcial - ${invoice.number}`,
+                createdById: userId,
               },
+            },
         },
         include: { items: true, payments: true },
       })
@@ -255,6 +256,17 @@ export async function POST(
       })
 
       return { return: createdReturn, returnTotal }
+    })
+
+    // Audit Log
+    await logActivity({
+      prisma,
+      type: 'INVOICE_RETURN',
+      subject: `Devolución de factura: ${invoice.number}`,
+      description: `Motivo: ${data.reason}. Total devuelto: ${result.returnTotal}. Items: ${data.items.length}.`,
+      userId: (session.user as any).id,
+      customerId: invoice.customerId,
+      metadata: { invoiceId: invoice.id, returnId: result.return.id, total: result.returnTotal }
     })
 
     return NextResponse.json(result, { status: 201 })

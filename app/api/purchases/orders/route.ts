@@ -5,6 +5,7 @@ import { getPrismaForRequest } from '@/lib/get-tenant-prisma'
 import { z } from 'zod'
 import { parseDateOnlyToDate } from '@/lib/date-only'
 import { toDecimal } from '@/lib/numbers'
+import { logActivity } from '@/lib/activity'
 
 const createPurchaseOrderSchema = z.object({
   supplierId: z.string().min(1),
@@ -22,7 +23,7 @@ const createPurchaseOrderSchema = z.object({
 
 export async function GET(request: Request) {
   const session = await requirePermission(request as any, PERMISSIONS.MANAGE_PURCHASES)
-  
+
   if (session instanceof NextResponse) {
     return session
   }
@@ -106,7 +107,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   const session = await requirePermission(request as any, PERMISSIONS.MANAGE_PURCHASES)
-  
+
   if (session instanceof NextResponse) {
     return session
   }
@@ -174,6 +175,15 @@ export async function POST(request: Request) {
           },
         },
       },
+    })
+
+    // Audit Log
+    await logActivity({
+      prisma,
+      type: 'PURCHASE_ORDER_CREATE',
+      subject: `Orden de Compra creada: ${orderNumber}`,
+      userId: (session.user as any).id,
+      metadata: { orderId: order.id, orderNumber }
     })
 
     return NextResponse.json(order, { status: 201 })

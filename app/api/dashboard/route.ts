@@ -16,17 +16,17 @@ export const revalidate = 30 // Next.js revalidation hint (30 seconds)
 export async function GET(request: Request) {
   const startTime = Date.now()
   logger.apiRequest('GET', '/api/dashboard')
-  
+
   try {
     const session = await requirePermission(request as any, PERMISSIONS.VIEW_REPORTS)
-    
+
     if (session instanceof NextResponse) {
       return session
     }
 
     const user = session.user as any
     const tenantId = user.tenantId || 'master'
-    
+
     // Check cache first
     const cacheKey = cacheKeys.dashboard(tenantId)
     const cached = await getCache<any>(cacheKey)
@@ -51,7 +51,7 @@ export async function GET(request: Request) {
         } catch (error: any) {
           lastError = error
           const errorMessage = error?.message || String(error)
-          
+
           if (errorMessage.includes('MaxClientsInSessionMode') || errorMessage.includes('max clients reached')) {
             if (attempt < retries) {
               const backoffDelay = Math.min(2000 * Math.pow(2, attempt), 15000)
@@ -60,7 +60,7 @@ export async function GET(request: Request) {
               continue
             }
           }
-          
+
           logger.warn(`Retrying dashboard query: ${label}`, {
             attempt,
             error: errorMessage,
@@ -203,7 +203,8 @@ export async function GET(request: Request) {
               where: {
                 status: { notIn: ['PAGADA', 'PAID', 'ANULADA', 'VOID'] },
               },
-              include: {
+              select: {
+                total: true,
                 payments: {
                   select: { amount: true },
                 },
@@ -233,7 +234,7 @@ export async function GET(request: Request) {
           inCollection,
         }
       })(),
-      
+
       // Top Clients
       withRetry(async () => {
         const topClients = await prisma.customer.findMany({
@@ -452,8 +453,8 @@ export async function GET(request: Request) {
       errorName: error?.name,
     })
     return NextResponse.json(
-      { 
-        error: 'Failed to fetch dashboard data', 
+      {
+        error: 'Failed to fetch dashboard data',
         details: error?.message || String(error),
         code: error?.code || 'UNKNOWN_ERROR',
       },

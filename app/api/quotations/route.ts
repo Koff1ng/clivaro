@@ -6,6 +6,7 @@ import { requirePlanFeature } from '@/lib/plan-middleware'
 import { z } from 'zod'
 import { toDecimal } from '@/lib/numbers'
 import { parseDateOnlyToDate } from '@/lib/date-only'
+import { logActivity } from '@/lib/activity'
 
 const createQuotationSchema = z.object({
   customerId: z.string().optional(),
@@ -31,7 +32,7 @@ const createQuotationSchema = z.object({
 
 export async function GET(request: Request) {
   const session = await requirePermission(request as any, PERMISSIONS.MANAGE_SALES)
-  
+
   if (session instanceof NextResponse) {
     return session
   }
@@ -134,7 +135,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   const session = await requirePermission(request as any, PERMISSIONS.MANAGE_SALES)
-  
+
   if (session instanceof NextResponse) {
     return session
   }
@@ -236,6 +237,18 @@ export async function POST(request: Request) {
           },
         },
       },
+    })
+
+    // Audit Log
+    await logActivity({
+      prisma,
+      type: 'QUOTATION_CREATE',
+      subject: `Cotización creada: ${quotationNumber}`,
+      description: `Cliente: ${quotation.customer.name}${quotation.lead ? ` - Lead: ${quotation.lead.name}` : ''}. Total: ${total}.`,
+      userId: (session.user as any).id,
+      customerId: quotation.customerId,
+      leadId: quotation.leadId || undefined,
+      metadata: { quotationId: quotation.id, quotationNumber }
     })
 
     return NextResponse.json(quotation, { status: 201 })

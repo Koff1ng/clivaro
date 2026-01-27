@@ -4,6 +4,7 @@ import { requirePermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
 import { getPrismaForRequest } from '@/lib/get-tenant-prisma'
 import { logger } from '@/lib/logger'
+import { logActivity } from '@/lib/activity'
 
 const voidInvoiceSchema = z.object({
   reason: z.string().min(3),
@@ -175,6 +176,17 @@ export async function POST(
         restockedMovements: outMovements.length,
         refund: { cash: sums.cash, card: sums.card, transfer: sums.transfer, other: sums.other },
       }
+    })
+
+    // Audit Log
+    await logActivity({
+      prisma,
+      type: 'INVOICE_VOID',
+      subject: `Factura Anulada: ${invoice.number}`,
+      description: `Motivo: ${reason}. Total reintegrado: ${sums.total}. Items: ${invoice.items.length}.`,
+      userId: (session.user as any).id,
+      customerId: invoice.customerId,
+      metadata: { invoiceId: invoice.id, invoiceNumber: invoice.number, reason, refund: sums.total }
     })
 
     return NextResponse.json(result, { status: 200 })

@@ -4,6 +4,7 @@ import { PERMISSIONS } from '@/lib/permissions'
 import { getPrismaForRequest } from '@/lib/get-tenant-prisma'
 import { z } from 'zod'
 import { updateStockLevel } from '@/lib/inventory'
+import { logActivity } from '@/lib/activity'
 
 const updateItemSchema = z.object({
   countedQuantity: z.number().min(0),
@@ -15,7 +16,7 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   const session = await requirePermission(request as any, PERMISSIONS.MANAGE_INVENTORY)
-  
+
   if (session instanceof NextResponse) {
     return session
   }
@@ -100,7 +101,7 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   const session = await requirePermission(request as any, PERMISSIONS.MANAGE_INVENTORY)
-  
+
   if (session instanceof NextResponse) {
     return session
   }
@@ -150,7 +151,7 @@ export async function PUT(
         for (const item of items) {
           if (item.countedQuantity !== null) {
             const difference = item.countedQuantity - item.systemQuantity
-            
+
             // Update difference in item
             await tx.physicalInventoryItem.update({
               where: { id: item.id },
@@ -193,6 +194,16 @@ export async function PUT(
             status: 'COMPLETED',
             completedAt: new Date(),
           },
+        })
+
+        // Audit Log
+        await logActivity({
+          prisma: tx,
+          type: 'INVENTORY_PHYSICAL',
+          subject: `Inventario Físico Completado: ${inventory.number}`,
+          description: `Se procesaron ${items.length} items contados.`,
+          userId: (session.user as any).id,
+          metadata: { inventoryId: inventory.id, warehouseId: inventory.warehouseId }
         })
       })
 
