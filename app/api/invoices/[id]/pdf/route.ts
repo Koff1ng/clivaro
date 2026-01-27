@@ -9,7 +9,7 @@ export async function GET(
   { params }: { params: { id: string } | Promise<{ id: string }> }
 ) {
   const session = await requirePermission(request as any, PERMISSIONS.MANAGE_SALES)
-  
+
   if (session instanceof NextResponse) {
     return session
   }
@@ -56,6 +56,22 @@ export async function GET(
       )
     }
 
+    // Obtener configuración del tenant
+    const settings = await prisma.tenantSettings.findUnique({
+      where: { tenantId: (session.user as any).tenantId }
+    })
+
+    // Parsear configuración custom para obtener regimen si está ahí
+    let regime = 'Responsable de IVA'
+    try {
+      if (settings?.customSettings) {
+        const custom = JSON.parse(settings.customSettings)
+        if (custom.identity?.regime) regime = custom.identity.regime
+      }
+    } catch (e) {
+      // ignore
+    }
+
     // Generar PDF
     const pdfBuffer = await generateInvoicePDF({
       number: invoice.number,
@@ -92,6 +108,14 @@ export async function GET(
       cufe: invoice.cufe || undefined,
       qrCode: invoice.qrCode || undefined,
       status: invoice.status,
+      company: {
+        name: settings?.companyName || undefined,
+        address: settings?.companyAddress || undefined,
+        phone: settings?.companyPhone || undefined,
+        email: settings?.companyEmail || undefined,
+        nit: settings?.companyNit || undefined,
+        regime: regime
+      }
     })
 
     return new NextResponse(new Uint8Array(pdfBuffer), {
@@ -104,7 +128,7 @@ export async function GET(
     console.error('Error generating invoice PDF:', error)
     const errorMessage = error?.message || 'Error desconocido al generar PDF'
     const errorStack = error?.stack || ''
-    
+
     // Log detallado para debugging
     console.error('PDF Generation Error Details:', {
       message: errorMessage,
@@ -112,10 +136,10 @@ export async function GET(
       name: error?.name,
       code: error?.code,
     })
-    
+
     return NextResponse.json(
-      { 
-        error: 'Error al generar PDF', 
+      {
+        error: 'Error al generar PDF',
         details: errorMessage,
         // Solo incluir stack en desarrollo
         ...(process.env.NODE_ENV === 'development' && { stack: errorStack })

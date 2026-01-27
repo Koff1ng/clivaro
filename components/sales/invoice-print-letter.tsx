@@ -4,6 +4,7 @@ import { formatCurrency, formatDate } from '@/lib/utils'
 
 interface InvoicePrintLetterProps {
     invoice: any
+    settings?: any
 }
 
 /**
@@ -13,7 +14,7 @@ interface InvoicePrintLetterProps {
  * Formato para impresión en hoja tamaño carta (8.5" x 11")
  * Incluye todos los elementos obligatorios del Art. 617 del Estatuto Tributario
  */
-export function InvoicePrintLetter({ invoice }: InvoicePrintLetterProps) {
+export function InvoicePrintLetter({ invoice, settings }: InvoicePrintLetterProps) {
     if (!invoice) return null
 
     const formatDateTime = (date: Date | string | null | undefined) => {
@@ -29,13 +30,24 @@ export function InvoicePrintLetter({ invoice }: InvoicePrintLetterProps) {
     }
 
     // Datos de la empresa emisora (vendedor)
-    const companyName = process.env.NEXT_PUBLIC_COMPANY_NAME || 'FERRETERIA'
-    const companyTaxId = process.env.NEXT_PUBLIC_COMPANY_TAX_ID || '900000000-1'
-    const companyAddress = process.env.NEXT_PUBLIC_COMPANY_ADDRESS || ''
-    const companyCity = process.env.NEXT_PUBLIC_COMPANY_CITY || ''
-    const companyPhone = process.env.NEXT_PUBLIC_COMPANY_PHONE || ''
-    const companyEmail = process.env.NEXT_PUBLIC_COMPANY_EMAIL || ''
-    const companyRegime = process.env.NEXT_PUBLIC_COMPANY_REGIME || 'Responsable de IVA'
+    // Prioridad: 1. Settings pasados por prop, 2. Variables de entorno (fallback)
+    const companyName = settings?.companyName || process.env.NEXT_PUBLIC_COMPANY_NAME || 'FERRETERIA'
+    const companyTaxId = settings?.companyNit || process.env.NEXT_PUBLIC_COMPANY_TAX_ID || '900000000-1'
+    const companyAddress = settings?.companyAddress || process.env.NEXT_PUBLIC_COMPANY_ADDRESS || ''
+    const companyCity = settings?.companyCity || process.env.NEXT_PUBLIC_COMPANY_CITY || ''
+    const companyPhone = settings?.companyPhone || process.env.NEXT_PUBLIC_COMPANY_PHONE || ''
+    const companyEmail = settings?.companyEmail || process.env.NEXT_PUBLIC_COMPANY_EMAIL || ''
+
+    // Regimen desde customSettings
+    let companyRegime = process.env.NEXT_PUBLIC_COMPANY_REGIME || 'Responsable de IVA'
+    try {
+        if (settings?.customSettings) {
+            const custom = typeof settings.customSettings === 'string'
+                ? JSON.parse(settings.customSettings)
+                : settings.customSettings
+            if (custom.identity?.regime) companyRegime = custom.identity.regime
+        }
+    } catch (e) { }
 
     // Datos del cliente (comprador)
     const customerName = invoice.customer?.name || 'CONSUMIDOR FINAL'

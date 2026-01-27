@@ -292,17 +292,26 @@ export interface InvoicePDFData {
   cufe?: string | null
   qrCode?: string | null
   status: string
+  company?: {
+    name?: string
+    address?: string
+    city?: string
+    phone?: string
+    email?: string
+    nit?: string
+    regime?: string
+  }
 }
 
 export async function generateInvoicePDF(invoice: InvoicePDFData): Promise<Buffer> {
-  // Company information from environment
-  const companyName = process.env.COMPANY_NAME || process.env.NEXT_PUBLIC_COMPANY_NAME || 'Empresa'
-  const companyAddress = process.env.COMPANY_ADDRESS || process.env.NEXT_PUBLIC_COMPANY_ADDRESS || ''
-  const companyCity = process.env.COMPANY_CITY || process.env.NEXT_PUBLIC_COMPANY_CITY || ''
-  const companyPhone = process.env.COMPANY_PHONE || process.env.NEXT_PUBLIC_COMPANY_PHONE || ''
-  const companyEmail = process.env.COMPANY_EMAIL || process.env.NEXT_PUBLIC_COMPANY_EMAIL || ''
-  const companyNit = process.env.COMPANY_NIT || process.env.NEXT_PUBLIC_COMPANY_TAX_ID || ''
-  const companyRegime = process.env.COMPANY_REGIME || 'Responsable de IVA'
+  // Company information from arguments or environment
+  const companyName = invoice.company?.name || process.env.COMPANY_NAME || process.env.NEXT_PUBLIC_COMPANY_NAME || 'Empresa'
+  const companyAddress = invoice.company?.address || process.env.COMPANY_ADDRESS || process.env.NEXT_PUBLIC_COMPANY_ADDRESS || ''
+  const companyCity = invoice.company?.city || process.env.COMPANY_CITY || process.env.NEXT_PUBLIC_COMPANY_CITY || ''
+  const companyPhone = invoice.company?.phone || process.env.COMPANY_PHONE || process.env.NEXT_PUBLIC_COMPANY_PHONE || ''
+  const companyEmail = invoice.company?.email || process.env.COMPANY_EMAIL || process.env.NEXT_PUBLIC_COMPANY_EMAIL || ''
+  const companyNit = invoice.company?.nit || process.env.COMPANY_NIT || process.env.NEXT_PUBLIC_COMPANY_TAX_ID || ''
+  const companyRegime = invoice.company?.regime || process.env.COMPANY_REGIME || 'Responsable de IVA'
 
   // DIAN Resolution info (should come from environment or database)
   const resolutionNumber = process.env.DIAN_RESOLUTION_NUMBER || ''
@@ -345,6 +354,7 @@ export async function generateInvoicePDF(invoice: InvoicePDFData): Promise<Buffe
     <html>
     <head>
       <meta charset="UTF-8">
+      <title>Factura ${invoice.prefix || ''}${invoice.number} - ${companyName}</title>
       <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { 

@@ -151,46 +151,11 @@ export function InvoiceDetails({ invoice }: { invoice: any }) {
     }
   }
 
-  const handlePrintLetter = async () => {
+  const handlePrintLetter = () => {
     try {
-      setIsLoadingPDF(true)
-      toast('Generando PDF para imprimir...', 'info')
-
-      const res = await fetch(`/api/invoices/${invoice.id}/pdf`)
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}))
-        throw new Error(errorData.error || 'Error al generar PDF')
-      }
-
-      const blob = await res.blob()
-      const url = window.URL.createObjectURL(blob)
-
-      // Open PDF in new tab for printing
-      const printWindow = window.open(url, '_blank')
-      if (printWindow) {
-        printWindow.onload = () => {
-          setTimeout(() => {
-            printWindow.print()
-          }, 500)
-        }
-      } else {
-        // Fallback: download if popup blocked
-        const a = document.createElement('a')
-        a.href = url
-        a.download = `Factura-${invoice.number}.pdf`
-        document.body.appendChild(a)
-        a.click()
-        document.body.removeChild(a)
-        toast('PDF descargado. Ábrelo para imprimir.', 'success')
-      }
-
-      // Cleanup URL after a delay
-      setTimeout(() => window.URL.revokeObjectURL(url), 60000)
-    } catch (error: any) {
-      console.error('Error printing letter:', error)
-      toast(error.message || 'Error al generar PDF para imprimir', 'error')
-    } finally {
-      setIsLoadingPDF(false)
+      printLetter()
+    } catch {
+      toast('No se pudo iniciar la impresión', 'error')
     }
   }
 
@@ -462,7 +427,7 @@ export function InvoiceDetails({ invoice }: { invoice: any }) {
 
       {/* Vista para impresión carta - oculta en pantalla */}
       <div id="invoice-letter-print" className="hidden">
-        <InvoicePrintLetter invoice={invoice} />
+        <InvoicePrintLetter invoice={invoice} settings={settingsData?.settings} />
       </div>
 
       {/* Vista normal en pantalla */}
