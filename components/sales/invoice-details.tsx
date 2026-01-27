@@ -67,6 +67,21 @@ export function InvoiceDetails({ invoice }: { invoice: any }) {
 
   const [isLoadingPDF, setIsLoadingPDF] = useState(false)
 
+  const sendToAlegraMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`/api/invoices/${invoice.id}/electronic-transmission`, { method: 'POST' })
+      if (!res.ok) throw new Error('Error al enviar a Alegra')
+      return res.json()
+    },
+    onSuccess: () => {
+      toast('Transmisión programada satisfactoriamente', 'success')
+      queryClient.invalidateQueries({ queryKey: ['invoice', invoice.id] })
+    },
+    onError: (err: any) => {
+      toast(err.message, 'error')
+    }
+  })
+
   // Print hooks for proper dimensions
   const { print: printThermal } = useThermalPrint({ targetId: 'invoice-thermal-print', widthMm: 80 })
   const { print: printLetter } = useLetterPrint({ targetId: 'invoice-letter-print' })
@@ -542,17 +557,30 @@ export function InvoiceDetails({ invoice }: { invoice: any }) {
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 {(!invoice.electronicStatus || invoice.electronicStatus === 'PENDING') && (
-                  <DropdownMenuItem
-                    onClick={() => {
-                      if (confirm('¿Enviar esta factura a facturación electrónica DIAN?')) {
-                        sendElectronicMutation.mutate()
-                      }
-                    }}
-                    disabled={sendElectronicMutation.isPending}
-                  >
-                    <QrCode className="h-4 w-4 mr-2" />
-                    Enviar a Facturación Electrónica
-                  </DropdownMenuItem>
+                  <>
+                    <DropdownMenuItem
+                      onClick={() => {
+                        if (confirm('¿Enviar esta factura a facturación electrónica DIAN?')) {
+                          sendElectronicMutation.mutate()
+                        }
+                      }}
+                      disabled={sendElectronicMutation.isPending}
+                    >
+                      <QrCode className="h-4 w-4 mr-2" />
+                      Enviar a Facturación Electrónica (DIAN)
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => {
+                        if (confirm('¿Enviar esta factura a Alegra?')) {
+                          sendToAlegraMutation.mutate()
+                        }
+                      }}
+                      disabled={sendToAlegraMutation.isPending}
+                    >
+                      <Receipt className="h-4 w-4 mr-2" />
+                      Enviar a Alegra (Beta)
+                    </DropdownMenuItem>
+                  </>
                 )}
                 {invoice.qrCode && (
                   <DropdownMenuItem onClick={() => window.open(invoice.qrCode, '_blank')}>

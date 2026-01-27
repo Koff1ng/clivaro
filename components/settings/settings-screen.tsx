@@ -13,6 +13,7 @@ import { ElectronicBillingConfig } from './electronic-billing-config'
 import { SubscriptionConfig } from './subscription-config'
 import { GeneralConfig } from './general-config'
 import { DataConfig } from './data-config'
+import { AlegraConfig } from './alegra-config'
 
 async function fetchSettings() {
   const res = await fetch('/api/settings')
@@ -216,11 +217,23 @@ export function SettingsScreen() {
         </TabsContent>
 
         <TabsContent value="billing" className="space-y-4">
-          <ElectronicBillingConfig
-            settings={settings}
-            onSave={(data) => updateSettingsMutation.mutate(data)}
-            isLoading={updateSettingsMutation.isPending}
-          />
+          <Tabs defaultValue="dian" className="w-full">
+            <TabsList className="grid w-full grid-cols-2 mb-4">
+              <TabsTrigger value="dian">DIAN / Otros</TabsTrigger>
+              <TabsTrigger value="alegra">Alegra (P0 Colombia)</TabsTrigger>
+            </TabsList>
+            <TabsContent value="dian" className="space-y-4 pt-4">
+              <ElectronicBillingConfig
+                settings={settings}
+                onSave={(data) => updateSettingsMutation.mutate(data)}
+                isLoading={updateSettingsMutation.isPending}
+              />
+            </TabsContent>
+            <TabsContent value="alegra" className="space-y-4 pt-4">
+              {/* Usar tenantId de la sesión para la configuración de Alegra */}
+              <AlegraConfig tenantId={(session?.user as any)?.tenantId} />
+            </TabsContent>
+          </Tabs>
         </TabsContent>
 
         {isSuperAdmin && (

@@ -203,3 +203,8 @@ registerJobHandler('generate_report', async (payload: { reportType: string; para
   logger.info('Report generation job', { reportType: payload.reportType })
 })
 
+registerJobHandler('ei_send_to_alegra', async (payload: { invoiceId: string; tenantId: string }) => {
+  const { handleAlegraTransmission } = await import('./handlers/alegra-handler')
+  await handleAlegraTransmission(payload)
+})
+

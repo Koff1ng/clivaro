@@ -7,6 +7,7 @@ import { z } from 'zod'
 import { toDecimal } from '@/lib/numbers'
 import { updateStockLevel, checkStock } from '@/lib/inventory'
 import { logActivity } from '@/lib/activity'
+import { enqueueJob } from '@/lib/jobs/queue'
 import jwt from 'jsonwebtoken'
 import { prisma as masterPrisma } from '@/lib/db'
 
@@ -537,6 +538,21 @@ export async function POST(request: Request) {
       timeout: 30000, // 30 segundos de timeout
     })
     logger.debug('[POS Sale] Transaction result', { invoiceNumber: result.invoiceNumber })
+
+    // Non-blocking: Trigger electronic invoice transmission if configured
+    try {
+      const config = await (masterPrisma as any).electronicInvoiceProviderConfig.findUnique({
+        where: { tenantId_provider: { tenantId: (session.user as any).tenantId, provider: 'ALEGRA' } }
+      })
+      if (config?.status === 'connected') {
+        enqueueJob('ei_send_to_alegra', {
+          invoiceId: result.invoiceId,
+          tenantId: (session.user as any).tenantId
+        })
+      }
+    } catch (e) {
+      logger.error('Failed to trigger Alegra job', e)
+    }
 
     return NextResponse.json(result, { status: 201 })
   } catch (error: any) {
