@@ -9,32 +9,32 @@ export interface PlanFeatures {
   manageProducts: boolean
   manageInventory: boolean
   multiWarehouse: boolean
-  
+
   // Ventas
   manageSales: boolean
   pos: boolean
   quotations: boolean
   invoices: boolean
-  
+
   // CRM
   manageCRM: boolean
   leads: boolean
   marketing: boolean
-  
+
   // Compras
   managePurchases: boolean
-  
+
   // Caja
   manageCash: boolean
-  
+
   // Reportes
   viewReports: boolean
   advancedReports: boolean
-  
+
   // Usuarios
   manageUsers: boolean
   maxUsers: number
-  
+
   // Otros
   apiAccess: boolean
   customReports: boolean
@@ -121,6 +121,7 @@ export const ROUTE_FEATURES: Record<string, keyof PlanFeatures> = {
   '/marketing/campaigns': 'marketing',
   '/sales/quotes': 'quotations',
   '/sales/invoices': 'invoices',
+  '/dashboard/electronic-invoicing': 'invoices',
   '/purchases/suppliers': 'managePurchases',
   '/purchases/orders': 'managePurchases',
   '/purchases/receipts': 'managePurchases',
