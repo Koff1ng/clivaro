@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS "ChatMessage" (
     CONSTRAINT "ChatMessage_pkey" PRIMARY KEY ("id")
 );
 
--- Crear índices para ChatMessage
+-- Indices para ChatMessage
 DO $$ 
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'ChatMessage_externalId_key') THEN
@@ -27,13 +27,13 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'ChatMessage_leadId_idx') THEN
         CREATE INDEX "ChatMessage_leadId_idx" ON "ChatMessage"("leadId");
     END IF;
-    
+        
     IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'ChatMessage_externalId_idx') THEN
         CREATE INDEX "ChatMessage_externalId_idx" ON "ChatMessage"("externalId");
     END IF;
 END $$;
 
--- Agregar Foreign Key con seguridad para evitar errores si ya existe
+-- FK relationship para ChatMessage
 DO $$ 
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = 'ChatMessage_leadId_fkey') THEN
@@ -41,14 +41,22 @@ BEGIN
     END IF;
 END $$;
 
--- 2. Actualizar tabla Lead (agregar columna instagram)
+-- 2. Actualizar tabla Lead
 ALTER TABLE "Lead" ADD COLUMN IF NOT EXISTS "instagram" TEXT;
+ALTER TABLE "Lead" ADD COLUMN IF NOT EXISTS "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP;
 
--- 3. Actualizar tabla TenantSettings (agregar campos de Meta/WhatsApp)
+-- 3. Actualizar TenantSettings
 ALTER TABLE "TenantSettings" ADD COLUMN IF NOT EXISTS "metaBusinessId" TEXT;
 ALTER TABLE "TenantSettings" ADD COLUMN IF NOT EXISTS "metaAccessToken" TEXT;
 ALTER TABLE "TenantSettings" ADD COLUMN IF NOT EXISTS "whatsappPhoneNumberId" TEXT;
 ALTER TABLE "TenantSettings" ADD COLUMN IF NOT EXISTS "instagramAccountId" TEXT;
 
+-- 4. CRITICO: Corregir tabla Payment (Error reportado: columna updatedAt faltante)
+ALTER TABLE "Payment" ADD COLUMN IF NOT EXISTS "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP;
+
+-- 5. Otras tablas que suelen dar este problema
+ALTER TABLE "Tenant" ADD COLUMN IF NOT EXISTS "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP;
+
 -- Confirmación
-SELECT 'Migración completada exitosamente' as result;
+SELECT 'Migracion y correccion de esquema completada' as result;
