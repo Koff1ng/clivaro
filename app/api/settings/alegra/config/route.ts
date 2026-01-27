@@ -13,7 +13,7 @@ export async function GET(request: Request) {
     }
 
     try {
-        const config = await prisma.electronicInvoiceProviderConfig.findUnique({
+        const config = await (prisma as any).electronicInvoiceProviderConfig.findUnique({
             where: {
                 tenantId_provider: {
                     tenantId: user.tenantId,
@@ -47,7 +47,7 @@ export async function PUT(request: Request) {
         // Para este P0, lo guardaremos con un prefijo "enc_" simulando el cifrado
         const alegraTokenEncrypted = `enc_${token}`
 
-        const config = await prisma.electronicInvoiceProviderConfig.upsert({
+        const config = await (prisma as any).electronicInvoiceProviderConfig.upsert({
             where: {
                 tenantId_provider: {
                     tenantId: user.tenantId,

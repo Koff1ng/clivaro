@@ -456,6 +456,7 @@ model Invoice {
   items              InvoiceItem[]
   payments           Payment[]
   returns            Return[]
+  electronicTransmissions ElectronicInvoiceTransmission[]
   createdBy          User?         @relation("InvoiceCreatedBy", fields: [createdById], references: [id])
   updatedBy          User?         @relation("InvoiceUpdatedBy", fields: [updatedById], references: [id])
 }
@@ -825,4 +826,53 @@ model ChatMessage {
 
   @@index([leadId])
   @@index([externalId])
+}
+
+model ElectronicInvoiceProviderConfig {
+  id                    String   @id @default(cuid())
+  tenantId              String
+  provider              String   @default("ALEGRA")
+  alegraEmail           String
+  alegraTokenEncrypted  String
+  status                String   @default("disconnected") // disconnected, connected, invalid
+  lastCheckedAt         DateTime?
+  companyInfo           Json?    // Resumen de la empresa (nombre/id)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@unique([tenantId, provider])
+}
+
+model ElectronicInvoiceTransmission {
+  id               String   @id @default(cuid())
+  tenantId         String
+  invoiceId        String
+  provider         String   @default("ALEGRA")
+  status           String   @default("QUEUED") // NOT_CONFIGURED, QUEUED, SENT_TO_ALEGRA, ALEGRA_ACCEPTED, ALEGRA_REJECTED, ERROR
+  attemptCount     Int      @default(0)
+  lastAttemptAt    DateTime?
+  alegraInvoiceId  String?
+  lastErrorMessage String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  invoice          Invoice  @relation(fields: [invoiceId], references: [id])
+  events           ElectronicInvoiceEvent[]
+
+  @@unique([tenantId, invoiceId])
+  @@index([tenantId, status])
+  @@index([tenantId, createdAt])
+}
+
+model ElectronicInvoiceEvent {
+  id               String   @id @default(cuid())
+  tenantId         String
+  transmissionId   String
+  eventType        String   // QUEUED, REQUEST_SENT, RESPONSE_OK, RESPONSE_ERR, RETRY, FINAL
+  payloadSanitized Json?
+  createdAt        DateTime @default(now())
+
+  transmission     ElectronicInvoiceTransmission @relation(fields: [transmissionId], references: [id])
+
+  @@index([transmissionId, createdAt])
 }
