@@ -28,16 +28,9 @@ export function DashboardExportActions() {
             link.click()
             link.remove()
 
-            toast({
-                title: 'Exportación exitosa',
-                description: `El reporte de ${type === 'sales' ? 'ventas' : 'inventario'} se ha descargado correctamente.`,
-            })
+            toast(`El reporte de ${type === 'sales' ? 'ventas' : 'inventario'} se ha descargado correctamente.`, 'success')
         } catch (error) {
-            toast({
-                variant: 'destructive',
-                title: 'Error al exportar',
-                description: 'No se pudo generar el reporte de Excel. Por favor intente de nuevo.',
-            })
+            toast('No se pudo generar el reporte de Excel. Por favor intente de nuevo.', 'error')
         } finally {
             setLoading(null)
         }
