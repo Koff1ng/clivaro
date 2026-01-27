@@ -45,7 +45,7 @@ async function debugUsersTenants() {
         log(`Users found: ${users.length}`)
         users.forEach(u => {
             const roles = u.userRoles.map(ur => ur.role.name).join(', ')
-            log(`- ${u.username} TenantID: ${u.tenantId || 'null'} SuperAdmin: ${u.isSuperAdmin} Roles: ${roles}`)
+            log(`- ${u.username} SuperAdmin: ${u.isSuperAdmin} Roles: ${roles}`)
         })
 
     } catch (error: any) {
