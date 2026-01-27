@@ -3,6 +3,8 @@
 import { useQuery } from '@tanstack/react-query'
 import { PageHeader } from '@/components/ui/page-header'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import Link from 'next/link'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Receipt, Loader2, AlertCircle, CheckCircle2, Clock, Send } from 'lucide-react'
@@ -43,6 +45,13 @@ export default function ElectronicInvoicingMonitor() {
                 title="Monitor de Facturación Electrónica"
                 description="Seguimiento en tiempo real de las facturas enviadas a Alegra."
                 icon={<Receipt className="h-6 w-6" />}
+                actions={
+                    <Button variant="outline" asChild>
+                        <Link href="/dashboard">
+                            Volver al panel
+                        </Link>
+                    </Button>
+                }
             />
 
             <div className="grid gap-4 md:grid-cols-3">

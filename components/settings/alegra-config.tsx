@@ -89,6 +89,7 @@ export function AlegraConfig({ tenantId }: AlegraConfigProps) {
             })
 
             if (res.ok) {
+                setToken('')
                 toast('Configuración de Alegra guardada correctamente', 'success')
             } else {
                 const data = await res.json()
@@ -157,10 +158,15 @@ export function AlegraConfig({ tenantId }: AlegraConfigProps) {
                             <Input
                                 id="alegraToken"
                                 type="password"
-                                placeholder="••••••••••••••••"
+                                placeholder={status === 'connected' ? '••••••••••••••••' : 'Ingresa tu token'}
                                 value={token}
                                 onChange={(e) => setToken(e.target.value)}
                             />
+                            {status === 'connected' && !token && (
+                                <p className="text-[10px] text-green-600 font-medium">
+                                    Token ya configurado. Déjalo en blanco para mantener el actual.
+                                </p>
+                            )}
                             <p className="text-[10px] text-muted-foreground flex items-center gap-1">
                                 Puedes encontrar tu token en Alegra &gt; Configuración &gt; API.
                                 <a

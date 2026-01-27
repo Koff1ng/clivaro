@@ -43,9 +43,16 @@ export async function PUT(request: Request) {
     try {
         const { email, token, status } = await request.json()
 
-        // En un entorno de producción real, aquí usaríamos una función de cifrado (ej. AES-256)
-        // Para este P0, lo guardaremos con un prefijo "enc_" simulando el cifrado
-        const alegraTokenEncrypted = `enc_${token}`
+        const updateData: any = {
+            alegraEmail: email,
+            status,
+            lastCheckedAt: new Date(),
+        }
+
+        // Solo actualizamos el token si se proporciona uno nuevo
+        if (token && token.trim() !== '') {
+            updateData.alegraTokenEncrypted = `enc_${token}`
+        }
 
         const config = await (prisma as any).electronicInvoiceProviderConfig.upsert({
             where: {
@@ -54,17 +61,12 @@ export async function PUT(request: Request) {
                     provider: 'ALEGRA'
                 }
             },
-            update: {
-                alegraEmail: email,
-                alegraTokenEncrypted,
-                status,
-                lastCheckedAt: new Date(),
-            },
+            update: updateData,
             create: {
                 tenantId: user.tenantId,
                 provider: 'ALEGRA',
                 alegraEmail: email,
-                alegraTokenEncrypted,
+                alegraTokenEncrypted: token ? `enc_${token}` : '',
                 status,
                 lastCheckedAt: new Date(),
             }
