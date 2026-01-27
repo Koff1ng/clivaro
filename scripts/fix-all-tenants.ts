@@ -61,6 +61,23 @@ async function main() {
             await tenantPrisma.$executeRawUnsafe(`ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP;`)
             await tenantPrisma.$executeRawUnsafe(`ALTER TABLE "Tenant" ADD COLUMN IF NOT EXISTS "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP;`)
 
+            // 3.1 Invoice: Electronic Billing fields
+            await tenantPrisma.$executeRawUnsafe(`ALTER TABLE "Invoice" ADD COLUMN IF NOT EXISTS "cufe" TEXT;`)
+            await tenantPrisma.$executeRawUnsafe(`ALTER TABLE "Invoice" ADD COLUMN IF NOT EXISTS "qrCode" TEXT;`)
+            await tenantPrisma.$executeRawUnsafe(`ALTER TABLE "Invoice" ADD COLUMN IF NOT EXISTS "electronicStatus" TEXT;`)
+            await tenantPrisma.$executeRawUnsafe(`ALTER TABLE "Invoice" ADD COLUMN IF NOT EXISTS "electronicSentAt" TIMESTAMP(3);`)
+            await tenantPrisma.$executeRawUnsafe(`ALTER TABLE "Invoice" ADD COLUMN IF NOT EXISTS "electronicResponse" TEXT;`)
+            await tenantPrisma.$executeRawUnsafe(`ALTER TABLE "Invoice" ADD COLUMN IF NOT EXISTS "resolutionNumber" TEXT;`)
+
+            // Unique index for cufe
+            await tenantPrisma.$executeRawUnsafe(`
+                DO $$ BEGIN
+                    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'Invoice_cufe_key') THEN
+                        CREATE UNIQUE INDEX "Invoice_cufe_key" ON "Invoice"("cufe") WHERE "cufe" IS NOT NULL;
+                    END IF;
+                END $$;
+            `)
+
             // 4. TenantSettings: Meta fields
             await tenantPrisma.$executeRawUnsafe(`ALTER TABLE "TenantSettings" ADD COLUMN IF NOT EXISTS "metaBusinessId" TEXT;`)
             await tenantPrisma.$executeRawUnsafe(`ALTER TABLE "TenantSettings" ADD COLUMN IF NOT EXISTS "metaAccessToken" TEXT;`)
@@ -108,6 +125,73 @@ async function main() {
             END IF;
         END $$;
       `)
+
+            // 6. Electronic Invoicing Tables
+            console.log('  - Creando tablas de facturación electrónica...')
+
+            // ElectronicInvoiceTransmission
+            await tenantPrisma.$executeRawUnsafe(`
+                CREATE TABLE IF NOT EXISTS "ElectronicInvoiceTransmission" (
+                    "id" TEXT NOT NULL,
+                    "tenantId" TEXT NOT NULL,
+                    "invoiceId" TEXT NOT NULL,
+                    "provider" TEXT NOT NULL DEFAULT 'ALEGRA',
+                    "status" TEXT NOT NULL DEFAULT 'QUEUED',
+                    "attemptCount" INTEGER NOT NULL DEFAULT 0,
+                    "lastAttemptAt" TIMESTAMP(3),
+                    "alegraInvoiceId" TEXT,
+                    "lastErrorMessage" TEXT,
+                    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+                    CONSTRAINT "ElectronicInvoiceTransmission_pkey" PRIMARY KEY ("id")
+                );
+            `)
+
+            // ElectronicInvoiceEvent
+            await tenantPrisma.$executeRawUnsafe(`
+                CREATE TABLE IF NOT EXISTS "ElectronicInvoiceEvent" (
+                    "id" TEXT NOT NULL,
+                    "tenantId" TEXT NOT NULL,
+                    "transmissionId" TEXT NOT NULL,
+                    "eventType" TEXT NOT NULL,
+                    "payloadSanitized" JSONB,
+                    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+                    CONSTRAINT "ElectronicInvoiceEvent_pkey" PRIMARY KEY ("id")
+                );
+            `)
+
+            // Indices y FKs para Facturación Electrónica
+            await tenantPrisma.$executeRawUnsafe(`
+                DO $$ BEGIN
+                    -- Unique index para transmission
+                    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'ElectronicInvoiceTransmission_tenantId_invoiceId_key') THEN
+                        CREATE UNIQUE INDEX "ElectronicInvoiceTransmission_tenantId_invoiceId_key" ON "ElectronicInvoiceTransmission"("tenantId", "invoiceId");
+                    END IF;
+
+                    -- Indices para transmission
+                    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'ElectronicInvoiceTransmission_tenantId_status_idx') THEN
+                        CREATE INDEX "ElectronicInvoiceTransmission_tenantId_status_idx" ON "ElectronicInvoiceTransmission"("tenantId", "status");
+                    END IF;
+                    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'ElectronicInvoiceTransmission_tenantId_createdAt_idx') THEN
+                        CREATE INDEX "ElectronicInvoiceTransmission_tenantId_createdAt_idx" ON "ElectronicInvoiceTransmission"("tenantId", "createdAt");
+                    END IF;
+
+                    -- Indices para event
+                    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'ElectronicInvoiceEvent_transmissionId_createdAt_idx') THEN
+                        CREATE INDEX "ElectronicInvoiceEvent_transmissionId_createdAt_idx" ON "ElectronicInvoiceEvent"("transmissionId", "createdAt");
+                    END IF;
+
+                    -- FKs
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = 'ElectronicInvoiceTransmission_invoiceId_fkey') THEN
+                        ALTER TABLE "ElectronicInvoiceTransmission" ADD CONSTRAINT "ElectronicInvoiceTransmission_invoiceId_fkey" FOREIGN KEY ("invoiceId") REFERENCES "Invoice"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+                    END IF;
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = 'ElectronicInvoiceEvent_transmissionId_fkey') THEN
+                        ALTER TABLE "ElectronicInvoiceEvent" ADD CONSTRAINT "ElectronicInvoiceEvent_transmissionId_fkey" FOREIGN KEY ("transmissionId") REFERENCES "ElectronicInvoiceTransmission"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+                    END IF;
+                END $$;
+            `)
 
             console.log('  ✅ Esquema actualizado correctamente.')
 

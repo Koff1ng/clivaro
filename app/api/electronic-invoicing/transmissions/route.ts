@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { requirePermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
 import { getPrismaForRequest } from '@/lib/get-tenant-prisma'
+import { logger } from '@/lib/logger'
 
 export async function GET(request: Request) {
     const session = await requirePermission(request as any, PERMISSIONS.MANAGE_SALES)
@@ -45,7 +46,8 @@ export async function GET(request: Request) {
                 totalPages: Math.ceil(total / limit)
             }
         })
-    } catch (error) {
-        return NextResponse.json({ error: 'Failed' }, { status: 500 })
+    } catch (error: any) {
+        logger.error('[Transmissions API Error]:', error)
+        return NextResponse.json({ error: 'Error al cargar las transmisiones' }, { status: 500 })
     }
 }
