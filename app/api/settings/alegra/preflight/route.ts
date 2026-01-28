@@ -1,14 +1,12 @@
 import { NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { requirePermission } from '@/lib/api-middleware'
+import { PERMISSIONS } from '@/lib/permissions'
 import { AlegraClient } from '@/lib/alegra/client'
 import { logger } from '@/lib/logger'
 
 export async function POST(request: Request) {
-    const session = await getServerSession(authOptions)
-    if (!session?.user) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const session = await requirePermission(request as any, PERMISSIONS.MANAGE_USERS)
+    if (session instanceof NextResponse) return session
 
     try {
         const { email, token } = await request.json()

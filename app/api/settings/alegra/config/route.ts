@@ -1,15 +1,24 @@
 import { NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { requirePermission } from '@/lib/api-middleware'
+import { PERMISSIONS } from '@/lib/permissions'
 import { prisma } from '@/lib/db'
 import { logger } from '@/lib/logger'
 
 export async function GET(request: Request) {
-    const session = await getServerSession(authOptions)
-    const user = session?.user as any
+    const session = await requirePermission(request as any, PERMISSIONS.MANAGE_USERS)
+    if (session instanceof NextResponse) return session
 
+    const user = session.user as any
+
+    // La configuración de Alegra es específica de cada empresa (tenant)
     if (!user?.tenantId) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+        if (user.isSuperAdmin) {
+            return NextResponse.json({
+                config: null,
+                message: 'Los Super Admins deben estar en el contexto de una empresa para configurar Alegra.'
+            })
+        }
+        return NextResponse.json({ error: 'No se encontró un ID de empresa en la sesión.' }, { status: 401 })
     }
 
     try {
@@ -27,17 +36,20 @@ export async function GET(request: Request) {
         // No devolvemos el token cifrado al frontend por seguridad
         const { alegraTokenEncrypted, ...safeConfig } = config
         return NextResponse.json({ config: safeConfig })
-    } catch (error) {
-        return NextResponse.json({ error: 'Failed to fetch config' }, { status: 500 })
+    } catch (error: any) {
+        logger.error('[Alegra Config GET ERROR]:', error)
+        return NextResponse.json({ error: 'Error al obtener la configuración' }, { status: 500 })
     }
 }
 
 export async function PUT(request: Request) {
-    const session = await getServerSession(authOptions)
-    const user = session?.user as any
+    const session = await requirePermission(request as any, PERMISSIONS.MANAGE_USERS)
+    if (session instanceof NextResponse) return session
+
+    const user = session.user as any
 
     if (!user?.tenantId) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+        return NextResponse.json({ error: 'No autorizado - Se requiere una empresa asociada' }, { status: 401 })
     }
 
     try {
@@ -75,6 +87,6 @@ export async function PUT(request: Request) {
         return NextResponse.json({ success: true })
     } catch (error: any) {
         logger.error('Error saving Alegra config', error)
-        return NextResponse.json({ error: error.message }, { status: 500 })
+        return NextResponse.json({ error: error.message || 'Error al guardar la configuración' }, { status: 500 })
     }
 }
