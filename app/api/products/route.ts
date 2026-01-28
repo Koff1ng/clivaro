@@ -156,11 +156,11 @@ export async function GET(request: Request) {
 
       if (p.enableRecipeConsumption && p.recipe?.items?.length) {
         // Calculate virtual stock based on ingredients
-        const maxQuantities = p.recipe.items.map(item => {
+        const maxQuantities = p.recipe.items.map((item: any) => {
           if (!item.ingredient) return 0
 
           // Total ingredient stock across all warehouses (simplified for now)
-          const ingredientStock = item.ingredient.stockLevels?.reduce((sum, sl) => sum + sl.quantity, 0) || 0
+          const ingredientStock = item.ingredient.stockLevels?.reduce((sum: number, sl: any) => sum + sl.quantity, 0) || 0
 
           // TODO: Handle Unit Conversions (e.g., kg -> g)
           // For now, assuming units are compatible or conversion logic is handled elsewhere.
