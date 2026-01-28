@@ -74,11 +74,24 @@ export function InvoicePrintLetter({ invoice, settings }: InvoicePrintLetterProp
         : 0
 
     // Calcular totales
-    const subtotal = invoice.subtotal || 0
-    const discount = invoice.discount || 0
+    const globalDiscount = invoice.discount || 0
+
+    // Calcular descuentos por item para mostrar el subtotal bruto real
+    const itemDiscounts = (invoice.items || []).reduce((sum: number, item: any) => {
+        const grossLine = (item.unitPrice || 0) * (item.quantity || 0)
+        // El subtotal del item ya viene neto (con el descuento aplicado)
+        const netLine = item.subtotal || (grossLine * (1 - (item.discount || 0) / 100))
+        return sum + Math.max(0, grossLine - netLine)
+    }, 0)
+
+    const totalDiscount = globalDiscount + itemDiscounts
+
+    // subtotal de la factura en DB es neto (después de descuentos de item y global)
+    // Base gravable es subtotal antes de impuesto
+    const taxableBase = invoice.subtotal || 0
+    const subtotalBruto = taxableBase + totalDiscount
     const tax = invoice.tax || 0
     const total = invoice.total || 0
-    const subtotalAfterDiscount = subtotal - discount
 
     // IVA discriminado por tarifa
     const taxByRate = new Map<number, { base: number; tax: number }>()
@@ -232,17 +245,17 @@ export function InvoicePrintLetter({ invoice, settings }: InvoicePrintLetterProp
                     <div className="space-y-2 text-sm">
                         <div className="flex justify-between">
                             <span className="text-gray-600">Subtotal Bruto:</span>
-                            <span>{formatCurrency(subtotal)}</span>
+                            <span>{formatCurrency(subtotalBruto)}</span>
                         </div>
-                        {discount > 0 && (
+                        {totalDiscount > 0 && (
                             <div className="flex justify-between text-red-600">
                                 <span>(-) Descuentos:</span>
-                                <span>{formatCurrency(discount)}</span>
+                                <span>{formatCurrency(totalDiscount)}</span>
                             </div>
                         )}
                         <div className="flex justify-between font-medium border-t pt-2">
                             <span>Base Gravable:</span>
-                            <span>{formatCurrency(subtotalAfterDiscount)}</span>
+                            <span>{formatCurrency(taxableBase)}</span>
                         </div>
 
                         {/* IVA Discriminado */}

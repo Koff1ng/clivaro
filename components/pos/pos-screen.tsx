@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { PERMISSIONS } from '@/lib/permissions'
+import { InvoicePrint } from '@/components/sales/invoice-print'
 
 interface CartItem {
   productId: string
@@ -766,13 +767,20 @@ export function POSScreen() {
       payload,
       receipt: {
         provisionalInvoiceNumber,
-        items: cart,
+        number: provisionalInvoiceNumber,
+        issuedAt: now.toISOString(),
+        items: cart.map(item => ({
+          ...item,
+          product: { name: item.productName, sku: item.sku }
+        })),
         customer: selectedCustomer,
         paymentMode,
         paymentMethod,
         payments: paymentMode === 'SPLIT' ? normalizedSplit : undefined,
         cashReceived: paymentMode === 'SINGLE' && paymentMethod === 'CASH' ? parseFloat(cashReceived || '0') : null,
         change: paymentMode === 'SPLIT' ? Math.max(0, paidTotal - totals.total) : undefined,
+        subtotal: totals.subtotal,
+        tax: totals.tax,
         total: totals.total,
       },
     }
@@ -783,11 +791,18 @@ export function POSScreen() {
     setSaleResult({
       invoiceId: null,
       invoiceNumber: provisionalInvoiceNumber,
+      number: provisionalInvoiceNumber,
+      issuedAt: now.toISOString(),
       total: totals.total,
+      subtotal: totals.subtotal,
+      tax: totals.tax,
       change: queued.receipt.change || 0,
       offline: true,
       queuedId: id,
-      items: cart,
+      items: cart.map(item => ({
+        ...item,
+        product: { name: item.productName, sku: item.sku }
+      })),
       customer: selectedCustomer,
       paymentMode,
       paymentMethod,
@@ -929,7 +944,12 @@ export function POSScreen() {
 
       setSaleResult({
         ...data,
-        items: cart,
+        number: data.invoiceNumber,
+        issuedAt: new Date().toISOString(),
+        items: cart.map(item => ({
+          ...item,
+          product: { name: item.productName, sku: item.sku }
+        })),
         customer: selectedCustomer,
         paymentMode,
         paymentMethod,
@@ -1944,45 +1964,52 @@ export function POSScreen() {
                 </div>
               </div>
 
-              {/* Items */}
-              <div id="pos-thermal-print" className="px-6 py-4 border-t border-b bg-muted/20">
-                <div className="text-sm font-semibold mb-3 text-foreground">Productos</div>
-                <div className="space-y-2 max-h-48 overflow-y-auto">
-                  {saleResult.items.map((item: CartItem) => (
-                    <div key={item.productId} className="flex justify-between items-start text-sm py-1">
-                      <span className="flex-1 text-foreground">{item.productName} <span className="text-muted-foreground">x{item.quantity}</span></span>
-                      <span className="font-medium text-foreground ml-4">{formatCurrency(item.subtotal)}</span>
-                    </div>
-                  ))}
+              {/* Receipt Body for UI */}
+              <div className="px-6 py-4 space-y-6">
+                <div id="pos-thermal-print" className="hidden">
+                  <InvoicePrint invoice={saleResult} />
                 </div>
-              </div>
 
-              {/* Totals */}
-              <div className="px-6 py-4 space-y-3 bg-card">
-                <div className="flex justify-between items-center pt-2 border-t">
-                  <span className="text-lg font-semibold text-foreground">Total</span>
-                  <span className="text-2xl font-bold text-primary">{formatCurrency(saleResult.total)}</span>
-                </div>
-                {saleResult.paymentMethod === 'CASH' && saleResult.cashReceived && (
-                  <>
-                    <div className="flex justify-between text-sm pt-1">
-                      <span className="text-muted-foreground">Recibido</span>
-                      <span className="font-medium text-foreground">{formatCurrency(saleResult.cashReceived)}</span>
-                    </div>
-                    {saleResult.change > 0 && (
-                      <div className="flex justify-between items-center pt-2 border-t">
-                        <span className="text-base font-semibold text-green-600">Cambio</span>
-                        <span className="text-lg font-bold text-green-600">{formatCurrency(saleResult.change)}</span>
+                {/* Items Summary in UI */}
+                <div className="border-t border-b py-4 bg-muted/20 -mx-6 px-6">
+                  <div className="text-sm font-semibold mb-3 text-foreground">Productos</div>
+                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                    {saleResult.items.map((item: any, idx: number) => (
+                      <div key={idx} className="flex justify-between items-start text-sm py-1">
+                        <span className="flex-1 text-foreground">{item.productName || item.product?.name} <span className="text-muted-foreground">x{item.quantity}</span></span>
+                        <span className="font-medium text-foreground ml-4">{formatCurrency(item.subtotal)}</span>
                       </div>
-                    )}
-                  </>
-                )}
-                {saleResult.paymentMode === 'SPLIT' && saleResult.change > 0 && (
-                  <div className="flex justify-between items-center pt-2 border-t">
-                    <span className="text-base font-semibold text-green-600">Cambio</span>
-                    <span className="text-lg font-bold text-green-600">{formatCurrency(saleResult.change)}</span>
+                    ))}
                   </div>
-                )}
+                </div>
+
+                {/* Totals in UI */}
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center pt-2">
+                    <span className="text-lg font-semibold text-foreground">Total</span>
+                    <span className="text-2xl font-bold text-primary">{formatCurrency(saleResult.total)}</span>
+                  </div>
+                  {(saleResult.paymentMethod === 'CASH' || saleResult.paymentMode === 'SINGLE') && saleResult.cashReceived && (
+                    <>
+                      <div className="flex justify-between text-sm pt-1">
+                        <span className="text-muted-foreground">Recibido</span>
+                        <span className="font-medium text-foreground">{formatCurrency(saleResult.cashReceived)}</span>
+                      </div>
+                      {saleResult.change > 0 && (
+                        <div className="flex justify-between items-center pt-2 border-t">
+                          <span className="text-base font-semibold text-green-600">Cambio</span>
+                          <span className="text-lg font-bold text-green-600">{formatCurrency(saleResult.change)}</span>
+                        </div>
+                      )}
+                    </>
+                  )}
+                  {saleResult.paymentMode === 'SPLIT' && saleResult.change > 0 && (
+                    <div className="flex justify-between items-center pt-2 border-t">
+                      <span className="text-base font-semibold text-green-600">Cambio</span>
+                      <span className="text-lg font-bold text-green-600">{formatCurrency(saleResult.change)}</span>
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Actions */}

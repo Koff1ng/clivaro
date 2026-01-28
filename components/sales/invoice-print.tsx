@@ -74,11 +74,24 @@ export function InvoicePrint({ invoice }: InvoicePrintProps) {
     : 0
 
   // Calcular totales
-  const subtotal = invoice.subtotal || 0
-  const discount = invoice.discount || 0
+  const globalDiscount = invoice.discount || 0
+
+  // Calcular descuentos por item para mostrar el subtotal bruto real
+  const itemDiscounts = (invoice.items || []).reduce((sum: number, item: any) => {
+    const grossLine = (item.unitPrice || 0) * (item.quantity || 0)
+    // El subtotal del item ya viene neto (con el descuento aplicado)
+    const netLine = item.subtotal || (grossLine * (1 - (item.discount || 0) / 100))
+    return sum + Math.max(0, grossLine - netLine)
+  }, 0)
+
+  const totalDiscount = globalDiscount + itemDiscounts
+
+  // subtotal de la factura en DB es neto (después de descuentos de item y global)
+  // Base gravable es subtotal antes de impuesto
+  const taxableBase = invoice.subtotal || 0
+  const subtotalBruto = taxableBase + totalDiscount
   const tax = invoice.tax || 0
   const total = invoice.total || 0
-  const subtotalAfterDiscount = subtotal - discount
 
   // IVA discriminado por tarifa (REQUISITO DIAN)
   const taxByRate = new Map<number, { base: number; tax: number }>()
@@ -221,17 +234,17 @@ export function InvoicePrint({ invoice }: InvoicePrintProps) {
         <tbody>
           <tr>
             <td className="label">Subtotal Bruto</td>
-            <td className="value">{formatCurrency(subtotal)}</td>
+            <td className="value">{formatCurrency(subtotalBruto)}</td>
           </tr>
-          {discount > 0 && (
+          {totalDiscount > 0 && (
             <tr>
               <td className="label">(-) Descuentos</td>
-              <td className="value">{formatCurrency(discount)}</td>
+              <td className="value">{formatCurrency(totalDiscount)}</td>
             </tr>
           )}
           <tr>
             <td className="label bold">Base Gravable</td>
-            <td className="value bold">{formatCurrency(subtotalAfterDiscount)}</td>
+            <td className="value bold">{formatCurrency(taxableBase)}</td>
           </tr>
 
           {/* IVA discriminado por tarifa */}

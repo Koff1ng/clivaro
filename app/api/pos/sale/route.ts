@@ -531,6 +531,8 @@ export async function POST(request: Request) {
       return {
         invoiceId: invoice.id,
         invoiceNumber,
+        subtotal: subtotalAfterDiscount,
+        tax: tax,
         total: total,
         change,
       }

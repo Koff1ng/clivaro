@@ -766,22 +766,22 @@ export async function generateInvoicePDF(invoice: InvoicePDFData): Promise<Buffe
           </tbody>
         </table>
         
-        <!-- Totals -->
-        <div class="totals-section">
-          <div class="totals-box">
-            <div class="totals-row subtotal">
-              <span>Subtotal Bruto:</span>
-              <span>${formatCurrency((invoice.subtotal || 0) + (invoice.discount || 0))}</span>
-            </div>
-            ${(invoice.discount || 0) > 0 ? `
-            <div class="totals-row" style="color: #dc2626;">
-              <span>(-) Descuentos:</span>
-              <span>${formatCurrency(invoice.discount || 0)}</span>
-            </div>` : ''}
-            <div class="totals-row">
-              <span>Base Gravable:</span>
-              <span>${formatCurrency(invoice.subtotal || 0)}</span>
-            </div>
+            <!-- Totals -->
+            <div class="totals-section">
+              <div class="totals-box">
+                <div class="totals-row subtotal">
+                  <span>Subtotal Bruto:</span>
+                  <span>${formatCurrency((invoice.items || []).reduce((sum, it) => sum + (it.unitPrice * it.quantity), 0))}</span>
+                </div>
+                ${(invoice.items || []).reduce((sum, it) => sum + ((it.unitPrice * it.quantity) - it.subtotal), 0) + (invoice.discount || 0) > 0 ? `
+                <div class="totals-row" style="color: #dc2626;">
+                  <span>(-) Descuentos:</span>
+                  <span>${formatCurrency((invoice.items || []).reduce((sum, it) => sum + ((it.unitPrice * it.quantity) - it.subtotal), 0) + (invoice.discount || 0))}</span>
+                </div>` : ''}
+                <div class="totals-row">
+                  <span>Base Gravable:</span>
+                  <span>${formatCurrency(invoice.subtotal || 0)}</span>
+                </div>
             
             <!-- Tax Breakdown -->
             ${taxByRate.size > 0 ? `
