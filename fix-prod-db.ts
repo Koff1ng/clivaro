@@ -30,6 +30,7 @@ async function fixProduction() {
             await tenantPrisma.$executeRawUnsafe(`
                 CREATE TABLE IF NOT EXISTS "ElectronicInvoiceTransmission" (
                     "id" TEXT PRIMARY KEY,
+                    "tenantId" TEXT NOT NULL,
                     "invoiceId" TEXT NOT NULL,
                     "provider" TEXT NOT NULL DEFAULT 'ALEGRA',
                     "status" TEXT NOT NULL DEFAULT 'QUEUED',
@@ -47,6 +48,7 @@ async function fixProduction() {
             await tenantPrisma.$executeRawUnsafe(`
                 CREATE TABLE IF NOT EXISTS "ElectronicInvoiceEvent" (
                     "id" TEXT PRIMARY KEY,
+                    "tenantId" TEXT NOT NULL,
                     "transmissionId" TEXT NOT NULL,
                     "eventType" TEXT NOT NULL,
                     "payloadSanitized" JSONB,
@@ -56,13 +58,15 @@ async function fixProduction() {
 
             // 4. Create indices
             console.log('  - Creating indices...')
-            await tenantPrisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "ElectronicInvoiceTransmission_invoiceId_idx" ON "ElectronicInvoiceTransmission"("invoiceId");`)
-            await tenantPrisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "ElectronicInvoiceEvent_transmissionId_idx" ON "ElectronicInvoiceEvent"("transmissionId");`)
+            await tenantPrisma.$executeRawUnsafe(`CREATE UNIQUE INDEX IF NOT EXISTS "ElectronicInvoiceTransmission_tenantId_invoiceId_key" ON "ElectronicInvoiceTransmission"("tenantId", "invoiceId");`)
+            await tenantPrisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "ElectronicInvoiceTransmission_tenantId_status_idx" ON "ElectronicInvoiceTransmission"("tenantId", "status");`)
+            await tenantPrisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "ElectronicInvoiceTransmission_tenantId_createdAt_idx" ON "ElectronicInvoiceTransmission"("tenantId", "createdAt");`)
+            await tenantPrisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "ElectronicInvoiceEvent_transmissionId_createdAt_idx" ON "ElectronicInvoiceEvent"("transmissionId", "createdAt");`)
 
             console.log(`  ✅ Tenant ${tenant.slug} updated successfully.`)
 
         } catch (e: any) {
-            console.error(`  ❌ Failed for tenant ${tenant.slug}:`, e.message)
+            console.error(`  ❌ Failed for tenant ${tenant.slug}: `, e.message)
         }
     }
 

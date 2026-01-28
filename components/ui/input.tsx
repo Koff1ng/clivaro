@@ -3,10 +3,19 @@ import * as React from "react"
 import { cn } from "@/lib/utils"
 
 export interface InputProps
-  extends React.InputHTMLAttributes<HTMLInputElement> {}
+  extends React.InputHTMLAttributes<HTMLInputElement> { }
 
 const Input = React.forwardRef<HTMLInputElement, InputProps>(
   ({ className, type, ...props }, ref) => {
+    const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+      if (type === "number" && e.target.value === "0") {
+        e.target.value = ""
+      }
+      if (props.onFocus) {
+        props.onFocus(e)
+      }
+    }
+
     return (
       <input
         type={type}
@@ -15,6 +24,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
           className
         )}
         ref={ref}
+        onFocus={handleFocus}
         {...props}
       />
     )
