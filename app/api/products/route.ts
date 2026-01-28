@@ -107,6 +107,14 @@ export async function GET(request: Request) {
       where.productType = productType
     }
 
+    // Add hasRecipe Filter
+    const hasRecipe = searchParams.get('hasRecipe')
+    if (hasRecipe === 'true') {
+      where.enableRecipeConsumption = true
+    } else if (hasRecipe === 'false') {
+      where.enableRecipeConsumption = false
+    }
+
     // Determinar ordenamiento
     let orderByClause: any = { name: 'asc' }
     if (orderBy === 'createdAt') {

@@ -5,7 +5,7 @@ import { getPrismaForRequest } from '@/lib/get-tenant-prisma'
 
 export async function GET(request: Request) {
   const session = await requirePermission(request as any, PERMISSIONS.MANAGE_SALES)
-  
+
   if (session instanceof NextResponse) {
     return session
   }
@@ -14,9 +14,12 @@ export async function GET(request: Request) {
   const prisma = await getPrismaForRequest(request, session)
 
   try {
-    // Get all unique categories from products
+    // Get all unique categories from products (exclude RAW ingredients)
     const products = await prisma.product.findMany({
-      where: { active: true },
+      where: {
+        active: true,
+        productType: { not: 'RAW' }  // Exclude ingredient categories from POS
+      },
       select: { category: true },
       distinct: ['category'],
     })

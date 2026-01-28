@@ -30,6 +30,7 @@ const productSchema = z.object({
   description: z.string().optional(),
   productType: z.enum(['RETAIL', 'RAW', 'PREPARED', 'SELLABLE']).default('RETAIL'),
   enableRecipeConsumption: z.boolean().default(false),
+  printerStation: z.enum(['KITCHEN', 'BAR', 'CASHIER']).optional().nullable(),
   // Variants
   variants: z.array(z.object({
     id: z.string().optional(),
@@ -74,6 +75,7 @@ export function ProductForm({ product, onSuccess }: { product?: any; onSuccess: 
       })) || [],
       productType: (product as any).productType || 'RETAIL',
       enableRecipeConsumption: (product as any).enableRecipeConsumption || false,
+      printerStation: (product as any).printerStation || null,
     } : {
       unitOfMeasure: 'UNIT',
       cost: 0,
@@ -83,6 +85,7 @@ export function ProductForm({ product, onSuccess }: { product?: any; onSuccess: 
       minStock: 0,
       productType: 'RETAIL',
       enableRecipeConsumption: false,
+      printerStation: null,
       variants: [],
     },
   })
@@ -199,6 +202,21 @@ export function ProductForm({ product, onSuccess }: { product?: any; onSuccess: 
           <option value="KILO">Kilo</option>
           <option value="LITER">Litro</option>
         </select>
+      </div>
+
+      <div>
+        <Label htmlFor="printerStation">Impresora de Comandas</Label>
+        <select
+          id="printerStation"
+          {...register('printerStation')}
+          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+        >
+          <option value="">Principal (Caja)</option>
+          <option value="KITCHEN">Cocina</option>
+          <option value="BAR">Bar</option>
+          <option value="CASHIER">Caja</option>
+        </select>
+        <p className="text-xs text-muted-foreground mt-1">Selecciona dónde se imprimirá la comanda de este producto</p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">

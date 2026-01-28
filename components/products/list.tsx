@@ -19,13 +19,14 @@ const ProductForm = dynamic(() => import('./form').then(mod => ({ default: mod.P
 
 // ...
 
-async function fetchProducts(page: number, search: string, category: string) {
+async function fetchProducts(page: number, search: string, category: string, hasRecipe: string) {
   const params = new URLSearchParams({
     page: page.toString(),
     limit: '20',
   })
   if (search) params.append('search', search)
   if (category && category !== 'all') params.append('category', category)
+  if (hasRecipe && hasRecipe !== 'all') params.append('hasRecipe', hasRecipe)
 
   const res = await fetch(`/api/products?${params}`)
   if (!res.ok) throw new Error('Failed to fetch products')
@@ -36,6 +37,7 @@ export function ProductsList() {
   const [page, setPage] = useState(1)
   const [search, setSearch] = useState('')
   const [category, setCategory] = useState('all')
+  const [hasRecipe, setHasRecipe] = useState('all')
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingProduct, setEditingProduct] = useState<any>(null)
   const queryClient = useQueryClient()
@@ -44,8 +46,8 @@ export function ProductsList() {
   const debouncedSearch = useDebounce(search, 500)
 
   const { data, isLoading } = useQuery({
-    queryKey: ['products', page, debouncedSearch, category],
-    queryFn: () => fetchProducts(page, debouncedSearch, category),
+    queryKey: ['products', page, debouncedSearch, category, hasRecipe],
+    queryFn: () => fetchProducts(page, debouncedSearch, category, hasRecipe),
     staleTime: 2 * 60 * 1000, // 2 minutes
     gcTime: 5 * 60 * 1000, // 5 minutes cache
     placeholderData: (prev) => prev, // Keep previous data while loading new page
@@ -83,6 +85,11 @@ export function ProductsList() {
     setPage(1)
   }, [])
 
+  const handleHasRecipeChange = useCallback((value: string) => {
+    setHasRecipe(value)
+    setPage(1)
+  }, [])
+
   const { products, pagination } = useMemo(() => {
     return data || { products: [], pagination: { totalPages: 1 } }
   }, [data])
@@ -116,6 +123,17 @@ export function ProductsList() {
             <SelectItem value="Verduras">Verduras</SelectItem>
             <SelectItem value="Salsas">Salsas</SelectItem>
             <SelectItem value="Despensa">Despensa</SelectItem>
+          </SelectContent>
+        </Select>
+
+        <Select value={hasRecipe} onValueChange={handleHasRecipeChange}>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="Tipo de Stock" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos</SelectItem>
+            <SelectItem value="true">Con Receta (Virtual)</SelectItem>
+            <SelectItem value="false">Sin Receta (Físico)</SelectItem>
           </SelectContent>
         </Select>
 
