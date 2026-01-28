@@ -184,6 +184,11 @@ export function POSScreen() {
   const [showParkedDialog, setShowParkedDialog] = useState(false)
   const [parkName, setParkName] = useState('')
 
+  // Preparation Notes
+  const [showPreparationNotesDialog, setShowPreparationNotesDialog] = useState(false)
+  const [preparationNotesItem, setPreparationNotesItem] = useState<{ productId: string; variantId?: string | null; currentNotes?: string } | null>(null)
+  const [preparationNotesInput, setPreparationNotesInput] = useState('')
+
   const queryClient = useQueryClient()
   const userPermissions: string[] = ((session?.user as any)?.permissions as string[]) || []
   const canApplyDiscounts = userPermissions.includes(PERMISSIONS.APPLY_DISCOUNTS) || (session?.user as any)?.isSuperAdmin
@@ -1037,6 +1042,30 @@ export function POSScreen() {
     setCart(cart.filter(item => !(item.productId === productId && (item.variantId || null) === (variantId || null))))
   }
 
+  const updateCartItemNotes = useCallback((productId: string, preparationNotes: string, variantId?: string | null) => {
+    setCart((prev) =>
+      prev.map((item) => {
+        if (item.productId !== productId || item.variantId !== (variantId || null)) return item
+        return { ...item, preparationNotes: preparationNotes || undefined }
+      })
+    )
+  }, [])
+
+  const openPreparationNotesDialog = useCallback((item: CartItem) => {
+    setPreparationNotesItem({ productId: item.productId, variantId: item.variantId || null, currentNotes: item.preparationNotes || '' })
+    setPreparationNotesInput(item.preparationNotes || '')
+    setShowPreparationNotesDialog(true)
+  }, [])
+
+  const savePreparationNotes = useCallback(() => {
+    if (!preparationNotesItem) return
+    updateCartItemNotes(preparationNotesItem.productId, preparationNotesInput.trim(), preparationNotesItem.variantId)
+    setShowPreparationNotesDialog(false)
+    setPreparationNotesItem(null)
+    setPreparationNotesInput('')
+    toast('Notas guardadas', 'success')
+  }, [preparationNotesItem, preparationNotesInput, updateCartItemNotes, toast])
+
   const calculateTotals = () => {
     const subtotal = cart.reduce((sum, item) => {
       const itemSubtotal = item.quantity * item.unitPrice * (1 - item.discount / 100)
@@ -1581,6 +1610,24 @@ export function POSScreen() {
                               />
                               {!canDiscountNow && (
                                 <span className="text-[11px] text-gray-400">Sin permiso</span>
+                              )}
+                            </div>
+                            {/* Preparation Notes Button */}
+                            <div className="mt-2 flex items-center gap-2">
+                              <Button
+                                variant={item.preparationNotes ? 'default' : 'outline'}
+                                size="sm"
+                                className={`h-7 px-2 text-xs ${item.preparationNotes ? 'bg-orange-500 hover:bg-orange-600' : ''}`}
+                                onClick={() => openPreparationNotesDialog(item)}
+                                title="Notas de preparación"
+                              >
+                                <MessageSquare className="h-3.5 w-3.5 mr-1" />
+                                {item.preparationNotes ? 'Editar notas' : 'Agregar notas'}
+                              </Button>
+                              {item.preparationNotes && (
+                                <span className="text-[10px] text-orange-600 font-medium truncate max-w-[120px]" title={item.preparationNotes}>
+                                  {item.preparationNotes}
+                                </span>
                               )}
                             </div>
                           </div>
@@ -2315,6 +2362,52 @@ ${saleResult.change > 0 ? `Cambio: ${formatCurrency(saleResult.change)}` : ''}
                 ))}
               </div>
             )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Preparation Notes Dialog */}
+      <Dialog open={showPreparationNotesDialog} onOpenChange={setShowPreparationNotesDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Notas de Preparación</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="text-sm text-muted-foreground">
+              Agrega instrucciones especiales para este producto (ej: "sin cebolla", "extra queso", "bien cocido")
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Instrucciones</label>
+              <textarea
+                className="w-full min-h-[100px] p-3 rounded-md border border-input bg-background text-sm resize-none"
+                placeholder="Ej: Sin cebolla, extra queso..."
+                value={preparationNotesInput}
+                onChange={(e) => setPreparationNotesInput(e.target.value)}
+                maxLength={200}
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && e.ctrlKey) {
+                    savePreparationNotes()
+                  }
+                }}
+              />
+              <div className="text-xs text-gray-500 text-right">
+                {preparationNotesInput.length}/200 caracteres
+              </div>
+            </div>
+            <div className="flex gap-2 justify-end">
+              <Button variant="ghost" onClick={() => {
+                setShowPreparationNotesDialog(false)
+                setPreparationNotesItem(null)
+                setPreparationNotesInput('')
+              }}>
+                Cancelar
+              </Button>
+              <Button onClick={savePreparationNotes}>
+                <Check className="h-4 w-4 mr-2" />
+                Guardar
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>

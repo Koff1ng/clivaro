@@ -327,6 +327,7 @@ export async function POST(request: Request) {
               discount: item.discount,
               taxRate: item.taxRate,
               subtotal: item.subtotal,
+              preparationNotes: item.preparationNotes || null,
             })),
           },
         },

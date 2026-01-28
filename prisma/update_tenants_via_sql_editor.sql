@@ -153,6 +153,10 @@ BEGIN
         -- Product Columns
         BEGIN ALTER TABLE "Product" ADD COLUMN "productType" TEXT NOT NULL DEFAULT 'RETAIL'; EXCEPTION WHEN duplicate_column THEN NULL; END;
         BEGIN ALTER TABLE "Product" ADD COLUMN "enableRecipeConsumption" BOOLEAN NOT NULL DEFAULT false; EXCEPTION WHEN duplicate_column THEN NULL; END;
+        BEGIN ALTER TABLE "Product" ADD COLUMN "printerStation" TEXT; EXCEPTION WHEN duplicate_column THEN NULL; END;
+        
+        -- InvoiceItem Columns
+        BEGIN ALTER TABLE "InvoiceItem" ADD COLUMN "preparationNotes" TEXT; EXCEPTION WHEN duplicate_column THEN NULL; END;
         
         -- StockMovement Columns
         BEGIN ALTER TABLE "StockMovement" ADD COLUMN "reasonCode" TEXT; EXCEPTION WHEN duplicate_column THEN NULL; END;
