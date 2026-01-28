@@ -116,7 +116,9 @@ export async function POST(req: Request) {
                             brand: row['brand'] || null,
                             category: row['category'] || null,
                             barcode: row['barcode'] || null,
-                            taxRate: parseFloat(row['taxRate'] || 0)
+                            taxRate: parseFloat(row['taxRate'] || 0),
+                            productType: row['productType'] || 'RETAIL',
+                            enableRecipeConsumption: Boolean(row['enableRecipeConsumption'])
                         },
                         create: {
                             sku: String(sku),
@@ -127,7 +129,9 @@ export async function POST(req: Request) {
                             brand: row['brand'] || null,
                             category: row['category'] || null,
                             barcode: row['barcode'] || null,
-                            taxRate: parseFloat(row['taxRate'] || 0)
+                            taxRate: parseFloat(row['taxRate'] || 0),
+                            productType: row['productType'] || 'RETAIL',
+                            enableRecipeConsumption: Boolean(row['enableRecipeConsumption'])
                         }
                     })
                     results.success++

@@ -163,9 +163,6 @@ model ProductVariant {
   stockLevels        StockLevel[]
   stockMovements     StockMovement[]
   physicalInventoryItems PhysicalInventoryItem[]
-  
-  recipe             Recipe?
-  recipeItems        RecipeItem[]        @relation("Ingredient")
 }
 
 model Warehouse {

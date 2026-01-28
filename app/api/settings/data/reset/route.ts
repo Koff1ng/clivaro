@@ -18,7 +18,7 @@ export async function POST(request: Request) {
         const tenantId = user.tenantId
 
         // 2. Get Tenant Prisma Client
-        const prisma = await getPrismaForRequest(request, session)
+        const prisma = (await getPrismaForRequest(request, session)) as any
 
         if (!tenantId) {
             // Safety check: Don't allow reset on master DB if somehow routed here without tenant context
@@ -72,6 +72,13 @@ export async function POST(request: Request) {
 
             // --- Master Data ---
             prisma.priceListItem.deleteMany(),
+
+            // --- Restaurant Mode ---
+            // Must be deleted before products due to foreign keys
+            prisma.recipeItem.deleteMany(),
+            prisma.recipe.deleteMany(),
+            prisma.unitConversion.deleteMany(),
+            prisma.unit.deleteMany(),
 
             // Products (Variants should cascade delete or be deleted first if not)
             // Explicitly deleting variants just in case

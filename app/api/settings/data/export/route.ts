@@ -62,7 +62,7 @@ export async function POST(req: Request) {
             }
         }
 
-        // PRODUCTS
+        // PRODUCTS (and related Restaurant Data)
         if (entities.includes('products')) {
             const products = await tenantPrisma.product.findMany({
                 select: {
@@ -79,15 +79,52 @@ export async function POST(req: Request) {
                     trackStock: true,
                     active: true,
                     description: true,
+                    productType: true,
+                    enableRecipeConsumption: true,
                     createdAt: true
                 }
             })
 
+            const units = await tenantPrisma.unit.findMany()
+            const unitConversions = await tenantPrisma.unitConversion.findMany()
+            const recipes = await tenantPrisma.recipe.findMany({
+                include: { items: true }
+            })
+
             if (format === 'json') {
                 jsonResult['products'] = products
+                jsonResult['units'] = units
+                jsonResult['unitConversions'] = unitConversions
+                jsonResult['recipes'] = recipes
             } else {
                 const ws = XLSX.utils.json_to_sheet(products)
                 XLSX.utils.book_append_sheet(wb, ws, "Productos")
+
+                if (units.length > 0) {
+                    const wsUnits = XLSX.utils.json_to_sheet(units)
+                    XLSX.utils.book_append_sheet(wb, wsUnits, "Unidades")
+                }
+                if (unitConversions.length > 0) {
+                    const wsConv = XLSX.utils.json_to_sheet(unitConversions)
+                    XLSX.utils.book_append_sheet(wb, wsConv, "Conversiones")
+                }
+
+                // Flatten recipes for Excel
+                if (recipes.length > 0) {
+                    const flatRecipes = recipes.flatMap((r: any) =>
+                        r.items.map((item: any) => ({
+                            recipeId: r.id,
+                            productId: r.productId, // Product being made
+                            yield: r.yield,
+                            active: r.active,
+                            ingredientId: item.ingredientId,
+                            quantity: item.quantity,
+                            unitId: item.unitId
+                        }))
+                    )
+                    const wsRecipes = XLSX.utils.json_to_sheet(flatRecipes)
+                    XLSX.utils.book_append_sheet(wb, wsRecipes, "Recetas")
+                }
             }
         }
 
