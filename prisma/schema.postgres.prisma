@@ -115,6 +115,8 @@ model Product {
   brand              String?
   category           String?
   unitOfMeasure      String              @default("UNIT")
+  productType        String              @default("RETAIL") // RETAIL, RAW, PREPARED, SELLABLE
+  enableRecipeConsumption Boolean        @default(false)
   cost               Float               @default(0)
   price              Float
   taxRate            Float               @default(0)
@@ -135,6 +137,9 @@ model Product {
   stockLevels        StockLevel[]
   stockMovements     StockMovement[]
   physicalInventoryItems PhysicalInventoryItem[]
+  
+  recipe             Recipe?
+  recipeItems        RecipeItem[]        @relation("Ingredient")
 }
 
 model ProductVariant {
@@ -200,6 +205,8 @@ model StockMovement {
   cost        Float?
   reference   String?
   reason      String?
+  reasonCode  String?
+  reasonNote  String?
   createdAt   DateTime        @default(now())
   createdById String
   createdBy   User            @relation(fields: [createdById], references: [id])
@@ -791,6 +798,9 @@ model TenantSettings {
   onboardingCompleted   Boolean?    @default(false)
   onboardingUserName    String?     // Nombre del usuario recopilado en onboarding
   onboardingCompanyName String?    // Nombre de la empresa recopilado en onboarding
+  // Restaurant Mode
+  enableRestaurantMode   Boolean?   @default(false)
+
   // Mercado Pago
   mercadoPagoAccessToken String?    // Access Token de Mercado Pago
   mercadoPagoPublicKey   String?    // Public Key de Mercado Pago
@@ -876,3 +886,59 @@ model ElectronicInvoiceEvent {
 
   @@index([transmissionId, createdAt])
 }
+
+model Unit {
+  id          String   @id @default(cuid())
+  name        String
+  symbol      String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  recipeItems RecipeItem[]
+  conversionsFrom UnitConversion[] @relation("FromUnit")
+  conversionsTo   UnitConversion[] @relation("ToUnit")
+}
+
+model UnitConversion {
+  id          String   @id @default(cuid())
+  fromUnitId  String
+  toUnitId    String
+  multiplier  Float
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  fromUnit    Unit     @relation("FromUnit", fields: [fromUnitId], references: [id], onDelete: Cascade)
+  toUnit      Unit     @relation("ToUnit", fields: [toUnitId], references: [id], onDelete: Cascade)
+
+  @@index([fromUnitId, toUnitId])
+}
+
+model Recipe {
+  id          String   @id @default(cuid())
+  productId   String   @unique
+  yield       Float    @default(1)
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  items       RecipeItem[]
+}
+
+model RecipeItem {
+  id          String   @id @default(cuid())
+  recipeId    String
+  ingredientId String
+  quantity     Float
+  unitId      String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  recipe      Recipe   @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  ingredient  Product  @relation("Ingredient", fields: [ingredientId], references: [id])
+  unit        Unit?    @relation(fields: [unitId], references: [id])
+
+  @@index([recipeId])
+  @@index([ingredientId])
+}
+

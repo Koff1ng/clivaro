@@ -890,7 +890,6 @@ model ElectronicInvoiceEvent {
 
 model Unit {
   id          String   @id @default(cuid())
-  tenantId    String
   name        String
   symbol      String   // kg, g, l, ml, unit
   createdAt   DateTime @default(now())
@@ -899,13 +898,10 @@ model Unit {
   recipeItems RecipeItem[]
   conversionsFrom UnitConversion[] @relation("FromUnit")
   conversionsTo   UnitConversion[] @relation("ToUnit")
-
-  @@index([tenantId])
 }
 
 model UnitConversion {
   id          String   @id @default(cuid())
-  tenantId    String
   fromUnitId  String
   toUnitId    String
   multiplier  Float    // quantityInFromUnit * multiplier = quantityInToUnit
@@ -915,13 +911,11 @@ model UnitConversion {
   fromUnit    Unit     @relation("FromUnit", fields: [fromUnitId], references: [id], onDelete: Cascade)
   toUnit      Unit     @relation("ToUnit", fields: [toUnitId], references: [id], onDelete: Cascade)
 
-  @@index([tenantId])
   @@index([fromUnitId, toUnitId])
 }
 
 model Recipe {
   id          String   @id @default(cuid())
-  tenantId    String
   productId   String   @unique
   yield       Float    @default(1)
   active      Boolean  @default(true)
@@ -930,8 +924,6 @@ model Recipe {
 
   product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
   items       RecipeItem[]
-
-  @@index([tenantId])
 }
 
 model RecipeItem {
