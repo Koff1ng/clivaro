@@ -145,7 +145,7 @@ export async function GET(request: Request) {
               }
             }
           }
-        },
+        } as any,
       })),
       executeWithRetry(() => prisma.product.count({ where })),
     ])
@@ -175,7 +175,7 @@ export async function GET(request: Request) {
 
       } else {
         // Standard physical stock
-        stock = p.stockLevels?.reduce((sum, sl) => sum + sl.quantity, 0) || 0
+        stock = p.stockLevels?.reduce((sum: number, sl: any) => sum + sl.quantity, 0) || 0
       }
 
       return {
