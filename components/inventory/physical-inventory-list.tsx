@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useDebounce } from '@/lib/hooks/use-debounce'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
@@ -38,15 +39,17 @@ export function PhysicalInventoryList() {
   const [countInventory, setCountInventory] = useState<any>(null)
   const queryClient = useQueryClient()
   const { toast } = useToast()
+  const debouncedSearch = useDebounce(q, 500)
 
   const { data: warehouses = [] } = useQuery({
     queryKey: ['warehouses'],
     queryFn: fetchWarehouses,
   })
 
-  const { data, isLoading, refetch } = useQuery({
-    queryKey: ['physical-inventories', selectedWarehouse, q],
-    queryFn: () => fetchPhysicalInventories(selectedWarehouse || undefined, q),
+  const { data, isLoading, isPlaceholderData, refetch } = useQuery({
+    queryKey: ['physical-inventories', selectedWarehouse, debouncedSearch],
+    queryFn: () => fetchPhysicalInventories(selectedWarehouse || undefined, debouncedSearch),
+    placeholderData: (prev) => prev,
   })
 
   const inventories = data?.inventories || []
@@ -133,6 +136,11 @@ export function PhysicalInventoryList() {
                 placeholder="Buscar por número o nota..."
                 className="pl-9"
               />
+              {(isLoading || isPlaceholderData) && (
+                <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                </div>
+              )}
             </div>
             <select
               value={selectedWarehouse}
@@ -151,10 +159,10 @@ export function PhysicalInventoryList() {
           </Button>
         </div>
 
-        {isLoading && inventories.length === 0 ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground mr-2" />
-            <span className="text-muted-foreground">Cargando inventarios físicos...</span>
+        {isLoading && !data ? (
+          <div className="flex flex-col items-center justify-center py-12 space-y-4">
+            <Loader2 className="h-8 w-8 animate-spin text-primary mr-2" />
+            <span className="text-muted-foreground animate-pulse">Cargando inventarios físicos...</span>
           </div>
         ) : (
           <div className="border rounded-lg">

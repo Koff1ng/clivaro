@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { useDebounce } from '@/lib/hooks/use-debounce'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
@@ -18,7 +19,7 @@ async function fetchStockLevels(page: number, search: string, warehouseId: strin
   })
   if (search) params.append('search', search)
   if (warehouseId) params.append('warehouseId', warehouseId)
-  
+
   const res = await fetch(`/api/inventory/stock-levels?${params}`)
   if (!res.ok) throw new Error('Failed to fetch stock levels')
   return res.json()
@@ -37,6 +38,7 @@ export function StockLevels() {
   const [isAdjustmentOpen, setIsAdjustmentOpen] = useState(false)
   const [isTransferOpen, setIsTransferOpen] = useState(false)
   const [selectedItem, setSelectedItem] = useState<any>(null)
+  const debouncedSearch = useDebounce(search, 500)
 
   const { data: warehouses = [] } = useQuery({
     queryKey: ['warehouses'],
@@ -45,13 +47,14 @@ export function StockLevels() {
     gcTime: 30 * 60 * 1000,
   })
 
-  const { data, isLoading } = useQuery({
-    queryKey: ['stock-levels', page, search, selectedWarehouse],
-    queryFn: () => fetchStockLevels(page, search, selectedWarehouse),
-    staleTime: 10 * 1000, // 10 segundos - datos considerados frescos
+  const { data, isLoading, isPlaceholderData } = useQuery({
+    queryKey: ['stock-levels', page, debouncedSearch, selectedWarehouse],
+    queryFn: () => fetchStockLevels(page, debouncedSearch, selectedWarehouse),
+    staleTime: 10 * 1000,
     gcTime: 5 * 60 * 1000,
-    refetchInterval: 30 * 1000, // Refrescar cada 30 segundos (optimizado para mejor rendimiento)
-    refetchOnWindowFocus: true, // Refrescar cuando la ventana recupera el foco
+    refetchInterval: 30 * 1000,
+    refetchOnWindowFocus: true,
+    placeholderData: (prev) => prev,
   })
 
   const handleAdjustment = (item: any) => {
@@ -64,8 +67,13 @@ export function StockLevels() {
     setIsTransferOpen(true)
   }
 
-  if (isLoading) {
-    return <div>Cargando niveles de stock...</div>
+  if (isLoading && !data) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 space-y-4">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+        <div className="text-muted-foreground animate-pulse">Cargando niveles de stock...</div>
+      </div>
+    )
   }
 
   const { stockLevels, pagination } = data || { stockLevels: [], pagination: { totalPages: 1 } }
@@ -84,6 +92,11 @@ export function StockLevels() {
             }}
             className="pl-10"
           />
+          {(isLoading || isPlaceholderData) && (
+            <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+              <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+            </div>
+          )}
         </div>
         <select
           value={selectedWarehouse}

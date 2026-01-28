@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo, useCallback } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { useDebounce } from '@/lib/hooks/use-debounce'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { DatePicker } from '@/components/ui/date-picker'
@@ -20,7 +21,7 @@ async function fetchMovements(page: number, warehouseId: string, type: string, c
   if (startDate) params.append('startDate', startDate)
   if (endDate) params.append('endDate', endDate)
   if (q) params.append('q', q)
-  
+
   const res = await fetch(`/api/inventory/movements?${params}`)
   if (!res.ok) throw new Error('Failed to fetch movements')
   return res.json()
@@ -49,6 +50,7 @@ export function MovementsList() {
   const [search, setSearch] = useState('')
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
+  const debouncedSearch = useDebounce(search, 500)
 
   const { data: warehouses = [] } = useQuery({
     queryKey: ['warehouses'],
@@ -56,7 +58,7 @@ export function MovementsList() {
     staleTime: 10 * 60 * 1000, // 10 minutes
     gcTime: 30 * 60 * 1000,
   })
-  
+
   const { data: users = [] } = useQuery({
     queryKey: ['users-minimal'],
     queryFn: () => fetchUsers(),
@@ -64,12 +66,12 @@ export function MovementsList() {
     gcTime: 30 * 60 * 1000,
   })
 
-  const { data, isLoading } = useQuery({
-    queryKey: ['inventory-movements', page, selectedWarehouse, selectedType, selectedUser, startDate, endDate, search],
-    queryFn: () => fetchMovements(page, selectedWarehouse, selectedType, selectedUser, startDate, endDate, search),
-    staleTime: 10 * 1000, // 10 segundos - datos considerados frescos
-    refetchInterval: 30 * 1000, // Refrescar cada 30 segundos (optimizado para mejor rendimiento)
-    refetchOnWindowFocus: true, // Refrescar cuando la ventana recupera el foco
+  const { data, isLoading, isPlaceholderData } = useQuery({
+    queryKey: ['inventory-movements', page, selectedWarehouse, selectedType, selectedUser, startDate, endDate, debouncedSearch],
+    queryFn: () => fetchMovements(page, selectedWarehouse, selectedType, selectedUser, startDate, endDate, debouncedSearch),
+    staleTime: 10 * 1000,
+    refetchInterval: 30 * 1000,
+    refetchOnWindowFocus: true,
     gcTime: 5 * 60 * 1000,
     placeholderData: (prev) => prev,
   })
@@ -110,6 +112,11 @@ export function MovementsList() {
             placeholder="Buscar por motivo, referencia, producto..."
             className="pl-9 w-72"
           />
+          {(isLoading || isPlaceholderData) && (
+            <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+            </div>
+          )}
         </div>
         <select
           value={selectedWarehouse}
@@ -192,52 +199,52 @@ export function MovementsList() {
           <span className="text-muted-foreground">Cargando movimientos...</span>
         </div>
       ) : (
-      <div className="border rounded-lg">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Fecha</TableHead>
-              <TableHead>Tipo</TableHead>
-              <TableHead>Producto</TableHead>
-              <TableHead>Almacén</TableHead>
-              <TableHead>Cantidad</TableHead>
-              <TableHead>Costo</TableHead>
-              <TableHead>Referencia</TableHead>
-              <TableHead>Razón</TableHead>
-              <TableHead>Usuario</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {movements.length === 0 ? (
+        <div className="border rounded-lg">
+          <Table>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={9} className="text-center text-gray-500">
-                  No hay movimientos
-                </TableCell>
+                <TableHead>Fecha</TableHead>
+                <TableHead>Tipo</TableHead>
+                <TableHead>Producto</TableHead>
+                <TableHead>Almacén</TableHead>
+                <TableHead>Cantidad</TableHead>
+                <TableHead>Costo</TableHead>
+                <TableHead>Referencia</TableHead>
+                <TableHead>Razón</TableHead>
+                <TableHead>Usuario</TableHead>
               </TableRow>
-            ) : (
-              movements.map((movement: any) => (
-                <TableRow key={movement.id}>
-                  <TableCell>{formatDateTime(movement.createdAt)}</TableCell>
-                  <TableCell>
-                    <span className={getTypeColor(movement.type)}>
-                      {getTypeLabel(movement.type)}
-                    </span>
+            </TableHeader>
+            <TableBody>
+              {movements.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={9} className="text-center text-gray-500">
+                    No hay movimientos
                   </TableCell>
-                  <TableCell>{movement.productName} ({movement.productSku})</TableCell>
-                  <TableCell>{movement.warehouseName}</TableCell>
-                  <TableCell>{movement.quantity.toFixed(2)}</TableCell>
-                  <TableCell>
-                    {movement.cost ? formatCurrency(movement.cost) : '-'}
-                  </TableCell>
-                  <TableCell>{movement.reference || '-'}</TableCell>
-                  <TableCell>{movement.reason || '-'}</TableCell>
-                  <TableCell>{movement.createdByName}</TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+              ) : (
+                movements.map((movement: any) => (
+                  <TableRow key={movement.id}>
+                    <TableCell>{formatDateTime(movement.createdAt)}</TableCell>
+                    <TableCell>
+                      <span className={getTypeColor(movement.type)}>
+                        {getTypeLabel(movement.type)}
+                      </span>
+                    </TableCell>
+                    <TableCell>{movement.productName} ({movement.productSku})</TableCell>
+                    <TableCell>{movement.warehouseName}</TableCell>
+                    <TableCell>{movement.quantity.toFixed(2)}</TableCell>
+                    <TableCell>
+                      {movement.cost ? formatCurrency(movement.cost) : '-'}
+                    </TableCell>
+                    <TableCell>{movement.reference || '-'}</TableCell>
+                    <TableCell>{movement.reason || '-'}</TableCell>
+                    <TableCell>{movement.createdByName}</TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
       )}
 
       {pagination.totalPages > 1 && (
