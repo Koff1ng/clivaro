@@ -16,7 +16,7 @@ const createCustomerSchema = z.object({
 
 export async function GET(request: Request) {
   const session = await requirePermission(request as any, PERMISSIONS.MANAGE_CRM, { rateLimit: 'read' })
-  
+
   if (session instanceof NextResponse) {
     return session
   }
@@ -37,9 +37,10 @@ export async function GET(request: Request) {
 
     if (search) {
       where.OR = [
-        { name: { contains: search } },
-        { email: { contains: search } },
-        { phone: { contains: search } },
+        { name: { contains: search, mode: 'insensitive' } },
+        { email: { contains: search, mode: 'insensitive' } },
+        { phone: { contains: search, mode: 'insensitive' } },
+        { taxId: { contains: search, mode: 'insensitive' } },
       ]
     }
 
@@ -73,7 +74,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   const session = await requirePermission(request as any, PERMISSIONS.MANAGE_CRM, { rateLimit: 'write' })
-  
+
   if (session instanceof NextResponse) {
     return session
   }
@@ -113,4 +114,3 @@ export async function POST(request: Request) {
     )
   }
 }
-

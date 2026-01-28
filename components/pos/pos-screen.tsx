@@ -2,12 +2,13 @@
 
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { CustomerForm } from '@/components/crm/customer-form'
 import { useDebounce } from '@/lib/hooks/use-debounce'
 import { formatCurrency } from '@/lib/utils'
 import { useToast } from '@/components/ui/toast'
 import { useThermalPrint } from '@/lib/hooks/use-thermal-print'
 import { useSession } from 'next-auth/react'
-import { Search, Plus, Minus, User, ShoppingCart, X, DollarSign, CreditCard, ArrowLeftRight, Check, Printer, Copy, Bookmark, FolderOpen, Keyboard } from 'lucide-react'
+import { Search, Plus, Minus, User, ShoppingCart, X, DollarSign, CreditCard, ArrowLeftRight, Check, Printer, Copy, Bookmark, FolderOpen, Keyboard, UserPlus, Phone } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -69,28 +70,23 @@ type OfflineQueuedSale = {
   syncedAt?: string
   lastError?: string
   lastErrorCode?: string
-  conflicts?: Array<{
-    type: 'STOCK' | 'PERMISSION' | 'VALIDATION' | 'UNKNOWN'
-    productId?: string
-    variantId?: string | null
-    productName?: string
-    available?: number
-    requested?: number
-    permission?: string
-    message?: string
-  }>
+  conflicts?: any[]
   serverInvoiceId?: string | null
   serverInvoiceNumber?: string | null
   payload: any
   receipt: {
     provisionalInvoiceNumber: string
-    items: CartItem[]
+    number?: string
+    issuedAt?: string
+    items: any[]
     customer: any | null
     paymentMode: 'SINGLE' | 'SPLIT'
     paymentMethod: PaymentMethod
     cashReceived?: number | null
     payments?: Array<{ method: PaymentMethod; amount: number }>
     change?: number
+    subtotal: number
+    tax: number
     total: number
   }
 }
@@ -169,6 +165,7 @@ export function POSScreen() {
   const [selectedCustomer, setSelectedCustomer] = useState<any>(null)
   const [customerSearch, setCustomerSearch] = useState('')
   const [showCustomerDialog, setShowCustomerDialog] = useState(false)
+  const [showAddCustomer, setShowAddCustomer] = useState(false)
   const [selectedWarehouse, setSelectedWarehouse] = useState<string>('')
   const [paymentMode, setPaymentMode] = useState<'SINGLE' | 'SPLIT'>('SINGLE')
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('CASH')
@@ -759,7 +756,7 @@ export function POSScreen() {
     const paidTotal = normalizedSplit.reduce((sum, p) => sum + p.amount, 0)
 
     const provisionalInvoiceNumber = `OFF-${now.getTime()}`
-    const queued: OfflineQueuedSale = {
+    const queued: any = {
       id,
       createdAt: now.toISOString(),
       status: 'PENDING',
@@ -1847,22 +1844,27 @@ export function POSScreen() {
         </div>
       </div>
 
-      {/* Customer Dialog */}
+      {/* Customer Selection Dialog */}
       <Dialog open={showCustomerDialog} onOpenChange={setShowCustomerDialog}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Seleccionar Cliente</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <div>
-              <Input
-                placeholder="Buscar cliente..."
-                value={customerSearch}
-                onChange={(e) => setCustomerSearch(e.target.value)}
-                className="mb-4"
-              />
-              {customerResults.length > 0 && (
-                <div className="border rounded-lg max-h-60 overflow-y-auto">
+            <div className="space-y-2">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar por nombre, NIT o teléfono..."
+                  value={customerSearch}
+                  onChange={(e) => setCustomerSearch(e.target.value)}
+                  className="pl-9"
+                  autoFocus
+                />
+              </div>
+
+              {customerResults.length > 0 ? (
+                <div className="border rounded-lg max-h-60 overflow-y-auto divide-y shadow-sm">
                   {customerResults.map((customer: any) => (
                     <button
                       key={customer.id}
@@ -1871,28 +1873,95 @@ export function POSScreen() {
                         setShowCustomerDialog(false)
                         setCustomerSearch('')
                       }}
-                      className="w-full text-left p-3 hover:bg-gray-50 border-b last:border-0"
+                      className="w-full text-left p-3 hover:bg-muted transition-colors"
                     >
-                      <div className="font-medium">{customer.name}</div>
-                      {customer.email && (
-                        <div className="text-sm text-gray-500">{customer.email}</div>
-                      )}
+                      <div className="font-medium text-sm">{customer.name}</div>
+                      <div className="flex gap-2 mt-0.5">
+                        {customer.taxId && (
+                          <span className="text-[10px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded border border-blue-100 font-medium">
+                            NIT: {customer.taxId}
+                          </span>
+                        )}
+                        {customer.phone && (
+                          <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                            <Phone className="h-2.5 w-2.5" />
+                            {customer.phone}
+                          </span>
+                        )}
+                      </div>
                     </button>
                   ))}
                 </div>
+              ) : customerSearch.length > 2 ? (
+                <div className="p-8 text-center border-2 border-dashed rounded-lg bg-muted/30">
+                  <UserPlus className="h-8 w-8 mx-auto mb-2 text-muted-foreground opacity-50" />
+                  <p className="text-sm font-medium mb-1">No se encontró el cliente</p>
+                  <p className="text-xs text-muted-foreground mb-4">¿Deseas registrarlo como nuevo?</p>
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      setShowCustomerDialog(false)
+                      setShowAddCustomer(true)
+                    }}
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Registrar "{customerSearch}"
+                  </Button>
+                </div>
+              ) : (
+                <div className="p-4 text-center text-sm text-muted-foreground">
+                  Ingresa al menos 3 caracteres para buscar
+                </div>
               )}
             </div>
-            <Button
-              variant="outline"
-              className="w-full"
-              onClick={() => {
-                setSelectedCustomer(null)
-                setShowCustomerDialog(false)
+
+            <div className="flex gap-2 border-t pt-4">
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => {
+                  setSelectedCustomer(null)
+                  setShowCustomerDialog(false)
+                  setCustomerSearch('')
+                }}
+              >
+                Venta sin Cliente
+              </Button>
+              <Button
+                className="flex-1"
+                onClick={() => {
+                  setShowCustomerDialog(false)
+                  setShowAddCustomer(true)
+                }}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Nuevo Cliente
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Customer Dialog */}
+      <Dialog open={showAddCustomer} onOpenChange={setShowAddCustomer}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Registrar Nuevo Cliente</DialogTitle>
+          </DialogHeader>
+          <div className="py-2">
+            <CustomerForm
+              customer={customerSearch ? {
+                // Heuristic: if it looks like a number, it might be taxId
+                name: /^\d+$/.test(customerSearch) ? '' : customerSearch,
+                taxId: /^\d+$/.test(customerSearch) ? customerSearch : ''
+              } : null}
+              onSuccess={() => {
+                setShowAddCustomer(false)
                 setCustomerSearch('')
+                queryClient.invalidateQueries({ queryKey: ['customer-search'] })
+                toast('Cliente registrado correctamente', 'success')
               }}
-            >
-              Venta sin Cliente
-            </Button>
+            />
           </div>
         </DialogContent>
       </Dialog>
