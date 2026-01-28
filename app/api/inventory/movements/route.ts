@@ -125,7 +125,11 @@ export async function GET(request: Request) {
   } catch (error) {
     console.error('Error fetching movements:', error)
     return NextResponse.json(
-      { error: 'Failed to fetch movements' },
+      {
+        error: 'Failed to fetch movements',
+        details: error instanceof Error ? error.message : String(error),
+        code: (error as any)?.code
+      },
       { status: 500 }
     )
   }
