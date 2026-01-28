@@ -8,15 +8,15 @@ export async function GET(
 ) {
   try {
     const session = await requireAuth(request)
-    
+
     if (session instanceof NextResponse) {
       return session
     }
 
 
-  const user = session.user as any
+    const user = session.user as any
     const { id } = await params
-    
+
     // Verificar si es super admin
     const dbUser = await prisma.user.findUnique({
       where: { id: user.id },
@@ -56,15 +56,15 @@ export async function POST(
 ) {
   try {
     const session = await requireAuth(request)
-    
+
     if (session instanceof NextResponse) {
       return session
     }
 
 
-  const user = session.user as any
+    const user = session.user as any
     const { id } = await params
-    
+
     // Verificar si es super admin
     const dbUser = await prisma.user.findUnique({
       where: { id: user.id },
@@ -96,19 +96,20 @@ export async function POST(
       )
     }
 
-    // Cancelar suscripciones activas anteriores
-    await prisma.subscription.updateMany({
+    // Use upsert to handle the unique constraint on tenantId
+    const subscription = await prisma.subscription.upsert({
       where: {
         tenantId: id,
-        status: 'active'
       },
-      data: {
-        status: 'cancelled'
-      }
-    })
-
-    const subscription = await prisma.subscription.create({
-      data: {
+      update: {
+        planId,
+        startDate: new Date(startDate),
+        endDate: endDate ? new Date(endDate) : null,
+        trialEndDate: trialEndDate ? new Date(trialEndDate) : null,
+        status: status || 'active',
+        autoRenew: autoRenew !== undefined ? autoRenew : true
+      },
+      create: {
         tenantId: id,
         planId,
         startDate: new Date(startDate),
@@ -138,14 +139,14 @@ export async function PUT(
 ) {
   try {
     const session = await requireAuth(request)
-    
+
     if (session instanceof NextResponse) {
       return session
     }
 
     const user = session.user as any
     const { id } = await params
-    
+
     // Verificar si es super admin
     const dbUser = await prisma.user.findUnique({
       where: { id: user.id },
@@ -169,50 +170,24 @@ export async function PUT(
       )
     }
 
-    // Si se está cambiando a un nuevo plan, cancelar la suscripción activa actual
+    // Si se está cambiando a un nuevo plan, actualizar la suscripción existente
     if (planId) {
-      const currentSubscription = await prisma.subscription.findUnique({
+      // Actualizar la suscripción existente con el nuevo plan
+      const subscription = await prisma.subscription.update({
         where: { id: subscriptionId },
-        include: { plan: true }
+        data: {
+          planId,
+          ...(startDate && { startDate: new Date(startDate) }),
+          ...(endDate !== undefined && { endDate: endDate ? new Date(endDate) : null }),
+          status: status || 'active',
+          ...(autoRenew !== undefined && { autoRenew })
+        },
+        include: {
+          plan: true
+        }
       })
 
-      // Si el plan es diferente, cancelar la suscripción actual y crear una nueva
-      if (currentSubscription && currentSubscription.planId !== planId) {
-        // Cancelar la suscripción actual
-        await prisma.subscription.update({
-          where: { id: subscriptionId },
-          data: { status: 'cancelled' }
-        })
-
-        // Cancelar cualquier otra suscripción activa
-        await prisma.subscription.updateMany({
-          where: {
-            tenantId: id,
-            status: 'active',
-            id: { not: subscriptionId }
-          },
-          data: {
-            status: 'cancelled'
-          }
-        })
-
-        // Crear nueva suscripción con el nuevo plan
-        const newSubscription = await prisma.subscription.create({
-          data: {
-            tenantId: id,
-            planId,
-            startDate: startDate ? new Date(startDate) : new Date(),
-            endDate: endDate ? new Date(endDate) : null,
-            status: status || 'active',
-            autoRenew: autoRenew !== undefined ? autoRenew : true
-          },
-          include: {
-            plan: true
-          }
-        })
-
-        return NextResponse.json(newSubscription)
-      }
+      return NextResponse.json(subscription)
     }
 
     // Actualizar la suscripción existente

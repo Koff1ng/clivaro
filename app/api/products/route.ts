@@ -80,6 +80,8 @@ export async function GET(request: Request) {
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '20')
     const search = searchParams.get('search') || ''
+    const category = searchParams.get('category') || ''
+    const productType = searchParams.get('productType') || ''
     const orderBy = searchParams.get('orderBy') || 'name'
     const skip = (page - 1) * limit
 
@@ -95,6 +97,16 @@ export async function GET(request: Request) {
       ]
     }
 
+    // Add Category Filter
+    if (category && category !== 'all') {
+      where.category = category
+    }
+
+    // Add ProductType Filter
+    if (productType && productType !== 'all') {
+      where.productType = productType
+    }
+
     // Determinar ordenamiento
     let orderByClause: any = { name: 'asc' }
     if (orderBy === 'createdAt') {
@@ -103,7 +115,7 @@ export async function GET(request: Request) {
       orderByClause = { name: 'asc' }
     }
 
-    const [products, total] = await Promise.all([
+    const [productsRaw, total] = await Promise.all([
       executeWithRetry(() => prisma.product.findMany({
         where,
         skip,
@@ -113,18 +125,73 @@ export async function GET(request: Request) {
           _count: {
             select: { variants: true },
           },
+          stockLevels: {
+            select: { quantity: true, warehouseId: true }
+          },
+          recipe: {
+            include: {
+              items: {
+                include: {
+                  ingredient: {
+                    select: {
+                      id: true,
+                      stockLevels: {
+                        select: { quantity: true, warehouseId: true }
+                      },
+                      unitOfMeasure: true
+                    }
+                  }
+                }
+              }
+            }
+          }
         },
       })),
       executeWithRetry(() => prisma.product.count({ where })),
     ])
 
-    return NextResponse.json({
-      products: products.map(p => ({
+    // Explicitly cast or handle the type safely
+    const productsWithStock = productsRaw.map((p: any) => {
+      let stock = 0
+
+      if (p.enableRecipeConsumption && p.recipe?.items?.length) {
+        // Calculate virtual stock based on ingredients
+        const maxQuantities = p.recipe.items.map(item => {
+          if (!item.ingredient) return 0
+
+          // Total ingredient stock across all warehouses (simplified for now)
+          const ingredientStock = item.ingredient.stockLevels?.reduce((sum, sl) => sum + sl.quantity, 0) || 0
+
+          // TODO: Handle Unit Conversions (e.g., kg -> g)
+          // For now, assuming units are compatible or conversion logic is handled elsewhere.
+          // Ideally we need the 'lib/recipes.ts' logic here, but let's do a simple direct calc for MVP.
+          // If ingredient is in KG and recipe needs 0.150 KG, and we have 10 KG stock: 10 / 0.150 = 66
+
+          if (item.quantity <= 0) return 0
+          return Math.floor(ingredientStock / item.quantity)
+        })
+
+        stock = maxQuantities.length > 0 ? Math.min(...maxQuantities) : 0
+
+      } else {
+        // Standard physical stock
+        stock = p.stockLevels?.reduce((sum, sl) => sum + sl.quantity, 0) || 0
+      }
+
+      return {
         ...p,
         cost: p.cost,
         price: p.price,
         taxRate: p.taxRate,
-      })),
+        stock, // Return the calculated stock
+        // Clean up internal relations to keep response light if needed, or leave them
+        recipe: undefined,
+        stockLevels: undefined
+      }
+    })
+
+    return NextResponse.json({
+      products: productsWithStock,
       pagination: {
         page,
         limit,

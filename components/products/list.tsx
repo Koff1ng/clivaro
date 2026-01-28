@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import dynamic from 'next/dynamic'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { useDebounce } from '@/lib/hooks/use-debounce'
@@ -16,12 +17,15 @@ const ProductForm = dynamic(() => import('./form').then(mod => ({ default: mod.P
   loading: () => <div className="p-4">Cargando formulario...</div>,
 })
 
-async function fetchProducts(page: number, search: string) {
+// ...
+
+async function fetchProducts(page: number, search: string, category: string) {
   const params = new URLSearchParams({
     page: page.toString(),
     limit: '20',
   })
   if (search) params.append('search', search)
+  if (category && category !== 'all') params.append('category', category)
 
   const res = await fetch(`/api/products?${params}`)
   if (!res.ok) throw new Error('Failed to fetch products')
@@ -31,6 +35,7 @@ async function fetchProducts(page: number, search: string) {
 export function ProductsList() {
   const [page, setPage] = useState(1)
   const [search, setSearch] = useState('')
+  const [category, setCategory] = useState('all')
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingProduct, setEditingProduct] = useState<any>(null)
   const queryClient = useQueryClient()
@@ -39,8 +44,8 @@ export function ProductsList() {
   const debouncedSearch = useDebounce(search, 500)
 
   const { data, isLoading } = useQuery({
-    queryKey: ['products', page, debouncedSearch],
-    queryFn: () => fetchProducts(page, debouncedSearch),
+    queryKey: ['products', page, debouncedSearch, category],
+    queryFn: () => fetchProducts(page, debouncedSearch, category),
     staleTime: 2 * 60 * 1000, // 2 minutes
     gcTime: 5 * 60 * 1000, // 5 minutes cache
     placeholderData: (prev) => prev, // Keep previous data while loading new page
@@ -73,6 +78,11 @@ export function ProductsList() {
     setPage(1)
   }, [])
 
+  const handleCategoryChange = useCallback((value: string) => {
+    setCategory(value)
+    setPage(1)
+  }, [])
+
   const { products, pagination } = useMemo(() => {
     return data || { products: [], pagination: { totalPages: 1 } }
   }, [data])
@@ -89,6 +99,26 @@ export function ProductsList() {
             className="pl-10"
           />
         </div>
+
+        <Select value={category} onValueChange={handleCategoryChange}>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="Categoría" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todas</SelectItem>
+            <SelectItem value="Carnes">Carnes</SelectItem>
+            <SelectItem value="Hamburguesas">Hamburguesas</SelectItem>
+            <SelectItem value="Perros Calientes">Perros Calientes</SelectItem>
+            <SelectItem value="Acompañamientos">Acompañamientos</SelectItem>
+            <SelectItem value="Bebidas">Bebidas</SelectItem>
+            <SelectItem value="Panadería">Panadería</SelectItem>
+            <SelectItem value="Lácteos">Lácteos</SelectItem>
+            <SelectItem value="Verduras">Verduras</SelectItem>
+            <SelectItem value="Salsas">Salsas</SelectItem>
+            <SelectItem value="Despensa">Despensa</SelectItem>
+          </SelectContent>
+        </Select>
+
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button onClick={() => setEditingProduct(null)} className="w-full sm:w-auto">
@@ -207,7 +237,11 @@ const ProductRow = React.memo(({ product, onEdit }: { product: any; onEdit: (pro
     <TableCell>{formatCurrency(product.cost)}</TableCell>
     <TableCell>{formatCurrency(product.price)}</TableCell>
     <TableCell>
-      {product.trackStock ? 'Sí' : 'No'}
+      {product.trackStock ? (
+        <span className={product.stock <= 0 ? 'text-red-500 font-bold' : ''}>
+          {product.stock !== undefined ? product.stock : 'Sí'}
+        </span>
+      ) : 'No'}
     </TableCell>
     <TableCell>
       <Button

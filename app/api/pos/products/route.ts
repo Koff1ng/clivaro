@@ -6,7 +6,7 @@ import { logger } from '@/lib/logger'
 
 export async function GET(request: Request) {
   const session = await requirePermission(request as any, PERMISSIONS.MANAGE_SALES)
-  
+
   if (session instanceof NextResponse) {
     return session
   }
@@ -22,6 +22,8 @@ export async function GET(request: Request) {
 
     const where: any = {
       active: true,
+      // HIDE INGREDIENTS FROM POS
+      productType: { not: 'RAW' },
     }
 
     if (search) {
@@ -36,7 +38,7 @@ export async function GET(request: Request) {
       where.category = category
     }
 
-    const products = await prisma.product.findMany({
+    const productsRaw = await prisma.product.findMany({
       where,
       take: limit,
       orderBy: { name: 'asc' },
@@ -47,11 +49,67 @@ export async function GET(request: Request) {
             quantity: true,
           },
         },
-      },
+        // Include recipe items to calculate virtual stock
+        recipe: {
+          include: {
+            items: {
+              include: {
+                ingredient: {
+                  select: {
+                    id: true,
+                    stockLevels: {
+                      select: { quantity: true, warehouseId: true }
+                    },
+                  }
+                }
+              }
+            }
+          }
+        }
+      } as any,
     })
 
-    return NextResponse.json({
-      products: products.map(p => ({
+    // Process products to calculate virtual stock for recipe items
+    const products = productsRaw.map((p: any) => {
+      let stockLevels = p.stockLevels || []
+
+      if (p.enableRecipeConsumption && p.recipe?.items?.length) {
+        // Find all unique warehouses involved in ingredients? 
+        // Or just check warehouses that have ANY stock of ingredients?
+        // Simplified: Iterate over known warehouses from the ingredients' stock levels
+
+        const warehouseIds = new Set<string>()
+        p.recipe.items.forEach((item: any) => {
+          item.ingredient?.stockLevels?.forEach((sl: any) => warehouseIds.add(sl.warehouseId))
+        })
+
+        const virtualStockLevels: any[] = []
+
+        warehouseIds.forEach(warehouseId => {
+          // Calculate max producible quantity for this warehouse
+          const maxQuantities = p.recipe.items.map((item: any) => {
+            if (!item.ingredient) return 0
+
+            const sl = item.ingredient.stockLevels?.find((s: any) => s.warehouseId === warehouseId)
+            const ingredientStock = sl?.quantity || 0
+
+            if (item.quantity <= 0) return 0
+            return Math.floor(ingredientStock / item.quantity)
+          })
+
+          const qty = maxQuantities.length > 0 ? Math.min(...maxQuantities) : 0
+          if (qty > 0) {
+            virtualStockLevels.push({ warehouseId, quantity: qty })
+          }
+        })
+
+        // If virtual stock exists, use it. (Override physical stock or merge? Override is safer for now for recipe products)
+        if (virtualStockLevels.length > 0) {
+          stockLevels = virtualStockLevels
+        }
+      }
+
+      return {
         id: p.id,
         name: p.name,
         sku: p.sku,
@@ -59,13 +117,18 @@ export async function GET(request: Request) {
         price: p.price,
         taxRate: p.taxRate,
         trackStock: p.trackStock,
-        stockLevels: p.stockLevels,
-      })),
+        stockLevels: stockLevels,
+        // category: p.category // optional if needed by POS
+      }
+    })
+
+    return NextResponse.json({
+      products,
     })
   } catch (error: any) {
     logger.error('Error fetching POS products', error, { endpoint: '/api/pos/products', method: 'GET' })
     return NextResponse.json(
-      { 
+      {
         error: error?.message || 'Failed to fetch products',
         code: 'SERVER_ERROR',
         details: process.env.NODE_ENV === 'development' ? String(error?.stack || '') : undefined,
