@@ -16,6 +16,8 @@ const adjustmentSchema = z.object({
     message: 'La cantidad debe ser mayor a 0',
   }),
   reason: z.string().min(1, 'La razón es requerida'),
+  reasonCode: z.string().optional(),
+  reasonNote: z.string().optional(),
 })
 
 type AdjustmentFormData = z.infer<typeof adjustmentSchema>
@@ -31,6 +33,8 @@ export function StockAdjustmentForm({ item, onSuccess }: { item: any; onSuccess:
     defaultValues: {
       quantity: 0,
       reason: '',
+      reasonCode: '',
+      reasonNote: '',
     },
   })
 
@@ -48,6 +52,8 @@ export function StockAdjustmentForm({ item, onSuccess }: { item: any; onSuccess:
           variantId: item.variantId || null,
           quantity: data.quantity,
           reason: data.reason,
+          reasonCode: data.reasonCode || null,
+          reasonNote: data.reasonNote || null,
         }),
       })
       if (!res.ok) {
@@ -145,7 +151,7 @@ export function StockAdjustmentForm({ item, onSuccess }: { item: any; onSuccess:
         )}
         {adjustmentType && (
           <p className="text-xs text-gray-500 mt-1">
-            {adjustmentType === 'ENTRADA' 
+            {adjustmentType === 'ENTRADA'
               ? 'Ingresa la cantidad a sumar al inventario'
               : 'Ingresa la cantidad a restar del inventario'}
           </p>
@@ -162,6 +168,35 @@ export function StockAdjustmentForm({ item, onSuccess }: { item: any; onSuccess:
           <p className="text-sm text-red-500">{errors.reason.message}</p>
         )}
       </div>
+
+      {adjustmentType === 'SALIDA' && (
+        <>
+          <div>
+            <Label htmlFor="reasonCode">Tipo de Salida (Opcional)</Label>
+            <select
+              id="reasonCode"
+              {...register('reasonCode')}
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+            >
+              <option value="">Seleccione un motivo...</option>
+              <option value="WASTE">Desperdicio / Merma</option>
+              <option value="SPILL">Derrame / Rotura</option>
+              <option value="EXPIRED">Vencimiento</option>
+              <option value="STAFF_MEAL">Consumo de Personal</option>
+              <option value="OTHER">Otro</option>
+            </select>
+          </div>
+          <div>
+            <Label htmlFor="reasonNote">Notas Adicionales (Opcional)</Label>
+            <textarea
+              id="reasonNote"
+              {...register('reasonNote')}
+              className="flex min-h-[60px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              placeholder="Detalles adicionales sobre el ajuste..."
+            />
+          </div>
+        </>
+      )}
       <div className="flex justify-end gap-2">
         <Button type="button" variant="outline" onClick={onSuccess}>
           Cancelar

@@ -13,6 +13,8 @@ const adjustmentSchema = z.object({
   variantId: z.string().optional().nullable(),
   quantity: z.number(),
   reason: z.string().min(1),
+  reasonCode: z.string().optional().nullable(),
+  reasonNote: z.string().optional().nullable(),
 })
 
 export async function POST(request: Request) {
@@ -50,6 +52,8 @@ export async function POST(request: Request) {
           type: movementType,
           quantity: Math.abs(quantity),
           reason: data.reason,
+          reasonCode: data.reasonCode as any,
+          reasonNote: data.reasonNote,
           createdById: (session.user as any).id,
           reference: `ADJ-${Date.now()}`,
         },

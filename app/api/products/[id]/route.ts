@@ -21,6 +21,8 @@ const updateProductSchema = z.object({
   minStock: z.number().min(0).optional(),
   maxStock: z.number().min(0).optional().nullable(),
   description: z.string().optional().nullable(),
+  productType: z.enum(['RETAIL', 'RAW', 'PREPARED', 'SELLABLE']).optional(),
+  enableRecipeConsumption: z.boolean().optional(),
   active: z.boolean().optional(),
   // Variants (Upsert)
   variants: z.array(z.object({

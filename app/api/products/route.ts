@@ -52,6 +52,8 @@ const createProductSchema = z.object({
   minStock: z.union([z.number().min(0), z.undefined()]).optional(),
   maxStock: z.union([z.number().min(0), z.null(), z.undefined()]).optional().nullable(),
   description: z.string().optional().nullable(),
+  productType: z.enum(['RETAIL', 'RAW', 'PREPARED', 'SELLABLE']).default('RETAIL'),
+  enableRecipeConsumption: z.boolean().default(false),
   // Variants
   variants: z.array(z.object({
     name: z.string().min(1),
@@ -162,6 +164,8 @@ export async function POST(request: Request) {
       const p = await tx.product.create({
         data: {
           ...productData,
+          productType: data.productType as any,
+          enableRecipeConsumption: data.enableRecipeConsumption as any,
           cost: productData.cost,
           price: productData.price,
           taxRate: productData.taxRate,
@@ -226,8 +230,8 @@ export async function POST(request: Request) {
           })
 
           // También crear stock para variantes si existen
-          if (p.variants && p.variants.length > 0) {
-            for (const v of p.variants) {
+          if ((p as any).variants && (p as any).variants.length > 0) {
+            for (const v of (p as any).variants) {
               await tx.stockLevel.create({
                 data: {
                   warehouseId: warehouse.id,
@@ -280,9 +284,10 @@ export async function POST(request: Request) {
 
     console.error('Error creating product:', {
       error: errorMessage,
-      name: errorName,
-      code: errorCode,
-      stack: errorStack,
+      reason: (error as any).reason,
+      reasonCode: (error as any).reasonCode,
+      reasonNote: (error as any).reasonNote,
+      createdAt: (error as any).createdAt,
       body: requestBody,
       prismaError: error,
     })

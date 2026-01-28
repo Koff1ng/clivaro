@@ -9,7 +9,9 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/toast'
 import { CategorySelect } from './category-select'
-import { Plus, Trash2 } from 'lucide-react'
+import { Plus, Trash2, Utensils } from 'lucide-react'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { RecipeEditor } from './recipe-editor'
 
 const productSchema = z.object({
   sku: z.string().min(1, 'SKU es requerido'),
@@ -25,6 +27,8 @@ const productSchema = z.object({
   minStock: z.number().min(0, 'Mínimo debe ser mayor o igual a 0').optional(),
   maxStock: z.number().min(0, 'Máximo debe ser mayor o igual a 0').optional().nullable(),
   description: z.string().optional(),
+  productType: z.enum(['RETAIL', 'RAW', 'PREPARED', 'SELLABLE']).default('RETAIL'),
+  enableRecipeConsumption: z.boolean().default(false),
   // Variants
   variants: z.array(z.object({
     id: z.string().optional(),
@@ -66,6 +70,8 @@ export function ProductForm({ product, onSuccess }: { product?: any; onSuccess: 
         price: v.price,
         cost: v.cost,
       })) || [],
+      productType: (product as any).productType || 'RETAIL',
+      enableRecipeConsumption: (product as any).enableRecipeConsumption || false,
     } : {
       unitOfMeasure: 'UNIT',
       cost: 0,
@@ -73,6 +79,8 @@ export function ProductForm({ product, onSuccess }: { product?: any; onSuccess: 
       taxRate: 0,
       trackStock: true,
       minStock: 0,
+      productType: 'RETAIL',
+      enableRecipeConsumption: false,
       variants: [],
     },
   })
@@ -277,6 +285,62 @@ export function ProductForm({ product, onSuccess }: { product?: any; onSuccess: 
           className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
           rows={3}
         />
+      </div>
+
+      <div className="space-y-4 pt-4 border-t">
+        <Label className="text-base font-semibold">Configuración de Restaurante</Label>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <Label htmlFor="productType">Tipo de Producto</Label>
+            <select
+              id="productType"
+              {...register('productType')}
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+            >
+              <option value="RETAIL">Retail (Normal)</option>
+              <option value="RAW">Insumo / Materia Prima</option>
+              <option value="PREPARED">Item Elaborado (No vendible)</option>
+              <option value="SELLABLE">Plato / Vendible con Receta</option>
+            </select>
+            <p className="text-xs text-muted-foreground mt-1">
+              Determina cómo se comporta este producto en inventario y recetas.
+            </p>
+          </div>
+          <div className="flex items-center gap-2 pt-6">
+            <input
+              id="enableRecipeConsumption"
+              type="checkbox"
+              {...register('enableRecipeConsumption')}
+              className="h-4 w-4 rounded border-gray-300"
+            />
+            <Label htmlFor="enableRecipeConsumption">Habilitar consumo por receta</Label>
+          </div>
+        </div>
+        {watch('enableRecipeConsumption') && (
+          <div className="p-3 bg-muted/30 rounded-lg text-sm">
+            <p className="text-blue-600 font-medium">Consumo por Receta Activado</p>
+            <p className="text-muted-foreground">Al vender este producto, se descontarán sus ingredientes definidos en la receta.</p>
+            {product?.id && (
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button variant="outline" size="sm" className="mt-2">
+                    <Utensils className="h-4 w-4 mr-2" />
+                    Editar Receta
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-3xl">
+                  <DialogHeader>
+                    <DialogTitle>Manejo de Receta (BOM)</DialogTitle>
+                  </DialogHeader>
+                  <RecipeEditor
+                    productId={product.id}
+                    productName={product.name}
+                  />
+                </DialogContent>
+              </Dialog>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Security: Variants Section */}

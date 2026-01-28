@@ -22,7 +22,7 @@ async function fetchProducts(page: number, search: string) {
     limit: '20',
   })
   if (search) params.append('search', search)
-  
+
   const res = await fetch(`/api/products?${params}`)
   if (!res.ok) throw new Error('Failed to fetch products')
   return res.json()
@@ -107,7 +107,7 @@ export function ProductsList() {
               onSuccess={() => {
                 handleClose()
                 queryClient.invalidateQueries({ queryKey: ['products'] })
-      queryClient.invalidateQueries({ queryKey: ['activity-feed'] })
+                queryClient.invalidateQueries({ queryKey: ['activity-feed'] })
               }}
             />
           </DialogContent>
@@ -120,39 +120,40 @@ export function ProductsList() {
           <span className="text-muted-foreground">Cargando productos...</span>
         </div>
       ) : (
-      <div className="border rounded-lg">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>SKU</TableHead>
-              <TableHead>Nombre</TableHead>
-              <TableHead>Categoría</TableHead>
-              <TableHead>Unidad</TableHead>
-              <TableHead>Costo</TableHead>
-              <TableHead>Precio</TableHead>
-              <TableHead>Stock</TableHead>
-              <TableHead>Acciones</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {products.length === 0 ? (
+        <div className="border rounded-lg">
+          <Table>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={8} className="text-center text-gray-500">
-                  No hay productos
-                </TableCell>
+                <TableHead>SKU</TableHead>
+                <TableHead>Nombre</TableHead>
+                <TableHead>Tipo</TableHead>
+                <TableHead>Categoría</TableHead>
+                <TableHead>Unidad</TableHead>
+                <TableHead>Costo</TableHead>
+                <TableHead>Precio</TableHead>
+                <TableHead>Stock</TableHead>
+                <TableHead>Acciones</TableHead>
               </TableRow>
-            ) : (
-              products.map((product: any) => (
-                <ProductRow 
-                  key={product.id} 
-                  product={product} 
-                  onEdit={handleEdit}
-                />
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+            </TableHeader>
+            <TableBody>
+              {products.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={9} className="text-center text-gray-500">
+                    No hay productos
+                  </TableCell>
+                </TableRow>
+              ) : (
+                products.map((product: any) => (
+                  <ProductRow
+                    key={product.id}
+                    product={product}
+                    onEdit={handleEdit}
+                  />
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
       )}
 
       {pagination.totalPages > 1 && (
@@ -188,7 +189,19 @@ export function ProductsList() {
 const ProductRow = React.memo(({ product, onEdit }: { product: any; onEdit: (product: any) => void }) => (
   <TableRow>
     <TableCell>{product.sku}</TableCell>
-    <TableCell className="font-medium">{product.name}</TableCell>
+    <TableCell className="font-medium">
+      <div>{product.name}</div>
+      {product.enableRecipeConsumption && (
+        <div className="flex gap-1 mt-1">
+          <span className="text-[10px] bg-blue-100 text-blue-700 px-1 rounded font-bold uppercase">Con Receta</span>
+        </div>
+      )}
+    </TableCell>
+    <TableCell>
+      <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-700">
+        {product.productType || 'RETAIL'}
+      </span>
+    </TableCell>
     <TableCell>{product.category || '-'}</TableCell>
     <TableCell>{product.unitOfMeasure}</TableCell>
     <TableCell>{formatCurrency(product.cost)}</TableCell>

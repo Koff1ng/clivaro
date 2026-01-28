@@ -80,6 +80,9 @@ interface GeneralFormData {
   companyCity: string
   companyWebsite: string
 
+  // Restaurant Mode
+  enableRestaurantMode: boolean
+
   // Custom Settings (JSON)
   customSettings: string
 }
@@ -233,6 +236,7 @@ export function GeneralConfig({ settings, onSave, isLoading }: GeneralConfigProp
       companyRegime: initialCustomSettings.identity?.regime || 'Responsable de IVA',
       companyCity: initialCustomSettings.identity?.city || '',
       companyWebsite: initialCustomSettings.identity?.website || '',
+      enableRestaurantMode: settings?.enableRestaurantMode || false,
       customSettings: settings?.customSettings || '{}'
     }
   })
@@ -407,6 +411,14 @@ export function GeneralConfig({ settings, onSave, isLoading }: GeneralConfigProp
                   onClick={() => setActiveTab('meta')}
                 >
                   <Network className="mr-2 h-4 w-4" /> Integraciones
+                </Button>
+                <Button
+                  type="button"
+                  variant={activeTab === 'inventory' ? 'secondary' : 'ghost'}
+                  className="justify-start"
+                  onClick={() => setActiveTab('inventory')}
+                >
+                  <ShoppingCart className="mr-2 h-4 w-4" /> Inventario
                 </Button>
                 <Button
                   type="button"
@@ -606,6 +618,51 @@ export function GeneralConfig({ settings, onSave, isLoading }: GeneralConfigProp
                       </div>
                     )}
                   </div>
+                </div>
+              )}
+
+              {/* Inventory Content */}
+              {activeTab === 'inventory' && (
+                <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
+                  <div className="p-4 border rounded-xl bg-orange-50/50 dark:bg-orange-900/10 border-orange-100 dark:border-orange-900/30">
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-1">
+                        <h3 className="font-bold text-orange-900 dark:text-orange-100">Modo Restaurante</h3>
+                        <p className="text-sm text-orange-800/70 dark:text-orange-200/60">
+                          Habilita funciones avanzadas como recetas (BOM), gestión de ingredientes, mermas y consumo automático en POS.
+                        </p>
+                      </div>
+                      <Switch
+                        checked={watch('enableRestaurantMode')}
+                        onCheckedChange={(checked) => setValue('enableRestaurantMode', checked)}
+                      />
+                    </div>
+                  </div>
+
+                  {watch('enableRestaurantMode') && (
+                    <div className="space-y-4 pt-2">
+                      <div className="p-4 border rounded-xl bg-white dark:bg-slate-950 space-y-4">
+                        <h3 className="font-semibold flex items-center gap-2">
+                          <SettingsIcon className="h-4 w-4 text-primary" />
+                          Configuración de Restaurante
+                        </h3>
+                        <p className="text-sm text-muted-foreground">
+                          Una vez activado, podrás configurar recetas en la gestión de productos y verás nuevas opciones en el módulo de inventario.
+                        </p>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t">
+                          <div className="p-3 border rounded-lg bg-gray-50/50 dark:bg-slate-900/50">
+                            <h4 className="text-sm font-medium mb-1">Recetas e Ingredientes</h4>
+                            <p className="text-xs text-muted-foreground">Descuento automático de insumos al vender platos elaborados.</p>
+                          </div>
+                          <div className="p-3 border rounded-lg bg-gray-50/50 dark:bg-slate-900/50">
+                            <h4 className="text-sm font-medium mb-1">Control de Mermas</h4>
+                            <p className="text-xs text-muted-foreground">Registro de desperdicios, vencimientos y consumo de personal.</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

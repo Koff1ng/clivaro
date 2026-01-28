@@ -107,6 +107,8 @@ export async function GET(request: Request) {
       cost: m.cost,
       reference: m.reference,
       reason: m.reason,
+      reasonCode: (m as any).reasonCode,
+      reasonNote: (m as any).reasonNote,
       createdAt: m.createdAt,
       createdByName: m.createdBy.name,
     }))

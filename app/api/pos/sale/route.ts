@@ -7,6 +7,7 @@ import { z } from 'zod'
 import { toDecimal } from '@/lib/numbers'
 import { updateStockLevel, checkStock } from '@/lib/inventory'
 import { logActivity } from '@/lib/activity'
+import { resolveAllIngredients } from '@/lib/recipes'
 import { enqueueJob } from '@/lib/jobs/queue'
 import jwt from 'jsonwebtoken'
 import { prisma as masterPrisma } from '@/lib/db'
@@ -436,8 +437,64 @@ export async function POST(request: Request) {
           where: { id: item.productId },
         })
 
-        if (product?.trackStock) {
-          logger.debug('[POS Sale] Processing stock', { productId: item.productId, quantity: item.quantity })
+        if (!product) continue
+
+        const isRestaurantMode = (tenantSettings as any)?.enableRestaurantMode === true
+        const useRecipe = isRestaurantMode && (product as any).enableRecipeConsumption
+
+        if (useRecipe) {
+          logger.info('[POS Sale] Processing recipe consumption', { productId: item.productId, quantity: item.quantity })
+          const ingredients = await resolveAllIngredients(tx, item.productId, item.quantity)
+
+          for (const ing of ingredients) {
+            const ingProduct = await tx.product.findUnique({ where: { id: ing.ingredientId } })
+            if (!ingProduct?.trackStock) continue
+
+            // Create OUT movement for ingredient
+            await tx.stockMovement.create({
+              data: {
+                warehouseId: data.warehouseId,
+                productId: ing.ingredientId,
+                variantId: null, // Ingredients usually don't use variants in this BOM impl yet
+                type: 'OUT',
+                quantity: toDecimal(ing.quantity),
+                reason: `Consumo Receta: ${product.name} (Venta ${invoiceNumber})`,
+                reasonCode: 'RECIPE' as any,
+                reference: invoiceNumber,
+                createdById: (session.user as any).id,
+              },
+            })
+
+            // Update stock level for ingredient
+            const stockLevel = await tx.stockLevel.findFirst({
+              where: {
+                warehouseId: data.warehouseId,
+                productId: ing.ingredientId,
+                variantId: null,
+              },
+            })
+
+            if (stockLevel) {
+              await tx.stockLevel.update({
+                where: { id: stockLevel.id },
+                data: {
+                  quantity: { decrement: toDecimal(ing.quantity) },
+                },
+              })
+            } else {
+              // Should not happen if data is consistent, but create if missing to prevent crash
+              await tx.stockLevel.create({
+                data: {
+                  warehouseId: data.warehouseId,
+                  productId: ing.ingredientId,
+                  variantId: null,
+                  quantity: -toDecimal(ing.quantity),
+                },
+              })
+            }
+          }
+        } else if (product.trackStock) {
+          logger.debug('[POS Sale] Processing retail stock', { productId: item.productId, quantity: item.quantity })
 
           // Create OUT movement
           const movement = await tx.stockMovement.create({
@@ -448,8 +505,9 @@ export async function POST(request: Request) {
               type: 'OUT',
               quantity: toDecimal(item.quantity),
               reason: 'POS Sale',
-              createdById: (session.user as any).id,
+              reasonCode: 'SALE' as any,
               reference: invoiceNumber,
+              createdById: (session.user as any).id,
             },
           })
           logger.debug('[POS Sale] Stock movement created', { movementId: movement.id })

@@ -237,7 +237,19 @@ export function MovementsList() {
                       {movement.cost ? formatCurrency(movement.cost) : '-'}
                     </TableCell>
                     <TableCell>{movement.reference || '-'}</TableCell>
-                    <TableCell>{movement.reason || '-'}</TableCell>
+                    <TableCell>
+                      <div>{movement.reason || '-'}</div>
+                      {movement.reasonCode && (
+                        <div className="text-[10px] font-bold text-blue-600 uppercase">
+                          {movement.reasonCode}
+                        </div>
+                      )}
+                      {movement.reasonNote && (
+                        <div className="text-[10px] text-gray-400 italic">
+                          {movement.reasonNote}
+                        </div>
+                      )}
+                    </TableCell>
                     <TableCell>{movement.createdByName}</TableCell>
                   </TableRow>
                 ))
