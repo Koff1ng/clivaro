@@ -9,8 +9,9 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/toast'
 import { CategorySelect } from './category-select'
-import { Plus, Trash2, Utensils } from 'lucide-react'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { useRouter } from 'next/navigation'
+import { Plus, Trash2, Utensils, Loader2 } from 'lucide-react'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { RecipeEditor } from './recipe-editor'
 
 const productSchema = z.object({
@@ -44,6 +45,7 @@ type ProductFormData = z.infer<typeof productSchema>
 
 export function ProductForm({ product, onSuccess }: { product?: any; onSuccess: () => void }) {
   const [loading, setLoading] = useState(false)
+  const router = useRouter()
   const { toast } = useToast()
   const { register, handleSubmit, formState: { errors }, setValue, watch, control } = useForm<ProductFormData>({
     resolver: zodResolver(productSchema),
@@ -331,6 +333,9 @@ export function ProductForm({ product, onSuccess }: { product?: any; onSuccess: 
                 <DialogContent className="max-w-3xl">
                   <DialogHeader>
                     <DialogTitle>Manejo de Receta (BOM)</DialogTitle>
+                    <DialogDescription>
+                      Define los ingredientes y cantidades para elaborar este producto.
+                    </DialogDescription>
                   </DialogHeader>
                   <RecipeEditor
                     productId={product.id}
@@ -406,13 +411,69 @@ export function ProductForm({ product, onSuccess }: { product?: any; onSuccess: 
         )}
       </div>
 
-      <div className="flex flex-col-reverse sm:flex-row justify-end gap-2">
-        <Button type="button" variant="outline" onClick={onSuccess} className="w-full sm:w-auto">
-          Cancelar
-        </Button>
-        <Button type="submit" disabled={loading} className="w-full sm:w-auto">
-          {loading ? 'Guardando...' : product ? 'Actualizar' : 'Crear'}
-        </Button>
+      <div className="flex flex-col-reverse sm:flex-row justify-between gap-2">
+        <div className="flex justify-start">
+          {product?.id && (
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button type="button" variant="destructive" disabled={loading}>
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Eliminar Producto
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>¿Estás seguro?</DialogTitle>
+                  <DialogDescription>
+                    Esta acción marcará el producto como inactivo. No se eliminará del historial de ventas pero ya no estará disponible para nuevos movimientos.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="flex justify-end gap-2 pt-4">
+                  <Button type="button" variant="outline" onClick={() => { }} className="close-dialog">Cancelar</Button>
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    onClick={async (e) => {
+                      // Prevent form submission
+                      e.preventDefault()
+
+                      if (!product.id) return
+
+                      try {
+                        setLoading(true)
+                        const res = await fetch(`/api/products/${product.id}`, {
+                          method: 'DELETE'
+                        })
+
+                        if (!res.ok) throw new Error('Failed to delete')
+
+                        toast("Producto eliminado", "success")
+
+                        router.push('/dashboard/products')
+                        router.refresh()
+                      } catch (err) {
+                        toast("No se pudo eliminar el producto.", "error")
+                      } finally {
+                        setLoading(false)
+                      }
+                    }}
+                  >
+                    {loading ? <Loader2 className="animate-spin h-4 w-4" /> : 'Confirmar Eliminación'}
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+          )}
+        </div>
+
+        <div className="flex gap-2">
+          <Button type="button" variant="outline" onClick={onSuccess} className="w-full sm:w-auto">
+            Cancelar
+          </Button>
+          <Button type="submit" disabled={loading} className="w-full sm:w-auto">
+            {loading ? 'Guardando...' : product ? 'Actualizar' : 'Crear'}
+          </Button>
+        </div>
       </div>
     </form>
   )

@@ -182,14 +182,14 @@ export function RecipeEditor({ productId, productName, onSave }: { productId: st
                         <div className="w-24 space-y-2">
                             <Label>Unidad</Label>
                             <Select
-                                value={item.unitId || ''}
-                                onValueChange={(val) => updateItem(index, 'unitId', val)}
+                                value={item.unitId || '__base__'}
+                                onValueChange={(val) => updateItem(index, 'unitId', val === '__base__' ? null : val)}
                             >
                                 <SelectTrigger>
                                     <SelectValue placeholder="Base" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="">Original</SelectItem>
+                                    <SelectItem value="__base__">Original</SelectItem>
                                     {units.map((u: any) => (
                                         <SelectItem key={u.id} value={u.id}>{u.symbol}</SelectItem>
                                     ))}

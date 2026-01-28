@@ -147,6 +147,21 @@ async function initializePostgresTenant(databaseUrl: string, tenantSlug: string)
     // Execute all SQL using pg Client - it supports multiple statements natively
     await pgClient.query(sql)
 
+    // Step 3.5: Execute Restaurant Init (if exists)
+    const restaurantSqlPath = path.join(process.cwd(), 'prisma', 'supabase-init-restaurant.sql')
+    if (fs.existsSync(restaurantSqlPath)) {
+      console.log(`[STEP 3.5/3] Ejecutando updates de Restaurant Mode...`)
+      const rSqlBuf = fs.readFileSync(restaurantSqlPath)
+      const rSqlRaw = rSqlBuf.toString('utf8') // Assuming UTF-8 for this new file
+      const rSql = rSqlRaw.replace(/\r\n/g, '\n').replace(/^\s*--.*$/gm, '').trim()
+
+      if (rSql) {
+        console.log(`[STEP 3.5/3] Ejecutando SQL adicional (${rSql.length} chars)...`)
+        await pgClient.query(rSql)
+        console.log(`[STEP 3.5/3] ✓ Updates de Restaurant Mode aplicados`)
+      }
+    }
+
     const elapsed = ((Date.now() - startTime) / 1000).toFixed(2)
     console.log('='.repeat(60))
     console.log(`[TENANT INIT] ✓ Schema creado en ${elapsed}s`)
