@@ -18,7 +18,9 @@ export class AlegraClient {
     private authHeader: string
 
     constructor(config: AlegraConfig) {
-        const credentials = Buffer.from(`${config.email}:${config.token}`).toString('base64')
+        const email = config.email.trim()
+        const token = config.token.trim()
+        const credentials = Buffer.from(`${email}:${token}`).toString('base64')
         this.authHeader = `Basic ${credentials}`
     }
 

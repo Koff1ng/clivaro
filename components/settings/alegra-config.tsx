@@ -44,7 +44,10 @@ export function AlegraConfig({ tenantId }: AlegraConfigProps) {
     }, [])
 
     const handleTestConnection = async () => {
-        if (!email || !token) {
+        const trimmedEmail = email.trim()
+        const trimmedToken = token.trim()
+
+        if (!trimmedEmail || !trimmedToken) {
             toast('Email y Token son requeridos para probar la conexión', 'error')
             return
         }
@@ -54,28 +57,35 @@ export function AlegraConfig({ tenantId }: AlegraConfigProps) {
             const res = await fetch('/api/settings/alegra/preflight', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, token }),
+                body: JSON.stringify({ email: trimmedEmail, token: trimmedToken }),
             })
 
             const data = await res.json()
-            if (data.success) {
+            if (res.ok && data.success) {
                 setStatus('connected')
                 setCompanyInfo(data.company)
                 toast('Conexión con Alegra exitosa', 'success')
             } else {
                 setStatus('invalid')
-                toast(data.error || 'Credenciales inválidas', 'error')
+                // Si es 401, dar un mensaje mas específico sobre las credenciales de Alegra
+                const errorMessage = res.status === 401
+                    ? 'Credenciales de Alegra incorrectas. Por favor verifica tu email y token de API.'
+                    : (data.error || 'Credenciales inválidas')
+                toast(errorMessage, 'error')
             }
         } catch (error) {
             setStatus('invalid')
-            toast('Error al probar la conexión', 'error')
+            toast('Error de red al intentar conectar con Alegra', 'error')
         } finally {
             setTesting(false)
         }
     }
 
     const handleSave = async () => {
-        if (!email || !token) {
+        const trimmedEmail = email.trim()
+        const trimmedToken = token.trim()
+
+        if (!trimmedEmail || !trimmedToken) {
             toast('Email y Token son requeridos', 'error')
             return
         }
@@ -85,7 +95,7 @@ export function AlegraConfig({ tenantId }: AlegraConfigProps) {
             const res = await fetch('/api/settings/alegra/config', {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, token, status }),
+                body: JSON.stringify({ email: trimmedEmail, token: trimmedToken, status }),
             })
 
             if (res.ok) {
@@ -93,7 +103,7 @@ export function AlegraConfig({ tenantId }: AlegraConfigProps) {
                 toast('Configuración de Alegra guardada correctamente', 'success')
             } else {
                 const data = await res.json()
-                throw new Error(data.error || 'Failed to save')
+                throw new Error(data.error || 'No se pudo guardar la configuración')
             }
         } catch (error: any) {
             toast(error.message, 'error')
