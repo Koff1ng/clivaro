@@ -5,7 +5,7 @@ import { getPrismaForRequest } from '@/lib/get-tenant-prisma'
 
 export async function GET(request: Request) {
   const session = await requirePermission(request as any, PERMISSIONS.MANAGE_INVENTORY)
-  
+
   if (session instanceof NextResponse) {
     return session
   }
@@ -34,7 +34,7 @@ export async function GET(request: Request) {
     if (type) {
       where.type = type
     }
-    
+
     if (createdById) {
       where.createdById = createdById
     }
@@ -48,17 +48,17 @@ export async function GET(request: Request) {
         where.createdAt.lte = new Date(endDate)
       }
     }
-    
+
     if (q) {
       where.OR = [
-        { reason: { contains: q } },
-        { reference: { contains: q } },
+        { reason: { contains: q, mode: 'insensitive' } },
+        { reference: { contains: q, mode: 'insensitive' } },
         {
           product: {
             is: {
               OR: [
-                { name: { contains: q } },
-                { sku: { contains: q } },
+                { name: { contains: q, mode: 'insensitive' } },
+                { sku: { contains: q, mode: 'insensitive' } },
               ],
             },
           },

@@ -7,16 +7,17 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { formatDate } from '@/lib/utils'
-import { Plus, Printer, Eye, CheckCircle, XCircle, Clock, FileText, ClipboardList, AlertTriangle, Loader2 } from 'lucide-react'
+import { Plus, Printer, Eye, CheckCircle, XCircle, Clock, FileText, ClipboardList, AlertTriangle, Loader2, Search } from 'lucide-react'
 import { PhysicalInventoryForm } from './physical-inventory-form'
 import { PhysicalInventoryDetails } from './physical-inventory-details'
 import { PhysicalInventoryPrint } from './physical-inventory-print'
 import { PhysicalInventoryCountForm } from './physical-inventory-count-form'
 import { useToast } from '@/components/ui/toast'
 
-async function fetchPhysicalInventories(warehouseId?: string) {
+async function fetchPhysicalInventories(warehouseId?: string, q?: string) {
   const params = new URLSearchParams()
   if (warehouseId) params.append('warehouseId', warehouseId)
+  if (q) params.append('q', q)
   const res = await fetch(`/api/inventory/physical?${params}`)
   if (!res.ok) throw new Error('Failed to fetch physical inventories')
   return res.json()
@@ -30,6 +31,7 @@ async function fetchWarehouses() {
 
 export function PhysicalInventoryList() {
   const [selectedWarehouse, setSelectedWarehouse] = useState<string>('')
+  const [q, setQ] = useState('')
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [viewInventory, setViewInventory] = useState<any>(null)
   const [printInventory, setPrintInventory] = useState<any>(null)
@@ -43,8 +45,8 @@ export function PhysicalInventoryList() {
   })
 
   const { data, isLoading, refetch } = useQuery({
-    queryKey: ['physical-inventories', selectedWarehouse],
-    queryFn: () => fetchPhysicalInventories(selectedWarehouse || undefined),
+    queryKey: ['physical-inventories', selectedWarehouse, q],
+    queryFn: () => fetchPhysicalInventories(selectedWarehouse || undefined, q),
   })
 
   const inventories = data?.inventories || []
@@ -123,6 +125,15 @@ export function PhysicalInventoryList() {
       <div className="space-y-4">
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-4 flex-1">
+            <div className="relative flex-1 max-w-sm">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder="Buscar por número o nota..."
+                className="pl-9"
+              />
+            </div>
             <select
               value={selectedWarehouse}
               onChange={(e) => setSelectedWarehouse(e.target.value)}

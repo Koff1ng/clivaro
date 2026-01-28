@@ -12,7 +12,7 @@ const createPhysicalInventorySchema = z.object({
 
 export async function GET(request: Request) {
   const session = await requirePermission(request as any, PERMISSIONS.MANAGE_INVENTORY)
-  
+
   if (session instanceof NextResponse) {
     return session
   }
@@ -23,10 +23,11 @@ export async function GET(request: Request) {
   try {
     // First, try a simple query to check if the model exists
     logger.debug('Attempting to query PhysicalInventory...')
-    
+
     const { searchParams } = new URL(request.url)
     const warehouseId = searchParams.get('warehouseId')
     const status = searchParams.get('status')
+    const q = searchParams.get('q')
 
     const where: any = {}
     if (warehouseId) {
@@ -34,6 +35,12 @@ export async function GET(request: Request) {
     }
     if (status) {
       where.status = status
+    }
+    if (q) {
+      where.OR = [
+        { number: { contains: q, mode: 'insensitive' } },
+        { notes: { contains: q, mode: 'insensitive' } },
+      ]
     }
 
     // Try simple query first
@@ -78,9 +85,9 @@ export async function GET(request: Request) {
 
     // Calculate if there are differences for each inventory
     const inventoriesWithDifferences = inventories.map(inventory => {
-      const itemsWithDifferences = inventory.items?.filter((item: any) => 
-        item.countedQuantity !== null && 
-        item.difference !== null && 
+      const itemsWithDifferences = inventory.items?.filter((item: any) =>
+        item.countedQuantity !== null &&
+        item.difference !== null &&
         item.difference !== 0
       ) || []
 
@@ -112,11 +119,11 @@ export async function GET(request: Request) {
       code: error?.code,
       meta: error?.meta,
     })
-    
+
     // Check if it's a model not found error
     if (error?.message?.includes('Unknown model') || error?.message?.includes('physicalInventory')) {
       return NextResponse.json(
-        { 
+        {
           error: 'El modelo PhysicalInventory no existe en Prisma Client. Ejecuta: npx prisma generate',
           code: 'MODEL_NOT_FOUND',
           details: error?.message,
@@ -124,11 +131,11 @@ export async function GET(request: Request) {
         { status: 500 }
       )
     }
-    
+
     // Check if it's a table not found error
     if (error?.message?.includes('does not exist') || error?.code === 'P2001' || error?.message?.includes('no such table')) {
       return NextResponse.json(
-        { 
+        {
           error: 'Las tablas de inventario físico no existen. Ejecuta la migración: npx prisma migrate dev',
           code: 'MIGRATION_REQUIRED',
           details: error?.message,
@@ -136,9 +143,9 @@ export async function GET(request: Request) {
         { status: 500 }
       )
     }
-    
+
     return NextResponse.json(
-      { 
+      {
         error: 'Error al obtener inventarios físicos',
         message: error?.message || 'Error desconocido',
         code: error?.code || 'UNKNOWN',
@@ -155,7 +162,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   const session = await requirePermission(request as any, PERMISSIONS.MANAGE_INVENTORY)
-  
+
   if (session instanceof NextResponse) {
     return session
   }
@@ -221,7 +228,7 @@ export async function POST(request: Request) {
       number,
       warehouseId: data.warehouseId,
       notes: data.notes || null,
-        status: 'PENDING',
+      status: 'PENDING',
       createdById: (session.user as any).id,
     }
 
@@ -277,18 +284,18 @@ export async function POST(request: Request) {
         { status: 400 }
       )
     }
-    
+
     logger.error('Error creating physical inventory', error, {
       endpoint: '/api/inventory/physical',
       method: 'POST',
       code: error?.code,
       meta: error?.meta,
     })
-    
+
     // Check if it's a table not found error
     if (error?.message?.includes('does not exist') || error?.code === 'P2001' || error?.code === 'P2025') {
       return NextResponse.json(
-        { 
+        {
           error: 'Las tablas de inventario físico no existen. Ejecuta la migración: npx prisma migrate dev --name add_physical_inventory',
           code: 'MIGRATION_REQUIRED',
           details: error?.message,
@@ -296,7 +303,7 @@ export async function POST(request: Request) {
         { status: 500 }
       )
     }
-    
+
     // Check for Prisma errors
     if (error?.code) {
       let errorMessage = 'Error al crear inventario físico'
@@ -305,9 +312,9 @@ export async function POST(request: Request) {
       } else if (error.code === 'P2003') {
         errorMessage = 'Referencia inválida (almacén o usuario no encontrado)'
       }
-      
+
       return NextResponse.json(
-        { 
+        {
           error: errorMessage,
           code: error.code,
           details: error?.message,
@@ -316,9 +323,9 @@ export async function POST(request: Request) {
         { status: 500 }
       )
     }
-    
+
     return NextResponse.json(
-      { 
+      {
         error: 'Error al crear inventario físico',
         message: error?.message || 'Error desconocido',
         details: process.env.NODE_ENV === 'development' ? {

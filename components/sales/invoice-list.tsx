@@ -326,7 +326,8 @@ export function InvoiceList() {
                 <TableHead className="py-3 px-4 font-semibold text-sm">Fecha</TableHead>
                 <TableHead className="py-3 px-4 font-semibold text-sm">Estado</TableHead>
                 <TableHead className="py-3 px-4 font-semibold text-sm">Fact. Electrónica</TableHead>
-                <TableHead className="py-3 px-4 font-semibold text-sm">Total</TableHead>
+                <TableHead className="py-3 px-4 font-semibold text-sm text-right">Total</TableHead>
+                <TableHead className="py-3 px-4 font-semibold text-sm text-right">Saldo</TableHead>
                 <TableHead className="py-3 px-4 font-semibold text-sm">Acciones</TableHead>
               </TableRow>
             </TableHeader>
@@ -376,7 +377,18 @@ export function InvoiceList() {
                           )}
                         </div>
                       </TableCell>
-                      <TableCell>{formatCurrency(invoice.total)}</TableCell>
+                      <TableCell className="text-right">{formatCurrency(invoice.total)}</TableCell>
+                      <TableCell className="text-right">
+                        {(() => {
+                          const totalPaid = (invoice.payments || []).reduce((sum: number, p: any) => sum + (p.amount || 0), 0)
+                          const balance = Math.max(0, invoice.total - totalPaid)
+                          return (
+                            <span className={balance > 0 ? 'text-orange-600 font-medium' : 'text-gray-400'}>
+                              {formatCurrency(balance)}
+                            </span>
+                          )
+                        })()}
+                      </TableCell>
                       <TableCell>
                         <div className="flex gap-2">
                           <Button

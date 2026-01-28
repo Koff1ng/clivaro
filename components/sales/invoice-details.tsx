@@ -65,6 +65,13 @@ export function InvoiceDetails({ invoice }: { invoice: any }) {
   const [showPrintDialog, setShowPrintDialog] = useState(false)
   const [printType, setPrintType] = useState<'thermal' | 'normal'>('thermal')
 
+  // Abonos / Pagos parciales
+  const [showAbonoDialog, setShowAbonoDialog] = useState(false)
+  const [abonoAmount, setAbonoAmount] = useState('')
+  const [abonoMethod, setAbonoMethod] = useState<'CASH' | 'CARD' | 'TRANSFER'>('CASH')
+  const [abonoReference, setAbonoReference] = useState('')
+  const [abonoNotes, setAbonoNotes] = useState('')
+
   const [isLoadingPDF, setIsLoadingPDF] = useState(false)
 
   const sendToAlegraMutation = useMutation({
@@ -351,6 +358,37 @@ export function InvoiceDetails({ invoice }: { invoice: any }) {
     },
   })
 
+  const createPaymentMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`/api/invoices/${invoice.id}/payments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount: parseFloat(abonoAmount),
+          method: abonoMethod,
+          reference: abonoReference || null,
+          notes: abonoNotes || null,
+        }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data?.error || 'Error al registrar el pago')
+      return data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['invoices'] })
+      queryClient.invalidateQueries({ queryKey: ['invoice', invoice.id] })
+      toast('Pago registrado exitosamente', 'success')
+      setShowAbonoDialog(false)
+      setAbonoAmount('')
+      setAbonoReference('')
+      setAbonoNotes('')
+      window.location.reload()
+    },
+    onError: (err: any) => {
+      toast(err.message, 'error')
+    }
+  })
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'EMITIDA':
@@ -402,6 +440,9 @@ export function InvoiceDetails({ invoice }: { invoice: any }) {
   const StatusIcon = electronicStatus.icon
   const isVoided = invoice.status === 'ANULADA' || invoice.status === 'VOID'
   const blockedByDian = invoice.electronicStatus === 'SENT' || invoice.electronicStatus === 'ACCEPTED'
+
+  const totalPaid = (invoice.payments || []).reduce((sum: number, p: any) => sum + (p.amount || 0), 0)
+  const balance = Math.max(0, invoice.total - totalPaid)
 
   const partialReturnTotal = invoiceItems.reduce((sum: number, it: any) => {
     const qty = Number(returnQty[it.id] || 0)
@@ -484,6 +525,19 @@ export function InvoiceDetails({ invoice }: { invoice: any }) {
               size="sm"
             >
               Devolución
+            </Button>
+
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setAbonoAmount(balance.toString())
+                setShowAbonoDialog(true)
+              }}
+              disabled={isVoided || balance <= 0}
+              size="sm"
+            >
+              <Receipt className="h-4 w-4 mr-2" />
+              Registrar Abono
             </Button>
 
             {/* Menú de acciones */}
@@ -1028,6 +1082,10 @@ export function InvoiceDetails({ invoice }: { invoice: any }) {
               <span>Total:</span>
               <span>{formatCurrency(invoice.total || 0)}</span>
             </div>
+            <div className="flex justify-between text-orange-600 font-semibold text-lg">
+              <span>Saldo:</span>
+              <span>{formatCurrency(balance)}</span>
+            </div>
           </div>
         </div>
 
@@ -1071,6 +1129,81 @@ export function InvoiceDetails({ invoice }: { invoice: any }) {
             <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded">{invoice.notes}</p>
           </div>
         )}
+
+        {/* Dialogo para registrar abono */}
+        <Dialog open={showAbonoDialog} onOpenChange={setShowAbonoDialog}>
+          <DialogContent className="w-auto sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Registrar Abono / Pago</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 pt-4">
+              <div className="bg-gray-50 p-3 rounded-lg flex justify-between items-center">
+                <span className="text-sm text-gray-600">Saldo Pendiente:</span>
+                <span className="font-bold text-lg text-orange-600">{formatCurrency(balance)}</span>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Monto a abonar</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  max={balance}
+                  value={abonoAmount}
+                  onChange={(e) => setAbonoAmount(e.target.value)}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-right font-bold"
+                  placeholder="0.00"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Método de pago</label>
+                <select
+                  value={abonoMethod}
+                  onChange={(e) => setAbonoMethod(e.target.value as any)}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                >
+                  <option value="CASH">Efectivo</option>
+                  <option value="CARD">Tarjeta</option>
+                  <option value="TRANSFER">Transferencia</option>
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Referencia (opcional)</label>
+                <input
+                  type="text"
+                  value={abonoReference}
+                  onChange={(e) => setAbonoReference(e.target.value)}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  placeholder="Número de comprobante..."
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Notas</label>
+                <Textarea
+                  value={abonoNotes}
+                  onChange={(e) => setAbonoNotes(e.target.value)}
+                  placeholder="Detalles adicionales del pago..."
+                  className="min-h-[80px]"
+                />
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <Button variant="outline" className="flex-1" onClick={() => setShowAbonoDialog(false)}>
+                  Cancelar
+                </Button>
+                <Button
+                  className="flex-1"
+                  disabled={!abonoAmount || parseFloat(abonoAmount) <= 0 || parseFloat(abonoAmount) > balance + 0.01 || createPaymentMutation.isPending}
+                  onClick={() => createPaymentMutation.mutate()}
+                >
+                  {createPaymentMutation.isPending ? 'Registrando...' : 'Confirmar Pago'}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </>
   )

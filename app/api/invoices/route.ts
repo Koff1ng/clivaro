@@ -5,7 +5,7 @@ import { getPrismaForRequest } from '@/lib/get-tenant-prisma'
 
 export async function GET(request: Request) {
   const session = await requirePermission(request as any, PERMISSIONS.MANAGE_SALES)
-  
+
   if (session instanceof NextResponse) {
     return session
   }
@@ -66,6 +66,12 @@ export async function GET(request: Request) {
             select: {
               id: true,
               number: true,
+            },
+          },
+          payments: {
+            select: {
+              amount: true,
+              method: true,
             },
           },
           items: {

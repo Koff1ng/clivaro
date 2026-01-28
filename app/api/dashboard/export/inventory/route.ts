@@ -70,15 +70,15 @@ export async function GET(request: Request) {
         const workbook = XLSX.utils.book_new()
         XLSX.utils.book_append_sheet(workbook, worksheet, 'Inventario')
 
-        // Generate buffer
-        const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' })
+        // Generate Uint8Array
+        const array = XLSX.write(workbook, { type: 'array', bookType: 'xlsx' })
 
         const fileName = `Valor_Inventario_${format(new Date(), 'yyyyMMdd')}.xlsx`
 
         const duration = Date.now() - startTime
         logger.apiResponse('GET', '/api/dashboard/export/inventory', 200, duration)
 
-        return new NextResponse(buffer, {
+        return new NextResponse(array, {
             headers: {
                 'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
                 'Content-Disposition': `attachment; filename="${fileName}"`,

@@ -10,7 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch'
 // import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs' // Removed for vertical layout
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
-import { Settings as SettingsIcon, Loader2, Plus, Trash2, Printer, MapPin, Hash, Building2, Receipt, FileText, ShoppingCart, Search, Network, Edit } from 'lucide-react'
+import { Settings as SettingsIcon, Loader2, Plus, Trash2, Printer, MapPin, Hash, Building2, Receipt, FileText, ShoppingCart, Search, Network, Edit, Warehouse } from 'lucide-react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useToast } from '@/components/ui/toast'
 import { TicketEditor, TicketDesignSettings } from './ticket-editor'
 import { MetaConfig } from './meta-config'
@@ -123,11 +124,48 @@ export function GeneralConfig({ settings, onSave, isLoading }: GeneralConfigProp
   const [activeTab, setActiveTab] = useState('identity')
   const [printers, setPrinters] = useState<PrinterDefinition[]>(initialCustomSettings.printing?.printers || [])
 
-  // Scanner State
+  const [scannedDevices, setScannedDevices] = useState<{ ip: string, name: string, port: number }[]>([])
   const [isScanning, setIsScanning] = useState(false)
   const [showScanDialog, setShowScanDialog] = useState(false)
   const [showTicketEditor, setShowTicketEditor] = useState(false)
-  const [scannedDevices, setScannedDevices] = useState<{ ip: string, name: string, port: number }[]>([])
+  const [showWarehouseDialog, setShowWarehouseDialog] = useState(false)
+  const [newWarehouse, setNewWarehouse] = useState({ name: '', address: '', active: true })
+  const queryClient = useQueryClient()
+
+  // Fetch warehouses
+  const { data: warehouses = [], isLoading: isLoadingWarehouses } = useQuery({
+    queryKey: ['warehouses'],
+    queryFn: async () => {
+      const res = await fetch('/api/warehouses')
+      if (!res.ok) throw new Error('Failed to fetch warehouses')
+      return res.json()
+    }
+  })
+
+  // Create warehouse mutation
+  const createWarehouseMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const res = await fetch('/api/warehouses', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      })
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.error || 'Error al crear almacén')
+      }
+      return res.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['warehouses'] })
+      setShowWarehouseDialog(false)
+      setNewWarehouse({ name: '', address: '', active: true })
+      toast('Almacén creado exitosamente', 'success')
+    },
+    onError: (err: any) => {
+      toast(err.message, 'error')
+    }
+  })
 
   const scanNetwork = async () => {
     try {
@@ -370,6 +408,14 @@ export function GeneralConfig({ settings, onSave, isLoading }: GeneralConfigProp
                 >
                   <Network className="mr-2 h-4 w-4" /> Integraciones
                 </Button>
+                <Button
+                  type="button"
+                  variant={activeTab === 'warehouses' ? 'secondary' : 'ghost'}
+                  className="justify-start"
+                  onClick={() => setActiveTab('warehouses')}
+                >
+                  <Warehouse className="mr-2 h-4 w-4" /> Almacenes
+                </Button>
               </nav>
             </aside>
 
@@ -513,6 +559,55 @@ export function GeneralConfig({ settings, onSave, isLoading }: GeneralConfigProp
                   <MetaConfig />
                 </div>
               )}
+
+              {/* Warehouses Content */}
+              {activeTab === 'warehouses' && (
+                <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-lg font-medium">Gestión de Almacenes</h3>
+                      <p className="text-sm text-gray-500">Configura los puntos físicos de inventario.</p>
+                    </div>
+                    <Button type="button" onClick={() => setShowWarehouseDialog(true)}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Nuevo Almacén
+                    </Button>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {isLoadingWarehouses ? (
+                      <div className="col-span-2 flex items-center justify-center py-8">
+                        <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+                      </div>
+                    ) : (
+                      warehouses.map((w: any) => (
+                        <div key={w.id} className="p-4 border rounded-xl bg-white dark:bg-slate-950 flex justify-between items-start">
+                          <div className="space-y-1">
+                            <div className="font-bold">{w.name}</div>
+                            <div className="text-sm text-gray-500 flex items-center gap-1">
+                              <MapPin className="h-3 w-3" />
+                              {w.address || 'Sin dirección'}
+                            </div>
+                            <div className="pt-2">
+                              <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${w.active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                {w.active ? 'Activo' : 'Inactivo'}
+                              </span>
+                            </div>
+                          </div>
+                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ))
+                    )}
+                    {!isLoadingWarehouses && warehouses.length === 0 && (
+                      <div className="col-span-2 text-center py-12 text-gray-500 border border-dashed rounded-xl">
+                        No hay almacenes configurados.
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -604,6 +699,53 @@ export function GeneralConfig({ settings, onSave, isLoading }: GeneralConfigProp
           <DialogFooter>
             <Button variant="secondary" onClick={() => setShowTicketEditor(false)}>Cancelar</Button>
             <Button onClick={() => setShowTicketEditor(false)}>Guardar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={showWarehouseDialog} onOpenChange={setShowWarehouseDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Crear Nuevo Almacén</DialogTitle>
+            <DialogDescription>
+              Define un nuevo punto de almacenamiento para tu inventario.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="w-name">Nombre del Almacén</Label>
+              <Input
+                id="w-name"
+                value={newWarehouse.name}
+                onChange={(e) => setNewWarehouse({ ...newWarehouse, name: e.target.value })}
+                placeholder="Ej: Bodega Principal, Local Centro..."
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="w-address">Dirección (opcional)</Label>
+              <Input
+                id="w-address"
+                value={newWarehouse.address}
+                onChange={(e) => setNewWarehouse({ ...newWarehouse, address: e.target.value })}
+                placeholder="Calle 123 #45-67"
+              />
+            </div>
+            <div className="flex items-center justify-between pt-2">
+              <Label htmlFor="w-active">Activo</Label>
+              <Switch
+                id="w-active"
+                checked={newWarehouse.active}
+                onCheckedChange={(checked) => setNewWarehouse({ ...newWarehouse, active: checked })}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowWarehouseDialog(false)}>Cancelar</Button>
+            <Button
+              disabled={!newWarehouse.name || createWarehouseMutation.isPending}
+              onClick={() => createWarehouseMutation.mutate(newWarehouse)}
+            >
+              {createWarehouseMutation.isPending ? 'Creando...' : 'Crear Almacén'}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

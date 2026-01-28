@@ -111,7 +111,7 @@ export function ShiftReportPrintLetter({
                         <div className="p-4 border rounded text-center">
                             <div className="text-xs text-gray-500 mb-1">Diferencia</div>
                             <div className={`text-xl font-bold ${shift.difference === 0 ? 'text-green-600' :
-                                    shift.difference > 0 ? 'text-blue-600' : 'text-red-600'
+                                shift.difference > 0 ? 'text-blue-600' : 'text-red-600'
                                 }`}>
                                 {formatCurrency(shift.difference)}
                             </div>
@@ -226,7 +226,7 @@ export function ShiftReportPrintLetter({
 
             {/* Footer */}
             <div className="text-center text-xs text-gray-500 border-t pt-4 mt-8">
-                <div>Reporte generado desde Sistema de Ferretería</div>
+                <div>Reporte generado</div>
                 <div>{formatDateTime(new Date())}</div>
             </div>
         </div>

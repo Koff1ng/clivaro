@@ -19,8 +19,11 @@ export async function GET(request: Request) {
         }
 
         const { searchParams } = new URL(request.url)
-        const year = parseInt(searchParams.get('year') || String(new Date().getFullYear()))
-        const month = parseInt(searchParams.get('month') || String(new Date().getMonth() + 1))
+        let year = parseInt(searchParams.get('year') || '')
+        let month = parseInt(searchParams.get('month') || '')
+
+        if (isNaN(year)) year = new Date().getFullYear()
+        if (isNaN(month)) month = new Date().getMonth() + 1
 
         const monthStart = new Date(year, month - 1, 1)
         const monthEnd = new Date(year, month, 0, 23, 59, 59, 999)
@@ -65,15 +68,15 @@ export async function GET(request: Request) {
         const workbook = XLSX.utils.book_new()
         XLSX.utils.book_append_sheet(workbook, worksheet, 'Ventas')
 
-        // Generate buffer
-        const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' })
+        // Generate Uint8Array
+        const array = XLSX.write(workbook, { type: 'array', bookType: 'xlsx' })
 
         const fileName = `Ventas_${year}_${month}.xlsx`
 
         const duration = Date.now() - startTime
         logger.apiResponse('GET', '/api/dashboard/export/sales', 200, duration)
 
-        return new NextResponse(buffer, {
+        return new NextResponse(array, {
             headers: {
                 'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
                 'Content-Disposition': `attachment; filename="${fileName}"`,
