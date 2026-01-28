@@ -54,6 +54,7 @@ const createProductSchema = z.object({
   description: z.string().optional().nullable(),
   productType: z.enum(['RETAIL', 'RAW', 'PREPARED', 'SELLABLE']).default('RETAIL'),
   enableRecipeConsumption: z.boolean().default(false),
+  printerStation: z.enum(['KITCHEN', 'BAR', 'CASHIER']).optional().nullable(),
   // Variants
   variants: z.array(z.object({
     name: z.string().min(1),

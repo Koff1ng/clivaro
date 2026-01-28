@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { requirePermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
 import { getPrismaForRequest } from '@/lib/get-tenant-prisma'
+import { calculateRecipeCost } from '@/lib/recipes'
 import { z } from 'zod'
 
 const recipeSchema = z.object({
@@ -51,7 +52,7 @@ export async function POST(request: Request) {
         const body = await request.json()
         const data = recipeSchema.parse(body)
 
-        // Use transaction for Upsert Recipe + Replace Items
+        // Use transaction for Upsert Recipe + Replace Items + Calculate Cost
         const result = await prisma.$transaction(async (tx: any) => {
             // 1. Upsert Recipe
             const recipe = await tx.recipe.upsert({
@@ -84,10 +85,23 @@ export async function POST(request: Request) {
                 })
             }
 
-            return tx.recipe.findUnique({
-                where: { id: recipe.id },
-                include: { items: true }
-            })
+            // 4. Calculate and update product cost
+            const costResult = await calculateRecipeCost(tx, data.productId)
+
+            if (costResult.calculatedCost !== null) {
+                await tx.product.update({
+                    where: { id: data.productId },
+                    data: { cost: costResult.calculatedCost }
+                })
+            }
+
+            return {
+                recipe: await tx.recipe.findUnique({
+                    where: { id: recipe.id },
+                    include: { items: true }
+                }),
+                costCalculation: costResult
+            }
         })
 
         return NextResponse.json(result)

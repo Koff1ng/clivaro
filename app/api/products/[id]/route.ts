@@ -23,6 +23,7 @@ const updateProductSchema = z.object({
   description: z.string().optional().nullable(),
   productType: z.enum(['RETAIL', 'RAW', 'PREPARED', 'SELLABLE']).optional(),
   enableRecipeConsumption: z.boolean().optional(),
+  printerStation: z.enum(['KITCHEN', 'BAR', 'CASHIER']).optional().nullable(),
   active: z.boolean().optional(),
   // Variants (Upsert)
   variants: z.array(z.object({
