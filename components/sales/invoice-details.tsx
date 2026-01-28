@@ -102,14 +102,25 @@ export function InvoiceDetails({ invoice }: { invoice: any }) {
   } = useEscPosPrint({ openDrawer: true })
 
   // Company data for ESC/POS printing
+  const settings = settingsData?.settings
+  let companyRegime = process.env.NEXT_PUBLIC_COMPANY_REGIME || 'Responsable de IVA'
+  try {
+    if (settings?.customSettings) {
+      const custom = typeof settings.customSettings === 'string'
+        ? JSON.parse(settings.customSettings)
+        : settings.customSettings
+      if (custom.identity?.regime) companyRegime = custom.identity.regime
+    }
+  } catch (e) { }
+
   const company = {
-    name: process.env.NEXT_PUBLIC_COMPANY_NAME || 'FERRETERIA',
-    taxId: process.env.NEXT_PUBLIC_COMPANY_TAX_ID || '900000000-1',
-    address: process.env.NEXT_PUBLIC_COMPANY_ADDRESS || '',
-    city: process.env.NEXT_PUBLIC_COMPANY_CITY || '',
-    phone: process.env.NEXT_PUBLIC_COMPANY_PHONE || '',
-    email: process.env.NEXT_PUBLIC_COMPANY_EMAIL || '',
-    regime: process.env.NEXT_PUBLIC_COMPANY_REGIME || 'Responsable de IVA',
+    name: settings?.companyName || process.env.NEXT_PUBLIC_COMPANY_NAME || 'FERRETERIA',
+    taxId: settings?.companyNit || process.env.NEXT_PUBLIC_COMPANY_TAX_ID || '900000000-1',
+    address: settings?.companyAddress || process.env.NEXT_PUBLIC_COMPANY_ADDRESS || '',
+    city: settings?.companyCity || process.env.NEXT_PUBLIC_COMPANY_CITY || '',
+    phone: settings?.companyPhone || process.env.NEXT_PUBLIC_COMPANY_PHONE || '',
+    email: settings?.companyEmail || process.env.NEXT_PUBLIC_COMPANY_EMAIL || '',
+    regime: companyRegime,
   }
 
   // Handle ESC/POS print
@@ -478,7 +489,7 @@ export function InvoiceDetails({ invoice }: { invoice: any }) {
     <>
       {/* Vista para impresión térmica (80mm) - oculta en pantalla */}
       <div id="invoice-thermal-print" className="hidden">
-        <InvoicePrint invoice={invoice} />
+        <InvoicePrint invoice={invoice} settings={settingsData?.settings} />
       </div>
 
       {/* Vista para impresión carta - oculta en pantalla */}
@@ -660,7 +671,7 @@ export function InvoiceDetails({ invoice }: { invoice: any }) {
             </DialogHeader>
             <div className="flex justify-center">
               <div className="bg-white p-2 rounded border">
-                <InvoicePrint invoice={invoice} />
+                <InvoicePrint invoice={invoice} settings={settingsData?.settings} />
               </div>
             </div>
           </DialogContent>

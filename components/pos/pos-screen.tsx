@@ -2036,7 +2036,7 @@ export function POSScreen() {
               {/* Receipt Body for UI */}
               <div className="px-6 py-4 space-y-6">
                 <div id="pos-thermal-print" className="hidden">
-                  <InvoicePrint invoice={saleResult} />
+                  <InvoicePrint invoice={saleResult} settings={settings} />
                 </div>
 
                 {/* Items Summary in UI */}
