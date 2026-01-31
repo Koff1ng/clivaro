@@ -74,10 +74,7 @@ export async function GET(request: Request) {
       let stockLevels = p.stockLevels || []
 
       if (p.enableRecipeConsumption && p.recipe?.items?.length) {
-        // Find all unique warehouses involved in ingredients? 
-        // Or just check warehouses that have ANY stock of ingredients?
-        // Simplified: Iterate over known warehouses from the ingredients' stock levels
-
+        // Find all unique warehouses involved in ingredients
         const warehouseIds = new Set<string>()
         p.recipe.items.forEach((item: any) => {
           item.ingredient?.stockLevels?.forEach((sl: any) => warehouseIds.add(sl.warehouseId))
@@ -98,9 +95,10 @@ export async function GET(request: Request) {
           })
 
           const qty = maxQuantities.length > 0 ? Math.min(...maxQuantities) : 0
-          if (qty > 0) {
-            virtualStockLevels.push({ warehouseId, quantity: qty })
-          }
+
+          // Always push the stock level, even if qty is 0
+          // This ensures the product appears with 0 stock rather than being hidden
+          virtualStockLevels.push({ warehouseId, quantity: qty })
         })
 
         // If virtual stock exists, use it. (Override physical stock or merge? Override is safer for now for recipe products)
