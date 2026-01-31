@@ -41,6 +41,10 @@ model User {
   campaignsCreated MarketingCampaign[] @relation("CampaignCreatedBy")
   returnsCreated Return[] @relation("ReturnCreatedBy")
   returnPaymentsCreated ReturnPayment[] @relation("ReturnPaymentCreatedBy")
+  crmCampaignsCreated Campaign[] @relation("CampaignCreatedBy")
+  opportunitiesCreated Opportunity[] @relation("OpportunityCreatedBy")
+  opportunitiesAssigned Opportunity[] @relation("OpportunityAssignedTo")
+  quotesCreated Quote[] @relation("QuoteCreatedBy")
 }
 
 model Session {
@@ -944,3 +948,92 @@ model RecipeItem {
   @@index([ingredientId])
 }
 
+// ============================================
+// CRM MODELS
+// ============================================
+
+model Campaign {
+  id            String        @id @default(cuid())
+  name          String
+  type          String        // EMAIL, SMS, SOCIAL_MEDIA, EVENT
+  status        String        @default("DRAFT") // DRAFT, ACTIVE, PAUSED, COMPLETED
+  startDate     DateTime?
+  endDate       DateTime?
+  budget        Float?
+  spent         Float?        @default(0)
+  description   String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  createdById   String?
+  opportunities Opportunity[]
+  createdBy     User?         @relation("CampaignCreatedBy", fields: [createdById], references: [id])
+}
+
+model Opportunity {
+  id                String    @id @default(cuid())
+  customerId        String
+  campaignId        String?
+  title             String
+  value             Float
+  stage             String    @default("LEAD") // LEAD, QUALIFIED, PROPOSAL, NEGOTIATION, CLOSED_WON, CLOSED_LOST
+  probability       Int       @default(0) // 0-100
+  expectedCloseDate DateTime?
+  closedDate        DateTime?
+  notes             String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  createdById       String?
+  assignedToId      String?
+  customer          Customer  @relation(fields: [customerId], references: [id])
+  campaign          Campaign? @relation(fields: [campaignId], references: [id])
+  createdBy         User?     @relation("OpportunityCreatedBy", fields: [createdById], references: [id])
+  assignedTo        User?     @relation("OpportunityAssignedTo", fields: [assignedToId], references: [id])
+  quotes            Quote[]
+
+  @@index([customerId])
+  @@index([campaignId])
+  @@index([stage])
+  @@index([assignedToId])
+}
+
+model Quote {
+  id            String      @id @default(cuid())
+  quoteNumber   String      @unique
+  customerId    String
+  opportunityId String?
+  status        String      @default("DRAFT") // DRAFT, SENT, ACCEPTED, REJECTED, EXPIRED
+  validUntil    DateTime?
+  subtotal      Float       @default(0)
+  discount      Float       @default(0)
+  tax           Float       @default(0)
+  total         Float       @default(0)
+  notes         String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  createdById   String?
+  customer      Customer    @relation(fields: [customerId], references: [id])
+  opportunity   Opportunity? @relation(fields: [opportunityId], references: [id])
+  createdBy     User?       @relation("QuoteCreatedBy", fields: [createdById], references: [id])
+  items         QuoteItem[]
+
+  @@index([customerId])
+  @@index([opportunityId])
+  @@index([status])
+}
+
+model QuoteItem {
+  id          String   @id @default(cuid())
+  quoteId     String
+  productId   String?
+  description String
+  quantity    Float
+  unitPrice   Float
+  discount    Float    @default(0)
+  taxRate     Float    @default(0)
+  subtotal    Float
+  quote       Quote    @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  product     Product? @relation(fields: [productId], references: [id])
+
+  @@index([quoteId])
+  @@index([productId])
+}

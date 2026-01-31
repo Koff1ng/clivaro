@@ -106,6 +106,11 @@ export async function GET(request: Request) {
 
         // Use virtual stock for recipe products
         stockLevels = virtualStockLevels
+
+        // Log for debugging (will be removed after verification)
+        if (process.env.NODE_ENV === 'development') {
+          logger.info(`Virtual stock calculated for ${p.name}`, { stockLevels })
+        }
       }
 
       return {
