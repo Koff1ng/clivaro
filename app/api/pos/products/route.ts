@@ -38,6 +38,13 @@ export async function GET(request: Request) {
       where.category = category
     }
 
+    // Fetch all active warehouses to ensure we always return stock levels for all warehouses
+    const allWarehouses = await prisma.warehouse.findMany({
+      where: { active: true },
+      select: { id: true },
+    })
+    const allWarehouseIds = allWarehouses.map(w => w.id)
+
     const productsRaw = await prisma.product.findMany({
       where,
       take: limit,
@@ -74,15 +81,11 @@ export async function GET(request: Request) {
       let stockLevels = p.stockLevels || []
 
       if (p.enableRecipeConsumption && p.recipe?.items?.length) {
-        // Find all unique warehouses involved in ingredients
-        const warehouseIds = new Set<string>()
-        p.recipe.items.forEach((item: any) => {
-          item.ingredient?.stockLevels?.forEach((sl: any) => warehouseIds.add(sl.warehouseId))
-        })
-
+        // For products with recipes, calculate virtual stock for ALL warehouses
+        // (not just those with ingredient stock)
         const virtualStockLevels: any[] = []
 
-        warehouseIds.forEach(warehouseId => {
+        allWarehouseIds.forEach(warehouseId => {
           // Calculate max producible quantity for this warehouse
           const maxQuantities = p.recipe.items.map((item: any) => {
             if (!item.ingredient) return 0
@@ -96,15 +99,13 @@ export async function GET(request: Request) {
 
           const qty = maxQuantities.length > 0 ? Math.min(...maxQuantities) : 0
 
-          // Always push the stock level, even if qty is 0
-          // This ensures the product appears with 0 stock rather than being hidden
+          // Always push the stock level for every warehouse, even if qty is 0
+          // This ensures the product always has stockLevels populated
           virtualStockLevels.push({ warehouseId, quantity: qty })
         })
 
-        // If virtual stock exists, use it. (Override physical stock or merge? Override is safer for now for recipe products)
-        if (virtualStockLevels.length > 0) {
-          stockLevels = virtualStockLevels
-        }
+        // Use virtual stock for recipe products
+        stockLevels = virtualStockLevels
       }
 
       return {

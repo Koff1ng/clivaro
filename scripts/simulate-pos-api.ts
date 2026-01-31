@@ -22,6 +22,16 @@ async function simulatePOSAPI() {
 
             const prisma = getTenantPrisma(tenant.databaseUrl)
 
+            // Fetch all active warehouses (matching the API)
+            const allWarehouses = await prisma.warehouse.findMany({
+                where: { active: true },
+                select: { id: true }
+            })
+            const allWarehouseIds = allWarehouses.map(w => w.id)
+
+            console.log(`\n📦 Almacenes activos: ${allWarehouseIds.length}`)
+            console.log(`   IDs: ${allWarehouseIds.join(', ')}\n`)
+
             // EXACTAMENTE la misma query que el API
             const where: any = {
                 active: true,
@@ -73,17 +83,11 @@ async function simulatePOSAPI() {
 
                 if (p.enableRecipeConsumption && p.recipe?.items?.length) {
                     console.log(`   ✅ Entrando a cálculo de stock virtual...`)
-
-                    const warehouseIds = new Set<string>()
-                    p.recipe.items.forEach((item: any) => {
-                        item.ingredient?.stockLevels?.forEach((sl: any) => warehouseIds.add(sl.warehouseId))
-                    })
-
-                    console.log(`   Warehouses encontrados en ingredientes: ${Array.from(warehouseIds).join(', ')}`)
+                    console.log(`   📍 Iterando sobre TODOS los almacenes (${allWarehouseIds.length} almacenes)`)
 
                     const virtualStockLevels: any[] = []
 
-                    warehouseIds.forEach(warehouseId => {
+                    allWarehouseIds.forEach(warehouseId => {
                         console.log(`\n   📂 Calculando para warehouse ${warehouseId}:`)
 
                         const maxQuantities = p.recipe.items.map((item: any) => {
@@ -112,12 +116,8 @@ async function simulatePOSAPI() {
                         virtualStockLevels.push({ warehouseId, quantity: qty })
                     })
 
-                    if (virtualStockLevels.length > 0) {
-                        stockLevels = virtualStockLevels
-                        console.log(`   ✅ Stock virtual aplicado: ${JSON.stringify(stockLevels)}`)
-                    } else {
-                        console.log(`   ⚠️  virtualStockLevels está vacío, usando stock físico`)
-                    }
+                    stockLevels = virtualStockLevels
+                    console.log(`   ✅ Stock virtual aplicado: ${JSON.stringify(stockLevels)}`)
                 } else {
                     console.log(`   ⏭️  No aplica cálculo virtual (enableRecipeConsumption=${p.enableRecipeConsumption}, items=${p.recipe?.items?.length || 0})`)
                 }
