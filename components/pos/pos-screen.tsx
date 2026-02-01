@@ -2172,60 +2172,61 @@ export function POSScreen() {
               </div>
 
               {/* Actions */}
-              <div className="px-6 py-4 border-t bg-muted/30 flex flex-col sm:flex-row gap-2">
-                <Button
-                  variant="outline"
-                  className="flex-1"
-                  onClick={() => {
-                    printThermal()
-                  }}
-                >
-                  <Printer className="h-4 w-4 mr-2" />
-                  Imprimir
-                </Button>
-                <Button
-                  variant="destructive"
-                  className="flex-1"
-                  disabled={voiding || !saleResult?.invoiceId}
-                  onClick={async () => {
-                    const reason = prompt('Motivo de anulación/devolución (obligatorio):') || ''
-                    if (reason.trim().length < 3) {
-                      toast('Motivo inválido', 'warning')
-                      return
-                    }
-                    if (!confirm(`¿Anular la factura ${saleResult.invoiceNumber}?`)) return
-                    try {
-                      setVoiding(true)
-                      const res = await fetch(`/api/invoices/${saleResult.invoiceId}/void`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ reason }),
-                      })
-                      const payload = await res.json().catch(() => ({}))
-                      if (!res.ok) throw new Error(payload?.error || 'No se pudo anular')
-                      toast('Venta anulada correctamente', 'success')
-                      queryClient.invalidateQueries({ queryKey: ['invoices'] })
-                      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] })
-                      queryClient.invalidateQueries({ queryKey: ['activity-feed'] })
-                      queryClient.invalidateQueries({ queryKey: ['stock-levels'] })
-                      queryClient.invalidateQueries({ queryKey: ['inventory-movements'] })
-                      setShowReceipt(false)
-                      setSaleResult(null)
-                    } catch (e: any) {
-                      toast(e?.message || 'Error al anular', 'error')
-                    } finally {
-                      setVoiding(false)
-                    }
-                  }}
-                >
-                  {voiding ? 'Anulando…' : 'Anular'}
-                </Button>
-                <Button
-                  variant="outline"
-                  className="flex-1"
-                  onClick={() => {
-                    // Copy receipt info
-                    const receiptText = `
+              <div className="px-6 py-4 border-t bg-muted/30">
+                <div className="grid grid-cols-2 gap-2">
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => {
+                      printThermal()
+                    }}
+                  >
+                    <Printer className="h-4 w-4 mr-2" />
+                    Imprimir
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    className="flex-1"
+                    disabled={voiding || !saleResult?.invoiceId}
+                    onClick={async () => {
+                      const reason = prompt('Motivo de anulación/devolución (obligatorio):') || ''
+                      if (reason.trim().length < 3) {
+                        toast('Motivo inválido', 'warning')
+                        return
+                      }
+                      if (!confirm(`¿Anular la factura ${saleResult.invoiceNumber}?`)) return
+                      try {
+                        setVoiding(true)
+                        const res = await fetch(`/api/invoices/${saleResult.invoiceId}/void`, {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ reason }),
+                        })
+                        const payload = await res.json().catch(() => ({}))
+                        if (!res.ok) throw new Error(payload?.error || 'No se pudo anular')
+                        toast('Venta anulada correctamente', 'success')
+                        queryClient.invalidateQueries({ queryKey: ['invoices'] })
+                        queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] })
+                        queryClient.invalidateQueries({ queryKey: ['activity-feed'] })
+                        queryClient.invalidateQueries({ queryKey: ['stock-levels'] })
+                        queryClient.invalidateQueries({ queryKey: ['inventory-movements'] })
+                        setShowReceipt(false)
+                        setSaleResult(null)
+                      } catch (e: any) {
+                        toast(e?.message || 'Error al anular', 'error')
+                      } finally {
+                        setVoiding(false)
+                      }
+                    }}
+                  >
+                    {voiding ? 'Anulando…' : 'Anular'}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="flex-1"
+                    onClick={() => {
+                      // Copy receipt info
+                      const receiptText = `
 Ferretería - Punto de Venta
 Factura: ${saleResult.invoiceNumber}
 Fecha: ${new Date().toLocaleString('es-CO')}
@@ -2233,26 +2234,26 @@ ${saleResult.customer ? `Cliente: ${saleResult.customer.name}` : ''}
 Total: ${formatCurrency(saleResult.total)}
 ${saleResult.change > 0 ? `Cambio: ${formatCurrency(saleResult.change)}` : ''}
                     `.trim()
-                    navigator.clipboard.writeText(receiptText)
-                    toast('Información copiada al portapapeles', 'success')
-                  }}
-                >
-                  <Copy className="h-4 w-4 mr-2" />
-                  Copiar
-                </Button>
-                <Button
-                  className="flex-1"
-                  onClick={() => {
-                    setShowReceipt(false)
-                    setSaleResult(null)
-                  }}
-                >
-                  Continuar
-                </Button>
+                      navigator.clipboard.writeText(receiptText)
+                      toast('Información copiada al portapapeles', 'success')
+                    }}
+                  >
+                    <Copy className="h-4 w-4 mr-2" />
+                    Copiar
+                  </Button>
+                  <Button
+                    className="flex-1"
+                    onClick={() => {
+                      setShowReceipt(false)
+                      setSaleResult(null)
+                    }}
+                  >
+                    Continuar
+                  </Button>
+                </div>
               </div>
-            </div>
           )}
-        </DialogContent>
+            </DialogContent>
       </Dialog>
 
       {/* Park Sale Dialog */}
