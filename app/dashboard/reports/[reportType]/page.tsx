@@ -4,11 +4,17 @@ import { authOptions } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import { SalesByPeriodReport } from '@/components/reports/sales-by-period'
 import { TopProductsReport } from '@/components/reports/top-products'
+import { CurrentStockReport } from '@/components/reports/current-stock'
+import { ProfitMarginsReport } from '@/components/reports/profit-margins'
+import { CashFlowReport } from '@/components/reports/cash-flow'
 
 const REPORT_COMPONENTS = {
     'sales-by-period': SalesByPeriodReport,
     'top-products': TopProductsReport,
-    // More reports will be added here
+    'current-stock': CurrentStockReport,
+    'inventory-valuation': CurrentStockReport, // Reuse the same for now
+    'profit-margins': ProfitMarginsReport,
+    'cash-flow': CashFlowReport,
 }
 
 export default async function ReportPage({ params }: { params: { reportType: string } }) {
