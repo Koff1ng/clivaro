@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { FileText, TrendingUp, DollarSign, Package, Warehouse, Users, Banknote, Truck } from 'lucide-react'
@@ -100,11 +101,11 @@ const reportCategories = [
 
 export function ReportsMenuDialog({ open, onOpenChange }: ReportsMenuDialogProps) {
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
+    const router = useRouter()
 
     const handleReportClick = (reportId: string) => {
-        console.log('Opening report:', reportId)
-        // TODO: Implement report navigation/opening logic
-        alert(`Abriendo reporte: ${reportId}\n(Próximamente disponible)`)
+        router.push(`/dashboard/reports/${reportId}`)
+        onOpenChange(false)
     }
 
     return (
@@ -124,8 +125,8 @@ export function ReportsMenuDialog({ open, onOpenChange }: ReportsMenuDialogProps
                             <div
                                 key={category.id}
                                 className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${selectedCategory === category.id
-                                        ? 'border-primary shadow-md'
-                                        : 'border-gray-200 hover:border-gray-300'
+                                    ? 'border-primary shadow-md'
+                                    : 'border-gray-200 hover:border-gray-300'
                                     }`}
                                 onClick={() => setSelectedCategory(category.id === selectedCategory ? null : category.id)}
                             >
