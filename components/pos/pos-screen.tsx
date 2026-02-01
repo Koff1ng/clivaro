@@ -2186,7 +2186,7 @@ export function POSScreen() {
                   </Button>
                   <Button
                     variant="destructive"
-                    className="flex-1"
+                    className="w-full"
                     disabled={voiding || !saleResult?.invoiceId}
                     onClick={async () => {
                       const reason = prompt('Motivo de anulación/devolución (obligatorio):') || ''
@@ -2242,7 +2242,7 @@ ${saleResult.change > 0 ? `Cambio: ${formatCurrency(saleResult.change)}` : ''}
                     Copiar
                   </Button>
                   <Button
-                    className="flex-1"
+                    className="w-full"
                     onClick={() => {
                       setShowReceipt(false)
                       setSaleResult(null)
