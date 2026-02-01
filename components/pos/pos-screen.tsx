@@ -2223,7 +2223,7 @@ export function POSScreen() {
                   </Button>
                   <Button
                     variant="outline"
-                    className="flex-1"
+                    className="w-full"
                     onClick={() => {
                       // Copy receipt info
                       const receiptText = `
