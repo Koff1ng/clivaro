@@ -1366,8 +1366,27 @@ export function POSScreen() {
       <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
         {/* Left Panel - Products */}
         <div className="w-full lg:w-2/3 flex flex-col border-r bg-background">
-          {/* Search Bar */}
-          <div className="p-4 border-b bg-background">
+          {/* Warehouse Selector and Search Bar */}
+          <div className="p-4 border-b bg-background space-y-3">
+            {/* Warehouse Selector */}
+            {warehouses.length > 1 && (
+              <div className="flex items-center gap-2">
+                <label className="text-sm font-medium whitespace-nowrap">Almacén:</label>
+                <select
+                  value={selectedWarehouse}
+                  onChange={(e) => setSelectedWarehouse(e.target.value)}
+                  className="px-3 py-2 border rounded-md bg-background text-sm flex-1"
+                >
+                  {warehouses.map((wh: any) => (
+                    <option key={wh.id} value={wh.id}>
+                      {wh.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {/* Search Bar */}
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
               <Input
