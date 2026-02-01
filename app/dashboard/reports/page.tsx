@@ -1,10 +1,12 @@
+'use client'
+
 import { MainLayout } from '@/components/layout/main-layout'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import { redirect } from 'next/navigation'
+import { useSession } from 'next-auth/react'
+import { useRouter } from 'next/navigation'
 import { PageHeader } from '@/components/ui/page-header'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import Link from 'next/link'
+import { useEffect } from 'react'
 import {
     TrendingUp,
     DollarSign,
@@ -14,134 +16,184 @@ import {
     Banknote,
     Truck,
     FileText,
+    ArrowRight,
+    BarChart3,
+    PieChart,
+    ArrowDownRight,
+    Search
 } from 'lucide-react'
 
 const reportCategories = [
     {
         id: 'sales',
-        title: 'Reportes de Ventas',
+        title: 'Ventas y Comercial',
         icon: TrendingUp,
-        description: 'Análisis de ventas, rendimiento y tendencias',
+        description: 'Análisis de ventas, rendimiento y tendencias del mercado',
         color: 'text-blue-600',
         bgColor: 'bg-blue-50',
+        borderColor: 'border-blue-100',
         reports: [
             {
                 id: 'sales-by-period',
                 name: 'Ventas por Período',
-                description: 'Resumen de ventas diarias, semanales o mensuales',
+                description: 'Resumen de ventas diarias, semanales o mensuales con comparativa de IVA',
+                icon: BarChart3
             },
             {
                 id: 'top-products',
                 name: 'Productos Más Vendidos',
-                description: 'Top productos por volumen e ingresos',
+                description: 'Ranking de productos por volumen de ventas e ingresos totales',
+                icon: Package
             },
         ],
     },
     {
         id: 'inventory',
-        title: 'Reportes de Inventario',
+        title: 'Inventario y Almacén',
         icon: Warehouse,
-        description: 'Stock actual, valorización y movimientos',
+        description: 'Control de stock actual, valorización y movimientos de mercancía',
         color: 'text-orange-600',
         bgColor: 'bg-orange-50',
+        borderColor: 'border-orange-100',
         reports: [
             {
                 id: 'current-stock',
-                name: 'Stock Actual',
-                description: 'Inventario actual por almacén',
+                name: 'Stock por Almacén',
+                description: 'Estado actual del inventario filtrado por bodega o sucursal',
+                icon: Warehouse
             },
             {
-                id: 'inventory-valuation',
-                name: 'Valorización de Inventario',
-                description: 'Valor total del inventario',
+                id: 'low-stock',
+                name: 'Alertas de Stock Bajo',
+                description: 'Productos que han alcanzado su nivel crítico de reabastecimiento',
+                icon: ArrowDownRight
             },
         ],
     },
     {
         id: 'financial',
-        title: 'Reportes Financieros',
+        title: 'Finanzas y Rentabilidad',
         icon: DollarSign,
-        description: 'Costos, márgenes y rentabilidad',
+        description: 'Márgenes de ganancia, flujo de caja y análisis de costos operativos',
         color: 'text-green-600',
         bgColor: 'bg-green-50',
+        borderColor: 'border-green-100',
         reports: [
             {
                 id: 'profit-margins',
                 name: 'Márgenes de Ganancia',
-                description: 'Rentabilidad por producto y categoría',
+                description: 'Análisis detallado de rentabilidad por producto y categoría',
+                icon: PieChart
             },
             {
                 id: 'cash-flow',
                 name: 'Flujo de Caja',
-                description: 'Ingresos y egresos diarios',
+                description: 'Consolidado de ingresos, egresos y movimientos de caja',
+                icon: Banknote
             },
         ],
     },
 ]
 
-export default async function ReportsPage() {
-    const session = await getServerSession(authOptions)
+export default function ReportsPage() {
+    const { data: session, status } = useSession()
+    const router = useRouter()
 
-    if (!session) {
-        redirect('/login')
+    useEffect(() => {
+        if (status === 'unauthenticated') {
+            router.push('/login')
+        }
+    }, [status, router])
+
+    if (status === 'loading') {
+        return (
+            <MainLayout>
+                <div className="flex h-[80vh] items-center justify-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                </div>
+            </MainLayout>
+        )
     }
 
-    const userPermissions = (session.user as any).permissions || []
+    const userPermissions = (session?.user as any)?.permissions || []
 
     if (!userPermissions.includes('view_reports')) {
-        redirect('/login')
+        return (
+            <MainLayout>
+                <div className="p-8 text-center text-destructive">
+                    No tienes permiso para ver esta sección.
+                </div>
+            </MainLayout>
+        )
     }
 
     return (
         <MainLayout>
-            <div className="space-y-6">
-                <PageHeader
-                    title="Reportes"
-                    description="Accede a todos los reportes y análisis del sistema"
-                />
+            <div className="space-y-8 pb-12">
+                <div className="flex flex-col gap-2">
+                    <h1 className="text-3xl font-bold tracking-tight">Centro de Reportes</h1>
+                    <p className="text-muted-foreground text-lg">
+                        Análisis inteligente y seguimiento en tiempo real de tu ferretería.
+                    </p>
+                </div>
 
-                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
                     {reportCategories.map((category) => {
                         const Icon = category.icon
                         return (
-                            <Card key={category.id} className="hover:shadow-lg transition-shadow">
-                                <CardHeader>
-                                    <div className="flex items-center gap-3">
-                                        <div className={`p-3 rounded-lg ${category.bgColor}`}>
-                                            <Icon className={`h-6 w-6 ${category.color}`} />
-                                        </div>
-                                        <div>
-                                            <CardTitle className="text-lg">{category.title}</CardTitle>
-                                            <CardDescription className="text-xs mt-1">
-                                                {category.description}
-                                            </CardDescription>
-                                        </div>
+                            <div key={category.id} className="flex flex-col space-y-4">
+                                <div className="flex items-center gap-3 px-1">
+                                    <div className={`p-2.5 rounded-xl ${category.bgColor} ${category.color}`}>
+                                        <Icon className="h-6 w-6" />
                                     </div>
-                                </CardHeader>
-                                <CardContent>
-                                    <div className="space-y-2">
-                                        {category.reports.map((report) => (
-                                            <Link
-                                                key={report.id}
-                                                href={`/dashboard/reports/${report.id}`}
-                                                className="block p-3 rounded-lg hover:bg-muted transition-colors"
-                                            >
-                                                <div className="flex items-start gap-2">
-                                                    <FileText className="h-4 w-4 mt-0.5 text-muted-foreground flex-shrink-0" />
+                                    <h2 className="text-xl font-bold tracking-tight">{category.title}</h2>
+                                </div>
+
+                                <div className="grid gap-4">
+                                    {category.reports.map((report) => (
+                                        <Link
+                                            key={report.id}
+                                            href={`/dashboard/reports/${report.id}`}
+                                            className="group relative overflow-hidden rounded-2xl border bg-card p-5 transition-all hover:shadow-lg hover:border-primary/50"
+                                        >
+                                            <div className="flex items-start justify-between">
+                                                <div className="flex items-start gap-4">
+                                                    <div className="mt-1 rounded-lg bg-muted p-2 text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary transition-colors">
+                                                        <report.icon className="h-5 w-5" />
+                                                    </div>
                                                     <div>
-                                                        <div className="font-medium text-sm">{report.name}</div>
-                                                        <div className="text-xs text-muted-foreground mt-0.5">
+                                                        <h3 className="font-bold leading-none mb-2 group-hover:text-primary transition-colors">
+                                                            {report.name}
+                                                        </h3>
+                                                        <p className="text-sm text-muted-foreground line-clamp-2 leading-relaxed">
                                                             {report.description}
-                                                        </div>
+                                                        </p>
                                                     </div>
                                                 </div>
-                                            </Link>
-                                        ))}
-                                    </div>
-                                </CardContent>
-                            </Card>
+                                                <ArrowRight className="h-5 w-5 text-muted-foreground opacity-0 -translate-x-2 transition-all group-hover:opacity-100 group-hover:translate-x-0" />
+                                            </div>
+                                        </Link>
+                                    ))}
+                                </div>
+                            </div>
                         )
                     })}
+                </div>
+
+                {/* Footer Info */}
+                <div className="rounded-3xl bg-slate-900 p-8 text-white">
+                    <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+                        <div className="space-y-2 text-center md:text-left">
+                            <h3 className="text-xl font-bold">¿Necesitas un reporte personalizado?</h3>
+                            <p className="text-slate-400">Nuestro equipo puede ayudarte a generar análisis específicos para tu negocio.</p>
+                        </div>
+                        <Link
+                            href="mailto:soporte@ferreteria.com"
+                            className="inline-flex h-11 items-center justify-center rounded-xl bg-white px-8 text-sm font-bold text-slate-900 transition-colors hover:bg-slate-100"
+                        >
+                            Contactar Soporte
+                        </Link>
+                    </div>
                 </div>
             </div>
         </MainLayout>

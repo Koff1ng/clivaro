@@ -4,11 +4,10 @@ import { Button } from '@/components/ui/button'
 import { FileSpreadsheet, Download, Loader2, FileText } from 'lucide-react'
 import { useState } from 'react'
 import { useToast } from '@/components/ui/toast'
-import { ReportsMenuDialog } from '@/components/reports/reports-menu-dialog'
+import Link from 'next/link'
 
 export function DashboardExportActions() {
     const [loading, setLoading] = useState<string | null>(null)
-    const [showReportsMenu, setShowReportsMenu] = useState(false)
     const { toast } = useToast()
 
     const handleExport = async (type: 'sales' | 'inventory') => {
@@ -66,16 +65,15 @@ export function DashboardExportActions() {
                 <Button
                     variant="default"
                     size="sm"
-                    onClick={() => setShowReportsMenu(true)}
+                    asChild
                     className="h-8 gap-2"
                 >
-                    <FileText className="h-4 w-4" />
-                    <span className="hidden sm:inline">Reportes</span>
+                    <Link href="/dashboard/reports">
+                        <FileText className="h-4 w-4" />
+                        <span className="hidden sm:inline">Reportes</span>
+                    </Link>
                 </Button>
             </div>
-
-            {/* Reports Menu Dialog */}
-            <ReportsMenuDialog open={showReportsMenu} onOpenChange={setShowReportsMenu} />
         </>
     )
 }

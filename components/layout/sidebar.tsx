@@ -23,6 +23,7 @@ import {
   ShieldCheck,
   PasteClipboard,
   Truck,
+  StatsUpSquare,
 } from 'iconoir-react'
 import { Logo } from '@/components/ui/logo'
 import { AppIcon } from '@/components/ui/app-icon'
@@ -33,6 +34,7 @@ import { ROUTE_FEATURES } from '@/lib/plan-features'
 
 const menuItems = [
   { href: '/dashboard', label: 'Dashboard', icon: NavArrowRight, permission: ['view_reports', 'manage_sales'], planFeature: 'viewReports' },
+  { href: '/dashboard/reports', label: 'Reportes', icon: StatsUpSquare, permission: 'view_reports', planFeature: 'viewReports' },
   { href: '/products', label: 'Productos', icon: Box, permission: 'manage_products', planFeature: 'manageProducts' },
   { href: '/inventory', label: 'Inventario', icon: Archive, permission: 'manage_inventory', planFeature: 'manageInventory' },
   { href: '/crm/customers', label: 'Clientes', icon: Group, permission: ['manage_crm', 'manage_sales'], planFeature: 'manageSales' },
@@ -330,4 +332,3 @@ export function Sidebar() {
     </>
   )
 }
-
