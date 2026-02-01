@@ -64,6 +64,12 @@ export async function GET(request: Request) {
                         name: true,
                     },
                 },
+                payments: {
+                    select: {
+                        method: true,
+                        amount: true,
+                    },
+                },
             },
             orderBy: {
                 issuedAt: 'desc',
@@ -85,6 +91,7 @@ export async function GET(request: Request) {
 
         // Sales by day
         const salesByDay = invoices.reduce((acc: any[], inv) => {
+            if (!inv.issuedAt) return acc
             const day = inv.issuedAt.toISOString().split('T')[0]
             const existing = acc.find(item => item.date === day)
             if (existing) {
@@ -102,8 +109,10 @@ export async function GET(request: Request) {
 
         // Sales by payment method
         const salesByPaymentMethod = invoices.reduce((acc: any, inv) => {
-            const method = inv.paymentMethod || 'UNKNOWN'
-            acc[method] = (acc[method] || 0) + inv.total
+            inv.payments.forEach((p: any) => {
+                const method = p.method || 'UNKNOWN'
+                acc[method] = (acc[method] || 0) + p.amount
+            })
             return acc
         }, {})
 
