@@ -67,7 +67,7 @@ export async function GET(request: Request) {
             },
         })
 
-        // Fetch returns in the date range
+        // Fetch returns in the date range with items and original taxes
         const returns = await prisma.return.findMany({
             where: {
                 status: 'COMPLETED',
@@ -77,7 +77,11 @@ export async function GET(request: Request) {
                 },
             },
             include: {
-                items: true
+                items: {
+                    include: {
+                        invoiceItem: true
+                    }
+                }
             }
         })
 
@@ -99,16 +103,26 @@ export async function GET(request: Request) {
             })
         })
 
-        // Deduct returns
-        const totalReturns = returns.reduce((sum, ret) => sum + ret.total, 0)
-        // Approximate tax deduction for returns if not stored separately in Return model
-        // In this schema Return has total, we'll assume proportional tax for now or just deduct from gross
-        totalGrossSales -= totalReturns
-        // For simplicity in this logic fix, we deduct from net sales too (approx)
-        totalNetSales -= totalReturns * 0.84 // Assuming ~19% tax roughly if missing, but let's be more precise if possible
+        // Deduct returns with precision
+        let totalReturns = 0
+        let totalTaxReturns = 0
 
-        const totalProfit = totalNetSales - totalCost
-        const profitMargin = totalNetSales > 0 ? (totalProfit / totalNetSales) * 100 : 0
+        returns.forEach(ret => {
+            totalReturns += ret.total
+            ret.items.forEach((ri: any) => {
+                // Precise tax if tax rate available, otherwise fallback
+                const taxRate = ri.invoiceItem?.taxRate || 0
+                const netReturnItem = ri.total / (1 + (taxRate / 100))
+                totalTaxReturns += (ri.total - netReturnItem)
+            })
+        })
+
+        const finalGrossSales = totalGrossSales - totalReturns
+        const finalNetSales = totalNetSales - (totalReturns - totalTaxReturns)
+        const finalTax = totalTax - totalTaxReturns
+
+        const totalProfit = finalNetSales - totalCost
+        const profitMargin = finalNetSales > 0 ? (totalProfit / finalNetSales) * 100 : 0
 
         // Sales by day (filling gaps)
         const dailyMap = new Map()
@@ -136,11 +150,18 @@ export async function GET(request: Request) {
             const stats = dailyMap.get(day)
             if (stats) {
                 stats.sales -= ret.total
-                stats.netSales -= ret.total * 0.84
+
+                // Precise tax deduction for daily net
+                let dailyTaxRet = 0
+                ret.items.forEach((ri: any) => {
+                    const taxRate = ri.invoiceItem?.taxRate || 0
+                    dailyTaxRet += (ri.total - (ri.total / (1 + (taxRate / 100))))
+                })
+                stats.netSales -= (ret.total - dailyTaxRet)
             }
         })
 
-        // Top products calculation fix
+        // Top products calculation
         const productStatsMap = new Map()
         invoices.forEach(inv => {
             inv.items.forEach(item => {
@@ -171,7 +192,7 @@ export async function GET(request: Request) {
             .sort((a, b) => b.revenue - a.revenue)
             .slice(0, 20)
 
-        // Payment Methods fix
+        // Payment Methods
         const paymentMethods: any = {}
         invoices.forEach(inv => {
             inv.payments.forEach(p => {
@@ -179,7 +200,7 @@ export async function GET(request: Request) {
             })
         })
 
-        // Seller stats fix
+        // Seller stats
         const sellerStatsMap = new Map()
         invoices.forEach(inv => {
             if (!inv.createdBy) return
@@ -200,14 +221,14 @@ export async function GET(request: Request) {
 
         const result = {
             summary: {
-                totalSales: totalGrossSales,
-                totalNetSales,
-                totalTax,
+                totalSales: finalGrossSales,
+                totalNetSales: finalNetSales,
+                totalTax: finalTax,
                 totalCost,
                 totalProfit,
                 profitMargin,
                 totalInvoices: invoices.length,
-                averageValue: invoices.length > 0 ? totalGrossSales / invoices.length : 0,
+                averageValue: invoices.length > 0 ? finalGrossSales / invoices.length : 0,
                 totalReturns,
                 totalDiscounts
             },

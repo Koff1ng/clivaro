@@ -31,7 +31,7 @@ export async function GET(request: Request) {
         const toDate = new Date(to)
         toDate.setHours(23, 59, 59, 999)
 
-        // Aggregation logic similar to sales-by-period but focused on products
+        // Fetch invoices
         const invoices = await prisma.invoice.findMany({
             where: {
                 status: { in: ['PAID', 'PARTIAL'] },
@@ -57,8 +57,27 @@ export async function GET(request: Request) {
             },
         })
 
+        // Fetch returns
+        const returns = await prisma.return.findMany({
+            where: {
+                status: 'COMPLETED',
+                createdAt: {
+                    gte: fromDate,
+                    lte: toDate,
+                },
+            },
+            include: {
+                items: {
+                    include: {
+                        invoiceItem: true
+                    }
+                }
+            }
+        })
+
         const productStatsMap = new Map()
 
+        // Process Sales
         invoices.forEach(inv => {
             inv.items.forEach(item => {
                 const id = item.productId
@@ -78,13 +97,33 @@ export async function GET(request: Request) {
                 stats.quantity += item.quantity
                 stats.revenue += item.subtotal // Net revenue
                 stats.cost += (item.product?.cost || 0) * item.quantity
-                stats.profit = stats.revenue - stats.cost
-
                 productStatsMap.set(id, stats)
             })
         })
 
+        // Deduct Returns
+        returns.forEach(ret => {
+            ret.items.forEach(ri => {
+                const id = ri.invoiceItem?.productId
+                if (!id) return
+
+                const stats = productStatsMap.get(id)
+                if (stats) {
+                    const taxRate = ri.invoiceItem?.taxRate || 0
+                    const netReturn = ri.total / (1 + (taxRate / 100))
+
+                    stats.quantity -= ri.quantity
+                    stats.revenue -= netReturn
+                    stats.cost -= (ri.invoiceItem.product?.cost || 0) * ri.quantity
+                }
+            })
+        })
+
         const products = Array.from(productStatsMap.values())
+            .map(p => ({
+                ...p,
+                profit: p.revenue - p.cost
+            }))
             .sort((a, b) => b.revenue - a.revenue)
             .slice(0, limit)
 

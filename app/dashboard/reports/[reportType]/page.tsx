@@ -7,12 +7,14 @@ import { TopProductsReport } from '@/components/reports/top-products'
 import { CurrentStockReport } from '@/components/reports/current-stock'
 import { ProfitMarginsReport } from '@/components/reports/profit-margins'
 import { CashFlowReport } from '@/components/reports/cash-flow'
+import { LowStockReport } from '@/components/reports/low-stock'
 
 const REPORT_COMPONENTS = {
     'sales-by-period': SalesByPeriodReport,
     'top-products': TopProductsReport,
     'current-stock': CurrentStockReport,
-    'inventory-valuation': CurrentStockReport, // Reuse the same for now
+    'inventory-valuation': CurrentStockReport,
+    'low-stock': LowStockReport,
     'profit-margins': ProfitMarginsReport,
     'cash-flow': CashFlowReport,
 }

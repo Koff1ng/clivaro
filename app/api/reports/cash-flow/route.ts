@@ -46,7 +46,7 @@ export async function GET(request: Request) {
             orderBy: { createdAt: 'desc' },
         })
 
-        // Fetch all payments (Sales)
+        // Fetch all payments (Sales Inflow)
         const payments = await prisma.payment.findMany({
             where: {
                 createdAt: {
@@ -64,14 +64,21 @@ export async function GET(request: Request) {
             }
         })
 
-        // Fetch returns (Inflow reductions)
-        const returns = await prisma.return.findMany({
+        // Fetch return payments (Actual Outflows)
+        const returnPayments = await prisma.returnPayment.findMany({
             where: {
-                status: 'COMPLETED',
                 createdAt: {
                     gte: fromDate,
                     lte: toDate,
                 },
+            },
+            include: {
+                return: {
+                    select: { id: true }
+                },
+                createdBy: {
+                    select: { name: true }
+                }
             }
         })
 
@@ -114,7 +121,7 @@ export async function GET(request: Request) {
             })
         })
 
-        // Payments (Sales)
+        // Payments (Sales Inflow)
         payments.forEach(p => {
             const day = p.createdAt.toISOString().split('T')[0]
             const stats = dailyMap.get(day)
@@ -133,21 +140,21 @@ export async function GET(request: Request) {
             })
         })
 
-        // Returns
-        returns.forEach(ret => {
-            const day = ret.createdAt.toISOString().split('T')[0]
+        // Return Payments (Actual Outflow)
+        returnPayments.forEach(rp => {
+            const day = rp.createdAt.toISOString().split('T')[0]
             const stats = dailyMap.get(day)
 
-            totalOut += ret.total
-            if (stats) stats.out += ret.total
+            totalOut += rp.amount
+            if (stats) stats.out += rp.amount
 
             combinedMovements.push({
-                id: ret.id,
+                id: rp.id,
                 type: 'OUT',
-                amount: ret.total,
-                reason: `Devolución: ${ret.id.slice(-6)}`,
-                createdAt: ret.createdAt,
-                userName: 'Sistema',
+                amount: rp.amount,
+                reason: `Pago Devolución: ${rp.return?.id.slice(-6)} (${rp.method})`,
+                createdAt: rp.createdAt,
+                userName: rp.createdBy?.name || 'Sistema',
                 source: 'RETURN'
             })
         })
@@ -168,7 +175,7 @@ export async function GET(request: Request) {
                 movementCount: combinedMovements.length
             },
             movements: combinedMovements.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
-            daily: Array.from(dailyMap.values())
+            daily: dailyList
         }
 
         const duration = Date.now() - startTime
