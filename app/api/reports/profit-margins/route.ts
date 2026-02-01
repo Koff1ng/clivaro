@@ -55,10 +55,20 @@ export async function GET(request: Request) {
             },
         })
 
+        const returns = await prisma.return.findMany({
+            where: {
+                status: 'COMPLETED',
+                createdAt: {
+                    gte: fromDate,
+                    lte: toDate,
+                },
+            },
+        })
+
         // Agregación de datos
         const categoryStats: any = {}
         const dailyStats: any = {}
-        let totalRevenue = 0
+        let totalNetRevenue = 0
         let totalCost = 0
 
         invoices.forEach(inv => {
@@ -70,13 +80,13 @@ export async function GET(request: Request) {
             }
 
             inv.items.forEach(item => {
-                const revenue = item.quantity * item.unitPrice
+                const revenue = item.subtotal // Net revenue
                 const cost = (item.product?.cost || 0) * item.quantity
                 const profit = revenue - cost
                 const category = item.product?.category || 'Sin categoría'
 
                 // Global
-                totalRevenue += revenue
+                totalNetRevenue += revenue
                 totalCost += cost
 
                 // Daily
@@ -94,6 +104,13 @@ export async function GET(request: Request) {
             })
         })
 
+        // Deduct returns from global (approx 84% net)
+        const totalReturns = returns.reduce((sum, ret) => sum + ret.total, 0)
+        const netReturns = totalReturns * 0.84
+        totalNetRevenue -= netReturns
+
+        // Distribute returns deductively in daily if needed (optional for now)
+
         const categoryList = Object.values(categoryStats).map((c: any) => ({
             ...c,
             margin: c.revenue > 0 ? (c.profit / c.revenue) * 100 : 0
@@ -103,10 +120,10 @@ export async function GET(request: Request) {
 
         const result = {
             summary: {
-                totalRevenue,
+                totalRevenue: totalNetRevenue,
                 totalCost,
-                totalProfit: totalRevenue - totalCost,
-                overallMargin: totalRevenue > 0 ? ((totalRevenue - totalCost) / totalRevenue) * 100 : 0
+                totalProfit: totalNetRevenue - totalCost,
+                overallMargin: totalNetRevenue > 0 ? ((totalNetRevenue - totalCost) / totalNetRevenue) * 100 : 0
             },
             byCategory: categoryList,
             byDay: dailyList

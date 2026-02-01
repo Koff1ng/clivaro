@@ -25,6 +25,7 @@ async function fetchWarehouses() {
 
 export function CurrentStockReport() {
     const [selectedWarehouse, setSelectedWarehouse] = useState<string>('all')
+    const [searchTerm, setSearchTerm] = useState('')
 
     const { data: warehouses = [] } = useQuery({
         queryKey: ['warehouses'],
@@ -40,10 +41,15 @@ export function CurrentStockReport() {
         window.print()
     }
 
+    const filteredItems = (data?.items || []).filter((item: any) =>
+        item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.sku.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+
     const handleExport = () => {
         const csvContent = [
             ['SKU', 'Producto', 'Categoría', 'Stock Total', 'Costo Unitario', 'Valor Costo', 'Precio Venta', 'Valor Venta'],
-            ...((data?.items || []).map((item: any) => [
+            ...(filteredItems.map((item: any) => [
                 item.sku,
                 item.name,
                 item.category,
@@ -75,7 +81,7 @@ export function CurrentStockReport() {
             onPrint={handlePrint}
             onExport={handleExport}
             filters={
-                <div className="flex items-center gap-4">
+                <div className="flex flex-wrap items-center gap-4">
                     <div className="flex items-center gap-2">
                         <Warehouse className="h-4 w-4 text-muted-foreground" />
                         <span className="text-sm font-medium">Almacén:</span>
@@ -91,6 +97,15 @@ export function CurrentStockReport() {
                                 </option>
                             ))}
                         </select>
+                    </div>
+                    <div className="flex-1 min-w-[200px]">
+                        <input
+                            type="text"
+                            placeholder="Buscar producto o SKU..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                        />
                     </div>
                 </div>
             }
@@ -195,20 +210,29 @@ export function CurrentStockReport() {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {data.items.map((item: any) => (
+                                        {filteredItems.map((item: any) => (
                                             <tr key={item.id} className="border-b hover:bg-muted/50">
                                                 <td className="p-2 font-mono text-xs">{item.sku}</td>
                                                 <td className="p-2">
                                                     <div className="font-medium">{item.name}</div>
                                                     <div className="text-[10px] text-muted-foreground">{item.category}</div>
                                                 </td>
-                                                <td className="text-right p-2 font-bold">{item.totalQuantity}</td>
-                                                <td className="text-right p-2">{formatCurrency(item.cost)}</td>
+                                                <td className={`text-right p-2 font-bold ${item.totalQuantity <= 0 ? 'text-red-600' : ''}`}>
+                                                    {item.totalQuantity}
+                                                </td>
+                                                <td className="text-right p-2 text-muted-foreground">{formatCurrency(item.cost)}</td>
                                                 <td className="text-right p-2 font-medium">{formatCurrency(item.totalCostValue)}</td>
-                                                <td className="text-right p-2">{formatCurrency(item.price)}</td>
+                                                <td className="text-right p-2 text-muted-foreground">{formatCurrency(item.price)}</td>
                                                 <td className="text-right p-3 font-semibold text-green-600">{formatCurrency(item.totalPriceValue)}</td>
                                             </tr>
                                         ))}
+                                        {filteredItems.length === 0 && (
+                                            <tr>
+                                                <td colSpan={7} className="p-8 text-center text-muted-foreground">
+                                                    No se encontraron productos.
+                                                </td>
+                                            </tr>
+                                        )}
                                     </tbody>
                                 </table>
                             </div>

@@ -8,7 +8,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { formatCurrency } from '@/lib/utils'
 import { DollarSign, TrendingUp, FileText, Package } from 'lucide-react'
 import { subDays } from 'date-fns'
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts'
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, AreaChart, Area } from 'recharts'
+import { format } from 'date-fns'
+import { es } from 'date-fns/locale'
 
 async function fetchSalesByPeriod(from: Date, to: Date) {
     const params = new URLSearchParams({
@@ -25,11 +27,16 @@ export function SalesByPeriodReport() {
         from: subDays(new Date(), 29),
         to: new Date(),
     })
+    const [searchTerm, setSearchTerm] = useState('')
 
     const { data, isLoading, error } = useQuery({
         queryKey: ['sales-by-period', dateRange.from.toISOString(), dateRange.to.toISOString()],
         queryFn: () => fetchSalesByPeriod(dateRange.from, dateRange.to),
     })
+
+    const filteredProducts = (data?.topProducts || []).filter((p: any) =>
+        p.name.toLowerCase().includes(searchTerm.toLowerCase())
+    )
 
     const handlePrint = () => {
         window.print()
@@ -64,7 +71,20 @@ export function SalesByPeriodReport() {
             description="Análisis detallado de ventas en el período seleccionado"
             onPrint={handlePrint}
             onExport={handleExport}
-            filters={<DateRangeFilter value={dateRange} onChange={setDateRange} />}
+            filters={
+                <div className="flex flex-wrap items-center gap-4">
+                    <DateRangeFilter value={dateRange} onChange={setDateRange} />
+                    <div className="flex-1 min-w-[200px]">
+                        <input
+                            type="text"
+                            placeholder="Buscar en top productos..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                        />
+                    </div>
+                </div>
+            }
         >
             {isLoading && (
                 <div className="text-center py-12">
@@ -87,22 +107,22 @@ export function SalesByPeriodReport() {
                     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                         <Card>
                             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium">Total Ventas</CardTitle>
-                                <DollarSign className="h-4 w-4 text-muted-foreground" />
+                                <CardTitle className="text-sm font-medium">Ventas Netas</CardTitle>
+                                <DollarSign className="h-4 w-4 text-primary" />
                             </CardHeader>
                             <CardContent>
-                                <div className="text-2xl font-bold text-green-600">
-                                    {formatCurrency(data.summary.totalSales)}
+                                <div className="text-2xl font-bold text-blue-600">
+                                    {formatCurrency(data.summary.totalNetSales)}
                                 </div>
                                 <p className="text-xs text-muted-foreground mt-1">
-                                    {data.summary.totalInvoices} facturas
+                                    Sin impuestos. {data.summary.totalInvoices} facturas.
                                 </p>
                             </CardContent>
                         </Card>
 
                         <Card>
                             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium">Ganancia</CardTitle>
+                                <CardTitle className="text-sm font-medium">Ganancia Real</CardTitle>
                                 <TrendingUp className="h-4 w-4 text-muted-foreground" />
                             </CardHeader>
                             <CardContent>
@@ -110,32 +130,38 @@ export function SalesByPeriodReport() {
                                     {formatCurrency(data.summary.totalProfit)}
                                 </div>
                                 <p className="text-xs text-muted-foreground mt-1">
-                                    Margen: {data.summary.profitMargin.toFixed(1)}%
+                                    Margen: {data.summary.profitMargin.toFixed(1)}% (Sobre neto)
                                 </p>
                             </CardContent>
                         </Card>
 
                         <Card>
                             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium">Promedio Factura</CardTitle>
+                                <CardTitle className="text-sm font-medium">Retorno/Descuentos</CardTitle>
                                 <FileText className="h-4 w-4 text-muted-foreground" />
                             </CardHeader>
                             <CardContent>
-                                <div className="text-2xl font-bold">
-                                    {formatCurrency(data.summary.averageValue)}
+                                <div className="text-2xl font-bold text-orange-600">
+                                    {formatCurrency(data.summary.totalReturns + data.summary.totalDiscounts)}
                                 </div>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                    -{formatCurrency(data.summary.totalReturns)} devoluciones
+                                </p>
                             </CardContent>
                         </Card>
 
                         <Card>
                             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium">Costo Total</CardTitle>
+                                <CardTitle className="text-sm font-medium">Ventas Brutas</CardTitle>
                                 <Package className="h-4 w-4 text-muted-foreground" />
                             </CardHeader>
                             <CardContent>
                                 <div className="text-2xl font-bold">
-                                    {formatCurrency(data.summary.totalCost)}
+                                    {formatCurrency(data.summary.totalSales)}
                                 </div>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                    Incluye IVA: {formatCurrency(data.summary.totalTax)}
+                                </p>
                             </CardContent>
                         </Card>
                     </div>
@@ -143,19 +169,28 @@ export function SalesByPeriodReport() {
                     {/* Sales Chart */}
                     <Card>
                         <CardHeader>
-                            <CardTitle>Ventas Diarias</CardTitle>
+                            <CardTitle>Ventas Diarias (Bruto vs Neto)</CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <ResponsiveContainer width="100%" height={300}>
-                                <BarChart data={data.salesByDay}>
-                                    <CartesianGrid strokeDasharray="3 3" />
-                                    <XAxis dataKey="date" />
-                                    <YAxis />
-                                    <Tooltip formatter={(value: any) => formatCurrency(value)} />
-                                    <Legend />
-                                    <Bar dataKey="sales" fill="#10b981" name="Ventas" />
-                                </BarChart>
-                            </ResponsiveContainer>
+                            <div className="h-[300px]">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <AreaChart data={data.salesByDay}>
+                                        <CartesianGrid strokeDasharray="3 3" />
+                                        <XAxis
+                                            dataKey="date"
+                                            tickFormatter={(val) => format(new Date(val), 'dd MMM', { locale: es })}
+                                        />
+                                        <YAxis tickFormatter={(val) => `$${val / 1000}k`} />
+                                        <Tooltip
+                                            labelFormatter={(val) => format(new Date(val), 'PPPP', { locale: es })}
+                                            formatter={(value: any) => formatCurrency(value)}
+                                        />
+                                        <Legend />
+                                        <Area type="monotone" dataKey="sales" stroke="#10b981" fill="#10b981" fillOpacity={0.2} name="Ventas Brutas" />
+                                        <Area type="monotone" dataKey="netSales" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.4} name="Ventas Netas" />
+                                    </AreaChart>
+                                </ResponsiveContainer>
+                            </div>
                         </CardContent>
                     </Card>
 
@@ -177,17 +212,24 @@ export function SalesByPeriodReport() {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {data.topProducts.slice(0, 10).map((product: any, index: number) => (
-                                            <tr key={product.id} className="border-b">
+                                        {filteredProducts.slice(0, 10).map((product: any, index: number) => (
+                                            <tr key={product.id} className="border-b hover:bg-muted/50">
                                                 <td className="p-2">{index + 1}</td>
-                                                <td className="p-2">{product.name}</td>
+                                                <td className="p-2 font-medium">{product.name}</td>
                                                 <td className="text-right p-2">{product.quantity}</td>
-                                                <td className="text-right p-2">{formatCurrency(product.revenue)}</td>
+                                                <td className="text-right p-2 font-medium">{formatCurrency(product.revenue)}</td>
                                                 <td className={`text-right p-2 font-semibold ${product.profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                                                     {formatCurrency(product.profit)}
                                                 </td>
                                             </tr>
                                         ))}
+                                        {filteredProducts.length === 0 && (
+                                            <tr>
+                                                <td colSpan={5} className="p-8 text-center text-muted-foreground">
+                                                    No se encontraron productos.
+                                                </td>
+                                            </tr>
+                                        )}
                                     </tbody>
                                 </table>
                             </div>

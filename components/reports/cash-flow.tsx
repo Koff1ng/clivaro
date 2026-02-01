@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { formatCurrency } from '@/lib/utils'
 import { subDays, format } from 'date-fns'
 import { es } from 'date-fns/locale'
-import { ArrowUpCircle, ArrowDownCircle, Scale, History } from 'lucide-react'
+import { ArrowUpCircle, ArrowDownCircle, Scale, History, TrendingUp, DollarSign } from 'lucide-react'
 import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
     AreaChart, Area
@@ -29,11 +29,17 @@ export function CashFlowReport() {
         from: subDays(new Date(), 29),
         to: new Date(),
     })
+    const [searchTerm, setSearchTerm] = useState('')
 
     const { data, isLoading, error } = useQuery({
         queryKey: ['cash-flow-report', dateRange.from.toISOString(), dateRange.to.toISOString()],
         queryFn: () => fetchCashFlow(dateRange.from, dateRange.to),
     })
+
+    const filteredMovements = (data?.movements || []).filter((m: any) =>
+        m.reason.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        m.userName.toLowerCase().includes(searchTerm.toLowerCase())
+    )
 
     const handlePrint = () => {
         window.print()
@@ -67,10 +73,23 @@ export function CashFlowReport() {
     return (
         <ReportLayout
             title="Flujo de Caja"
-            description="Movimientos de entrada y salida de efectivo en las cajas"
+            description="Seguimiento de ingresos, egresos y ventas realizadas"
             onPrint={handlePrint}
             onExport={handleExport}
-            filters={<DateRangeFilter value={dateRange} onChange={setDateRange} />}
+            filters={
+                <div className="flex flex-wrap items-center gap-4">
+                    <DateRangeFilter value={dateRange} onChange={setDateRange} />
+                    <div className="flex-1 min-w-[200px]">
+                        <input
+                            type="text"
+                            placeholder="Buscar por motivo o usuario..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                        />
+                    </div>
+                </div>
+            }
         >
             {isLoading && (
                 <div className="text-center py-12">
@@ -90,25 +109,40 @@ export function CashFlowReport() {
             {data && (
                 <div className="space-y-6">
                     {/* Summary Cards */}
-                    <div className="grid gap-4 md:grid-cols-3">
+                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                         <Card>
                             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium">Entradas Totales</CardTitle>
+                                <CardTitle className="text-sm font-medium">Ventas (Entradas)</CardTitle>
                                 <ArrowUpCircle className="h-4 w-4 text-green-600" />
                             </CardHeader>
                             <CardContent>
                                 <div className="text-2xl font-bold text-green-600">
-                                    {formatCurrency(data.summary.totalIn)}
+                                    {formatCurrency(data.summary.totalSales)}
                                 </div>
                                 <p className="text-xs text-muted-foreground mt-1">
-                                    Ventas y depósitos
+                                    Ingresos por facturación
                                 </p>
                             </CardContent>
                         </Card>
 
                         <Card>
                             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium">Salidas Totales</CardTitle>
+                                <CardTitle className="text-sm font-medium">Otros Ingresos</CardTitle>
+                                <TrendingUp className="h-4 w-4 text-blue-600" />
+                            </CardHeader>
+                            <CardContent>
+                                <div className="text-2xl font-bold text-blue-600">
+                                    {formatCurrency(data.summary.totalIn)}
+                                </div>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                    Cargas manuales
+                                </p>
+                            </CardContent>
+                        </Card>
+
+                        <Card>
+                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                <CardTitle className="text-sm font-medium">Salidas / Devol.</CardTitle>
                                 <ArrowDownCircle className="h-4 w-4 text-red-600" />
                             </CardHeader>
                             <CardContent>
@@ -116,7 +150,7 @@ export function CashFlowReport() {
                                     {formatCurrency(data.summary.totalOut)}
                                 </div>
                                 <p className="text-xs text-muted-foreground mt-1">
-                                    Gastos y retiros
+                                    Gastos y devoluciones
                                 </p>
                             </CardContent>
                         </Card>
@@ -127,11 +161,11 @@ export function CashFlowReport() {
                                 <Scale className="h-4 w-4 text-primary" />
                             </CardHeader>
                             <CardContent>
-                                <div className="text-2xl font-bold">
+                                <div className={`text-2xl font-bold ${data.summary.netFlow >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                                     {formatCurrency(data.summary.netFlow)}
                                 </div>
                                 <p className="text-xs text-muted-foreground mt-1">
-                                    Balance en el período
+                                    Balance del período
                                 </p>
                             </CardContent>
                         </Card>
@@ -147,12 +181,19 @@ export function CashFlowReport() {
                                 <ResponsiveContainer width="100%" height="100%">
                                     <AreaChart data={data.daily}>
                                         <CartesianGrid strokeDasharray="3 3" />
-                                        <XAxis dataKey="date" />
+                                        <XAxis
+                                            dataKey="date"
+                                            tickFormatter={(val) => format(new Date(val), 'dd MMM')}
+                                        />
                                         <YAxis />
-                                        <Tooltip formatter={(value: any) => formatCurrency(value)} />
+                                        <Tooltip
+                                            labelFormatter={(val) => format(new Date(val), 'PPPP', { locale: es })}
+                                            formatter={(value: any) => formatCurrency(value)}
+                                        />
                                         <Legend />
-                                        <Area type="monotone" dataKey="in" stackId="1" stroke="#10b981" fill="#10b981" fillOpacity={0.6} name="Entradas" />
-                                        <Area type="monotone" dataKey="out" stackId="2" stroke="#ef4444" fill="#ef4444" fillOpacity={0.6} name="Salidas" />
+                                        <Area type="monotone" dataKey="sales" stackId="1" stroke="#10b981" fill="#10b981" fillOpacity={0.4} name="Ventas" />
+                                        <Area type="monotone" dataKey="in" stackId="1" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.2} name="Otros Ingresos" />
+                                        <Area type="monotone" dataKey="out" stroke="#ef4444" fill="#ef4444" fillOpacity={0.1} name="Salidas" />
                                     </AreaChart>
                                 </ResponsiveContainer>
                             </div>
@@ -174,13 +215,14 @@ export function CashFlowReport() {
                                         <tr className="border-b">
                                             <th className="text-left p-2">Fecha</th>
                                             <th className="text-left p-2">Tipo</th>
+                                            <th className="text-left p-2">Origen</th>
                                             <th className="text-left p-2">Concepto</th>
                                             <th className="text-right p-2">Monto</th>
                                             <th className="text-left p-2">Usuario</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {data.movements.map((m: any) => (
+                                        {filteredMovements.map((m: any) => (
                                             <tr key={m.id} className="border-b hover:bg-muted/50">
                                                 <td className="p-2 text-xs text-muted-foreground">
                                                     {format(new Date(m.createdAt), 'dd MMM, HH:mm', { locale: es })}
@@ -190,6 +232,9 @@ export function CashFlowReport() {
                                                         {m.type === 'IN' ? 'ENTRADA' : 'SALIDA'}
                                                     </span>
                                                 </td>
+                                                <td className="p-2 text-[10px] font-medium text-muted-foreground uppercase">
+                                                    {m.source}
+                                                </td>
                                                 <td className="p-2">{m.reason || '-'}</td>
                                                 <td className={`text-right p-2 font-semibold ${m.type === 'IN' ? 'text-green-600' : 'text-red-600'}`}>
                                                     {m.type === 'IN' ? '+' : '-'}{formatCurrency(m.amount)}
@@ -197,6 +242,13 @@ export function CashFlowReport() {
                                                 <td className="p-2 text-muted-foreground">{m.userName}</td>
                                             </tr>
                                         ))}
+                                        {filteredMovements.length === 0 && (
+                                            <tr>
+                                                <td colSpan={6} className="p-8 text-center text-muted-foreground">
+                                                    No se encontraron movimientos.
+                                                </td>
+                                            </tr>
+                                        )}
                                     </tbody>
                                 </table>
                             </div>

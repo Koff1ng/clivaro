@@ -6,8 +6,9 @@ import { ReportLayout } from '@/components/reports/report-layout'
 import { DateRangeFilter, DateRange } from '@/components/reports/date-range-filter'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { formatCurrency } from '@/lib/utils'
-import { subDays } from 'date-fns'
-import { Package, TrendingUp, DollarSign } from 'lucide-react'
+import { subDays, format } from 'date-fns'
+import { es } from 'date-fns/locale'
+import { Package, TrendingUp, DollarSign, Search } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 
 async function fetchTopProducts(from: Date, to: Date) {
@@ -16,7 +17,7 @@ async function fetchTopProducts(from: Date, to: Date) {
         to: to.toISOString(),
         limit: '50',
     })
-    const res = await fetch(`/api/dashboard/top-products?${params}`)
+    const res = await fetch(`/api/reports/top-products?${params}`)
     if (!res.ok) throw new Error('Failed to fetch report')
     return res.json()
 }
@@ -27,11 +28,17 @@ export function TopProductsReport() {
         to: new Date(),
     })
     const [view, setView] = useState<'revenue' | 'quantity'>('revenue')
+    const [searchTerm, setSearchTerm] = useState('')
 
     const { data, isLoading, error } = useQuery({
         queryKey: ['top-products', dateRange.from.toISOString(), dateRange.to.toISOString()],
         queryFn: () => fetchTopProducts(dateRange.from, dateRange.to),
     })
+
+    const filteredItems = (data?.products || []).filter((item: any) =>
+        item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.sku.toLowerCase().includes(searchTerm.toLowerCase())
+    )
 
     const handlePrint = () => {
         window.print()
@@ -64,13 +71,11 @@ export function TopProductsReport() {
         URL.revokeObjectURL(url)
     }
 
-    const topProductsByView = data?.products
-        ? [...data.products].sort((a: any, b: any) => {
-            return view === 'revenue' ? b.revenue - a.revenue : b.quantity - a.quantity
-        })
-        : []
+    const topProductsByView = [...filteredItems].sort((a: any, b: any) => {
+        return view === 'revenue' ? b.revenue - a.revenue : b.quantity - a.quantity
+    })
 
-    const chartData = (topProductsByView || []).slice(0, 10).reverse()
+    const chartData = topProductsByView.slice(0, 10).reverse()
 
     return (
         <ReportLayout
@@ -79,22 +84,33 @@ export function TopProductsReport() {
             onPrint={handlePrint}
             onExport={handleExport}
             filters={
-                <div className="space-y-4">
+                <div className="flex flex-wrap items-center gap-4">
                     <DateRangeFilter value={dateRange} onChange={setDateRange} />
-                    <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium">Ordenar por:</span>
+                    <div className="flex items-center gap-2 bg-muted p-1 rounded-md">
                         <button
                             onClick={() => setView('revenue')}
-                            className={`px-3 py-1 rounded text-sm ${view === 'revenue' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}
+                            className={`px-3 py-1 rounded text-xs transition-colors ${view === 'revenue' ? 'bg-primary text-primary-foreground shadow-sm' : 'hover:bg-muted-foreground/10'}`}
                         >
-                            Ingresos
+                            Por Ingresos
                         </button>
                         <button
                             onClick={() => setView('quantity')}
-                            className={`px-3 py-1 rounded text-sm ${view === 'quantity' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}
+                            className={`px-3 py-1 rounded text-xs transition-colors ${view === 'quantity' ? 'bg-primary text-primary-foreground shadow-sm' : 'hover:bg-muted-foreground/10'}`}
                         >
-                            Cantidad
+                            Por Cantidad
                         </button>
+                    </div>
+                    <div className="flex-1 min-w-[200px]">
+                        <div className="relative">
+                            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                            <input
+                                type="text"
+                                placeholder="Buscar producto..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="flex h-9 w-full rounded-md border border-input bg-background pl-8 pr-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                            />
+                        </div>
                     </div>
                 </div>
             }
@@ -125,9 +141,7 @@ export function TopProductsReport() {
                             </CardHeader>
                             <CardContent>
                                 <div className="text-2xl font-bold text-green-600">
-                                    {formatCurrency(
-                                        data.products.reduce((sum: number, p: any) => sum + p.revenue, 0)
-                                    )}
+                                    {formatCurrency(data.summary.totalRevenue)}
                                 </div>
                             </CardContent>
                         </Card>
@@ -139,9 +153,7 @@ export function TopProductsReport() {
                             </CardHeader>
                             <CardContent>
                                 <div className="text-2xl font-bold text-green-600">
-                                    {formatCurrency(
-                                        data.products.reduce((sum: number, p: any) => sum + p.profit, 0)
-                                    )}
+                                    {formatCurrency(data.summary.totalProfit)}
                                 </div>
                             </CardContent>
                         </Card>
@@ -153,7 +165,7 @@ export function TopProductsReport() {
                             </CardHeader>
                             <CardContent>
                                 <div className="text-2xl font-bold">
-                                    {data.products.reduce((sum: number, p: any) => sum + p.quantity, 0)}
+                                    {data.summary.totalQuantity}
                                 </div>
                                 <p className="text-xs text-muted-foreground mt-1">
                                     {data.products.length} productos diferentes
@@ -168,27 +180,33 @@ export function TopProductsReport() {
                             <CardTitle>Top 10 Productos por {view === 'revenue' ? 'Ingresos' : 'Cantidad'}</CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <ResponsiveContainer width="100%" height={400}>
-                                <BarChart data={chartData} layout="vertical">
-                                    <CartesianGrid strokeDasharray="3 3" />
-                                    <XAxis type="number" />
-                                    <YAxis dataKey="name" type="category" width={150} />
-                                    <Tooltip formatter={(value: any) => view === 'revenue' ? formatCurrency(value) : value} />
-                                    <Legend />
-                                    <Bar
-                                        dataKey={view === 'revenue' ? 'revenue' : 'quantity'}
-                                        fill="#10b981"
-                                        name={view === 'revenue' ? 'Ingresos' : 'Cantidad'}
-                                    />
-                                </BarChart>
-                            </ResponsiveContainer>
+                            <div className="h-[400px]">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart data={chartData} layout="vertical">
+                                        <CartesianGrid strokeDasharray="3 3" />
+                                        <XAxis type="number" />
+                                        <YAxis dataKey="name" type="category" width={150} tick={{ fontSize: 12 }} />
+                                        <Tooltip
+                                            formatter={(value: any) => view === 'revenue' ? formatCurrency(value) : value}
+                                            contentStyle={{ backgroundColor: 'hsl(var(--background))', borderColor: 'hsl(var(--border))' }}
+                                        />
+                                        <Legend />
+                                        <Bar
+                                            dataKey={view === 'revenue' ? 'revenue' : 'quantity'}
+                                            fill="hsl(var(--primary))"
+                                            name={view === 'revenue' ? 'Ingresos' : 'Cantidad'}
+                                            radius={[0, 4, 4, 0]}
+                                        />
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            </div>
                         </CardContent>
                     </Card>
 
                     {/* Products Table */}
                     <Card>
                         <CardHeader>
-                            <CardTitle>Todos los Productos</CardTitle>
+                            <CardTitle>Análisis Detallado</CardTitle>
                         </CardHeader>
                         <CardContent>
                             <div className="overflow-x-auto">
@@ -211,18 +229,32 @@ export function TopProductsReport() {
                                             return (
                                                 <tr key={product.id} className="border-b hover:bg-muted/50">
                                                     <td className="p-2">{index + 1}</td>
-                                                    <td className="p-2 font-medium">{product.name}</td>
+                                                    <td className="p-2">
+                                                        <div className="font-medium">{product.name}</div>
+                                                        <div className="text-[10px] text-muted-foreground">{product.sku}</div>
+                                                    </td>
                                                     <td className="p-2 text-muted-foreground">{product.category || '-'}</td>
-                                                    <td className="text-right p-2">{product.quantity}</td>
-                                                    <td className="text-right p-2">{formatCurrency(product.revenue)}</td>
-                                                    <td className="text-right p-2">{formatCurrency(product.cost)}</td>
+                                                    <td className="text-right p-2 font-bold">{product.quantity}</td>
+                                                    <td className="text-right p-2 font-medium">{formatCurrency(product.revenue)}</td>
+                                                    <td className="text-right p-2 text-muted-foreground">{formatCurrency(product.cost)}</td>
                                                     <td className={`text-right p-2 font-semibold ${product.profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                                                         {formatCurrency(product.profit)}
                                                     </td>
-                                                    <td className="text-right p-2">{margin}%</td>
+                                                    <td className="text-right p-2">
+                                                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${parseFloat(margin) > 30 ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
+                                                            {margin}%
+                                                        </span>
+                                                    </td>
                                                 </tr>
                                             )
                                         })}
+                                        {topProductsByView.length === 0 && (
+                                            <tr>
+                                                <td colSpan={8} className="p-8 text-center text-muted-foreground">
+                                                    No se encontraron productos.
+                                                </td>
+                                            </tr>
+                                        )}
                                     </tbody>
                                 </table>
                             </div>
