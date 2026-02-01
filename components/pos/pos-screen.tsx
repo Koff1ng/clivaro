@@ -2252,8 +2252,9 @@ ${saleResult.change > 0 ? `Cambio: ${formatCurrency(saleResult.change)}` : ''}
                   </Button>
                 </div>
               </div>
+            </div>
           )}
-            </DialogContent>
+        </DialogContent>
       </Dialog>
 
       {/* Park Sale Dialog */}
