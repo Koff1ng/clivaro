@@ -19,7 +19,7 @@ async function executeWithRetry<T>(
     } catch (error: any) {
       lastError = error
       const errorMessage = error?.message || String(error)
-      
+
       // Si es error de límite de conexiones, esperar y reintentar
       if (errorMessage.includes('MaxClientsInSessionMode') || errorMessage.includes('max clients reached')) {
         if (attempt < maxRetries - 1) {
@@ -29,7 +29,7 @@ async function executeWithRetry<T>(
           continue
         }
       }
-      
+
       // Si no es error de conexión, lanzar inmediatamente
       throw error
     }
@@ -40,13 +40,13 @@ async function executeWithRetry<T>(
 export async function GET(request: Request) {
   try {
     const session = await requireAuth(request)
-    
+
     if (session instanceof NextResponse) {
       return session
     }
 
-  const user = session.user as any
-    
+    const user = session.user as any
+
     // Verificar si es super admin
     const dbUser = await prisma.user.findUnique({
       where: { id: user.id },
@@ -89,13 +89,13 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const session = await requireAuth(request)
-    
+
     if (session instanceof NextResponse) {
       return session
     }
 
-  const user = session.user as any
-    
+    const user = session.user as any
+
     // Verificar si es super admin
     const dbUser = await prisma.user.findUnique({
       where: { id: user.id },
@@ -198,7 +198,7 @@ export async function POST(request: Request) {
     } catch (createError: any) {
       logger.error('Error creating tenant', createError, { endpoint: '/api/admin/tenants', method: 'POST' })
       return NextResponse.json(
-        { 
+        {
           error: 'Error al crear el tenant',
           details: createError.message || 'Error desconocido'
         },
@@ -212,7 +212,8 @@ export async function POST(request: Request) {
       const { adminUsername, adminPassword } = await initializeTenantDatabase(
         finalDatabaseUrl,
         name,
-        slug
+        slug,
+        tenant.id // Pass the ID for standardized schema naming
       )
       logger.info('Tenant database initialized', { tenantId: tenant.id })
 
@@ -298,9 +299,9 @@ export async function POST(request: Request) {
 
       const errorMessage = initError.message || initError.toString() || 'Error desconocido'
       logger.error('Error initializing tenant database', initError, { tenantId: tenant.id, errorMessage })
-      
+
       return NextResponse.json(
-        { 
+        {
           error: 'Error al inicializar la base de datos del tenant',
           details: errorMessage,
           suggestion: 'Verifique la configuración de DATABASE_URL o la ruta de la base de datos.'

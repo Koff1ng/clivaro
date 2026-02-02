@@ -1,13 +1,16 @@
 import { PrismaClient } from '@prisma/client'
 import bcrypt from 'bcryptjs'
-import { execSync } from 'child_process'
 import * as fs from 'fs'
 import * as path from 'path'
 import { Client } from 'pg'
 
-function getTenantSchemaName(tenantSlug: string): string {
-  const safeSlug = tenantSlug.toLowerCase().replace(/[^a-z0-9_]/g, '_')
-  return `tenant_${safeSlug}`
+/**
+ * Derives the standardized schema name from a tenant ID.
+ * Standard: tenant_[CUID]
+ */
+function getTenantSchemaName(tenantId: string): string {
+  // Use the tenant ID (CUID) for the schema name to ensure uniqueness and stability
+  return `tenant_${tenantId}`
 }
 
 function withSchemaParam(databaseUrl: string, schema: string): string {
@@ -31,644 +34,143 @@ function stripSchemaParam(databaseUrl: string): string {
   }
 }
 
-async function initializePostgresTenant(databaseUrl: string, tenantSlug: string) {
+/**
+ * Initializes a PostgreSQL tenant database.
+ */
+async function initializePostgresTenant(databaseUrl: string, tenantId: string, tenantName: string) {
   const baseUrl = stripSchemaParam(databaseUrl)
-  const schemaName = getTenantSchemaName(tenantSlug)
-  const schemaUrl = withSchemaParam(baseUrl, schemaName)
+  const schemaName = getTenantSchemaName(tenantId)
 
   // Use DIRECT_DATABASE_URL for DDL operations if available (avoids PgBouncer issues)
-  // Otherwise fall back to the regular DATABASE_URL
   const directUrl = process.env.DIRECT_DATABASE_URL || baseUrl
   const directUrlForSchema = stripSchemaParam(directUrl)
 
   console.log('='.repeat(60))
   console.log('[TENANT INIT] Iniciando inicialización de tenant PostgreSQL')
-  console.log(`[TENANT INIT] Slug: ${tenantSlug}`)
+  console.log(`[TENANT INIT] ID: ${tenantId}`)
+  console.log(`[TENANT INIT] Empresa: ${tenantName}`)
   console.log(`[TENANT INIT] Schema: ${schemaName}`)
-  console.log(`[TENANT INIT] Usando conexión directa: ${process.env.DIRECT_DATABASE_URL ? 'Sí' : 'No (pooler)'}`)
   console.log('='.repeat(60))
 
-  // Step 1: Create schema using DIRECT connection (DDL doesn't work well with PgBouncer)
-  console.log('[STEP 1/4] Conectando a PostgreSQL para crear schema...')
+  // Step 1: Create schema 
   const adminPrisma = new PrismaClient({
     datasources: { db: { url: directUrlForSchema } },
-    log: ['error', 'warn'],
   })
 
   try {
     console.log(`[STEP 1/4] Ejecutando: CREATE SCHEMA IF NOT EXISTS "${schemaName}"`)
     await adminPrisma.$executeRawUnsafe(`CREATE SCHEMA IF NOT EXISTS "${schemaName}"`)
-    console.log('[STEP 1/4] ✓ Schema creado/verificado exitosamente')
   } catch (schemaError: any) {
-    console.error('[STEP 1/4] ❌ Error creando schema:')
-    console.error(`  Mensaje: ${schemaError?.message || schemaError}`)
-    console.error(`  Código: ${schemaError?.code || 'N/A'}`)
-    console.error(`  Meta: ${JSON.stringify(schemaError?.meta || {})}`)
-
-    // If using pooler and it failed, suggest using DIRECT_DATABASE_URL
-    if (!process.env.DIRECT_DATABASE_URL && (schemaError?.message || '').includes('prepared statement')) {
-      console.error('  💡 SUGERENCIA: Configura DIRECT_DATABASE_URL en Vercel con la URL directa (puerto 5432) para DDL')
-    }
-
     throw new Error(`Error creando schema "${schemaName}": ${schemaError?.message || schemaError}`)
   } finally {
     await adminPrisma.$disconnect()
-    console.log('[STEP 1/4] Conexión admin cerrada')
   }
 
-  // Step 2: Connect to tenant schema using DIRECT connection for DDL
-  console.log('[STEP 2/4] Conectando al schema del tenant...')
+  // Step 2: Connect to tenant schema for DDL
   const tenantSchemaUrl = withSchemaParam(directUrlForSchema, schemaName)
   const tenantPrisma = new PrismaClient({
     datasources: { db: { url: tenantSchemaUrl } },
-    log: ['error', 'warn'],
   })
 
-  try {
-    // Test connection
-    await tenantPrisma.$connect()
-    console.log('[STEP 2/4] ✓ Conexión al schema del tenant exitosa')
-  } catch (connError: any) {
-    console.error('[STEP 2/4] ❌ Error conectando al schema del tenant:')
-    console.error(`  Mensaje: ${connError?.message || connError}`)
-    throw new Error(`Error conectando al schema "${schemaName}": ${connError?.message || connError}`)
-  }
-
-  // Step 3: Read SQL file and execute using pg Client (supports multiple statements)
-  console.log('[STEP 3/3] Leyendo y ejecutando supabase-init.sql...')
+  // Step 3: Execute initialization SQL
+  console.log('[STEP 3/4] Ejecutando scripts SQL de inicialización...')
   const startTime = Date.now()
 
-  // Create a pg Client directly (not through Prisma) for multi-statement execution
-  // Use the direct URL without schema param, we'll set search_path manually
-  const pgClient = new Client({ connectionString: directUrlForSchema })
-
   try {
-    await pgClient.connect()
-    console.log('[STEP 3/3] Conexión pg directa establecida')
-
-    // Set search_path to the tenant schema
-    await pgClient.query(`SET search_path TO "${schemaName}"`)
-    console.log(`[STEP 3/3] search_path establecido a: ${schemaName}`)
-
     const sqlPath = path.join(process.cwd(), 'prisma', 'supabase-init.sql')
-    console.log(`[STEP 3/3] Ruta del archivo: ${sqlPath}`)
-
     if (!fs.existsSync(sqlPath)) {
-      throw new Error(`Archivo SQL no encontrado: ${sqlPath}`)
+      throw new Error(`No se encontró el archivo SQL en ${sqlPath}`)
     }
 
-    const sqlBuf = fs.readFileSync(sqlPath)
-    console.log(`[STEP 3/3] Archivo leído: ${sqlBuf.length} bytes`)
+    let sql = fs.readFileSync(sqlPath, 'utf8')
 
-    // PowerShell redirection can write UTF-16LE; detect BOM / NUL bytes and decode accordingly.
-    const looksUtf16Le =
-      (sqlBuf.length >= 2 && sqlBuf[0] === 0xff && sqlBuf[1] === 0xfe) ||
-      sqlBuf.slice(0, Math.min(sqlBuf.length, 200)).includes(0x00)
+    // Ensure the SQL runs in the correct schema
+    sql = `SET search_path TO "${schemaName}";\n\n${sql}`
 
-    console.log(`[STEP 3/3] Encoding: ${looksUtf16Le ? 'UTF-16LE' : 'UTF-8'}`)
+    const client = new Client({
+      connectionString: tenantSchemaUrl,
+    })
 
-    const sqlRaw = looksUtf16Le ? sqlBuf.toString('utf16le') : sqlBuf.toString('utf8')
-
-    // Remove BOM and normalize line endings
-    let sql = sqlRaw.replace(/^\uFEFF/, '').replace(/\r\n/g, '\n')
-
-    // Remove full-line comments
-    sql = sql.replace(/^\s*--.*$/gm, '').trim()
-
-    // Add IF NOT EXISTS to CREATE TABLE statements to make idempotent
-    sql = sql.replace(/CREATE TABLE\s+/gi, 'CREATE TABLE IF NOT EXISTS ')
-
-    // Add IF NOT EXISTS to CREATE INDEX statements
-    sql = sql.replace(/CREATE INDEX\s+/gi, 'CREATE INDEX IF NOT EXISTS ')
-    sql = sql.replace(/CREATE UNIQUE INDEX\s+/gi, 'CREATE UNIQUE INDEX IF NOT EXISTS ')
-
-    console.log(`[STEP 3/3] Ejecutando SQL completo (${sql.length} chars)...`)
-
-    // Execute all SQL using pg Client - it supports multiple statements natively
-    await pgClient.query(sql)
-
-    // Step 3.5: Execute Restaurant Init (if exists)
-    const restaurantSqlPath = path.join(process.cwd(), 'prisma', 'supabase-init-restaurant.sql')
-    if (fs.existsSync(restaurantSqlPath)) {
-      console.log(`[STEP 3.5/3] Ejecutando updates de Restaurant Mode...`)
-      const rSqlBuf = fs.readFileSync(restaurantSqlPath)
-      const rSqlRaw = rSqlBuf.toString('utf8') // Assuming UTF-8 for this new file
-      const rSql = rSqlRaw.replace(/\r\n/g, '\n').replace(/^\s*--.*$/gm, '').trim()
-
-      if (rSql) {
-        console.log(`[STEP 3.5/3] Ejecutando SQL adicional (${rSql.length} chars)...`)
-        await pgClient.query(rSql)
-        console.log(`[STEP 3.5/3] ✓ Updates de Restaurant Mode aplicados`)
-      }
-    }
-
-    const elapsed = ((Date.now() - startTime) / 1000).toFixed(2)
-    console.log('='.repeat(60))
-    console.log(`[TENANT INIT] ✓ Schema creado en ${elapsed}s`)
-    console.log('='.repeat(60))
-
-  } catch (error: any) {
-    const errorCode = error?.code || 'UNKNOWN'
-    const errorMsg = error?.message || String(error)
-
-    console.error('[STEP 3/3] ❌ Error ejecutando SQL:')
-    console.error(`  Código: ${errorCode}`)
-    console.error(`  Mensaje: ${errorMsg}`)
-
-    // If it's "already exists" errors, that's OK - schema was already set up
-    if (errorCode === '42P07' || errorMsg.includes('already exists')) {
-      console.log('[STEP 3/3] ⚠️ Algunas tablas ya existían, continuando...')
-    } else {
-      await pgClient.end().catch(() => { })
-      await tenantPrisma.$disconnect()
-      throw new Error(`Error creando tablas del tenant: ${errorMsg}`)
-    }
-  } finally {
-    await pgClient.end().catch(() => { })
-    console.log('[STEP 3/3] Conexión pg cerrada')
-  }
-
-  return { tenantPrisma }
-}
-
-/**
- * Inicializa la base de datos de un tenant recién creado
- * Crea: permisos, roles, usuario admin por defecto, almacén principal
- */
-export async function initializeTenantDatabase(databaseUrl: string, tenantName: string, tenantSlug: string) {
-  console.log(`Inicializando base de datos para tenant: ${tenantName}`)
-  console.log(`Database URL: ${databaseUrl}`)
-
-  if (databaseUrl.startsWith('postgresql://') || databaseUrl.startsWith('postgres://')) {
-    const { tenantPrisma } = await initializePostgresTenant(databaseUrl, tenantSlug)
-    return await seedTenantData(tenantPrisma, tenantName)
-  }
-
-  // Extraer la ruta del archivo de la URL
-  let dbPath = databaseUrl.replace(/^file:/, '').trim()
-
-  // Normalizar separadores de ruta (Windows usa \, Unix usa /)
-  dbPath = dbPath.replace(/\\/g, '/')
-
-  // Si comienza con ./ o ../, es relativa
-  if (dbPath.startsWith('./') || dbPath.startsWith('../')) {
-    dbPath = path.resolve(process.cwd(), dbPath)
-  } else if (!path.isAbsolute(dbPath)) {
-    // Si no es absoluta y no tiene prefijo, asumir relativa desde cwd
-    dbPath = path.resolve(process.cwd(), dbPath)
-  }
-
-  // Normalizar la ruta (resolver .. y .)
-  dbPath = path.normalize(dbPath)
-
-  // Asegurar que la extensión sea .db
-  if (!dbPath.endsWith('.db')) {
-    dbPath = `${dbPath}.db`
-  }
-
-  const dbDir = path.dirname(dbPath)
-
-  // Crear directorio si no existe
-  if (dbDir && dbDir !== '.' && !fs.existsSync(dbDir)) {
+    await client.connect()
     try {
-      fs.mkdirSync(dbDir, { recursive: true })
-      console.log(`✓ Directorio creado: ${dbDir}`)
-    } catch (dirError: any) {
-      console.error(`Error creando directorio: ${dirError.message}`)
-      throw new Error(`No se pudo crear el directorio: ${dbDir}. Error: ${dirError.message}`)
-    }
-  }
+      await client.query(sql)
+      console.log(`[STEP 3/4] ✓ SQL base ejecutado exitosamente`)
 
-  // Para SQLite, usar la ruta con separadores nativos del sistema
-  // Pero mantener el formato file: para Prisma
-  const absoluteDatabaseUrl = `file:${dbPath.replace(/\\/g, '/')}`
-  console.log(`Ruta absoluta de BD: ${dbPath}`)
-  console.log(`Database URL para Prisma: ${absoluteDatabaseUrl}`)
-
-  // Verificar que la base de datos no exista o esté vacía
-  // Si existe, eliminarla para crear una nueva desde cero
-  if (fs.existsSync(dbPath)) {
-    console.log(`⚠️ Base de datos ya existe en: ${dbPath}`)
-    console.log(`⚠️ Eliminando base de datos existente para crear una nueva desde cero...`)
-    try {
-      fs.unlinkSync(dbPath)
-      console.log(`✓ Base de datos anterior eliminada`)
-    } catch (deleteError: any) {
-      console.error(`Error eliminando base de datos anterior: ${deleteError.message}`)
-      throw new Error(`No se pudo eliminar la base de datos existente: ${dbPath}. Error: ${deleteError.message}`)
-    }
-  }
-
-  // Crear esquema de base de datos usando prisma db push
-  // Esto es más adecuado para nuevas bases de datos que prisma migrate
-  let schemaCreated = false
-  try {
-    console.log('Creando esquema de base de datos NUEVA desde cero...')
-    console.log(`Ejecutando: npx prisma db push --schema=prisma/schema.prisma --accept-data-loss --skip-generate`)
-    console.log(`Con DATABASE_URL: ${absoluteDatabaseUrl}`)
-    console.log(`Desde directorio: ${process.cwd()}`)
-
-    // Crear un schema temporal que use la BD del tenant
-    // Esto evita que Prisma use la BD del .env
-    const tempSchemaPath = path.join(process.cwd(), 'prisma', `schema.${tenantName.toLowerCase().replace(/\s+/g, '-')}.temp.prisma`)
-    const originalSchema = fs.readFileSync(path.join(process.cwd(), 'prisma', 'schema.prisma'), 'utf-8')
-
-    // Reemplazar la URL en el schema temporal
-    // Si el schema usa env("DATABASE_URL"), lo reemplazamos con la URL del tenant
-    let tempSchema = originalSchema
-    if (originalSchema.includes('env("DATABASE_URL")')) {
-      // Reemplazar env("DATABASE_URL") con la URL del tenant
-      tempSchema = originalSchema.replace(
-        /url\s*=\s*env\("DATABASE_URL"\)/,
-        `url = "${absoluteDatabaseUrl}"`
-      )
-      console.log('✓ Schema temporal creado con URL del tenant')
-    } else {
-      // Reemplazar URL hardcodeada
-      tempSchema = originalSchema.replace(
-        /url\s*=\s*["'].*["']/,
-        `url = "${absoluteDatabaseUrl}"`
-      )
-      console.log('✓ Schema temporal creado con URL del tenant (reemplazando URL hardcodeada)')
-    }
-
-    fs.writeFileSync(tempSchemaPath, tempSchema, 'utf-8')
-    console.log(`✓ Schema temporal guardado en: ${tempSchemaPath}`)
-
-    try {
-      const output = execSync(
-        `npx prisma db push --schema=${tempSchemaPath} --accept-data-loss --skip-generate`,
-        {
-          env: { ...process.env, DATABASE_URL: absoluteDatabaseUrl },
-          stdio: ['ignore', 'pipe', 'pipe'],
-          encoding: 'utf-8',
-          timeout: 120000,
-          cwd: process.cwd(),
-          shell: process.platform === 'win32' ? (process.env.COMSPEC || 'cmd.exe') : '/bin/bash',
-        }
-      )
-
-      const stdout = output.toString().trim()
-      const stderr = (output as any).stderr?.toString()?.trim() || ''
-
-      console.log('✓ Comando ejecutado')
-      if (stdout) {
-        console.log('STDOUT:', stdout)
-      }
-      if (stderr && !stderr.toLowerCase().includes('warning')) {
-        console.log('STDERR:', stderr)
+      // Optional: Restaurant mode additions
+      const restaurantSqlPath = path.join(process.cwd(), 'prisma', 'supabase-init-restaurant.sql')
+      if (fs.existsSync(restaurantSqlPath)) {
+        const rSql = fs.readFileSync(restaurantSqlPath, 'utf8')
+        await client.query(rSql)
+        console.log(`[STEP 3/4] ✓ SQL de Restaurante ejecutado`)
       }
     } finally {
-      // Limpiar el schema temporal
-      try {
-        if (fs.existsSync(tempSchemaPath)) {
-          fs.unlinkSync(tempSchemaPath)
-          console.log('✓ Schema temporal eliminado')
-        }
-      } catch (cleanupError) {
-        console.warn('⚠️ No se pudo eliminar el schema temporal:', cleanupError)
-      }
+      await client.end()
     }
-
-    // IMPORTANTE: Siempre verificar la BD del tenant directamente
-    // El mensaje "already in sync" puede referirse a dev.db (del .env), no a la BD del tenant
-    console.log('Verificando base de datos del tenant directamente...')
-    try {
-      const testPrisma = new PrismaClient({
-        datasources: {
-          db: { url: absoluteDatabaseUrl },
-        },
-      })
-      await testPrisma.$connect()
-      await testPrisma.$queryRaw`SELECT 1`
-
-      const tables = await testPrisma.$queryRaw<Array<{ name: string }>>`
-        SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'
-      `
-
-      await testPrisma.$disconnect()
-
-      if (tables && tables.length > 0) {
-        console.log(`✓ Base de datos del tenant existe y tiene ${tables.length} tabla(s)`)
-        schemaCreated = true
-      } else {
-        console.log('⚠️ Base de datos del tenant existe pero está vacía')
-        // Si la BD está vacía, el comando prisma db push debería haberla creado
-        // Pero puede que Prisma haya usado la BD del .env en lugar de la del tenant
-        // Continuar de todas formas - Prisma creará las tablas cuando se usen
-        schemaCreated = true
-      }
-    } catch (verifyError: any) {
-      console.error('Error verificando BD del tenant:', verifyError.message)
-      // Si no podemos conectar, la BD no existe o hay un problema
-      // Continuar de todas formas - puede que el comando la haya creado pero no podamos conectarnos aún
-      console.log('⚠️ No se pudo verificar la BD, pero continuando...')
-      schemaCreated = true // Continuar de todas formas
-    }
-  } catch (error: any) {
-    const errorMessage = error.message || error.toString() || ''
-    const stdout = error.stdout?.toString()?.trim() || ''
-    const stderr = error.stderr?.toString()?.trim() || ''
-    const status = error.status || error.code || 'unknown'
-
-    console.error('❌ Error ejecutando prisma db push:')
-    console.error(`  Status/Code: ${status}`)
-    console.error(`  Message: ${errorMessage}`)
-    if (stdout) {
-      console.error(`  STDOUT: ${stdout}`)
-    }
-    if (stderr) {
-      console.error(`  STDERR: ${stderr}`)
-    }
-
-    // Verificar si la BD ya está creada y tiene tablas
-    console.log('Verificando si la base de datos ya existe...')
-    try {
-      const testPrisma = new PrismaClient({
-        datasources: {
-          db: { url: absoluteDatabaseUrl },
-        },
-      })
-      await testPrisma.$connect()
-      // Intentar una query simple para verificar que la BD funciona
-      await testPrisma.$queryRaw`SELECT 1`
-
-      // Intentar verificar si hay tablas
-      const tables = await testPrisma.$queryRaw<Array<{ name: string }>>`
-        SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'
-      `
-
-      await testPrisma.$disconnect()
-
-      if (tables && tables.length > 0) {
-        console.log(`✓ Base de datos existe y tiene ${tables.length} tabla(s), continuando...`)
-        schemaCreated = true
-      } else {
-        console.log('⚠️ Base de datos existe pero está vacía, continuando de todas formas...')
-        schemaCreated = true // Continuar de todas formas
-      }
-    } catch (testError: any) {
-      // Si no podemos conectar, lanzar el error original con más detalles
-      const testErrorMsg = testError.message || testError.toString() || ''
-      const fullError = new Error(
-        `Error al crear el esquema de base de datos.\n` +
-        `Error del comando: ${errorMessage}\n` +
-        `STDOUT: ${stdout || '(vacío)'}\n` +
-        `STDERR: ${stderr || '(vacío)'}\n` +
-        `Error de prueba de conexión: ${testErrorMsg}\n` +
-        `Ruta de BD: ${dbPath}\n` +
-        `Database URL: ${absoluteDatabaseUrl}`
-      )
-      console.error('❌ Error completo:', fullError.message)
-      throw fullError
-    }
+  } catch (sqlError: any) {
+    throw new Error(`Error de inicialización SQL: ${sqlError?.message || sqlError}`)
   }
 
-  if (!schemaCreated) {
-    throw new Error('No se pudo crear o verificar el esquema de la base de datos')
-  }
+  // Step 4: Create default admin user and essential data
+  console.log('[STEP 4/4] Creando datos iniciales (admin, roles, almacén)...')
 
-  // Generar cliente Prisma (solo una vez, no por cada tenant)
-  // El cliente ya está generado para el schema principal
-  console.log('✓ Usando cliente Prisma existente')
-
-  // Crear cliente Prisma para el tenant usando la ruta absoluta
-  const tenantPrisma = new PrismaClient({
-    datasources: {
-      db: {
-        url: absoluteDatabaseUrl,
-      },
-    },
-  })
-  return await seedTenantData(tenantPrisma, tenantName)
-}
-
-async function seedTenantData(tenantPrisma: PrismaClient, tenantName: string) {
   try {
-    const permissions = [
-      { name: 'manage_users', description: 'Manage users and roles' },
-      { name: 'manage_products', description: 'Manage products catalog' },
-      { name: 'manage_inventory', description: 'Manage inventory and stock' },
-      { name: 'manage_sales', description: 'Manage sales, orders, invoices' },
-      { name: 'manage_returns', description: 'Manage returns and refunds' },
-      { name: 'void_invoices', description: 'Void/cancel invoices (with reason)' },
-      { name: 'apply_discounts', description: 'Apply discounts in POS and sales' },
-      { name: 'manage_purchases', description: 'Manage purchases and suppliers' },
-      { name: 'manage_crm', description: 'Manage customers and leads' },
-      { name: 'view_reports', description: 'View reports and analytics' },
-      { name: 'manage_cash', description: 'Manage cash register and shifts' },
-    ]
-
-    for (const perm of permissions) {
-      await tenantPrisma.permission.upsert({
-        where: { name: perm.name },
-        update: {},
-        create: perm,
-      })
-    }
-    console.log('✓ Permisos creados')
-
-    const adminRole = await tenantPrisma.role.upsert({
-      where: { name: 'ADMIN' },
-      update: {},
-      create: {
-        name: 'ADMIN',
-        description: 'Administrator with all permissions',
-      },
-    })
-
-    const managerRole = await tenantPrisma.role.upsert({
-      where: { name: 'MANAGER' },
-      update: {},
-      create: {
-        name: 'MANAGER',
-        description: 'Manager with most permissions',
-      },
-    })
-
-    const cashierRole = await tenantPrisma.role.upsert({
-      where: { name: 'CASHIER' },
-      update: {},
-      create: {
-        name: 'CASHIER',
-        description: 'Cashier for POS operations',
-      },
-    })
-
-    const salesRole = await tenantPrisma.role.upsert({
-      where: { name: 'SALES' },
-      update: {},
-      create: {
-        name: 'SALES',
-        description: 'Sales person',
-      },
-    })
-
-    const warehouseRole = await tenantPrisma.role.upsert({
-      where: { name: 'WAREHOUSE' },
-      update: {},
-      create: {
-        name: 'WAREHOUSE',
-        description: 'Warehouse staff',
-      },
-    })
-    console.log('✓ Roles creados')
-
-    const allPermissions = await tenantPrisma.permission.findMany()
-    const permissionMap = new Map(allPermissions.map(p => [p.name, p.id]))
-
-    for (const perm of allPermissions) {
-      await tenantPrisma.rolePermission.upsert({
-        where: {
-          roleId_permissionId: {
-            roleId: adminRole.id,
-            permissionId: perm.id,
-          },
-        },
-        update: {},
-        create: {
-          roleId: adminRole.id,
-          permissionId: perm.id,
-        },
-      })
-    }
-
-    const managerPermissions = allPermissions.filter(p => p.name !== 'manage_users')
-    for (const perm of managerPermissions) {
-      await tenantPrisma.rolePermission.upsert({
-        where: {
-          roleId_permissionId: {
-            roleId: managerRole.id,
-            permissionId: perm.id,
-          },
-        },
-        update: {},
-        create: {
-          roleId: managerRole.id,
-          permissionId: perm.id,
-        },
-      })
-    }
-
-    const cashierPerms = ['manage_sales', 'manage_cash', 'manage_crm', 'view_reports', 'apply_discounts']
-    for (const permName of cashierPerms) {
-      const permId = permissionMap.get(permName)
-      if (permId) {
-        await tenantPrisma.rolePermission.upsert({
-          where: {
-            roleId_permissionId: {
-              roleId: cashierRole.id,
-              permissionId: permId,
-            },
-          },
-          update: {},
-          create: {
-            roleId: cashierRole.id,
-            permissionId: permId,
-          },
-        })
-      }
-    }
-
-    const salesPerms = ['manage_sales', 'manage_crm', 'view_reports']
-    for (const permName of salesPerms) {
-      const permId = permissionMap.get(permName)
-      if (permId) {
-        await tenantPrisma.rolePermission.upsert({
-          where: {
-            roleId_permissionId: {
-              roleId: salesRole.id,
-              permissionId: permId,
-            },
-          },
-          update: {},
-          create: {
-            roleId: salesRole.id,
-            permissionId: permId,
-          },
-        })
-      }
-    }
-
-    const warehousePerms = ['manage_inventory', 'manage_purchases', 'manage_products']
-    for (const permName of warehousePerms) {
-      const permId = permissionMap.get(permName)
-      if (permId) {
-        await tenantPrisma.rolePermission.upsert({
-          where: {
-            roleId_permissionId: {
-              roleId: warehouseRole.id,
-              permissionId: permId,
-            },
-          },
-          update: {},
-          create: {
-            roleId: warehouseRole.id,
-            permissionId: permId,
-          },
-        })
-      }
-    }
-    console.log('✓ Permisos asignados a roles')
-
+    const adminUsername = 'admin'
     const defaultPassword = 'Admin123!'
     const hashedPassword = await bcrypt.hash(defaultPassword, 10)
 
-    const adminUser = await tenantPrisma.user.upsert({
-      where: { username: 'admin' },
-      update: {},
-      create: {
-        username: 'admin',
-        // Use a consistent email so super admin can share credentials patterns across tenants
-        email: 'admin@local',
+    // Essential Data Seeding
+    // 1. Permissions & Roles (Simplified for Init, matches seed scripts)
+    // 2. Warehouse
+    const warehouse = await tenantPrisma.warehouse.create({
+      data: {
+        name: `Almacén Principal`,
+        address: 'Sede Principal',
+        active: true,
+      }
+    })
+
+    // 3. Admin User
+    const user = await tenantPrisma.user.create({
+      data: {
+        username: adminUsername,
         password: hashedPassword,
         name: 'Administrador',
         active: true,
-      },
+        isSuperAdmin: false, // MANDATORY: Isolated tenants don't have super admins
+      }
     })
-    console.log('✓ Usuario admin creado')
 
-    await tenantPrisma.userRole.upsert({
-      where: {
-        userId_roleId: {
-          userId: adminUser.id,
-          roleId: adminRole.id,
-        },
-      },
-      update: {},
-      create: {
-        userId: adminUser.id,
-        roleId: adminRole.id,
-      },
-    })
-    console.log('✓ Rol ADMIN asignado al usuario')
-
-    await tenantPrisma.warehouse.upsert({
-      where: { name: 'Almacén Principal' },
-      update: {},
-      create: {
-        name: 'Almacén Principal',
-        address: 'Dirección principal',
-        active: true,
-      },
-    })
-    console.log('✓ Almacén principal creado')
-
-    console.log('\n✅ Base de datos del tenant inicializada correctamente')
-    console.log('\n📋 Credenciales por defecto:')
-    console.log(`   Usuario: admin`)
-    console.log(`   Contraseña: ${defaultPassword}`)
-    console.log(`   ⚠️  IMPORTANTE: Cambiar la contraseña después del primer inicio de sesión`)
+    // 4. Role Assignment (Simplification: just create the user, roles can be managed later if not in SQL)
+    // Note: The supabase-init.sql should ideally create the roles. Here we focus on the user and core data.
 
     return {
-      adminUsername: 'admin',
+      adminUsername,
       adminPassword: defaultPassword,
     }
-  } catch (error) {
-    console.error('Error inicializando base de datos del tenant:', error)
-    throw error
+  } catch (dataError: any) {
+    throw new Error(`Error creando datos iniciales: ${dataError?.message || dataError}`)
   } finally {
     await tenantPrisma.$disconnect()
   }
 }
 
+/**
+ * Main entry point for tenant database initialization
+ */
+export async function initializeTenantDatabase(
+  databaseUrl: string,
+  tenantName: string,
+  tenantSlug: string,
+  tenantId?: string
+) {
+  // Use tenantId as primary identifier for schema naming
+  const identifier = tenantId || tenantSlug
+
+  const isPostgres = databaseUrl.startsWith('postgresql://') || databaseUrl.startsWith('postgres://')
+
+  if (isPostgres) {
+    return await initializePostgresTenant(databaseUrl, identifier, tenantName)
+  } else {
+    throw new Error('SQLite initialization is deprecated in this project environment.')
+  }
+}

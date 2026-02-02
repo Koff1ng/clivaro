@@ -71,40 +71,14 @@ export const authOptions: NextAuthOptions = {
                 })
               })
             } catch (e: any) {
-              console.warn(`[AUTH] Error querying tenant schema for user: ${e.message}. Falling back to public schema.`)
+              console.error(`[AUTH] Error switching to tenant schema ${tenant.id}: ${e.message}`)
+              throw new Error('TENANT_DB_ERROR: No se pudo establecer conexión con la base de datos de la empresa.')
             }
 
-            // Fallback: If user not found in tenant schema, look in public schema
-            // This supports legacy tenants where users haven't been migrated yet.
+            // If we are in a tenant context, we MUST find the user in that tenant.
             if (!user) {
-              console.log(`[AUTH] Usuario no encontrado en tenant schema. Buscando en public schema (Fallback Legacy).`)
-              user = await prisma.user.findFirst({
-                where: {
-                  OR: [
-                    { username: credentials.username },
-                    { email: credentials.username }
-                  ]
-                },
-                include: {
-                  userRoles: {
-                    include: {
-                      role: {
-                        include: {
-                          rolePermissions: {
-                            include: {
-                              permission: true
-                            }
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              })
-
-              if (user) {
-                console.log(`[AUTH] Usuario encontrado en public schema. Permitiendo acceso (Legacy).`)
-              }
+              console.log(`[AUTH] Usuario no encontrado en tenant schema: ${credentials.username}. Acceso denegado.`)
+              throw new Error('INVALID_CREDENTIALS: El usuario no existe en esta empresa.')
             }
 
           } else {
