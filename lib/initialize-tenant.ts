@@ -140,8 +140,23 @@ async function initializePostgresTenant(databaseUrl: string, tenantId: string, t
       }
     })
 
-    // 4. Role Assignment (Simplification: just create the user, roles can be managed later if not in SQL)
-    // Note: The supabase-init.sql should ideally create the roles. Here we focus on the user and core data.
+    // 4. Role Assignment
+    // Find the ADMIN role created by the SQL script
+    const adminRole = await tenantPrisma.role.findFirst({
+      where: { name: 'ADMIN' }
+    })
+
+    if (adminRole) {
+      await tenantPrisma.userRole.create({
+        data: {
+          userId: user.id,
+          roleId: adminRole.id
+        }
+      })
+      console.log(`[STEP 4/4] ✓ Rol ADMIN asignado a usuario ${adminUsername}`)
+    } else {
+      console.warn(`[STEP 4/4] ⚠ No se encontró el rol ADMIN para asignar al usuario`)
+    }
 
     return {
       adminUsername,

@@ -15,12 +15,6 @@ export const authOptions: NextAuthOptions = {
       },
       async authorize(credentials) {
         try {
-          console.log('[AUTH] authorize llamado con:', {
-            username: credentials?.username,
-            hasPassword: !!credentials?.password,
-            tenantSlug: credentials?.tenantSlug,
-          })
-
           if (!credentials?.username || !credentials?.password) {
             return null
           }
@@ -40,13 +34,12 @@ export const authOptions: NextAuthOptions = {
               console.log(`[AUTH] Tenant no encontrado o inactivo: ${credentials.tenantSlug}`)
               return null
             }
-
             tenantId = tenant.id
             console.log(`[AUTH] Tenant encontrado: ${tenant.id}. Ejecutando consulta en contexto de tenant.`)
 
             try {
               user = await withTenantTx(tenant.id, async (tx: any) => {
-                return tx.user.findFirst({
+                const foundUser = await tx.user.findFirst({
                   where: {
                     OR: [
                       { username: credentials.username },
@@ -69,6 +62,7 @@ export const authOptions: NextAuthOptions = {
                     }
                   }
                 })
+                return foundUser
               })
             } catch (e: any) {
               console.error(`[AUTH] Error switching to tenant schema ${tenant.id}: ${e.message}`)
@@ -148,7 +142,8 @@ export const authOptions: NextAuthOptions = {
             name: user.name,
             permissions: Array.from(permissions),
             roles: user.userRoles.map((ur: any) => ur.role.name),
-            isSuperAdmin: user.isSuperAdmin || false,
+            // CRITICAL: Force false if in tenant context, regardless of DB flag
+            isSuperAdmin: tenantId ? false : (user.isSuperAdmin || false),
             tenantId: tenantId || undefined
           }
 
