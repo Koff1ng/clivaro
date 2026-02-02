@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server'
 import { requirePermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
-import { getPrismaForRequest } from '@/lib/get-tenant-prisma'
+import { withTenantTx, getTenantIdFromSession } from '@/lib/tenancy'
 import { logger } from '@/lib/logger'
 import { z } from 'zod'
+import { Prisma } from '@prisma/client'
 
 const updateInvoiceSchema = z.object({
   status: z.enum(['EMITIDA', 'PAGADA', 'ANULADA', 'EN_COBRANZA', 'ISSUED', 'PAID', 'VOID', 'PARCIAL', 'PARTIAL']).optional(), // Compatibilidad con estados antiguos
@@ -22,13 +23,12 @@ export async function GET(
   const invoiceId = resolvedParams.id
 
   const session = await requirePermission(request as any, PERMISSIONS.MANAGE_SALES)
-  
+
   if (session instanceof NextResponse) {
     return session
   }
 
-  // Obtener el cliente Prisma correcto (tenant o master según el usuario)
-  const prisma = await getPrismaForRequest(request, session)
+  const tenantId = getTenantIdFromSession(session)
 
   try {
     if (!invoiceId) {
@@ -38,91 +38,86 @@ export async function GET(
       )
     }
 
-    const invoice = await prisma.invoice.findUnique({
-      where: { id: invoiceId },
-      include: {
-        customer: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            phone: true,
-            address: true,
-            taxId: true,
-          },
-        },
-        items: {
-          include: {
-            product: {
-              select: {
-                id: true,
-                name: true,
-                sku: true,
-                price: true,
-              },
-            },
-            variant: {
-              select: {
-                id: true,
-                name: true,
-              },
+    const result = await withTenantTx(tenantId, async (tx: Prisma.TransactionClient) => {
+      const invoice = await tx.invoice.findUnique({
+        where: { id: invoiceId },
+        include: {
+          customer: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              phone: true,
+              address: true,
+              taxId: true,
             },
           },
-          orderBy: {
-            createdAt: 'asc',
-          },
-        },
-        payments: {
-          include: {
-            createdBy: {
-              select: {
-                id: true,
-                name: true,
+          items: {
+            include: {
+              product: {
+                select: {
+                  id: true,
+                  name: true,
+                  sku: true,
+                  price: true,
+                },
               },
+              variant: {
+                select: {
+                  id: true,
+                  name: true,
+                },
+              },
+              lineTaxes: true,
+            },
+            orderBy: {
+              createdAt: 'asc',
             },
           },
-          orderBy: { createdAt: 'desc' },
-        },
-        createdBy: {
-          select: {
-            id: true,
-            name: true,
+          payments: {
+            include: {
+              createdBy: {
+                select: {
+                  id: true,
+                  name: true,
+                },
+              },
+            },
+            orderBy: { createdAt: 'desc' },
           },
+          createdBy: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+          taxSummary: true,
         },
-      },
+      })
+
+      if (!invoice) {
+        throw new Error('Invoice not found')
+      }
+
+      // Asegurar que todos los datos estén presentes
+      if (!invoice.issuedAt && invoice.createdAt) {
+        // @ts-ignore - handled during runtime
+        invoice.issuedAt = invoice.createdAt
+      }
+
+      return invoice
     })
 
-    if (!invoice) {
-      return NextResponse.json(
-        { error: 'Invoice not found' },
-        { status: 404 }
-      )
-    }
-
-    // debug logs removed
-
-    // Asegurar que todos los datos estén presentes
-    if (!invoice.issuedAt && invoice.createdAt) {
-      // Si no hay issuedAt, usar createdAt como fallback
-      invoice.issuedAt = invoice.createdAt
-      logger.debug('Using createdAt as issuedAt fallback', { invoiceId })
-    }
-
-    return NextResponse.json(invoice)
+    return NextResponse.json(result)
   } catch (error: any) {
     logger.error('Error fetching invoice', error, { endpoint: '/api/invoices/[id]', method: 'GET', invoiceId })
-    
+
     return NextResponse.json(
-      { 
-        error: 'Failed to fetch invoice',
+      {
+        error: error.message === 'Invoice not found' ? 'Invoice not found' : 'Failed to fetch invoice',
         message: error.message || 'Unknown error',
-        details: process.env.NODE_ENV === 'development' ? {
-          message: error.message,
-          stack: error.stack,
-          code: error.code,
-        } : undefined
       },
-      { status: 500 }
+      { status: error.message === 'Invoice not found' ? 404 : 500 }
     )
   }
 }
@@ -135,62 +130,63 @@ export async function PUT(
   const invoiceId = resolvedParams.id
 
   const session = await requirePermission(request as any, PERMISSIONS.MANAGE_SALES)
-  
+
   if (session instanceof NextResponse) {
     return session
   }
 
-  // Obtener el cliente Prisma correcto (tenant o master según el usuario)
-  const prisma = await getPrismaForRequest(request, session)
+  const tenantId = getTenantIdFromSession(session)
 
   try {
     const body = await request.json()
     const data = updateInvoiceSchema.parse(body)
 
-    // Si se actualiza el status, mapear estados antiguos a nuevos
-    let statusToUpdate = data.status
-    if (statusToUpdate) {
-      const statusMap: Partial<Record<InvoiceStatusValue, InvoiceStatusValue>> = {
-        ISSUED: 'EMITIDA',
-        PAID: 'PAGADA',
-        VOID: 'ANULADA',
-        PARTIAL: 'EN_COBRANZA',
-        PARCIAL: 'EN_COBRANZA',
+    const result = await withTenantTx(tenantId, async (tx: Prisma.TransactionClient) => {
+      // Si se actualiza el status, mapear estados antiguos a nuevos
+      let statusToUpdate = data.status
+      if (statusToUpdate) {
+        const statusMap: Partial<Record<InvoiceStatusValue, InvoiceStatusValue>> = {
+          ISSUED: 'EMITIDA',
+          PAID: 'PAGADA',
+          VOID: 'ANULADA',
+          PARTIAL: 'EN_COBRANZA',
+          PARCIAL: 'EN_COBRANZA',
+        }
+        statusToUpdate = statusMap[statusToUpdate] ?? statusToUpdate
       }
-      statusToUpdate = statusMap[statusToUpdate] ?? statusToUpdate
-    }
 
-    // Si no se especifica status, calcularlo automáticamente basándose en los pagos
-    if (!statusToUpdate) {
-      const invoice = await prisma.invoice.findUnique({
-        where: { id: invoiceId },
-        include: { payments: { select: { amount: true } } },
-      })
-      
-      if (invoice) {
-        const totalPaid = invoice.payments.reduce((sum, p) => sum + p.amount, 0)
-        if (totalPaid >= invoice.total) {
-          statusToUpdate = 'PAGADA'
-        } else if (totalPaid > 0) {
-          statusToUpdate = 'EN_COBRANZA'
-        } else {
-          statusToUpdate = 'EMITIDA'
+      // Si no se especifica status, calcularlo automáticamente basándose en los pagos
+      if (!statusToUpdate) {
+        const invoice = await tx.invoice.findUnique({
+          where: { id: invoiceId },
+          include: { payments: { select: { amount: true } } },
+        })
+
+        if (invoice) {
+          const totalPaid = invoice.payments.reduce((sum, p) => sum + p.amount, 0)
+          if (totalPaid >= invoice.total) {
+            statusToUpdate = 'PAGADA'
+          } else if (totalPaid > 0) {
+            statusToUpdate = 'EN_COBRANZA'
+          } else {
+            statusToUpdate = 'EMITIDA'
+          }
         }
       }
-    }
 
-    const invoice = await prisma.invoice.update({
-      where: { id: invoiceId },
-      data: {
-        ...(statusToUpdate && { status: statusToUpdate }),
-        notes: data.notes !== undefined ? (data.notes || null) : undefined,
-        updatedById: (session.user as any).id,
-        ...(statusToUpdate === 'PAGADA' && !data.status ? { paidAt: new Date() } : {}),
-      },
+      return await tx.invoice.update({
+        where: { id: invoiceId },
+        data: {
+          ...(statusToUpdate && { status: statusToUpdate }),
+          notes: data.notes !== undefined ? (data.notes || null) : undefined,
+          updatedById: (session.user as any).id,
+          ...(statusToUpdate === 'PAGADA' && !data.status ? { paidAt: new Date() } : {}),
+        },
+      })
     })
 
-    return NextResponse.json(invoice)
-  } catch (error) {
+    return NextResponse.json(result)
+  } catch (error: any) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: 'Validation error', details: error.errors },
@@ -213,50 +209,41 @@ export async function DELETE(
   const invoiceId = resolvedParams.id
 
   const session = await requirePermission(request as any, PERMISSIONS.MANAGE_SALES)
-  
+
   if (session instanceof NextResponse) {
     return session
   }
 
-  // Obtener el cliente Prisma correcto (tenant o master según el usuario)
-  const prisma = await getPrismaForRequest(request, session)
+  const tenantId = getTenantIdFromSession(session)
 
   try {
-    // Verificar que la factura existe
-    const invoice = await prisma.invoice.findUnique({
-      where: { id: invoiceId },
-      include: {
-        items: true,
-        payments: true,
-      },
-    })
+    await withTenantTx(tenantId, async (tx: Prisma.TransactionClient) => {
+      // Verificar que la factura existe
+      const invoice = await tx.invoice.findUnique({
+        where: { id: invoiceId },
+      })
 
-    if (!invoice) {
-      return NextResponse.json(
-        { error: 'Invoice not found' },
-        { status: 404 }
-      )
-    }
+      if (!invoice) {
+        throw new Error('Invoice not found')
+      }
 
-    // Validar que la factura no esté enviada a facturación electrónica
-    if (invoice.electronicStatus === 'ACCEPTED' || invoice.electronicStatus === 'SENT') {
-      return NextResponse.json(
-        { error: 'No se puede eliminar una factura que ya fue enviada a facturación electrónica' },
-        { status: 400 }
-      )
-    }
+      // Validar que la factura no esté enviada a facturación electrónica
+      if (invoice.electronicStatus === 'ACCEPTED' || invoice.electronicStatus === 'SENT') {
+        throw new Error('No se puede eliminar una factura que ya fue enviada a facturación electrónica')
+      }
 
-    // Eliminar factura (los items y payments se eliminan en cascada)
-    await prisma.invoice.delete({
-      where: { id: invoiceId },
+      // Eliminar factura (los items y payments se eliminan en cascada)
+      await tx.invoice.delete({
+        where: { id: invoiceId },
+      })
     })
 
     return NextResponse.json({ message: 'Invoice deleted successfully' })
-  } catch (error) {
+  } catch (error: any) {
     logger.error('Error deleting invoice', error, { endpoint: '/api/invoices/[id]', method: 'DELETE', invoiceId })
     return NextResponse.json(
-      { error: 'Failed to delete invoice' },
-      { status: 500 }
+      { error: error.message || 'Failed to delete invoice' },
+      { status: error.message === 'Invoice not found' ? 404 : 400 }
     )
   }
 }

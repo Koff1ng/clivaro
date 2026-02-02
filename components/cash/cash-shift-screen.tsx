@@ -467,19 +467,19 @@ export function CashShiftScreen() {
                 </div>
 
                 {/* Payment Methods Summary - Compact */}
-                {Object.keys(totalsByMethod).length > 0 && (
+                {activeShift.summaryItems && activeShift.summaryItems.length > 0 && (
                   <div className="border-t pt-4">
                     <div className="text-sm font-semibold mb-3 text-foreground">Ingresos por Método de Pago</div>
                     <div className="space-y-2">
-                      {Object.entries(totalsByMethod).map(([method, amount]: [string, any]) => {
-                        const Icon = getPaymentMethodIcon(method)
+                      {activeShift.summaryItems.map((item: any) => {
+                        const Icon = getPaymentMethodIcon(item.paymentMethodName.toUpperCase())
                         return (
-                          <div key={method} className="flex items-center justify-between p-3 bg-muted rounded-lg border">
+                          <div key={item.paymentMethodId} className="flex items-center justify-between p-3 bg-muted rounded-lg border">
                             <div className="flex items-center gap-2">
                               <Icon className="h-4 w-4 text-muted-foreground" />
-                              <span className="text-sm font-medium">{getPaymentMethodLabel(method)}</span>
+                              <span className="text-sm font-medium">{item.paymentMethodName}</span>
                             </div>
-                            <span className="text-sm font-bold">{formatCurrency(amount)}</span>
+                            <span className="text-sm font-bold">{formatCurrency(item.expectedAmount)}</span>
                           </div>
                         )
                       })}
@@ -882,25 +882,41 @@ export function CashShiftScreen() {
                 </div>
 
                 {/* Payment Methods Summary */}
-                {closedShiftReport.totalsByMethod && Object.keys(closedShiftReport.totalsByMethod).length > 0 && (
+                {closedShiftReport.summaryItems && closedShiftReport.summaryItems.length > 0 && (
                   <div>
                     <h3 className="text-lg font-semibold mb-3">Ingresos por Método de Pago</h3>
-                    <div className="space-y-2">
-                      {Object.entries(closedShiftReport.totalsByMethod).map(([method, amount]: [string, any]) => {
-                        const Icon = getPaymentMethodIcon(method)
+                    <div className="space-y-3">
+                      {closedShiftReport.summaryItems.map((item: any) => {
+                        const Icon = getPaymentMethodIcon(item.paymentMethodName.toUpperCase())
                         return (
-                          <div key={method} className="flex items-center justify-between p-3 bg-gray-50 rounded">
-                            <div className="flex items-center gap-2">
-                              <Icon className="h-5 w-5 text-gray-600" />
-                              <span className="font-medium">{getPaymentMethodLabel(method)}</span>
+                          <div key={item.paymentMethodId} className="p-3 bg-gray-50 rounded border">
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="flex items-center gap-2">
+                                <Icon className="h-5 w-5 text-gray-600" />
+                                <span className="font-semibold">{item.paymentMethodName}</span>
+                              </div>
+                              <span className="text-sm px-2 py-0.5 bg-gray-200 rounded text-gray-700 font-medium">
+                                {item.paymentMethodType || 'ELECTRÓNICO'}
+                              </span>
                             </div>
-                            <span className="font-bold text-lg">{formatCurrency(amount)}</span>
+                            <div className="grid grid-cols-2 gap-4 text-sm mt-2 pt-2 border-t border-gray-100">
+                              <div>
+                                <div className="text-gray-500 text-xs">Esperado (Ventas)</div>
+                                <div className="font-bold">{formatCurrency(item.expectedAmount)}</div>
+                              </div>
+                              <div>
+                                <div className="text-gray-500 text-xs">Real (Cierre)</div>
+                                <div className="font-bold">{formatCurrency(item.actualAmount ?? item.expectedAmount)}</div>
+                              </div>
+                            </div>
                           </div>
                         )
                       })}
                       <div className="flex items-center justify-between p-3 bg-blue-50 rounded border-2 border-blue-200 mt-2">
-                        <span className="font-bold text-lg">Total Ventas</span>
-                        <span className="font-bold text-xl text-blue-600">{formatCurrency(closedShiftReport.totalPayments || 0)}</span>
+                        <span className="font-bold text-lg">Total Ventas Esperado</span>
+                        <span className="font-bold text-xl text-blue-600">
+                          {formatCurrency(closedShiftReport.summaryItems.reduce((sum: number, i: any) => sum + i.expectedAmount, 0))}
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -1067,6 +1083,18 @@ export function CashShiftScreen() {
                 {formatCurrency(activeShift?.expectedCash || 0)}
               </div>
             </div>
+
+            {activeShift?.summaryItems && activeShift.summaryItems.length > 0 && (
+              <div className="border rounded-lg p-3 bg-muted/50 text-xs space-y-1">
+                <div className="font-semibold mb-1 text-foreground">Resumen de ingresos (Ventas):</div>
+                {activeShift.summaryItems.map((item: any) => (
+                  <div key={item.paymentMethodId} className="flex justify-between">
+                    <span className="text-muted-foreground">{item.paymentMethodName}:</span>
+                    <span className="font-medium">{formatCurrency(item.expectedAmount)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
             <div>
               <label className="text-sm font-medium">Efectivo Contado *</label>
               <Input

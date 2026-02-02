@@ -70,20 +70,31 @@ export async function updateStockLevel(
   productId: string | null,
   variantId: string | null,
   quantityChange: number,
-  tx?: Omit<PrismaClient, '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'>
+  prismaTx?: any,
+  movementDetails?: {
+    type: 'IN' | 'OUT' | 'ADJUSTMENT' | 'TRANSFER'
+    zoneId?: string
+    reason?: string
+    reasonCode?: string
+    reference?: string
+    createdById?: string
+  }
 ) {
-  const client = tx || prisma
+  const client = prismaTx || prisma
+  const zoneId = movementDetails?.zoneId || null
 
   console.log(`[updateStockLevel] Actualizando stock:`, {
     warehouseId,
+    zoneId,
     productId,
     variantId,
     quantityChange,
-    hasTransaction: !!tx
+    hasTransaction: !!prismaTx
   })
 
   const whereClause: any = {
     warehouseId,
+    zoneId,
     productId: productId ?? null,
     variantId: variantId ?? null,
   }
@@ -107,12 +118,31 @@ export async function updateStockLevel(
     await client.stockLevel.create({
       data: {
         warehouseId,
+        zoneId,
         productId: productId ?? null,
         variantId: variantId ?? null,
         quantity: quantityChange,
       },
     })
     console.log(`[updateStockLevel] Registro de stock creado exitosamente`)
+  }
+
+  // Create movement if details provided
+  if (movementDetails) {
+    await client.stockMovement.create({
+      data: {
+        warehouseId,
+        zoneId,
+        productId,
+        variantId,
+        type: movementDetails.type,
+        quantity: Math.abs(quantityChange),
+        reason: movementDetails.reason,
+        reasonCode: movementDetails.reasonCode,
+        reference: movementDetails.reference,
+        createdById: movementDetails.createdById || 'SYSTEM',
+      }
+    })
   }
 }
 
@@ -125,13 +155,15 @@ export async function checkStock(
   productId: string,
   variantId: string | null,
   requiredQty: number,
-  client?: Omit<PrismaClient, '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'>
+  client?: Omit<PrismaClient, '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'>,
+  zoneId?: string
 ): Promise<boolean> {
   const prismaClient = client || prisma
-  
+
   const stockLevel = await prismaClient.stockLevel.findFirst({
     where: {
       warehouseId,
+      zoneId: zoneId ?? null,
       productId,
       variantId: variantId ?? null,
     },

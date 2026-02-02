@@ -93,14 +93,27 @@ export function InvoicePrintLetter({ invoice, settings }: InvoicePrintLetterProp
     const tax = invoice.tax || 0
     const total = invoice.total || 0
 
-    // IVA discriminado por tarifa
-    const taxByRate = new Map<number, { base: number; tax: number }>()
-    for (const item of invoice.items || []) {
-        const rate = typeof item.taxRate === 'number' ? item.taxRate : 0
-        const base = (item.unitPrice || 0) * (item.quantity || 0) * (1 - (item.discount || 0) / 100)
-        const itemTax = base * (rate / 100)
-        const prev = taxByRate.get(rate) || { base: 0, tax: 0 }
-        taxByRate.set(rate, { base: prev.base + base, tax: prev.tax + itemTax })
+    // IVA discriminado por tarifa (REQUISITO DIAN)
+    const taxByRate = new Map<number, { base: number; tax: number; name?: string }>()
+
+    if (invoice.taxSummary && invoice.taxSummary.length > 0) {
+        for (const ts of invoice.taxSummary) {
+            const prev = taxByRate.get(ts.rate) || { base: 0, tax: 0 }
+            taxByRate.set(ts.rate, {
+                base: prev.base + (ts.baseAmount || 0),
+                tax: prev.tax + (ts.taxAmount || 0),
+                name: ts.name
+            })
+        }
+    } else {
+        // Legacy fallback
+        for (const item of invoice.items || []) {
+            const rate = typeof item.taxRate === 'number' ? item.taxRate : 0
+            const base = (item.unitPrice || 0) * (item.quantity || 0) * (1 - (item.discount || 0) / 100)
+            const itemTax = base * (rate / 100)
+            const prev = taxByRate.get(rate) || { base: 0, tax: 0 }
+            taxByRate.set(rate, { base: prev.base + base, tax: prev.tax + itemTax })
+        }
     }
 
     const getPaymentMethodLabel = (method: string) => {
@@ -219,17 +232,30 @@ export function InvoicePrintLetter({ invoice, settings }: InvoicePrintLetterProp
                     </thead>
                     <tbody>
                         {invoice.items && invoice.items.length > 0 ? (
-                            invoice.items.map((item: any, index: number) => (
-                                <tr key={item.id || index} className="border-b border-gray-200">
-                                    <td className="p-2 font-mono text-xs">{item.product?.sku || '-'}</td>
-                                    <td className="p-2">{item.product?.name || 'Producto'}</td>
-                                    <td className="p-2 text-center">{item.quantity || 0}</td>
-                                    <td className="p-2 text-right">{formatCurrency(item.unitPrice || 0)}</td>
-                                    <td className="p-2 text-center">{item.discount ? `${item.discount}%` : '-'}</td>
-                                    <td className="p-2 text-center">{item.taxRate || 0}%</td>
-                                    <td className="p-2 text-right font-medium">{formatCurrency(item.subtotal || 0)}</td>
-                                </tr>
-                            ))
+                            invoice.items.map((item: any, index: number) => {
+                                const itemTax = item.lineTaxes && item.lineTaxes.length > 0
+                                    ? item.lineTaxes.reduce((sum: number, lt: any) => sum + (lt.taxAmount || 0), 0)
+                                    : ((item.subtotal || 0) * (item.taxRate || 0) / 100)
+
+                                return (
+                                    <tr key={item.id || index} className="border-b border-gray-200">
+                                        <td className="p-2 font-mono text-xs">{item.product?.sku || '-'}</td>
+                                        <td className="p-2">{item.product?.name || 'Producto'}</td>
+                                        <td className="p-2 text-center">{item.quantity || 0}</td>
+                                        <td className="p-2 text-right">{formatCurrency(item.unitPrice || 0)}</td>
+                                        <td className="p-2 text-center">{item.discount ? `${item.discount}%` : '-'}</td>
+                                        <td className="p-2 text-center">
+                                            <div className="flex flex-col">
+                                                <span>{item.taxRate || 0}%</span>
+                                                {item.lineTaxes && item.lineTaxes.length > 0 && (
+                                                    <span className="text-[10px] text-gray-400">({formatCurrency(itemTax)})</span>
+                                                )}
+                                            </div>
+                                        </td>
+                                        <td className="p-2 text-right font-medium">{formatCurrency(item.subtotal || 0)}</td>
+                                    </tr>
+                                )
+                            })
                         ) : (
                             <tr>
                                 <td colSpan={7} className="p-4 text-center text-gray-500">No hay productos en esta factura</td>

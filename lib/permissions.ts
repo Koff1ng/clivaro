@@ -13,6 +13,8 @@ export const PERMISSIONS = {
   MANAGE_CRM: 'manage_crm',
   VIEW_REPORTS: 'view_reports',
   MANAGE_CASH: 'manage_cash',
+  MANAGE_INVOICES: 'manage_sales', // Alias for now, or new permission
+  MANAGE_SETTINGS: 'manage_settings',
 } as const
 
 export type Permission = typeof PERMISSIONS[keyof typeof PERMISSIONS]

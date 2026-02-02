@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requireAnyPermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
-import { getPrismaForRequest } from '@/lib/get-tenant-prisma'
+import { withTenantTx, getTenantIdFromSession } from '@/lib/tenancy'
 import { z } from 'zod'
 import { logActivity } from '@/lib/activity'
 
@@ -47,6 +47,12 @@ function serializeShift(shift: any) {
         createdAt: serializeDate(m.createdAt),
         createdById: String(m.createdById || ''),
       })) : [],
+      summaryItems: Array.isArray(shift.summaryItems) ? shift.summaryItems.map((s: any) => ({
+        paymentMethodId: s.paymentMethodId,
+        paymentMethodName: s.paymentMethod?.name || 'Unknown',
+        expectedAmount: Number(s.expectedAmount || 0),
+        actualAmount: s.actualAmount !== null ? Number(s.actualAmount) : null,
+      })) : [],
     }
   } catch (error) {
     console.error('Error serializing shift:', error)
@@ -64,144 +70,71 @@ const closeShiftSchema = z.object({
 })
 
 export async function GET(request: Request) {
+  const session = await requireAnyPermission(request as any, [PERMISSIONS.MANAGE_CASH, PERMISSIONS.MANAGE_SALES])
+  if (session instanceof NextResponse) return session
+
+  const tenantId = getTenantIdFromSession(session)
+
   try {
-    // Allow both MANAGE_CASH and MANAGE_SALES permissions for POS
-    const session = await requireAnyPermission(request as any, [PERMISSIONS.MANAGE_CASH, PERMISSIONS.MANAGE_SALES])
-
-    if (session instanceof NextResponse) {
-      return session
-    }
-
-    // Obtener el cliente Prisma correcto (tenant o master según el usuario)
-    const prisma = await getPrismaForRequest(request, session)
-
     const user = session.user as any
-    if (!user || !user.id) {
-      return NextResponse.json(
-        { error: 'User ID is required' },
-        { status: 401 }
-      )
-    }
-
     const { searchParams } = new URL(request.url)
     const userId = searchParams.get('userId') || user.id
     const active = searchParams.get('active')
     const status = searchParams.get('status')
 
-    const where: any = { userId }
-    if (active === 'true') {
-      where.status = 'OPEN'
-    } else if (status) {
-      where.status = status
-    }
+    const shifts = await withTenantTx(tenantId, async (tx: any) => {
+      const where: any = { userId }
+      if (active === 'true') {
+        where.status = 'OPEN'
+      } else if (status) {
+        where.status = status
+      }
 
-    const shifts = await prisma.cashShift.findMany({
-      where,
-      include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-          },
+      return await tx.cashShift.findMany({
+        where,
+        include: {
+          user: { select: { id: true, name: true } },
+          movements: { orderBy: { createdAt: 'desc' } },
+          summaryItems: { include: { paymentMethod: true } }
         },
-        movements: {
-          orderBy: { createdAt: 'desc' },
-        },
-      },
-      orderBy: { openedAt: 'desc' },
-      take: active === 'true' ? 1 : 50,
+        orderBy: { openedAt: 'desc' },
+        take: active === 'true' ? 1 : 50,
+      })
     })
 
-    // Serialize all shifts
     const serializedShifts = shifts.map(serializeShift)
-
     return NextResponse.json({ shifts: serializedShifts })
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error fetching cash shifts:', error)
-    const errorMessage = error instanceof Error ? error.message : 'Failed to fetch cash shifts'
-    return NextResponse.json(
-      { error: errorMessage },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }
 
 export async function POST(request: Request) {
+  const session = await requireAnyPermission(request as any, [PERMISSIONS.MANAGE_CASH, PERMISSIONS.MANAGE_SALES])
+  if (session instanceof NextResponse) return session
+
+  const tenantId = getTenantIdFromSession(session)
+  const user = session.user as any
+  const userId = user.id
+
   try {
-    // Allow both MANAGE_CASH and MANAGE_SALES permissions for POS
-    const session = await requireAnyPermission(request as any, [PERMISSIONS.MANAGE_CASH, PERMISSIONS.MANAGE_SALES])
-
-    if (session instanceof NextResponse) {
-      return session
-    }
-
-    // Obtener el cliente Prisma correcto (tenant o master según el usuario)
-    const prisma = await getPrismaForRequest(request, session)
-
-    const user = session.user as any
-    if (!user) {
-      console.error('No user in session:', { session })
-      return NextResponse.json(
-        { error: 'User ID is required', details: 'Session does not contain user' },
-        { status: 401 }
-      )
-    }
-
-    const userId = user.id
-    if (!userId) {
-      console.error('No userId in user object:', { user, session })
-      return NextResponse.json(
-        { error: 'User ID is required', details: 'User object does not contain ID' },
-        { status: 401 }
-      )
-    }
-
-    let body
-    try {
-      body = await request.json()
-    } catch (jsonError) {
-      return NextResponse.json(
-        { error: 'Invalid JSON in request body' },
-        { status: 400 }
-      )
-    }
-
-    if (!body || typeof body !== 'object') {
-      return NextResponse.json(
-        { error: 'Request body must be a valid JSON object' },
-        { status: 400 }
-      )
-    }
-
+    const body = await request.json()
     const { action, ...data } = body
 
-    if (!action || typeof action !== 'string') {
-      return NextResponse.json(
-        { error: 'Missing or invalid action parameter' },
-        { status: 400 }
-      )
-    }
-
     if (action === 'open') {
-      try {
-        const { startingCash } = openShiftSchema.parse(data)
+      const { startingCash } = openShiftSchema.parse(data)
 
-        // Check if user has an open shift
-        const existingShift = await prisma.cashShift.findFirst({
-          where: {
-            userId,
-            status: 'OPEN',
-          },
+      const result = await withTenantTx(tenantId, async (tx: any) => {
+        const existingShift = await tx.cashShift.findFirst({
+          where: { userId, status: 'OPEN' },
         })
 
         if (existingShift) {
-          return NextResponse.json(
-            { error: 'Ya tienes un turno de caja abierto' },
-            { status: 400 }
-          )
+          throw new Error('Ya tienes un turno de caja abierto')
         }
 
-        const shift = await prisma.cashShift.create({
+        const shift = await tx.cashShift.create({
           data: {
             userId,
             startingCash: Number(startingCash),
@@ -209,21 +142,14 @@ export async function POST(request: Request) {
             status: 'OPEN',
           },
           include: {
-            user: {
-              select: {
-                id: true,
-                name: true,
-              },
-            },
-            movements: {
-              orderBy: { createdAt: 'desc' },
-            },
+            user: { select: { id: true, name: true } },
+            movements: { orderBy: { createdAt: 'desc' } },
+            summaryItems: { include: { paymentMethod: true } }
           },
         })
 
-        // Audit Log
         await logActivity({
-          prisma,
+          prisma: tx,
           type: 'CASH_SHIFT_OPEN',
           subject: `Turno de caja abierto`,
           description: `Base inicial: ${startingCash}`,
@@ -231,52 +157,34 @@ export async function POST(request: Request) {
           metadata: { shiftId: shift.id, startingCash }
         })
 
-        const serializedShift = serializeShift(shift)
-        return NextResponse.json({ shift: serializedShift }, { status: 201 })
-      } catch (error) {
-        if (error instanceof z.ZodError) {
-          return NextResponse.json(
-            { error: 'Validation error', details: error.errors },
-            { status: 400 }
-          )
-        }
-        throw error
-      }
+        return shift
+      })
+
+      return NextResponse.json({ shift: serializeShift(result) }, { status: 201 })
     }
 
     if (action === 'close') {
-      try {
-        const { countedCash, notes } = closeShiftSchema.parse(data)
+      const { countedCash, notes } = closeShiftSchema.parse(data)
 
-        const openShift = await prisma.cashShift.findFirst({
-          where: {
-            userId,
-            status: 'OPEN',
-          },
-          include: {
-            movements: true,
-          },
+      const result = await withTenantTx(tenantId, async (tx: any) => {
+        const openShift = await tx.cashShift.findFirst({
+          where: { userId, status: 'OPEN' },
+          include: { movements: true, summaryItems: true },
         })
 
         if (!openShift) {
-          return NextResponse.json(
-            { error: 'No hay un turno de caja abierto' },
-            { status: 400 }
-          )
+          throw new Error('No hay un turno de caja abierto')
         }
 
-        // Calculate expected cash
-        const totalMovements = Array.isArray(openShift.movements)
-          ? openShift.movements.reduce((sum: number, m: any) => {
-            const amount = Number(m.amount || 0)
-            return sum + (m.type === 'IN' ? amount : -amount)
-          }, 0)
-          : 0
+        const totalMovements = openShift.movements.reduce((sum: number, m: any) => {
+          const amount = Number(m.amount || 0)
+          return sum + (m.type === 'IN' ? amount : -amount)
+        }, 0)
 
         const expectedCash = Number(openShift.startingCash || 0) + totalMovements
         const difference = Number(countedCash) - expectedCash
 
-        const shift = await prisma.cashShift.update({
+        const shift = await tx.cashShift.update({
           where: { id: openShift.id },
           data: {
             status: 'CLOSED',
@@ -287,21 +195,36 @@ export async function POST(request: Request) {
             notes: notes ? String(notes) : null,
           },
           include: {
-            user: {
-              select: {
-                id: true,
-                name: true,
-              },
-            },
-            movements: {
-              orderBy: { createdAt: 'desc' },
-            },
+            user: { select: { id: true, name: true } },
+            movements: { orderBy: { createdAt: 'desc' } },
+            summaryItems: { include: { paymentMethod: true } }
           },
         })
 
-        // Audit Log
+        // Update ShiftSummary actual amounts
+        // For CASH, the actual amount of sales is (counted - starting - movements)
+        // For others, we assume expected = actual for now unless there was a manual input
+        for (const item of shift.summaryItems) {
+          let actualItemAmount = item.expectedAmount
+          if (item.paymentMethod?.type === 'CASH') {
+            // Actual CASH sales = countedCash - starting - movements
+            // But sometimes countedCash might be less than starting+movements if negative difference
+            actualItemAmount = Math.max(0, Number(countedCash) - Number(openShift.startingCash || 0) - totalMovements)
+          }
+
+          await tx.shiftSummary.update({
+            where: {
+              shiftId_paymentMethodId: {
+                shiftId: shift.id,
+                paymentMethodId: item.paymentMethodId
+              }
+            },
+            data: { actualAmount: actualItemAmount }
+          })
+        }
+
         await logActivity({
-          prisma,
+          prisma: tx,
           type: 'CASH_SHIFT_CLOSE',
           subject: `Turno de caja cerrado`,
           description: `Esperado: ${expectedCash}, Contado: ${countedCash}, Diferencia: ${difference}`,
@@ -309,32 +232,15 @@ export async function POST(request: Request) {
           metadata: { shiftId: shift.id, expectedCash, countedCash, difference }
         })
 
-        const serializedShift = serializeShift(shift)
-        return NextResponse.json({ shift: serializedShift })
-      } catch (error) {
-        if (error instanceof z.ZodError) {
-          return NextResponse.json(
-            { error: 'Validation error', details: error.errors },
-            { status: 400 }
-          )
-        }
-        throw error
-      }
+        return shift
+      })
+
+      return NextResponse.json({ shift: serializeShift(result) })
     }
 
-    return NextResponse.json(
-      { error: 'Invalid action. Must be "open" or "close"' },
-      { status: 400 }
-    )
-  } catch (error) {
+    return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
+  } catch (error: any) {
     console.error('Error managing cash shift:', error)
-
-    // Ensure error message is serializable
-    const errorMessage = error instanceof Error ? error.message : 'Failed to manage cash shift'
-
-    return NextResponse.json(
-      { error: errorMessage },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }

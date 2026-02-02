@@ -32,9 +32,18 @@ export async function POST(request: Request) {
     try {
         const body = await request.json()
         const data = unitSchema.parse(body)
-        const unit = await prisma.unit.create({ data })
+
+        const unit = await prisma.unit.create({
+            data: {
+                name: data.name,
+                symbol: data.symbol,
+            }
+        })
         return NextResponse.json(unit, { status: 201 })
     } catch (error: any) {
+        if (error.code === 'P2002') {
+            return NextResponse.json({ error: 'Ya existe una unidad con ese nombre' }, { status: 400 })
+        }
         return NextResponse.json({ error: error.message || 'Failed to create unit' }, { status: 500 })
     }
 }

@@ -216,10 +216,11 @@ export async function POST(request: Request) {
     const count = await prisma.physicalInventory.count()
     const number = `INV-${String(count + 1).padStart(6, '0')}`
 
-    // Prepare items data
+    // Prepare items data including zoneId
     const itemsData = stockLevels.map(sl => ({
       productId: sl.productId,
       variantId: sl.variantId,
+      zoneId: sl.zoneId,
       systemQuantity: sl.quantity,
     }))
 

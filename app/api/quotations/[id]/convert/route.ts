@@ -1,9 +1,11 @@
 import { NextResponse } from 'next/server'
 import { requirePermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
-import { getPrismaForRequest } from '@/lib/get-tenant-prisma'
+import { withTenantTx, getTenantIdFromSession } from '@/lib/tenancy'
 import { updateStockLevel } from '@/lib/inventory'
+import { calculateGranularTaxes } from '@/lib/taxes'
 import { z } from 'zod'
+import { Prisma } from '@prisma/client'
 
 const convertQuotationSchema = z.object({
   paymentMethod: z.enum(['CASH', 'CARD', 'TRANSFER', 'CHECK']).default('CASH'),
@@ -15,66 +17,102 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   const session = await requirePermission(request as any, PERMISSIONS.MANAGE_SALES)
-  
+
   if (session instanceof NextResponse) {
     return session
   }
 
-  // Obtener el cliente Prisma correcto (tenant o master según el usuario)
-  const prisma = await getPrismaForRequest(request, session)
-
   try {
+    const tenantId = getTenantIdFromSession(session)
     const body = await request.json().catch(() => ({}))
     const { paymentMethod = 'CASH', warehouseId } = convertQuotationSchema.parse(body)
 
-    const quotation = await prisma.quotation.findUnique({
-      where: { id: params.id },
-      include: {
-        items: {
-          include: {
-            product: true,
+    const result = await withTenantTx(tenantId, async (tx: Prisma.TransactionClient) => {
+      const quotation = await tx.quotation.findUnique({
+        where: { id: params.id },
+        include: {
+          items: {
+            include: {
+              product: {
+                include: {
+                  taxes: true
+                }
+              },
+            },
           },
+          customer: true,
         },
-        customer: true,
-      },
-    })
-
-    if (!quotation) {
-      return NextResponse.json(
-        { error: 'Cotización no encontrada' },
-        { status: 404 }
-      )
-    }
-
-    if (quotation.status === 'ACCEPTED') {
-      return NextResponse.json(
-        { error: 'La cotización ya fue aceptada' },
-        { status: 400 }
-      )
-    }
-
-    // Get default warehouse if not provided
-    let finalWarehouseId = warehouseId
-    if (!finalWarehouseId) {
-      const warehouse = await prisma.warehouse.findFirst({
-        where: { active: true },
       })
-      if (!warehouse) {
-        return NextResponse.json(
-          { error: 'No hay almacén disponible' },
-          { status: 400 }
-        )
-      }
-      finalWarehouseId = warehouse.id
-    }
 
-    // Use transaction to create invoice directly from quotation
-    const result = await prisma.$transaction(async (tx) => {
-      // Create invoice directly
+      if (!quotation) {
+        throw new Error('Cotización no encontrada')
+      }
+
+      if (quotation.status === 'ACCEPTED') {
+        throw new Error('La cotización ya fue aceptada')
+      }
+
+      // Get default warehouse if not provided
+      let finalWarehouseId = warehouseId
+      if (!finalWarehouseId) {
+        const warehouse = await tx.warehouse.findFirst({
+          where: { active: true },
+        })
+        if (!warehouse) {
+          throw new Error('No hay almacén disponible')
+        }
+        finalWarehouseId = warehouse.id
+      }
+
+      // Process items and taxes
+      const processedItems = quotation.items.map((item: any) => {
+        const productTaxes = item.product.taxes.length > 0
+          ? item.product.taxes.map((t: any) => ({
+            id: t.id,
+            name: t.name,
+            rate: t.rate,
+            type: t.type
+          }))
+          : item.taxRate > 0
+            ? [{ id: 'legacy', name: 'IVA (Legacy)', rate: item.taxRate, type: 'IVA' }]
+            : []
+
+        const taxResult = calculateGranularTaxes(item.subtotal, productTaxes)
+
+        return {
+          ...item,
+          taxes: taxResult.taxes,
+          calculatedTax: taxResult.totalTax
+        }
+      })
+
+      // Group totals for tax summary
+      const taxSummariesByRate = new Map<string, { taxRateId: string; name: string; rate: number; base: number; amount: number }>()
+      processedItems.forEach((pi: any) => {
+        pi.taxes.forEach((t: any) => {
+          const key = t.taxRateId
+          const existing = taxSummariesByRate.get(key)
+          if (existing) {
+            existing.base += pi.subtotal
+            existing.amount += t.amount
+          } else {
+            taxSummariesByRate.set(key, {
+              taxRateId: t.taxRateId,
+              name: t.name,
+              rate: t.rate,
+              base: pi.subtotal,
+              amount: t.amount
+            })
+          }
+        })
+      })
+
       const invoiceCount = await tx.invoice.count()
       const prefix = process.env.BILLING_RESOLUTION_PREFIX || 'FV'
       const consecutive = String(invoiceCount + 1).padStart(6, '0')
       const invoiceNumber = `${prefix}-${consecutive}`
+
+      const totalCalculatedTax = processedItems.reduce((sum: number, item: any) => sum + item.calculatedTax, 0)
 
       const invoice = await tx.invoice.create({
         data: {
@@ -82,69 +120,68 @@ export async function POST(
           prefix: prefix,
           consecutive: consecutive,
           customerId: quotation.customerId,
-          status: 'PAGADA', // Estado en español
+          status: 'PAGADA',
           subtotal: quotation.subtotal,
           discount: quotation.discount,
-          tax: quotation.tax,
-          total: quotation.total,
+          tax: totalCalculatedTax,
+          total: quotation.subtotal - quotation.discount + totalCalculatedTax,
           notes: quotation.notes,
           issuedAt: new Date(),
           paidAt: new Date(),
           electronicStatus: 'PENDING',
           createdById: (session.user as any).id,
           items: {
-            create: quotation.items.map(item => ({
-              productId: item.productId,
-              variantId: item.variantId || null,
-              quantity: item.quantity,
-              unitPrice: item.unitPrice,
-              discount: item.discount,
-              taxRate: item.taxRate,
-              subtotal: item.subtotal,
-            })),
+            create: processedItems.map((pi: any) => ({
+              product: { connect: { id: pi.productId } },
+              ...(pi.variantId ? { variant: { connect: { id: pi.variantId } } } : {}),
+              quantity: pi.quantity,
+              unitPrice: pi.unitPrice,
+              discount: pi.discount,
+              taxRate: pi.taxRate,
+              subtotal: pi.subtotal,
+              lineTaxes: {
+                create: pi.taxes.map((t: any) => ({
+                  ...(t.taxRateId !== 'legacy' ? { taxRate: { connect: { id: t.taxRateId } } } : {}),
+                  name: t.name,
+                  rate: t.rate,
+                  taxAmount: t.amount,
+                  baseAmount: pi.subtotal
+                })) as any
+              }
+            })) as any
           },
-        },
+          taxSummary: {
+            create: Array.from(taxSummariesByRate.values()).map((ts: any) => ({
+              ...(ts.taxRateId !== 'legacy' ? { taxRate: { connect: { id: ts.taxRateId } } } : {}),
+              name: ts.name,
+              rate: ts.rate,
+              baseAmount: ts.base,
+              taxAmount: ts.amount
+            })) as any
+          }
+        }
       })
 
       // Create payment
       await tx.payment.create({
         data: {
           invoiceId: invoice.id,
-          amount: quotation.total,
+          amount: invoice.total,
           method: paymentMethod,
           createdById: (session.user as any).id,
         },
       })
 
-      // Create stock movements for tracked products
-      for (const item of quotation.items) {
-        const product = await tx.product.findUnique({
-          where: { id: item.productId },
-        })
-
-        if (product?.trackStock) {
-          // Create OUT movement
-          await tx.stockMovement.create({
-            data: {
-              warehouseId: finalWarehouseId,
-              productId: item.productId,
-              variantId: item.variantId || null,
-              type: 'OUT',
-              quantity: item.quantity,
-              reason: 'Invoice from Quotation',
-              createdById: (session.user as any).id,
-              reference: invoiceNumber,
-            },
+      // Update Stock Levels and Movements
+      for (const pi of processedItems) {
+        if (pi.product.trackStock) {
+          await updateStockLevel(finalWarehouseId, pi.productId, pi.variantId || null, -pi.quantity, tx, {
+            type: 'OUT',
+            reason: 'Invoice from Quotation',
+            reasonCode: 'SALE',
+            reference: invoiceNumber,
+            createdById: (session.user as any).id
           })
-
-          // Update stock level
-          await updateStockLevel(
-            finalWarehouseId,
-            item.productId,
-            item.variantId || null,
-            -item.quantity,
-            tx
-          )
         }
       }
 
@@ -161,13 +198,13 @@ export async function POST(
   } catch (error: any) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'Validation error', details: error.errors },
+        { error: 'Error de validación', details: error.errors },
         { status: 400 }
       )
     }
-    console.error('Error converting quotation:', error)
+    console.error('Error al convertir cotización:', error)
     return NextResponse.json(
-      { error: 'Failed to convert quotation' },
+      { error: error.message || 'Error al convertir cotización' },
       { status: 500 }
     )
   }

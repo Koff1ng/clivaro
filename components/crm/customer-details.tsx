@@ -5,6 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Mail, Phone, MapPin, FileText, ShoppingCart, Receipt, Tag } from 'lucide-react'
 import { ActivityTimeline } from './activity-timeline'
+import { CustomerLedger } from './customer-ledger'
 
 export function CustomerDetails({ customerData }: { customerData: any }) {
   // Validate and provide defaults
@@ -157,11 +158,17 @@ export function CustomerDetails({ customerData }: { customerData: any }) {
         <TabsList>
           <TabsTrigger value="invoices">Facturas</TabsTrigger>
           <TabsTrigger value="quotations">Cotizaciones</TabsTrigger>
+          <TabsTrigger value="ledger">Cartera</TabsTrigger>
           <TabsTrigger value="activity">Actividad</TabsTrigger>
         </TabsList>
 
+
         <TabsContent value="activity" className="space-y-4 pt-4">
           <ActivityTimeline customerId={customer.id} />
+        </TabsContent>
+
+        <TabsContent value="ledger" className="space-y-4 pt-4">
+          <CustomerLedger customerId={customer.id} />
         </TabsContent>
 
         <TabsContent value="invoices" className="space-y-4">

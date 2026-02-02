@@ -137,7 +137,8 @@ export async function PUT(
     }
 
     if (action === 'complete') {
-      // Complete inventory and apply adjustments
+      // Complete inventory: calculate differences but DON'T apply adjustments yet
+      // Adjustments will be applied in the /approve endpoint
       await prisma.$transaction(async (tx) => {
         // Get all items with counted quantities
         const items = await tx.physicalInventoryItem.findMany({
@@ -147,47 +148,18 @@ export async function PUT(
           },
         })
 
-        // Calculate differences and create adjustments
+        // Just calculate and update differences in the items
         for (const item of items) {
           if (item.countedQuantity !== null) {
             const difference = item.countedQuantity - item.systemQuantity
-
-            // Update difference in item
             await tx.physicalInventoryItem.update({
               where: { id: item.id },
               data: { difference },
             })
-
-            // Create adjustment if there's a difference
-            if (difference !== 0) {
-              // Create stock movement
-              const movementType = difference > 0 ? 'IN' : 'OUT'
-              await tx.stockMovement.create({
-                data: {
-                  warehouseId: inventory.warehouseId,
-                  productId: item.productId,
-                  variantId: item.variantId,
-                  type: movementType,
-                  quantity: Math.abs(difference),
-                  reason: `Ajuste por inventario físico ${inventory.number}`,
-                  createdById: (session.user as any).id,
-                  reference: inventory.number,
-                },
-              })
-
-              // Update stock level
-              await updateStockLevel(
-                inventory.warehouseId,
-                item.productId,
-                item.variantId,
-                difference,
-                tx
-              )
-            }
           }
         }
 
-        // Mark inventory as completed
+        // Mark inventory as completed (pending approval)
         await tx.physicalInventory.update({
           where: { id: params.id },
           data: {
@@ -200,8 +172,8 @@ export async function PUT(
         await logActivity({
           prisma: tx,
           type: 'INVENTORY_PHYSICAL',
-          subject: `Inventario Físico Completado: ${inventory.number}`,
-          description: `Se procesaron ${items.length} items contados.`,
+          subject: `Inventario Físico Finalizado (Pendiente Aprobación): ${inventory.number}`,
+          description: `Se finalizaron los conteos para ${items.length} productos.`,
           userId: (session.user as any).id,
           metadata: { inventoryId: inventory.id, warehouseId: inventory.warehouseId }
         })
@@ -210,40 +182,15 @@ export async function PUT(
       const updated = await prisma.physicalInventory.findUnique({
         where: { id: params.id },
         include: {
-          warehouse: {
-            select: {
-              id: true,
-              name: true,
-            },
-          },
-          createdBy: {
-            select: {
-              id: true,
-              name: true,
-            },
-          },
+          warehouse: { select: { id: true, name: true } },
+          createdBy: { select: { id: true, name: true } },
           items: {
             include: {
-              product: {
-                select: {
-                  id: true,
-                  name: true,
-                  sku: true,
-                  unitOfMeasure: true,
-                },
-              },
-              variant: {
-                select: {
-                  id: true,
-                  name: true,
-                },
-              },
+              product: { select: { id: true, name: true, sku: true, unitOfMeasure: true } },
+              variant: { select: { id: true, name: true } },
+              zone: { select: { id: true, name: true } },
             },
-            orderBy: {
-              product: {
-                name: 'asc',
-              },
-            },
+            orderBy: { product: { name: 'asc' } },
           },
         },
       })

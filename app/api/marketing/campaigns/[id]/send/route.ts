@@ -17,7 +17,7 @@ export async function POST(
   { params }: { params: { id: string } | Promise<{ id: string }> }
 ) {
   const session = await requirePermission(request as any, PERMISSIONS.MANAGE_CRM)
-  
+
   if (session instanceof NextResponse) {
     return session
   }
@@ -33,8 +33,8 @@ export async function POST(
   const prisma = await getPrismaForRequest(request, session)
 
   try {
-    const resolvedParams = typeof params === 'object' && 'then' in params 
-      ? await params 
+    const resolvedParams = typeof params === 'object' && 'then' in params
+      ? await params
       : params as { id: string }
     const campaignId = resolvedParams.id
 
@@ -77,20 +77,58 @@ export async function POST(
       data: { status: 'SENDING' },
     })
 
+    // 4. Get Blacklist
+    const blacklist = await prisma.unsubscribe.findMany({
+      select: { email: true }
+    })
+    const blacklistedEmails = new Set(blacklist.map(b => b.email))
+
     const results = {
       sent: 0,
       failed: 0,
       errors: [] as string[],
+      skipped: 0
     }
 
     // Send emails
     for (const recipient of campaign.recipients) {
+      // Check Blacklist
+      if (blacklistedEmails.has(recipient.email)) {
+        // Mark as skipped/failed
+        await prisma.marketingCampaignRecipient.update({
+          where: { id: recipient.id },
+          data: {
+            status: 'FAILED', // Using FAILED as we didn't add SKIPPED to enum in DB push effectively without migration? Or assuming FAILED is fine.
+            error: 'Recipient Unsubscribed (Blacklisted)'
+          }
+        })
+        results.skipped++
+        continue
+      }
+
       try {
         // Personalize email content
         let personalizedContent = personalizeEmailHtml(campaign.htmlContent, {
           name: recipient.customer?.name,
           email: recipient.email,
         })
+
+        // Append Unsubscribe Link
+        // Simple append or replace placeholder if exists.
+        // We will append a footer if not present.
+        const unsubscribeUrl = `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/marketing/unsubscribe?email=${encodeURIComponent(recipient.email)}`
+        const unsubscribeFooter = `
+          <div style="margin-top: 20px; padding-top: 10px; border-top: 1px solid #eee; font-size: 12px; color: #666; text-align: center;">
+            <a href="${unsubscribeUrl}" style="color: #666; text-decoration: underline;">Darme de baja / Unsubscribe</a>
+          </div>
+        `
+
+        // Inject before </body> if exists, else append
+        if (personalizedContent.includes('</body>')) {
+          personalizedContent = personalizedContent.replace('</body>', `${unsubscribeFooter}</body>`)
+        } else {
+          personalizedContent += unsubscribeFooter
+        }
 
         // Extract image paths from HTML
         const imagePaths = extractImagePathsFromHtml(personalizedContent)
@@ -101,7 +139,7 @@ export async function POST(
 
         // Replace image URLs with CID references
         personalizedContent = replaceImageUrlsWithCid(personalizedContent, imagePaths, imageAttachments)
-        
+
         // Check for base64 images (which Gmail will block)
         const base64Images = personalizedContent.match(/src=["']data:image\/[^"']+["']/gi)
         if (base64Images && base64Images.length > 0) {
@@ -121,6 +159,7 @@ export async function POST(
             data: {
               status: 'SENT',
               sentAt: new Date(),
+              retryCount: { increment: 1 }
             },
           })
           results.sent++
@@ -130,6 +169,7 @@ export async function POST(
             data: {
               status: 'FAILED',
               error: emailResult.message,
+              retryCount: { increment: 1 }
             },
           })
           results.failed++
@@ -141,6 +181,7 @@ export async function POST(
           data: {
             status: 'FAILED',
             error: error.message || 'Unknown error',
+            retryCount: { increment: 1 }
           },
         })
         results.failed++

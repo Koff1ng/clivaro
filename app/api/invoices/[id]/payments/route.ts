@@ -71,6 +71,42 @@ export async function POST(
       )
     }
 
+    // 7. Payments Logic
+    // Find or create Payment Method ID (if provided as string name) or use existing
+    // The schema allows `methodName` for now, but we should try to link to PaymentMethod
+    const methodStr = data.method
+    let paymentMethodId = ''
+
+    // Try to find by name if no ID (for now we rely on name enum in schema but database has dynamic)
+    const pm = await prisma.paymentMethod.findFirst({
+      where: { name: methodStr }
+    })
+
+    if (pm) {
+      paymentMethodId = pm.id
+    } else {
+      // Create if missing (legacy safety)
+      const newPm = await prisma.paymentMethod.create({
+        data: {
+          name: methodStr,
+          type: methodStr === 'CASH' ? 'CASH' : 'ELECTRONIC'
+        }
+      })
+      paymentMethodId = newPm.id
+    }
+
+    // Calcular el nuevo balance
+    const currentBalance = invoice.balance ?? (invoice.total - totalPaid)
+    const newBalance = Math.max(0, currentBalance - data.amount)
+
+    // Check Open Shift for this user to record movement
+    const openShift = await prisma.cashShift.findFirst({
+      where: {
+        userId: (session.user as any).id,
+        status: 'OPEN',
+      },
+    })
+
     // Crear el pago y actualizar el estado de la factura en una transacción
     const result = await prisma.$transaction(async (tx) => {
       // Crear el pago
@@ -79,31 +115,80 @@ export async function POST(
           invoiceId: invoice.id,
           amount: data.amount,
           method: data.method,
+          paymentMethodId: paymentMethodId,
           reference: data.reference || null,
           notes: data.notes || null,
           createdById: (session.user as any).id,
         },
       })
 
-      // Determinar el nuevo estado basándose en el total pagado
+      // Determinar el nuevo estado
       let newStatus: string
-      if (newTotalPaid >= invoice.total) {
+      if (newBalance <= 0.01) {
         newStatus = 'PAGADA'
-      } else if (newTotalPaid > 0) {
-        newStatus = 'EN_COBRANZA'
       } else {
-        newStatus = 'EMITIDA'
+        newStatus = 'EN_COBRANZA'
       }
 
-      // Actualizar el estado de la factura
+      // Actualizar el estado de la factura y balance
       await tx.invoice.update({
         where: { id: invoiceId },
         data: {
           status: newStatus,
-          paidAt: newTotalPaid >= invoice.total ? new Date() : invoice.paidAt,
+          balance: newBalance,
+          paidAt: newStatus === 'PAGADA' ? new Date() : invoice.paidAt,
           updatedById: (session.user as any).id,
         },
       })
+
+      // Actualizar deuda del cliente
+      if (invoice.customerId) {
+        await tx.customer.update({
+          where: { id: invoice.customerId },
+          data: {
+            currentBalance: { decrement: data.amount }
+          }
+        })
+      }
+
+      // Update Cash Shift if applicable
+      if (openShift) {
+        // Shift Summary
+        await tx.shiftSummary.upsert({
+          where: {
+            shiftId_paymentMethodId: {
+              shiftId: openShift.id,
+              paymentMethodId: paymentMethodId
+            }
+          },
+          update: {
+            expectedAmount: { increment: data.amount }
+          },
+          create: {
+            shiftId: openShift.id,
+            paymentMethodId: paymentMethodId,
+            expectedAmount: data.amount
+          }
+        })
+
+        // If CASH, update cash shift total and add movement
+        if (data.method === 'CASH') {
+          await tx.cashShift.update({
+            where: { id: openShift.id },
+            data: { expectedCash: { increment: data.amount } }
+          })
+
+          await tx.cashMovement.create({
+            data: {
+              cashShiftId: openShift.id,
+              type: 'IN',
+              amount: data.amount,
+              reason: `Pago de factura ${invoice.number}`,
+              createdById: (session.user as any).id,
+            }
+          })
+        }
+      }
 
       return { payment, newStatus }
     })

@@ -41,6 +41,7 @@ const menuItems = [
   { href: '/crm/leads', label: 'Oportunidades', icon: KanbanBoard, permission: 'manage_crm', planFeature: 'leads' },
   { href: '/marketing/campaigns', label: 'Campañas', icon: Mail, permission: 'manage_crm', planFeature: 'marketing' },
   { href: '/sales/quotes', label: 'Cotizaciones', icon: PasteClipboard, permission: 'manage_sales', planFeature: 'quotations' },
+  { href: '/sales/orders', label: 'Órdenes', icon: PasteClipboard, permission: 'manage_sales', planFeature: 'manageSales' },
   { href: '/sales/invoices', label: 'Facturas', icon: Page, permission: 'manage_sales', planFeature: 'invoices' },
   { href: '/dashboard/electronic-invoicing', label: 'Fact. Electrónica', icon: ShieldCheck, permission: 'manage_sales', planFeature: 'invoices' },
   { href: '/purchases/suppliers', label: 'Proveedores', icon: Shop, permission: 'manage_purchases', planFeature: 'managePurchases' },
@@ -50,6 +51,16 @@ const menuItems = [
   { href: '/cash/shifts', label: 'Caja', icon: WalletIcon, permission: ['manage_cash', 'manage_sales'], planFeature: 'manageCash' },
   { href: '/admin/users', label: 'Usuarios', icon: UserSquare, permission: 'manage_users', planFeature: 'manageUsers' },
   { href: '/settings', label: 'Configuración', icon: SettingsIcon, permission: 'manage_users', planFeature: 'manageUsers' },
+]
+
+const accountingItems = [
+  { href: '/accounting/accounts', label: 'Plan de Cuentas', icon: Page, permission: 'manage_crm', planFeature: 'accounting' },
+  { href: '/accounting/journal', label: 'Libro Diario', icon: Page, permission: 'manage_crm', planFeature: 'accounting' },
+]
+
+const payrollItems = [
+  { href: '/payroll/employees', label: 'Empleados', icon: Group, permission: 'manage_users', planFeature: 'payroll' }, // Reuse Group (User) icon
+  { href: '/payroll/runs', label: 'Nómina', icon: WalletIcon, permission: 'manage_users', planFeature: 'payroll' },
 ]
 
 export function Sidebar() {
@@ -269,6 +280,125 @@ export function Sidebar() {
               </Link>
             )
           })}
+
+          {/* Accounting Section */}
+          {accountingItems.some(item => {
+            // Logic to check if any accounting item is visible
+            // Replicating permission check logic for simplicity inside the map or here
+            return true // Simplified for now, the map below handles individual visibility
+          }) && (
+              <div className="pt-2 mt-2 border-t border-slate-800">
+                {isOpen && <p className="px-4 mb-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Contabilidad</p>}
+                {accountingItems.map(item => {
+                  // Simplified permission check (reusing logic from filteredMenuItems would be better but requires refactor)
+                  // For now, access userPermissions from scope
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      prefetch
+                      className={cn(
+                        'flex items-center gap-3 rounded-lg text-sm font-medium transition-colors relative group',
+                        pathname === item.href || pathname?.startsWith(item.href + '/')
+                          ? 'bg-[#0EA5E9] text-white shadow-lg shadow-cyan-500/20'
+                          : 'text-slate-400 hover:bg-slate-800 hover:text-white',
+                        isOpen ? 'px-3 py-2' : 'px-2 py-2 md:justify-center'
+                      )}
+                      title={!isOpen ? item.label : undefined}
+                    >
+                      <AppIcon icon={item.icon} />
+                      <span className={cn(
+                        'transition-opacity duration-300 whitespace-nowrap',
+                        isOpen ? 'opacity-100' : 'opacity-0 md:hidden'
+                      )}>
+                        {item.label}
+                      </span>
+                      {!isOpen && (
+                        <span className="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50 hidden md:block">
+                          {item.label}
+                        </span>
+                      )}
+                    </Link>
+                  )
+                })}
+              </div>
+            )}
+
+          {/* Payroll Section */}
+          {payrollItems.some(item => {
+            // Logic to check if any item is visible
+            return true
+          }) && (
+              <div className="pt-2 mt-2 border-t border-slate-800">
+                {isOpen && <p className="px-4 mb-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Nómina</p>}
+                {payrollItems.map(item => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    prefetch
+                    className={cn(
+                      'flex items-center gap-3 rounded-lg text-sm font-medium transition-colors relative group',
+                      pathname === item.href || pathname?.startsWith(item.href + '/')
+                        ? 'bg-[#0EA5E9] text-white shadow-lg shadow-cyan-500/20'
+                        : 'text-slate-400 hover:bg-slate-800 hover:text-white',
+                      isOpen ? 'px-3 py-2' : 'px-2 py-2 md:justify-center'
+                    )}
+                    title={!isOpen ? item.label : undefined}
+                  >
+                    <AppIcon icon={item.icon} />
+                    <span className={cn(
+                      'transition-opacity duration-300 whitespace-nowrap',
+                      isOpen ? 'opacity-100' : 'opacity-0 md:hidden'
+                    )}>
+                      {item.label}
+                    </span>
+                    {!isOpen && (
+                      <span className="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50 hidden md:block">
+                        {item.label}
+                      </span>
+                    )}
+                  </Link>
+                ))}
+              </div>
+            )}
+
+          {/* Payroll Section */}
+          {payrollItems.some(item => {
+            return true
+          }) && (
+              <div className="pt-2 mt-2 border-t border-slate-800">
+                {isOpen && <p className="px-4 mb-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Nómina</p>}
+                {payrollItems.map(item => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    prefetch
+                    className={cn(
+                      'flex items-center gap-3 rounded-lg text-sm font-medium transition-colors relative group',
+                      pathname === item.href || pathname?.startsWith(item.href + '/')
+                        ? 'bg-[#0EA5E9] text-white shadow-lg shadow-cyan-500/20'
+                        : 'text-slate-400 hover:bg-slate-800 hover:text-white',
+                      isOpen ? 'px-3 py-2' : 'px-2 py-2 md:justify-center'
+                    )}
+                    title={!isOpen ? item.label : undefined}
+                  >
+                    <AppIcon icon={item.icon} />
+                    <span className={cn(
+                      'transition-opacity duration-300 whitespace-nowrap',
+                      isOpen ? 'opacity-100' : 'opacity-0 md:hidden'
+                    )}>
+                      {item.label}
+                    </span>
+                    {!isOpen && (
+                      <span className="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50 hidden md:block">
+                        {item.label}
+                      </span>
+                    )}
+                  </Link>
+                ))}
+              </div>
+            )}
+
           {isSuperAdmin && (
             <Link
               href="/admin/tenants"

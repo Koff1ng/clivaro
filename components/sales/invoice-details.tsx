@@ -1040,28 +1040,43 @@ export function InvoiceDetails({ invoice }: { invoice: any }) {
               </TableHeader>
               <TableBody>
                 {hasItems ? (
-                  invoiceItems.map((item: any, index: number) => (
-                    <TableRow key={item.id || `item-${index}`}>
-                      <TableCell className="font-mono text-xs">
-                        {item.product?.sku || '-'}
-                      </TableCell>
-                      <TableCell>
-                        <div>
-                          <div className="font-medium">{item.product?.name || 'Producto'}</div>
-                          {item.variant?.name && (
-                            <div className="text-xs text-gray-500">{item.variant.name}</div>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>{item.quantity}</TableCell>
-                      <TableCell>{formatCurrency(item.unitPrice)}</TableCell>
-                      <TableCell>{item.discount}%</TableCell>
-                      <TableCell>{item.taxRate}%</TableCell>
-                      <TableCell className="font-semibold">
-                        {formatCurrency(item.subtotal)}
-                      </TableCell>
-                    </TableRow>
-                  ))
+                  invoiceItems.map((item: any, index: number) => {
+                    const itemTax = item.lineTaxes && item.lineTaxes.length > 0
+                      ? item.lineTaxes.reduce((sum: number, lt: any) => sum + (lt.taxAmount || 0), 0)
+                      : (item.subtotal * (item.taxRate || 0) / 100)
+
+                    return (
+                      <TableRow key={item.id || `item-${index}`}>
+                        <TableCell className="font-mono text-xs">
+                          {item.product?.sku || '-'}
+                        </TableCell>
+                        <TableCell>
+                          <div>
+                            <div className="font-medium">{item.product?.name || 'Producto'}</div>
+                            {item.variant?.name && (
+                              <div className="text-xs text-gray-500">{item.variant.name}</div>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>{item.quantity}</TableCell>
+                        <TableCell>{formatCurrency(item.unitPrice)}</TableCell>
+                        <TableCell>{item.discount}%</TableCell>
+                        <TableCell>
+                          <div className="flex flex-col">
+                            <span>{formatCurrency(itemTax)}</span>
+                            {item.lineTaxes && item.lineTaxes.length > 1 && (
+                              <span className="text-[10px] text-muted-foreground">
+                                ({item.lineTaxes.length} imp.)
+                              </span>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell className="font-semibold">
+                          {formatCurrency(item.subtotal)}
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })
                 ) : (
                   <TableRow>
                     <TableCell colSpan={7} className="text-center text-gray-500 py-8">
@@ -1085,10 +1100,22 @@ export function InvoiceDetails({ invoice }: { invoice: any }) {
               <span className="text-gray-600">Descuento:</span>
               <span>{formatCurrency(invoice.discount || 0)}</span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">IVA:</span>
-              <span>{formatCurrency(invoice.tax || 0)}</span>
-            </div>
+
+            {/* Tax Breakdown */}
+            {invoice.taxSummary && invoice.taxSummary.length > 0 ? (
+              invoice.taxSummary.map((ts: any) => (
+                <div key={ts.id} className="flex justify-between text-muted-foreground text-xs">
+                  <span>{ts.name} ({ts.rate}%):</span>
+                  <span>{formatCurrency(ts.taxAmount)}</span>
+                </div>
+              ))
+            ) : (
+              <div className="flex justify-between">
+                <span className="text-gray-600">Impuestos:</span>
+                <span>{formatCurrency(invoice.tax || 0)}</span>
+              </div>
+            )}
+
             <div className="flex justify-between border-t pt-2 font-bold text-lg">
               <span>Total:</span>
               <span>{formatCurrency(invoice.total || 0)}</span>

@@ -8,12 +8,13 @@ import { formatCurrency } from '@/lib/utils'
 import { useToast } from '@/components/ui/toast'
 import { useThermalPrint } from '@/lib/hooks/use-thermal-print'
 import { useSession } from 'next-auth/react'
-import { Search, Plus, Minus, User, ShoppingCart, X, DollarSign, CreditCard, ArrowLeftRight, Check, Printer, Copy, Bookmark, FolderOpen, Keyboard, UserPlus, Phone, MessageSquare } from 'lucide-react'
+import { Search, Plus, Minus, User, ShoppingCart, X, DollarSign, CreditCard, ArrowLeftRight, Check, Printer, Copy, Bookmark, FolderOpen, Keyboard, UserPlus, Phone, MessageSquare, Smartphone } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { PERMISSIONS } from '@/lib/permissions'
 import { InvoicePrint } from '@/components/sales/invoice-print'
+import { TaxSelector } from './tax-selector'
 
 interface CartItem {
   productId: string
@@ -24,6 +25,7 @@ interface CartItem {
   unitPrice: number
   discount: number
   taxRate: number
+  appliedTaxes: Array<{ id: string; name: string; rate: number; type: string }>
   subtotal: number
   preparationNotes?: string
 }
@@ -39,11 +41,15 @@ interface Product {
   stockLevels: Array<{ warehouseId: string; quantity: number }>
 }
 
-type PaymentMethod = 'CASH' | 'CARD' | 'TRANSFER'
+interface PaymentMethodInfo {
+  id: string
+  name: string
+  type: string
+}
 
 type SplitPaymentLine = {
   id: string
-  method: PaymentMethod
+  paymentMethodId: string
   amount: string
 }
 
@@ -82,9 +88,9 @@ type OfflineQueuedSale = {
     items: any[]
     customer: any | null
     paymentMode: 'SINGLE' | 'SPLIT'
-    paymentMethod: PaymentMethod
+    paymentMethod: string
     cashReceived?: number | null
-    payments?: Array<{ method: PaymentMethod; amount: number }>
+    payments?: Array<{ paymentMethodId: string; amount: number }>
     change?: number
     subtotal: number
     tax: number
@@ -144,6 +150,12 @@ async function fetchSettings() {
   return data.settings || null
 }
 
+async function fetchPaymentMethods() {
+  const res = await fetch('/api/settings/payment-methods')
+  if (!res.ok) return []
+  return res.json()
+}
+
 async function openShift(startingCash: number) {
   const res = await fetch('/api/cash/shifts', {
     method: 'POST',
@@ -169,11 +181,9 @@ export function POSScreen() {
   const [showAddCustomer, setShowAddCustomer] = useState(false)
   const [selectedWarehouse, setSelectedWarehouse] = useState<string>('')
   const [paymentMode, setPaymentMode] = useState<'SINGLE' | 'SPLIT'>('SINGLE')
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('CASH')
+  const [paymentMethodId, setPaymentMethodId] = useState<string>('')
   const [cashReceived, setCashReceived] = useState('')
-  const [splitPayments, setSplitPayments] = useState<SplitPaymentLine[]>([
-    { id: 'p1', method: 'CASH', amount: '' },
-  ])
+  const [splitPayments, setSplitPayments] = useState<SplitPaymentLine[]>([])
   const [showShiftDialog, setShowShiftDialog] = useState(false)
   const [startingCash, setStartingCash] = useState('0')
   const searchInputRef = useRef<HTMLInputElement>(null)
@@ -382,6 +392,7 @@ export function POSScreen() {
     sku: string
     unitPrice: number
     taxRate: number
+    appliedTaxes: Array<{ id: string; name: string; rate: number; type: string }>
     trackStock: boolean
     stockLevels: Array<{ warehouseId: string; quantity: number }>
   }) => {
@@ -410,6 +421,7 @@ export function POSScreen() {
           unitPrice: line.unitPrice,
           discount: 0,
           taxRate: line.taxRate || 0,
+          appliedTaxes: line.appliedTaxes,
           subtotal,
         },
       ])
@@ -447,6 +459,7 @@ export function POSScreen() {
           sku,
           unitPrice,
           taxRate: data.product.taxRate,
+          appliedTaxes: data.product.taxRate > 0 ? [{ id: 'default', name: 'IVA', rate: data.product.taxRate, type: 'IVA' }] : [],
           trackStock: data.product.trackStock,
           stockLevels: data.stockLevels || [],
         })
@@ -458,6 +471,7 @@ export function POSScreen() {
           sku: data.product.sku,
           unitPrice: data.product.price,
           taxRate: data.product.taxRate,
+          appliedTaxes: data.product.taxRate > 0 ? [{ id: 'default', name: 'IVA', rate: data.product.taxRate, type: 'IVA' }] : [],
           trackStock: data.product.trackStock,
           stockLevels: data.stockLevels || [],
         })
@@ -554,13 +568,15 @@ export function POSScreen() {
       setSplitPayments(
         item.payload.payments.map((p: any, idx: number) => ({
           id: `p${idx + 1}`,
-          method: p.method,
+          paymentMethodId: p.paymentMethodId,
           amount: String(p.amount),
         }))
       )
     } else {
       setPaymentMode('SINGLE')
-      setPaymentMethod(item.payload?.paymentMethod || 'CASH')
+      if (item.payload?.payments?.[0]?.paymentMethodId) {
+        setPaymentMethodId(item.payload.payments[0].paymentMethodId)
+      }
       setCashReceived(item.payload?.cashReceived ? String(item.payload.cashReceived) : '')
     }
 
@@ -713,6 +729,21 @@ export function POSScreen() {
     gcTime: 30 * 60 * 1000,
   })
 
+  const { data: paymentMethods = [] } = useQuery<PaymentMethodInfo[]>({
+    queryKey: ['payment-methods'],
+    queryFn: fetchPaymentMethods,
+    staleTime: 5 * 60 * 1000,
+  })
+
+  // Set default payment method when methods are loaded
+  useEffect(() => {
+    if (paymentMethods.length > 0 && !paymentMethodId) {
+      const cashMethod = paymentMethods.find((m) => m.type === 'CASH') || paymentMethods[0]
+      setPaymentMethodId(cashMethod.id)
+      setSplitPayments([{ id: 'p1', paymentMethodId: cashMethod.id, amount: '' }])
+    }
+  }, [paymentMethods, paymentMethodId])
+
   // Debounce customer search
   const debouncedCustomerSearch = useDebounce(customerSearch, 300)
 
@@ -757,7 +788,7 @@ export function POSScreen() {
     const id = `${now.getTime()}`
     const totals = computeTotalsFromCart(cart)
     const normalizedSplit = splitPayments
-      .map((p) => ({ method: p.method, amount: parseFloat(p.amount || '0') }))
+      .map((p) => ({ paymentMethodId: p.paymentMethodId, amount: parseFloat(p.amount || '0') }))
       .filter((p) => !isNaN(p.amount) && p.amount > 0)
     const paidTotal = normalizedSplit.reduce((sum, p) => sum + p.amount, 0)
 
@@ -778,10 +809,10 @@ export function POSScreen() {
         })),
         customer: selectedCustomer,
         paymentMode,
-        paymentMethod,
-        payments: paymentMode === 'SPLIT' ? normalizedSplit : undefined,
-        cashReceived: paymentMode === 'SINGLE' && paymentMethod === 'CASH' ? parseFloat(cashReceived || '0') : null,
-        change: paymentMode === 'SPLIT' ? Math.max(0, paidTotal - totals.total) : undefined,
+        paymentMethod: paymentMethods.find(m => m.id === paymentMethodId)?.name || 'N/A',
+        payments: normalizedSplit,
+        cashReceived: paymentMode === 'SINGLE' && paymentMethods.find(m => m.id === paymentMethodId)?.type === 'CASH' ? parseFloat(cashReceived || '0') : null,
+        change: Math.max(0, paidTotal - totals.total),
         subtotal: totals.subtotal,
         tax: totals.tax,
         total: totals.total,
@@ -808,10 +839,10 @@ export function POSScreen() {
       })),
       customer: selectedCustomer,
       paymentMode,
-      paymentMethod,
+      paymentMethod: selectedMethod?.name || 'N/A',
       payments: paymentMode === 'SPLIT' ? normalizedSplit : null,
       paidTotal: paymentMode === 'SPLIT' ? paidTotal : null,
-      cashReceived: paymentMode === 'SINGLE' && paymentMethod === 'CASH' ? parseFloat(cashReceived || '0') : null,
+      cashReceived: paymentMode === 'SINGLE' && selectedMethod?.type === 'CASH' ? parseFloat(cashReceived || '0') : null,
     })
     setShowReceipt(true)
     // Auto-print disabled - user must click print button manually
@@ -822,8 +853,11 @@ export function POSScreen() {
     setCashReceived('')
     setSelectedCustomer(null)
     setPaymentMode('SINGLE')
-    setPaymentMethod('CASH')
-    setSplitPayments([{ id: 'p1', method: 'CASH', amount: '' }])
+    const cashMethod = paymentMethods.find((m) => m.type === 'CASH') || paymentMethods[0]
+    if (cashMethod) {
+      setPaymentMethodId(cashMethod.id)
+      setSplitPayments([{ id: 'p1', paymentMethodId: cashMethod.id, amount: '' }])
+    }
     searchInputRef.current?.focus()
 
     toast('Sin internet: venta guardada y pendiente de sincronizar', 'warning')
@@ -832,7 +866,8 @@ export function POSScreen() {
     cashReceived,
     computeTotalsFromCart,
     offlineQueue,
-    paymentMethod,
+    paymentMethodId,
+    paymentMethods,
     paymentMode,
     persistOfflineQueue,
     selectedCustomer,
@@ -941,7 +976,7 @@ export function POSScreen() {
     onSuccess: (data) => {
       // Store sale result and show receipt
       const normalizedSplit = splitPayments
-        .map((p) => ({ method: p.method, amount: parseFloat(p.amount || '0') }))
+        .map((p) => ({ paymentMethodId: p.paymentMethodId, amount: parseFloat(p.amount || '0') }))
         .filter((p) => !isNaN(p.amount) && p.amount > 0)
       const paidTotal = normalizedSplit.reduce((sum, p) => sum + p.amount, 0)
 
@@ -955,10 +990,10 @@ export function POSScreen() {
         })),
         customer: selectedCustomer,
         paymentMode,
-        paymentMethod,
+        paymentMethod: paymentMethods.find(m => m.id === paymentMethodId)?.name || 'N/A',
         payments: paymentMode === 'SPLIT' ? normalizedSplit : null,
         paidTotal: paymentMode === 'SPLIT' ? paidTotal : null,
-        cashReceived: paymentMode === 'SINGLE' && paymentMethod === 'CASH' ? parseFloat(cashReceived) : null,
+        cashReceived: paymentMode === 'SINGLE' && selectedMethod?.type === 'CASH' ? parseFloat(cashReceived) : null,
         change: data.change || 0,
       })
       setShowReceipt(true)
@@ -969,9 +1004,13 @@ export function POSScreen() {
       setSearchQuery('')
       setCashReceived('')
       setSelectedCustomer(null)
+      setSelectedCustomer(null)
       setPaymentMode('SINGLE')
-      setPaymentMethod('CASH')
-      setSplitPayments([{ id: 'p1', method: 'CASH', amount: '' }])
+      const cashMethod = paymentMethods.find((m) => m.type === 'CASH') || paymentMethods[0]
+      if (cashMethod) {
+        setPaymentMethodId(cashMethod.id)
+        setSplitPayments([{ id: 'p1', paymentMethodId: cashMethod.id, amount: '' }])
+      }
 
       // Focus search for next sale
       if (searchInputRef.current) {
@@ -1011,9 +1050,20 @@ export function POSScreen() {
       sku: product.sku,
       unitPrice: product.price,
       taxRate: product.taxRate,
+      appliedTaxes: product.taxRate > 0 ? [{ id: 'default', name: 'IVA', rate: product.taxRate, type: 'IVA' }] : [],
       trackStock: product.trackStock,
       stockLevels: product.stockLevels || [],
     })
+  }
+
+  const updateCartItemTaxes = (productId: string, taxes: any[], variantId?: string | null) => {
+    setCart(cart.map(item => {
+      if (item.productId === productId && (item.variantId || null) === (variantId || null)) {
+        const totalTaxRate = taxes.reduce((sum, t) => sum + t.rate, 0)
+        return { ...item, appliedTaxes: taxes, taxRate: totalTaxRate }
+      }
+      return item
+    }))
   }
 
   const updateCartItemQuantity = (productId: string, quantity: number, variantId?: string | null) => {
@@ -1073,7 +1123,11 @@ export function POSScreen() {
     }, 0)
     const tax = cart.reduce((sum, item) => {
       const itemSubtotal = item.quantity * item.unitPrice * (1 - item.discount / 100)
-      return sum + (itemSubtotal * item.taxRate / 100)
+      // Calculate each applied tax
+      const itemTax = item.appliedTaxes.reduce((tSum, t) => {
+        return tSum + (itemSubtotal * t.rate / 100)
+      }, 0)
+      return sum + itemTax
     }, 0)
     return { subtotal, tax, total: subtotal + tax }
   }
@@ -1097,12 +1151,18 @@ export function POSScreen() {
       return
     }
 
-    if (paymentMode === 'SINGLE' && paymentMethod === 'CASH') {
+    const selectedMethod = paymentMethods.find(m => m.id === paymentMethodId)
+    if (paymentMode === 'SINGLE' && selectedMethod?.type === 'CASH') {
       const total = calculateTotals().total
       const received = parseFloat(cashReceived || '0')
 
       if (!cashReceived || isNaN(received) || received < total) {
         toast(`El efectivo recibido (${formatCurrency(received)}) debe ser mayor o igual al total (${formatCurrency(total)})`, 'warning')
+        return
+      }
+    } else if (paymentMode === 'SINGLE' && selectedMethod?.type === 'CREDIT') {
+      if (!selectedCustomer || !selectedCustomer.id || selectedCustomer.name === 'Cliente General') {
+        toast('Debe seleccionar un cliente válido para ventas a crédito', 'warning')
         return
       }
     }
@@ -1119,6 +1179,7 @@ export function POSScreen() {
         unitPrice: Number(item.unitPrice),
         discount: Number(item.discount || 0),
         taxRate: Number(item.taxRate || 0),
+        appliedTaxes: item.appliedTaxes,
       }
     })
 
@@ -1137,7 +1198,7 @@ export function POSScreen() {
 
     if (paymentMode === 'SPLIT') {
       const normalized = splitPayments
-        .map((p) => ({ method: p.method, amount: parseFloat(p.amount || '0') }))
+        .map((p) => ({ paymentMethodId: p.paymentMethodId, amount: parseFloat(p.amount || '0') }))
         .filter((p) => !isNaN(p.amount) && p.amount > 0)
 
       if (normalized.length === 0) {
@@ -1147,28 +1208,18 @@ export function POSScreen() {
 
       const total = calculateTotals().total
       const paid = normalized.reduce((sum, p) => sum + p.amount, 0)
-      if (paid < total) {
+      if (paid < total - 0.01) {
         toast(`Falta pagar: ${formatCurrency(total - paid)}`, 'warning')
         return
       }
-
       saleData.payments = normalized
     } else {
-      saleData.paymentMethod = paymentMethod
-      // Add cash received only if payment is CASH
-      if (paymentMethod === 'CASH') {
+      saleData.payments = [{ paymentMethodId: paymentMethodId, amount: calculateTotals().total }]
+      if (selectedMethod?.type === 'CASH') {
         const received = parseFloat(cashReceived || '0')
         if (!isNaN(received) && received > 0) {
           saleData.cashReceived = received
         }
-      }
-    }
-
-    // Add cash received only if payment is CASH (legacy)
-    if (paymentMode === 'SINGLE' && paymentMethod === 'CASH') {
-      const received = parseFloat(cashReceived || '0')
-      if (!isNaN(received) && received > 0) {
-        saleData.cashReceived = received
       }
     }
 
@@ -1186,11 +1237,13 @@ export function POSScreen() {
     .filter((n) => !isNaN(n) && n > 0)
     .reduce((sum, n) => sum + n, 0)
 
-  const change = paymentMode === 'SPLIT'
-    ? Math.max(0, splitPaid - totals.total)
-    : (paymentMethod === 'CASH' && cashReceived
-      ? Math.max(0, parseFloat(cashReceived) - totals.total)
-      : 0)
+  const selectedMethod = paymentMethods.find((m) => m.id === paymentMethodId)
+  const change =
+    paymentMode === 'SPLIT'
+      ? Math.max(0, splitPaid - totals.total)
+      : selectedMethod?.type === 'CASH' && cashReceived
+        ? Math.max(0, parseFloat(cashReceived) - totals.total)
+        : 0
 
   // Focus search on mount
   useEffect(() => {
@@ -1198,22 +1251,6 @@ export function POSScreen() {
       searchInputRef.current.focus()
     }
   }, [])
-
-  // Auto-print disabled - user must click print button manually
-  // useEffect(() => {
-  //   if (showReceipt && autoPrintPending && typeof window !== 'undefined') {
-  //     const id = setTimeout(() => {
-  //       try {
-  //         printThermal()
-  //       } catch {
-  //         toast('No se pudo iniciar la impresión automática', 'error')
-  //       } finally {
-  //         setAutoPrintPending(false)
-  //       }
-  //     }, 300)
-  //     return () => clearTimeout(id)
-  //   }
-  // }, [showReceipt, autoPrintPending, printThermal, toast])
 
   // Buscar por teclado: Enter agrega (SKU/código exacto si existe; si no, agrega el primer resultado por nombre)
   const handleSearchKeyDown = (e: React.KeyboardEvent) => {
@@ -1223,11 +1260,10 @@ export function POSScreen() {
     e.preventDefault()
 
     // Prefer exact match by SKU/barcode (fast + deterministic)
-    void handleBarcodeScan(q, { silent: true })
-      .catch(() => {
-        // Fallback (nombre): si hay resultados filtrados, agrega el primero
-        if (products.length > 0) addToCart(products[0])
-      })
+    void handleBarcodeScan(q, { silent: true }).catch(() => {
+      // Fallback (nombre): si hay resultados filtrados, agrega el primero
+      if (products.length > 0) addToCart(products[0])
+    })
   }
 
   // Hold helpers
@@ -1264,28 +1300,37 @@ export function POSScreen() {
     setSearchQuery('')
     setCashReceived('')
     setPaymentMode('SINGLE')
-    setPaymentMethod('CASH')
-    setSplitPayments([{ id: 'p1', method: 'CASH', amount: '' }])
+    const cashMethod = paymentMethods.find((m) => m.type === 'CASH') || paymentMethods[0]
+    if (cashMethod) {
+      setPaymentMethodId(cashMethod.id)
+      setSplitPayments([{ id: 'p1', paymentMethodId: cashMethod.id, amount: '' }])
+    }
     toast(`Venta parqueada: ${name}`, 'success')
     searchInputRef.current?.focus()
-  }, [cart, parkName, parkedSales, persistParked, selectedCustomer, selectedWarehouse, toast])
+  }, [cart, parkName, parkedSales, paymentMethods, persistParked, selectedCustomer, selectedWarehouse, toast])
 
-  const resumeParked = useCallback((id: string) => {
-    const found = parkedSales.find(p => p.id === id)
-    if (!found) return
-    setCart(found.cart || [])
-    setSelectedCustomer(found.customer || null)
-    setSelectedWarehouse(found.warehouseId || selectedWarehouse)
-    // remover al cargar (evita duplicados y confusión)
-    persistParked(parkedSales.filter(p => p.id !== id))
-    setShowParkedDialog(false)
-    toast(`Ticket cargado: ${found.name}`, 'success')
-    searchInputRef.current?.focus()
-  }, [parkedSales, persistParked, selectedWarehouse, toast])
+  const resumeParked = useCallback(
+    (id: string) => {
+      const found = parkedSales.find((p) => p.id === id)
+      if (!found) return
+      setCart(found.cart || [])
+      setSelectedCustomer(found.customer || null)
+      setSelectedWarehouse(found.warehouseId || selectedWarehouse)
+      // remover al cargar (evita duplicados y confusión)
+      persistParked(parkedSales.filter((p) => p.id !== id))
+      setShowParkedDialog(false)
+      toast(`Ticket cargado: ${found.name}`, 'success')
+      searchInputRef.current?.focus()
+    },
+    [parkedSales, persistParked, selectedWarehouse, toast]
+  )
 
-  const deleteParked = useCallback((id: string) => {
-    persistParked(parkedSales.filter(p => p.id !== id))
-  }, [parkedSales, persistParked])
+  const deleteParked = useCallback(
+    (id: string) => {
+      persistParked(parkedSales.filter((p) => p.id !== id))
+    },
+    [parkedSales, persistParked]
+  )
 
   // Keyboard shortcuts (mostrador)
   useEffect(() => {
@@ -1649,6 +1694,12 @@ export function POSScreen() {
                                 </span>
                               )}
                             </div>
+                            <div className="flex items-center gap-2">
+                              <TaxSelector
+                                selectedTaxes={item.appliedTaxes}
+                                onTaxesChange={(taxes) => updateCartItemTaxes(item.productId, taxes, item.variantId)}
+                              />
+                            </div>
                           </div>
                           <Button
                             variant="ghost"
@@ -1713,7 +1764,7 @@ export function POSScreen() {
                 <span className="text-sm font-medium">{formatCurrency(totals.subtotal)}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">IVA</span>
+                <span className="text-sm text-gray-600">Impuestos</span>
                 <span className="text-sm font-medium">{formatCurrency(totals.tax)}</span>
               </div>
               <div className="border-t pt-2 mt-2">
@@ -1722,7 +1773,7 @@ export function POSScreen() {
                   <span className="text-2xl font-bold text-blue-600">{formatCurrency(totals.total)}</span>
                 </div>
               </div>
-              {paymentMode === 'SINGLE' && paymentMethod === 'CASH' && change > 0 && (
+              {paymentMode === 'SINGLE' && selectedMethod?.type === 'CASH' && change > 0 && (
                 <div className="flex justify-between items-center pt-2 border-t">
                   <span className="text-sm font-semibold text-green-600">Cambio</span>
                   <span className="text-lg font-bold text-green-600">{formatCurrency(change)}</span>
@@ -1746,38 +1797,26 @@ export function POSScreen() {
             {/* Payment Methods */}
             {paymentMode === 'SINGLE' ? (
               <div className="space-y-3">
-                <div className="grid grid-cols-3 gap-2">
-                  <Button
-                    variant={paymentMethod === 'CASH' ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => setPaymentMethod('CASH')}
-                    className="flex flex-col items-center gap-1 h-14 py-2"
-                  >
-                    <DollarSign className="h-5 w-5" />
-                    <span className="text-xs font-medium">Efectivo</span>
-                  </Button>
-                  <Button
-                    variant={paymentMethod === 'CARD' ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => setPaymentMethod('CARD')}
-                    className="flex flex-col items-center gap-1 h-14 py-2"
-                  >
-                    <CreditCard className="h-5 w-5" />
-                    <span className="text-xs font-medium">Tarjeta</span>
-                  </Button>
-                  <Button
-                    variant={paymentMethod === 'TRANSFER' ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => setPaymentMethod('TRANSFER')}
-                    className="flex flex-col items-center gap-1 h-14 py-2"
-                  >
-                    <ArrowLeftRight className="h-5 w-5" />
-                    <span className="text-xs font-medium">Transferencia</span>
-                  </Button>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-32 overflow-y-auto p-1">
+                  {paymentMethods.map((pm) => (
+                    <Button
+                      key={pm.id}
+                      variant={paymentMethodId === pm.id ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setPaymentMethodId(pm.id)}
+                      className="flex flex-col items-center gap-1 h-16 py-2"
+                    >
+                      {pm.type === 'CASH' && <DollarSign className="h-4 w-4" />}
+                      {pm.type === 'CARD' && <CreditCard className="h-4 w-4" />}
+                      {pm.type === 'TRANSFER' && <ArrowLeftRight className="h-4 w-4" />}
+                      {pm.type === 'ELECTRONIC' && <Smartphone className="h-4 w-4" />}
+                      <span className="text-[10px] font-medium leading-tight truncate w-full text-center">{pm.name}</span>
+                    </Button>
+                  ))}
                 </div>
-                {paymentMethod === 'CASH' && (
+                {selectedMethod?.type === 'CASH' && (
                   <div>
-                    <label className="text-xs font-medium text-foreground mb-1.5 block">Efectivo Recibido</label>
+                    <label className="text-xs font-medium text-foreground mb-1 block">Efectivo Recibido</label>
                     <Input
                       type="number"
                       step="0.01"
@@ -1804,9 +1843,10 @@ export function POSScreen() {
                     size="sm"
                     className="h-8 px-2"
                     onClick={() => {
+                      const firstMethod = paymentMethods[0]?.id || ''
                       setSplitPayments((prev) => [
                         ...prev,
-                        { id: `p${Date.now()}`, method: 'CARD', amount: '' },
+                        { id: `p${Date.now()}`, paymentMethodId: firstMethod, amount: '' },
                       ])
                     }}
                   >
@@ -1818,16 +1858,16 @@ export function POSScreen() {
                   {splitPayments.map((p) => (
                     <div key={p.id} className="flex items-center gap-2">
                       <select
-                        value={p.method}
+                        value={p.paymentMethodId}
                         onChange={(e) => {
-                          const nextMethod = e.target.value as PaymentMethod
-                          setSplitPayments((prev) => prev.map((x) => (x.id === p.id ? { ...x, method: nextMethod } : x)))
+                          const nextId = e.target.value
+                          setSplitPayments((prev) => prev.map((x) => (x.id === p.id ? { ...x, paymentMethodId: nextId } : x)))
                         }}
                         className="h-10 rounded-md border border-input bg-background px-3 text-sm flex-1"
                       >
-                        <option value="CASH">Efectivo</option>
-                        <option value="CARD">Tarjeta</option>
-                        <option value="TRANSFER">Transferencia</option>
+                        {paymentMethods.map(m => (
+                          <option key={m.id} value={m.id}>{m.name}</option>
+                        ))}
                       </select>
                       <Input
                         type="number"

@@ -28,6 +28,30 @@ export function PhysicalInventoryDetails({ inventory, onClose, onUpdate }: { inv
     setEditingNotes(initialNotes)
   }, [inventory.items])
 
+  const approveMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`/api/inventory/physical/${inventory.id}/approve`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+      })
+      if (!res.ok) {
+        const error = await res.json()
+        throw new Error(error.error || 'Error al aprobar inventario')
+      }
+      return res.json()
+    },
+    onSuccess: () => {
+      toast('Inventario aprobado y stock actualizado', 'success')
+      queryClient.invalidateQueries({ queryKey: ['physical-inventory', inventory.id] })
+      queryClient.invalidateQueries({ queryKey: ['physical-inventories'] })
+      onUpdate()
+    },
+    onError: (error: any) => {
+      toast(error.message || 'Error al aprobar inventario', 'error')
+    },
+  })
+
   const updateItemNotesMutation = useMutation({
     mutationFn: async ({ itemId, notes }: { itemId: string; notes: string }) => {
       const res = await fetch(`/api/inventory/physical/${inventory.id}/items/${itemId}`, {
@@ -97,6 +121,16 @@ export function PhysicalInventoryDetails({ inventory, onClose, onUpdate }: { inv
         </div>
         <div className="flex gap-2">
           {inventory.status === 'COMPLETED' && (
+            <Button
+              variant="default"
+              className="bg-green-600 hover:bg-green-700 text-white"
+              onClick={() => approveMutation.mutate()}
+              disabled={approveMutation.isPending}
+            >
+              {approveMutation.isPending ? 'Aprobando...' : 'Aprobar Ajustes'}
+            </Button>
+          )}
+          {(inventory.status === 'COMPLETED' || inventory.status === 'APPROVED') && (
             <Button onClick={() => setShowPrintDialog(true)}>
               <Printer className="h-4 w-4 mr-2" />
               Imprimir
@@ -114,7 +148,8 @@ export function PhysicalInventoryDetails({ inventory, onClose, onUpdate }: { inv
           <div className="text-lg font-semibold">
             {inventory.status === 'PENDING' ? 'Pendiente' :
               inventory.status === 'COUNTING' ? 'En Conteo' :
-                inventory.status === 'COMPLETED' ? 'Completado' : 'Cancelado'}
+                inventory.status === 'COMPLETED' ? 'Finalizado' :
+                  inventory.status === 'APPROVED' ? 'Aprobado' : 'Cancelado'}
           </div>
         </div>
         <div className="border rounded-lg p-4">
@@ -154,19 +189,33 @@ export function PhysicalInventoryDetails({ inventory, onClose, onUpdate }: { inv
           )}
           {inventory.completedAt && (
             <div className="border rounded-lg p-4">
-              <div className="text-sm text-gray-600">Completado</div>
+              <div className="text-sm text-gray-600">Finalizado</div>
               <div className="text-sm font-semibold">{formatDate(inventory.completedAt)}</div>
+            </div>
+          )}
+          {inventory.approvedAt && (
+            <div className="border rounded-lg p-4 bg-green-50/50 border-green-200">
+              <div className="text-sm text-green-700">Aprobado</div>
+              <div className="text-sm font-semibold text-green-800">{formatDate(inventory.approvedAt)}</div>
             </div>
           )}
         </div>
       )}
 
-      {inventory.createdBy && (
-        <div className="border rounded-lg p-4">
-          <div className="text-sm text-gray-600">Creado Por</div>
-          <div className="text-sm font-semibold">{inventory.createdBy.name}</div>
-        </div>
-      )}
+      <div className="grid grid-cols-2 gap-4">
+        {inventory.createdBy && (
+          <div className="border rounded-lg p-4">
+            <div className="text-sm text-gray-600">Iniciado Por</div>
+            <div className="text-sm font-semibold">{inventory.createdBy.name}</div>
+          </div>
+        )}
+        {inventory.approvedBy && (
+          <div className="border rounded-lg p-4 bg-green-50/50 border-green-200">
+            <div className="text-sm text-green-700">Aprobado Por</div>
+            <div className="text-sm font-semibold text-green-800">{inventory.approvedBy.name}</div>
+          </div>
+        )}
+      </div>
 
       <div>
         <h3 className="font-semibold mb-3">Productos</h3>
@@ -175,6 +224,7 @@ export function PhysicalInventoryDetails({ inventory, onClose, onUpdate }: { inv
             <thead className="bg-gray-50">
               <tr>
                 <th className="text-left p-3">Producto</th>
+                <th className="text-left p-3">Zona</th>
                 <th className="text-right p-3">Stock Sistema</th>
                 <th className="text-right p-3">Cantidad Contada</th>
                 <th className="text-right p-3">Diferencia</th>
@@ -197,6 +247,11 @@ export function PhysicalInventoryDetails({ inventory, onClose, onUpdate }: { inv
                           {item.variant && ` | Variante: ${item.variant.name}`}
                         </div>
                       </div>
+                    </td>
+                    <td className="p-3">
+                      <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-100">
+                        {item.zone?.name || 'Gral'}
+                      </span>
                     </td>
                     <td className="p-3 text-right">
                       <span className="text-gray-600">

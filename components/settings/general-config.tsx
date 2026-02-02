@@ -15,6 +15,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useToast } from '@/components/ui/toast'
 import { TicketEditor, TicketDesignSettings } from './ticket-editor'
 import { MetaConfig } from './meta-config'
+import { ZoneManager } from '../warehouses/zone-manager'
+import { ChevronDown, ChevronUp } from 'lucide-react'
 
 // Interfaces for custom settings structure
 interface PrinterDefinition {
@@ -132,6 +134,7 @@ export function GeneralConfig({ settings, onSave, isLoading }: GeneralConfigProp
   const [showScanDialog, setShowScanDialog] = useState(false)
   const [showTicketEditor, setShowTicketEditor] = useState(false)
   const [showWarehouseDialog, setShowWarehouseDialog] = useState(false)
+  const [expandedWarehouseId, setExpandedWarehouseId] = useState<string | null>(null)
   const [newWarehouse, setNewWarehouse] = useState({ name: '', address: '', active: true })
   const queryClient = useQueryClient()
 
@@ -593,22 +596,45 @@ export function GeneralConfig({ settings, onSave, isLoading }: GeneralConfigProp
                       </div>
                     ) : (
                       warehouses.map((w: any) => (
-                        <div key={w.id} className="p-4 border rounded-xl bg-white dark:bg-slate-950 flex justify-between items-start">
-                          <div className="space-y-1">
-                            <div className="font-bold">{w.name}</div>
-                            <div className="text-sm text-gray-500 flex items-center gap-1">
-                              <MapPin className="h-3 w-3" />
-                              {w.address || 'Sin dirección'}
+                        <div key={w.id} className="p-4 border rounded-xl bg-white dark:bg-slate-950 flex flex-col h-fit">
+                          <div className="flex justify-between items-start">
+                            <div className="space-y-1">
+                              <div className="font-bold flex items-center gap-2">
+                                {w.name}
+                                <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${w.active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                  {w.active ? 'Activo' : 'Inactivo'}
+                                </span>
+                              </div>
+                              <div className="text-sm text-gray-500 flex items-center gap-1">
+                                <MapPin className="h-3 w-3" />
+                                {w.address || 'Sin dirección'}
+                              </div>
                             </div>
-                            <div className="pt-2">
-                              <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${w.active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                                {w.active ? 'Activo' : 'Inactivo'}
-                              </span>
+                            <div className="flex gap-1">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() => setExpandedWarehouseId(expandedWarehouseId === w.id ? null : w.id)}
+                                title="Ver zonas"
+                              >
+                                {expandedWarehouseId === w.id ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                              </Button>
+                              <Button type="button" variant="ghost" size="icon" className="h-8 w-8">
+                                <Edit className="h-4 w-4" />
+                              </Button>
                             </div>
                           </div>
-                          <Button variant="ghost" size="icon" className="h-8 w-8">
-                            <Edit className="h-4 w-4" />
-                          </Button>
+
+                          {expandedWarehouseId === w.id && (
+                            <div className="mt-4 pt-4 border-t space-y-4 animate-in slide-in-from-top-2 duration-200">
+                              <div className="flex items-center justify-between">
+                                <h4 className="text-xs font-bold uppercase tracking-wider text-gray-500">Zonas de Almacenamiento</h4>
+                              </div>
+                              <ZoneManager warehouseId={w.id} />
+                            </div>
+                          )}
                         </div>
                       ))
                     )}

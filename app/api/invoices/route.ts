@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server'
 import { requirePermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
-import { getPrismaForRequest } from '@/lib/get-tenant-prisma'
+import { withTenantTx, getTenantIdFromSession } from '@/lib/tenancy'
+import { Prisma } from '@prisma/client'
 
 export async function GET(request: Request) {
   const session = await requirePermission(request as any, PERMISSIONS.MANAGE_SALES)
@@ -10,8 +11,7 @@ export async function GET(request: Request) {
     return session
   }
 
-  // Obtener el cliente Prisma correcto (tenant o master según el usuario)
-  const prisma = await getPrismaForRequest(request, session)
+  const tenantId = getTenantIdFromSession(session)
 
   try {
     const { searchParams } = new URL(request.url)
@@ -48,48 +48,51 @@ export async function GET(request: Request) {
       where.customerId = customerId
     }
 
-    const [invoices, total] = await Promise.all([
-      prisma.invoice.findMany({
-        where,
-        skip,
-        take: limit,
-        include: {
-          customer: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-              taxId: true,
+    const { invoices, total } = await withTenantTx(tenantId, async (tx: Prisma.TransactionClient) => {
+      const [invoices, total] = await Promise.all([
+        tx.invoice.findMany({
+          where,
+          skip,
+          take: limit,
+          include: {
+            customer: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                taxId: true,
+              },
             },
-          },
-          salesOrder: {
-            select: {
-              id: true,
-              number: true,
+            salesOrder: {
+              select: {
+                id: true,
+                number: true,
+              },
             },
-          },
-          payments: {
-            select: {
-              amount: true,
-              method: true,
+            payments: {
+              select: {
+                amount: true,
+                method: true,
+              },
             },
-          },
-          items: {
-            include: {
-              product: {
-                select: {
-                  id: true,
-                  name: true,
-                  sku: true,
+            items: {
+              include: {
+                product: {
+                  select: {
+                    id: true,
+                    name: true,
+                    sku: true,
+                  },
                 },
               },
             },
           },
-        },
-        orderBy: { createdAt: 'desc' },
-      }),
-      prisma.invoice.count({ where }),
-    ])
+          orderBy: { createdAt: 'desc' },
+        }),
+        tx.invoice.count({ where }),
+      ])
+      return { invoices, total }
+    })
 
     return NextResponse.json({
       invoices,

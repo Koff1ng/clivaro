@@ -120,6 +120,7 @@ export function StockLevels() {
               <TableHead>Producto</TableHead>
               <TableHead>SKU</TableHead>
               <TableHead>Almacén</TableHead>
+              <TableHead>Zona</TableHead>
               <TableHead>Stock</TableHead>
               <TableHead>Mínimo</TableHead>
               <TableHead>Estado</TableHead>
@@ -129,7 +130,7 @@ export function StockLevels() {
           <TableBody>
             {stockLevels.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center text-gray-500">
+                <TableCell colSpan={8} className="text-center text-gray-500">
                   No hay productos en inventario
                 </TableCell>
               </TableRow>
@@ -139,6 +140,11 @@ export function StockLevels() {
                   <TableCell className="font-medium">{item.productName}</TableCell>
                   <TableCell>{item.productSku}</TableCell>
                   <TableCell>{item.warehouseName}</TableCell>
+                  <TableCell>
+                    <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-100">
+                      {item.zoneName || 'General'}
+                    </span>
+                  </TableCell>
                   <TableCell>{item.quantity.toFixed(2)} {item.unitOfMeasure}</TableCell>
                   <TableCell>{item.minStock.toFixed(2)} {item.unitOfMeasure}</TableCell>
                   <TableCell>

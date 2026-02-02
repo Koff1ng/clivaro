@@ -8,6 +8,8 @@ import { logger } from './logger'
 import { prisma } from './db'
 import { getPrismaForRequest } from './get-tenant-prisma'
 import { rateLimiters } from './rate-limit'
+import { withTenantTx } from './tenancy'
+import { Prisma } from '@prisma/client'
 
 /**
  * Require authentication for API routes
@@ -16,16 +18,16 @@ import { rateLimiters } from './rate-limit'
 export async function requireAuth(request: Request) {
   try {
     const cookieHeader = request.headers.get('cookie') || ''
-    
+
     if (!cookieHeader) {
       return NextResponse.json(
         { error: 'Unauthorized', details: 'No cookies found' },
         { status: 401 }
       )
     }
-    
+
     const secret = authOptions.secret || process.env.NEXTAUTH_SECRET
-    
+
     if (!secret) {
       logger.error('NEXTAUTH_SECRET is not configured', undefined, { scope: 'requireAuth' })
       return NextResponse.json(
@@ -33,28 +35,28 @@ export async function requireAuth(request: Request) {
         { status: 401 }
       )
     }
-    
+
     // Approach 1: Try getServerSession with headers
     let session: any = null
-    
+
     try {
       // Build headers object for getServerSession
       const headers = new Headers()
       headers.set('cookie', cookieHeader)
-      
+
       // getServerSession can work with headers in App Router
       session = await getServerSession(authOptions)
     } catch (sessionError) {
       logger.debug('getServerSession failed, trying getToken', { scope: 'requireAuth', sessionError })
     }
-    
+
     // Approach 2: If getServerSession failed, try getToken
     if (!session || !session.user || !(session.user as any)?.id) {
       try {
         const cookieStore = await cookies()
         const allCookies = cookieStore.getAll()
         const cookieString = allCookies.map(c => `${c.name}=${c.value}`).join('; ')
-        
+
         const token = await getToken({
           req: {
             headers: {
@@ -63,7 +65,7 @@ export async function requireAuth(request: Request) {
           } as any,
           secret,
         })
-        
+
         if (token && token.sub) {
           // Create session from token
           session = {
@@ -82,7 +84,7 @@ export async function requireAuth(request: Request) {
         logger.error('getToken also failed', tokenError, { scope: 'requireAuth' })
       }
     }
-    
+
     if (!session || !session.user || !(session.user as any).id) {
       logger.warn('All authentication methods failed', {
         hasSession: !!session,
@@ -91,17 +93,17 @@ export async function requireAuth(request: Request) {
         cookieHeaderLength: cookieHeader.length,
       })
       return NextResponse.json(
-        { 
-          error: 'Unauthorized', 
+        {
+          error: 'Unauthorized',
           details: 'No valid session found. Please close your browser completely, clear cookies, and log in again.',
           hint: 'Your session may be invalid. Try logging out and logging back in.'
         },
         { status: 401 }
       )
     }
-    
+
     const user = session.user as any
-    
+
     // Ensure session has all required fields
     const sessionData = {
       user: {
@@ -114,7 +116,7 @@ export async function requireAuth(request: Request) {
         tenantId: user.tenantId || null,
       },
     }
-    
+
     if (!sessionData.user.id) {
       logger.warn('Session missing user ID', { scope: 'requireAuth' })
       return NextResponse.json(
@@ -122,7 +124,7 @@ export async function requireAuth(request: Request) {
         { status: 401 }
       )
     }
-    
+
     return sessionData as any
   } catch (error) {
     logger.error('Error getting session', error, { scope: 'requireAuth' })
@@ -149,11 +151,11 @@ export async function requirePermission(
 ): Promise<any> {
   const startTime = Date.now()
   const path = new URL(request.url).pathname
-  
+
   logger.apiRequest(request.method, path)
-  
+
   const session = await requireAuth(request)
-  
+
   if (session instanceof NextResponse) {
     return session
   }
@@ -168,7 +170,7 @@ export async function requirePermission(
     userId: user.id,
     scope: path,
   })
-  
+
   if (!rateLimitResult.success) {
     logger.warn('Rate limit exceeded', {
       path,
@@ -179,11 +181,11 @@ export async function requirePermission(
       userId: user.id,
     })
     return NextResponse.json(
-      { 
+      {
         error: rateLimitResult.message || 'Too many requests',
         retryAfter: rateLimitResult.retryAfter,
       },
-      { 
+      {
         status: 429,
         headers: {
           'Retry-After': rateLimitResult.retryAfter?.toString() || '60',
@@ -194,86 +196,56 @@ export async function requirePermission(
       }
     )
   }
-  
+
   // Super admin bypasses tenant checks and permission checks
+  // Note: Super admin MUST provide a tenant context if they want to access tenant data,
+  // but for global admin routes, they can proceed.
   if (user.isSuperAdmin) {
     const duration = Date.now() - startTime
     logger.apiResponse(request.method, path, 200, duration, { userId: user.id, superAdmin: true })
     return session
   }
 
-  // Verificar que usuarios de tenant tengan tenantId
+  // MANDATORY: Ensure tenantId exists for non-superadmin users
   if (!user.tenantId) {
-    logger.warn('Invalid session - missing tenantId', {
+    logger.warn('Strict Tenancy Error: missing tenantId in session', {
       userId: user.id,
       path,
       method: request.method,
     })
     return NextResponse.json(
-      { 
-        error: 'Sesión inválida', 
-        details: 'Por favor, cierre sesión y vuelva a iniciar sesión con su empresa.',
-        hint: 'Su sesión es de una versión anterior. Debe iniciar sesión nuevamente.'
+      {
+        error: 'Forbidden: Missing Tenant Context',
+        details: 'Su sesión no está vinculada a una empresa activa. Por favor, inicie sesión nuevamente.'
       },
-      { status: 401 }
+      { status: 403 }
     )
   }
-  
-  // Get the correct Prisma client (master or tenant)
-  const db = await getPrismaForRequest(request, session)
-  
-  // Helper function for retry logic with exponential backoff
-  const executeWithRetry = async <T>(
-    fn: () => Promise<T>,
-    maxRetries = 5,
-    delay = 2000
-  ): Promise<T> => {
-    let lastError: any
-    for (let attempt = 0; attempt < maxRetries; attempt++) {
-      try {
-        return await fn()
-      } catch (error: any) {
-        lastError = error
-        const errorMessage = error?.message || String(error)
-        
-        // Si es error de límite de conexiones, esperar y reintentar
-        if (errorMessage.includes('MaxClientsInSessionMode') || errorMessage.includes('max clients reached')) {
-          if (attempt < maxRetries - 1) {
-            const backoffDelay = Math.min(delay * Math.pow(2, attempt), 15000) // Backoff exponencial, max 15s
-            logger.warn(`[requirePermission] Límite de conexiones alcanzado, reintentando en ${backoffDelay}ms (intento ${attempt + 1}/${maxRetries})`)
-            await new Promise(resolve => setTimeout(resolve, backoffDelay))
-            continue
-          }
-        }
-        
-        // Si no es error de conexión, lanzar inmediatamente
-        throw error
-      }
-    }
-    throw lastError
-  }
-  
-  // Get user roles and permissions with retry logic
-  const userRoles = await executeWithRetry(() => db.userRole.findMany({
-    where: { userId: user.id },
-    include: {
-      role: {
-        include: {
-          rolePermissions: {
-            include: {
-              permission: true,
+
+  // Use withTenantTx for role/permission checks to ensure they are read from the correct schema
+  const userPermissions = await withTenantTx(user.tenantId, async (tx) => {
+    const userRoles = await tx.userRole.findMany({
+      where: { userId: user.id },
+      include: {
+        role: {
+          include: {
+            rolePermissions: {
+              include: {
+                permission: true,
+              },
             },
           },
         },
       },
-    },
-  }))
-
-  const userPermissions = new Set<string>()
-  userRoles.forEach(userRole => {
-    userRole.role.rolePermissions.forEach(rp => {
-      userPermissions.add(rp.permission.name)
     })
+
+    const perms = new Set<string>()
+    userRoles.forEach(userRole => {
+      userRole.role.rolePermissions.forEach(rp => {
+        perms.add(rp.permission.name)
+      })
+    })
+    return perms
   })
 
   const requiredPermissions = Array.isArray(permission) ? permission : [permission]
@@ -314,11 +286,11 @@ export async function requireAnyPermission(
 ): Promise<any> {
   const startTime = Date.now()
   const path = new URL(request.url).pathname
-  
+
   logger.apiRequest(request.method, path)
-  
+
   const session = await requireAuth(request)
-  
+
   if (session instanceof NextResponse) {
     return session
   }
@@ -333,7 +305,7 @@ export async function requireAnyPermission(
     userId: user.id,
     scope: path,
   })
-  
+
   if (!rateLimitResult.success) {
     logger.warn('Rate limit exceeded', {
       path,
@@ -344,11 +316,11 @@ export async function requireAnyPermission(
       userId: user.id,
     })
     return NextResponse.json(
-      { 
+      {
         error: rateLimitResult.message || 'Too many requests',
         retryAfter: rateLimitResult.retryAfter,
       },
-      { 
+      {
         status: 429,
         headers: {
           'Retry-After': rateLimitResult.retryAfter?.toString() || '60',
@@ -359,7 +331,7 @@ export async function requireAnyPermission(
       }
     )
   }
-  
+
   // Super admin bypasses tenant checks and permission checks
   if (user.isSuperAdmin) {
     const duration = Date.now() - startTime
@@ -367,78 +339,46 @@ export async function requireAnyPermission(
     return session
   }
 
-  // Get the correct Prisma client (master or tenant)
-  const db = await getPrismaForRequest(request, session)
-
-  // Verificar que usuarios de tenant tengan tenantId
+  // MANDATORY: Ensure tenantId exists for non-superadmin users
   if (!user.tenantId) {
-    logger.warn('Invalid session - missing tenantId', {
+    logger.warn('Strict Tenancy Error: missing tenantId in session [requireAny]', {
       userId: user.id,
       path,
       method: request.method,
     })
     return NextResponse.json(
-      { 
-        error: 'Sesión inválida', 
-        details: 'Por favor, cierre sesión y vuelva a iniciar sesión con su empresa.',
-        hint: 'Su sesión es de una versión anterior. Debe iniciar sesión nuevamente.'
+      {
+        error: 'Forbidden: Missing Tenant Context',
+        details: 'Su sesión no está vinculada a una empresa activa. Por favor, inicie sesión nuevamente.'
       },
-      { status: 401 }
+      { status: 403 }
     )
   }
-  
-  // Helper function for retry logic with exponential backoff
-  const executeWithRetry = async <T>(
-    fn: () => Promise<T>,
-    maxRetries = 5,
-    delay = 2000
-  ): Promise<T> => {
-    let lastError: any
-    for (let attempt = 0; attempt < maxRetries; attempt++) {
-      try {
-        return await fn()
-      } catch (error: any) {
-        lastError = error
-        const errorMessage = error?.message || String(error)
-        
-        // Si es error de límite de conexiones, esperar y reintentar
-        if (errorMessage.includes('MaxClientsInSessionMode') || errorMessage.includes('max clients reached')) {
-          if (attempt < maxRetries - 1) {
-            const backoffDelay = Math.min(delay * Math.pow(2, attempt), 15000) // Backoff exponencial, max 15s
-            logger.warn(`[requireAnyPermission] Límite de conexiones alcanzado, reintentando en ${backoffDelay}ms (intento ${attempt + 1}/${maxRetries})`)
-            await new Promise(resolve => setTimeout(resolve, backoffDelay))
-            continue
-          }
-        }
-        
-        // Si no es error de conexión, lanzar inmediatamente
-        throw error
-      }
-    }
-    throw lastError
-  }
-  
-  // Get user roles and permissions with retry logic
-  const userRoles = await executeWithRetry(() => db.userRole.findMany({
-    where: { userId: user.id },
-    include: {
-      role: {
-        include: {
-          rolePermissions: {
-            include: {
-              permission: true,
+
+  // Use withTenantTx for role/permission checks
+  const userPermissions = await withTenantTx(user.tenantId, async (tx: Prisma.TransactionClient) => {
+    const userRoles = await tx.userRole.findMany({
+      where: { userId: user.id },
+      include: {
+        role: {
+          include: {
+            rolePermissions: {
+              include: {
+                permission: true,
+              },
             },
           },
         },
       },
-    },
-  }))
-
-  const userPermissions = new Set<string>()
-  userRoles.forEach(userRole => {
-    userRole.role.rolePermissions.forEach(rp => {
-      userPermissions.add(rp.permission.name)
     })
+
+    const perms = new Set<string>()
+    userRoles.forEach((userRole: any) => {
+      userRole.role.rolePermissions.forEach((rp: any) => {
+        perms.add(rp.permission.name)
+      })
+    })
+    return perms
   })
 
   // Check if user has at least one of the required permissions

@@ -69,7 +69,11 @@ export async function GET(request: Request) {
             include: {
                 items: {
                     include: {
-                        invoiceItem: true
+                        invoiceItem: {
+                            include: {
+                                product: true
+                            }
+                        }
                     }
                 }
             }

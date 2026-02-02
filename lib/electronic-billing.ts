@@ -1,14 +1,4 @@
-/**
- * Módulo de integración con facturación electrónica DIAN
- * 
- * Este módulo proporciona funciones para integrarse con proveedores
- * de facturación electrónica autorizados por la DIAN en Colombia.
- * 
- * Proveedores comunes:
- * - Facturación Electrónica Gratuita (FEG)
- * - Facturador Electrónico
- * - Otros proveedores autorizados
- */
+import { createHash } from 'crypto'
 
 export interface ElectronicBillingConfig {
   provider: 'FEG' | 'CUSTOM' | 'DIAN_DIRECT'
@@ -25,20 +15,37 @@ export interface ElectronicBillingConfig {
   resolutionTo: string
   resolutionValidFrom: string
   resolutionValidTo: string
+  softwareId?: string // Required for DIAN direct
+  softwarePin?: string // Required for DIAN direct
+  technicalKey?: string // Required for CUFE
+  environment?: '1' | '2' // 1: Production, 2: Test
+}
+
+export interface InvoiceTaxData {
+  taxRateId?: string
+  name: string
+  rate: number
+  baseAmount: number
+  taxAmount: number
 }
 
 export interface InvoiceData {
+  id: string
   number: string
   prefix: string
   consecutive: string
   issueDate: Date
+  issueTime?: string // Format HH:mm:ss-05:00
   dueDate?: Date
+  typeCode?: string // 01: Factura, 02: Factura de Exportación, etc.
   customer: {
     nit: string
     name: string
     address?: string
     phone?: string
     email?: string
+    isCompany?: boolean
+    taxLevelCode?: string // e.g., 'R-99-PN'
   }
   items: Array<{
     code: string
@@ -46,12 +53,13 @@ export interface InvoiceData {
     quantity: number
     unitPrice: number
     discount: number
-    taxRate: number
     subtotal: number
+    taxes: InvoiceTaxData[] // Granular taxes per item
   }>
+  taxSummary: InvoiceTaxData[] // Aggregate taxes
   subtotal: number
   discount: number
-  tax: number
+  tax: number // Grand total of taxes
   total: number
 }
 
@@ -65,6 +73,49 @@ export interface ElectronicBillingResponse {
   message?: string
   errors?: string[]
   response?: any
+}
+
+/**
+ * Calculates the CUFE (Código Único de Factura Electrónica)
+ * Formula DIAN: SHA384(NumFac + FecFac + HorFac + ValFac + CodImp1 + ValImp1 + CodImp2 + ValImp2 + CodImp3 + ValImp3 + ValTot + NITEmisor + NITAdquiriente + ClvTec + TipoAmb)
+ */
+export function calculateCUFE(invoice: InvoiceData, config: ElectronicBillingConfig): string {
+  if (!config.technicalKey) {
+    return `SIMULATED-CUFE-${invoice.number}`
+  }
+
+  // Format values for hash
+  const numFac = invoice.number
+  const fecFac = invoice.issueDate.toISOString().split('T')[0]
+  const horFac = invoice.issueTime || '00:00:00-05:00'
+
+  const valFac = invoice.subtotal.toFixed(2)
+  const valTot = invoice.total.toFixed(2)
+  const nitEmisor = config.companyNit.split('-')[0] // Only the NIT part
+  const nitAdquiriente = invoice.customer.nit.split('-')[0]
+  const clvTec = config.technicalKey
+  const tipoAmb = config.environment || '2'
+
+  // Extract main taxes (DIAN CUFE requires specific top 3 if present)
+  // Usually: 01 (IVA), 04 (Inpuesto al consumo), 03 (ICA) - DIAN uses codes
+  // For the simplified CUFE string, we sum totals of specific types
+  const iva = invoice.taxSummary.find(t => t.name.toUpperCase().includes('IVA'))?.taxAmount || 0
+  const consumption = invoice.taxSummary.find(t => t.name.toUpperCase().includes('CONSUMO'))?.taxAmount || 0
+  const other = invoice.taxSummary.reduce((sum, t) => {
+    if (!t.name.toUpperCase().includes('IVA') && !t.name.toUpperCase().includes('CONSUMO')) {
+      return sum + t.taxAmount
+    }
+    return sum
+  }, 0)
+
+  const cufeString =
+    numFac + fecFac + horFac +
+    valFac + "01" + iva.toFixed(2) +
+    "04" + consumption.toFixed(2) +
+    "03" + other.toFixed(2) +
+    valTot + nitEmisor + nitAdquiriente + clvTec + tipoAmb
+
+  return createHash('sha384').update(cufeString).digest('hex')
 }
 
 /**

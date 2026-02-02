@@ -1,0 +1,47 @@
+export interface TaxRateInfo {
+    id: string
+    name: string
+    rate: number
+    type: string
+}
+
+export interface TaxCalculationResult {
+    baseAmount: number
+    taxes: {
+        taxRateId: string
+        name: string
+        rate: number
+        amount: number
+    }[]
+    totalTax: number
+}
+
+/**
+ * Calculates granular taxes for a base amount given a list of tax rates.
+ * Colombia specific: Usually taxes are calculated on the same base.
+ */
+export function calculateGranularTaxes(
+    baseAmount: number,
+    rates: TaxRateInfo[]
+): TaxCalculationResult {
+    const taxes = rates.map(r => {
+        // In Colombia, most taxes (IVA, ICA, Retente) are calculated on the Net Base
+        // Rounding to 2 decimal places is standard for financial docs in COL
+        const amount = Math.round((baseAmount * r.rate) / 100 * 100) / 100
+
+        return {
+            taxRateId: r.id,
+            name: r.name,
+            rate: r.rate,
+            amount
+        }
+    })
+
+    const totalTax = taxes.reduce((sum, t) => sum + t.amount, 0)
+
+    return {
+        baseAmount: Math.round(baseAmount * 100) / 100,
+        taxes,
+        totalTax: Math.round(totalTax * 100) / 100
+    }
+}

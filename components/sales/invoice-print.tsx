@@ -105,13 +105,26 @@ export function InvoicePrint({ invoice, settings }: InvoicePrintProps) {
   const total = invoice.total || 0
 
   // IVA discriminado por tarifa (REQUISITO DIAN)
-  const taxByRate = new Map<number, { base: number; tax: number }>()
-  for (const item of invoice.items || []) {
-    const rate = typeof item.taxRate === 'number' ? item.taxRate : 0
-    const base = (item.unitPrice || 0) * (item.quantity || 0) * (1 - (item.discount || 0) / 100)
-    const itemTax = base * (rate / 100)
-    const prev = taxByRate.get(rate) || { base: 0, tax: 0 }
-    taxByRate.set(rate, { base: prev.base + base, tax: prev.tax + itemTax })
+  const taxByRate = new Map<number, { base: number; tax: number; name?: string }>()
+
+  if (invoice.taxSummary && invoice.taxSummary.length > 0) {
+    for (const ts of invoice.taxSummary) {
+      const prev = taxByRate.get(ts.rate) || { base: 0, tax: 0 }
+      taxByRate.set(ts.rate, {
+        base: prev.base + (ts.baseAmount || 0),
+        tax: prev.tax + (ts.taxAmount || 0),
+        name: ts.name
+      })
+    }
+  } else {
+    // Legacy fallback
+    for (const item of invoice.items || []) {
+      const rate = typeof item.taxRate === 'number' ? item.taxRate : 0
+      const base = (item.unitPrice || 0) * (item.quantity || 0) * (1 - (item.discount || 0) / 100)
+      const itemTax = base * (rate / 100)
+      const prev = taxByRate.get(rate) || { base: 0, tax: 0 }
+      taxByRate.set(rate, { base: prev.base + base, tax: prev.tax + itemTax })
+    }
   }
 
   // Medios de pago con etiquetas según DIAN

@@ -14,6 +14,8 @@ import { SubscriptionConfig } from './subscription-config'
 import { GeneralConfig } from './general-config'
 import { DataConfig } from './data-config'
 import { AlegraConfig } from './alegra-config'
+import { PaymentMethodsConfig } from './payment-methods-config'
+import { Wallet } from 'lucide-react'
 
 async function fetchSettings() {
   const res = await fetch('/api/settings')
@@ -206,6 +208,10 @@ export function SettingsScreen() {
             <SettingsIcon className="h-4 w-4" />
             General
           </TabsTrigger>
+          <TabsTrigger value="payments-methods" className="flex items-center gap-2">
+            <Wallet className="h-4 w-4" />
+            Pagos
+          </TabsTrigger>
           <TabsTrigger value="data" className="flex items-center gap-2">
             <SettingsIcon className="h-4 w-4" />
             Datos / Backups
@@ -286,6 +292,10 @@ export function SettingsScreen() {
             onSave={(data) => updateSettingsMutation.mutate(data)}
             isLoading={updateSettingsMutation.isPending}
           />
+        </TabsContent>
+
+        <TabsContent value="payments-methods" className="space-y-4">
+          <PaymentMethodsConfig />
         </TabsContent>
 
         <TabsContent value="data" className="space-y-4">

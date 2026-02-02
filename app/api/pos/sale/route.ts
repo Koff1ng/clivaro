@@ -11,6 +11,9 @@ import { resolveAllIngredients } from '@/lib/recipes'
 import { enqueueJob } from '@/lib/jobs/queue'
 import jwt from 'jsonwebtoken'
 import { prisma as masterPrisma } from '@/lib/db'
+import { withTenantTx } from '@/lib/tenancy'
+import { calculateGranularTaxes, TaxRateInfo } from '@/lib/taxes'
+import { handleError } from '@/lib/error-handler'
 
 // Función helper para ejecutar consultas con retry y manejo de errores de conexión
 async function executeWithRetry<T>(
@@ -52,15 +55,21 @@ const createPOSSaleSchema = z.object({
     quantity: z.number().positive(),
     unitPrice: z.number().min(0),
     discount: z.number().min(0).max(100).default(0),
-    taxRate: z.number().min(0).max(100),
+    taxRate: z.number().min(0).max(100).optional(), // Solo para compatibilidad
+    appliedTaxes: z.array(z.object({
+      id: z.string(),
+      name: z.string(),
+      rate: z.number(),
+      type: z.string(),
+    })).optional(),
   })),
   // Compat: flujo antiguo (un solo método)
   paymentMethod: z.enum(['CASH', 'CARD', 'TRANSFER']).optional(),
   discount: z.number().min(0).default(0),
   cashReceived: z.number().optional(), // For cash payments
-  // Nuevo: pagos múltiples (split)
+  // Nuevo: pagos múltiples (split) con métodos dinámicos
   payments: z.array(z.object({
-    method: z.enum(['CASH', 'CARD', 'TRANSFER']),
+    paymentMethodId: z.string(),
     amount: z.number().min(0.01),
     reference: z.string().optional().nullable(),
     notes: z.string().optional().nullable(),
@@ -94,14 +103,11 @@ export async function POST(request: Request) {
     return session
   }
 
-  // Obtener el cliente Prisma correcto (tenant o master según el usuario)
-  const prisma = await getPrismaForRequest(request, session)
-
   try {
     const body = await request.json()
     const data = createPOSSaleSchema.parse(body)
 
-    // Validación de forma de pago (paymentMethod vs payments)
+    // Validación de forma de pago
     if (!data.payments?.length && !data.paymentMethod) {
       return NextResponse.json(
         { error: 'Debe indicar paymentMethod o payments', code: 'VALIDATION_ERROR' },
@@ -109,534 +115,362 @@ export async function POST(request: Request) {
       )
     }
 
-    // Enforce discounts permission (or override token)
-    const hasAnyDiscount = data.items.some((it) => (it.discount || 0) > 0)
-    if (hasAnyDiscount) {
-      const user = session.user as any
-      const isSuperAdmin = !!user.isSuperAdmin
-      const perms = await getUserPermissions(prisma, user.id)
-      const canDiscount = isSuperAdmin || perms.has(PERMISSIONS.APPLY_DISCOUNTS)
-      if (!canDiscount) {
-        const token = data.discountOverrideToken
-        if (!token) {
-          return NextResponse.json(
-            { error: 'No tienes permiso para aplicar descuentos', code: 'PERMISSION_DENIED', permission: 'apply_discounts' },
-            { status: 403 }
-          )
-        }
-        const secret = process.env.NEXTAUTH_SECRET
-        if (!secret) {
-          return NextResponse.json({ error: 'Server misconfigured (NEXTAUTH_SECRET)', code: 'SERVER_ERROR' }, { status: 500 })
-        }
-        try {
-          const payload: any = jwt.verify(token, secret, { issuer: 'clivaro' })
-          if (payload?.aud !== 'pos-discount-override' || payload?.perm !== PERMISSIONS.APPLY_DISCOUNTS) {
-            return NextResponse.json({ error: 'Token de autorización inválido', code: 'DISCOUNT_OVERRIDE_INVALID' }, { status: 403 })
+    // Use withTenantTx for strict isolation and the core logic
+    return await withTenantTx(session.user.tenantId, async (tx: any) => {
+      // 1. Permissions check (Discounts)
+      const hasAnyDiscount = data.items.some((it) => (it.discount || 0) > 0)
+      if (hasAnyDiscount) {
+        const user = session.user as any
+        const isSuperAdmin = !!user.isSuperAdmin
+        const perms = await getUserPermissions(tx, user.id)
+        const canDiscount = isSuperAdmin || perms.has(PERMISSIONS.APPLY_DISCOUNTS)
+        if (!canDiscount) {
+          const token = data.discountOverrideToken
+          if (!token) {
+            throw new Error('No tienes permiso para aplicar descuentos')
           }
-          if (payload?.issuedForUserId !== user.id) {
-            return NextResponse.json({ error: 'Token no válido para este usuario', code: 'DISCOUNT_OVERRIDE_WRONG_USER' }, { status: 403 })
+          const secret = process.env.NEXTAUTH_SECRET
+          if (!secret) throw new Error('Server misconfigured (NEXTAUTH_SECRET)')
+          try {
+            const payload: any = jwt.verify(token, secret, { issuer: 'clivaro' })
+            if (payload?.aud !== 'pos-discount-override' || payload?.perm !== PERMISSIONS.APPLY_DISCOUNTS) {
+              throw new Error('Token de autorización inválido')
+            }
+          } catch {
+            throw new Error('Token de autorización expirado o inválido')
           }
-        } catch {
-          return NextResponse.json({ error: 'Token de autorización expirado o inválido', code: 'DISCOUNT_OVERRIDE_EXPIRED' }, { status: 403 })
         }
       }
-    }
 
-    // Check for Open Cash Shift (Strict Mode)
-    // We require an open shift to perform any POS sale to ensure traceability
-    const openShift = await prisma.cashShift.findFirst({
-      where: {
-        userId: (session.user as any).id,
-        status: 'OPEN',
-      },
-    })
-
-    if (!openShift) {
-      return NextResponse.json(
-        {
-          error: 'No hay un turno de caja abierto. Por favor, abra un turno antes de realizar ventas.',
-          code: 'NO_OPEN_SHIFT'
+      // 2. Shift check
+      const openShift = await tx.cashShift.findFirst({
+        where: {
+          userId: (session.user as any).id,
+          status: 'OPEN',
         },
-        { status: 400 }
-      )
-    }
-
-    // Check stock availability
-    for (const item of data.items) {
-      const product = await prisma.product.findUnique({
-        where: { id: item.productId },
       })
-
-      if (!product) {
-        return NextResponse.json(
-          { error: `Product ${item.productId} not found`, code: 'PRODUCT_NOT_FOUND', productId: item.productId },
-          { status: 400 }
-        )
+      if (!openShift) {
+        throw new Error('No hay un turno de caja abierto.')
       }
 
-      if (product.trackStock) {
-        // Verificar si existe registro de stock
-        const stockLevel = await prisma.stockLevel.findFirst({
-          where: {
-            warehouseId: data.warehouseId,
-            productId: item.productId,
-            variantId: item.variantId || null,
-          },
-        })
-
-        if (stockLevel) {
-          // Hay registro de stock, verificar disponibilidad
-          const hasStock = stockLevel.quantity >= item.quantity
-          if (!hasStock) {
-            return NextResponse.json(
-              {
-                error: `Stock insuficiente para ${product.name}. Disponible: ${stockLevel.quantity}, Solicitado: ${item.quantity}`,
-                code: 'STOCK_INSUFFICIENT',
-                conflicts: [
-                  {
-                    type: 'STOCK',
-                    productId: item.productId,
-                    variantId: item.variantId || null,
-                    productName: product.name,
-                    available: stockLevel.quantity,
-                    requested: item.quantity,
-                  },
-                ],
-              },
-              { status: 400 }
-            )
-          }
-        }
-        // Si no hay registro de stock, permitir la venta
-        // El stock se actualizará en la transacción (creará el registro con cantidad negativa)
-      }
-    }
-
-    // Use transaction
-    logger.debug('[POS Sale] Starting sale transaction')
-    const result = await prisma.$transaction(async (tx) => {
-      logger.debug('[POS Sale] Transaction started')
-      // Calculate totals
-      let subtotal = 0
-      const items = []
+      // 3. Totals and Items Calculation
+      let totalSubtotal = 0
+      let totalTaxAmount = 0
+      const processedItems = []
+      const taxSummariesByRate = new Map<string, { taxRateId: string, name: string, rate: number, base: number, amount: number }>()
 
       for (const item of data.items) {
-        const itemSubtotal = item.quantity * item.unitPrice * (1 - item.discount / 100)
-        const itemTax = itemSubtotal * (item.taxRate / 100)
-        const itemTotal = itemSubtotal + itemTax
+        const product = await tx.product.findUnique({ where: { id: item.productId } })
+        if (!product) throw new Error(`Producto ${item.productId} no encontrado`)
 
-        subtotal += itemSubtotal
-        items.push({
+        const itemSubtotal = Math.round(item.quantity * item.unitPrice * (1 - item.discount / 100) * 100) / 100
+
+        // Granular Taxes
+        const rates: TaxRateInfo[] = item.appliedTaxes || (item.taxRate ? [
+          { id: 'legacy', name: 'IVA', rate: item.taxRate, type: 'IVA' }
+        ] : [])
+
+        const taxResult = calculateGranularTaxes(itemSubtotal, rates)
+
+        totalSubtotal += itemSubtotal
+        totalTaxAmount += taxResult.totalTax
+
+        // Update summaries
+        taxResult.taxes.forEach(t => {
+          const existing = taxSummariesByRate.get(t.taxRateId)
+          if (existing) {
+            existing.base += itemSubtotal
+            existing.amount += t.amount
+          } else {
+            taxSummariesByRate.set(t.taxRateId, {
+              taxRateId: t.taxRateId,
+              name: t.name,
+              rate: t.rate,
+              base: itemSubtotal,
+              amount: t.amount
+            })
+          }
+        })
+
+        processedItems.push({
           productId: item.productId,
           variantId: item.variantId || null,
           quantity: item.quantity,
           unitPrice: item.unitPrice,
           discount: item.discount,
-          taxRate: item.taxRate,
-          subtotal: itemSubtotal, // Subtotal sin impuesto
+          taxRate: item.taxRate || 0, // Legacy
+          baseAmount: itemSubtotal,
+          subtotal: itemSubtotal,
+          taxes: taxResult.taxes
         })
       }
 
-      const discount = data.discount || 0
-      const subtotalAfterDiscount = subtotal - discount
-      const tax = items.reduce((sum, item) => {
-        const itemSubtotal = item.quantity * item.unitPrice * (1 - item.discount / 100)
-        return sum + (itemSubtotal * item.taxRate / 100)
-      }, 0)
-      const total = subtotalAfterDiscount + tax
+      const globalDiscount = data.discount || 0
+      const finalSubtotal = totalSubtotal - globalDiscount
+      const finalTotal = finalSubtotal + totalTaxAmount
 
-      // Validar pagos (si vienen en el request) contra el total calculado
-      const tenderedTotal = data.payments?.reduce((sum, p) => sum + p.amount, 0)
-      if (data.payments?.length) {
-        if (!tenderedTotal || tenderedTotal < total) {
-          throw new Error(`El total pagado (${tenderedTotal || 0}) debe ser mayor o igual al total (${total})`)
-        }
-      } else if (data.paymentMethod === 'CASH') {
-        // Flujo antiguo en efectivo: exige cashReceived >= total
-        if (typeof data.cashReceived !== 'number' || data.cashReceived < total) {
-          throw new Error(`El efectivo recibido (${data.cashReceived || 0}) debe ser mayor o igual al total (${total})`)
-        }
+      // 4. Payment validation
+      const tenderedTotal = data.payments?.reduce((sum, p) => sum + p.amount, 0) || data.cashReceived || 0
+      if (tenderedTotal < finalTotal - 0.01) {
+        throw new Error(`Monto insuficiente. Total: ${finalTotal}, Recibido: ${tenderedTotal}`)
       }
 
-      // Create customer if not provided (walk-in customer)
+      // 5. Customer resolution
       let customerId = data.customerId
       if (!customerId) {
-        const walkInCustomer = await tx.customer.findFirst({
-          where: { name: 'Cliente General' },
-        })
-        if (walkInCustomer) {
-          customerId = walkInCustomer.id
-        } else {
-          const newCustomer = await tx.customer.create({
-            data: {
-              name: 'Cliente General',
-              createdById: (session.user as any).id,
-            },
-          })
-          customerId = newCustomer.id
-        }
+        const walkIn = await tx.customer.findFirst({ where: { name: 'Cliente General' } })
+        customerId = walkIn ? walkIn.id : (await tx.customer.create({
+          data: { name: 'Cliente General', createdById: (session.user as any).id }
+        })).id
       }
 
-      // Create invoice directly (no sales order needed)
-
-      // Create invoice directly (no sales order needed)
-      // Fetch tenant settings (passed from outside or fetched here? We need masterPrisma)
-      // Since we are inside a transaction on tenant DB, we can't query master DB easily if not passed.
-      // But we can query masterPrisma outside the transaction?
-      // No, we are inside a closure. We can access masterPrisma from closure scope.
-
-      const user = session.user as any
-      // Optimization: Fetch settings outside transaction if possible, but here is fine for now provided it doesn't block transaction too long.
-      // For safety/speed, let's assume we can fetch it.
-
-      // Nota: idealmente pasaríamos esto como argumento al transaction handler, pero JS permite access closure.
-      const tenantSettings = await masterPrisma.tenantSettings.findUnique({
-        where: { tenantId: user.tenantId }
-      })
-
+      // 6. Persistence
+      const tenantSettings = await masterPrisma.tenantSettings.findUnique({ where: { tenantId: (session.user as any).tenantId } })
       const invoiceCount = await tx.invoice.count()
-      const prefix = tenantSettings?.invoicePrefix || process.env.BILLING_RESOLUTION_PREFIX || 'FV'
+      const prefix = tenantSettings?.invoicePrefix || 'FV'
       const format = tenantSettings?.invoiceNumberFormat || '000000'
-      const padLength = format.length > 0 ? format.length : 6
-
-      const consecutive = String(invoiceCount + 1).padStart(padLength, '0')
+      const consecutive = String(invoiceCount + 1).padStart(format.length || 6, '0')
       const invoiceNumber = `${prefix}-${consecutive}`
 
-      // Crear factura con items
       const invoice = await tx.invoice.create({
         data: {
           number: invoiceNumber,
-          prefix: prefix,
-          consecutive: consecutive,
+          prefix,
+          consecutive,
           customerId,
-          status: 'PAGADA', // Estado en español
-          subtotal: subtotalAfterDiscount,
-          discount,
-          tax,
-          total,
+          status: 'PAGADA',
+          subtotal: finalSubtotal,
+          discount: globalDiscount,
+          tax: totalTaxAmount,
+          total: finalTotal,
           issuedAt: new Date(),
           paidAt: new Date(),
-          electronicStatus: 'PENDING',
           createdById: (session.user as any).id,
           items: {
-            create: items.map(item => ({
-              productId: item.productId,
-              variantId: item.variantId || null,
-              quantity: item.quantity,
-              unitPrice: item.unitPrice,
-              discount: item.discount,
-              taxRate: item.taxRate,
-              subtotal: item.subtotal,
-              preparationNotes: (item as any).preparationNotes || null,
-            })),
+            create: processedItems.map(pi => ({
+              product: { connect: { id: pi.productId } },
+              ...(pi.variantId ? { variant: { connect: { id: pi.variantId } } } : {}),
+              quantity: pi.quantity,
+              unitPrice: pi.unitPrice,
+              discount: pi.discount,
+              taxRate: pi.taxRate,
+              subtotal: pi.subtotal,
+              lineTaxes: {
+                create: pi.taxes.map(t => ({
+                  ...(t.taxRateId !== 'legacy' ? { taxRate: { connect: { id: t.taxRateId } } } : {}),
+                  name: t.name,
+                  rate: t.rate,
+                  taxAmount: t.amount,
+                  baseAmount: pi.subtotal
+                })) as any
+              }
+            })) as any
           },
-        },
+          taxSummary: {
+            create: Array.from(taxSummariesByRate.values()).map(ts => ({
+              ...(ts.taxRateId !== 'legacy' ? { taxRate: { connect: { id: ts.taxRateId } } } : {}),
+              name: ts.name,
+              rate: ts.rate,
+              baseAmount: ts.base,
+              taxAmount: ts.amount
+            })) as any
+          }
+        }
       })
 
-      // Crear pagos (soporta split payments)
-      const paymentsToCreate: Array<{ method: 'CASH' | 'CARD' | 'TRANSFER'; amount: number; reference?: string | null; notes?: string | null }> = []
+      // 7. Payments & Change
       let change = 0
-      let cashApplied = 0
+      let isCreditSale = false
+      let isPaid = true
 
-      if (data.payments?.length) {
-        const byMethod = data.payments.reduce((acc, p) => {
-          acc[p.method] = (acc[p.method] || 0) + p.amount
-          return acc
-        }, {} as Record<string, number>)
-
-        const cashTendered = byMethod['CASH'] || 0
-        const nonCashTendered = (byMethod['CARD'] || 0) + (byMethod['TRANSFER'] || 0)
-        change = Math.max(0, (tenderedTotal || 0) - total)
-
-        // El cambio solo puede venir de efectivo
-        if (change > 0 && cashTendered <= 0) {
-          throw new Error('El cambio solo es posible cuando hay efectivo en la forma de pago')
+      // Check if this is a pure Credit sale
+      if (data.payments?.length === 1) {
+        const p = data.payments[0]
+        const methodInfo = await tx.paymentMethod.findUnique({ where: { id: p.paymentMethodId } })
+        if (methodInfo && methodInfo.type === 'CREDIT') {
+          isCreditSale = true
+          isPaid = false
         }
-        if (change > cashTendered + 0.0001) {
-          throw new Error('El cambio no puede ser mayor al efectivo recibido')
-        }
-
-        cashApplied = Math.max(0, cashTendered - change)
-
-        if (byMethod['CARD']) {
-          paymentsToCreate.push({ method: 'CARD', amount: byMethod['CARD'] })
-        }
-        if (byMethod['TRANSFER']) {
-          paymentsToCreate.push({ method: 'TRANSFER', amount: byMethod['TRANSFER'] })
-        }
-        if (cashApplied > 0) {
-          paymentsToCreate.push({
-            method: 'CASH',
-            amount: cashApplied,
-            notes: change > 0 ? `Efectivo recibido: ${cashTendered}. Cambio: ${change}.` : null,
-          })
-        }
-
-        // Validación final de aplicado vs total (puede haber cashApplied=0 si todo es no-cash)
-        const applied = paymentsToCreate.reduce((sum, p) => sum + p.amount, 0)
-        if (Math.abs(applied - total) > 0.01) {
-          throw new Error(`Error al aplicar pagos. Aplicado: ${applied}, Total: ${total}`)
-        }
-      } else {
-        // Flujo antiguo
-        const method = (data.paymentMethod as any) as 'CASH' | 'CARD' | 'TRANSFER'
-        change = method === 'CASH' && typeof data.cashReceived === 'number'
-          ? Math.max(0, data.cashReceived - total)
-          : 0
-        cashApplied = method === 'CASH' ? total : 0
-        paymentsToCreate.push({ method, amount: total })
       }
 
-      for (const p of paymentsToCreate) {
-        await tx.payment.create({
+      // Logic for Credit Sale
+      if (isCreditSale) {
+        // Validate Customer
+        const customer = await tx.customer.findUnique({ where: { id: customerId } })
+        if (!customer) throw new Error('Cliente no encontrado para venta a crédito')
+        if (customer.name === 'Cliente General') throw new Error('No se puede vender a crédito a Cliente General')
+
+        // Check Credit Limit if set
+        if (customer.creditLimit > 0) {
+          if (customer.currentBalance + finalTotal > customer.creditLimit) {
+            throw new Error(`Crédito insuficiente. Disponible: ${customer.creditLimit - customer.currentBalance}`)
+          }
+        }
+
+        // Update Invoice status and balance
+        await tx.invoice.update({
+          where: { id: invoice.id },
           data: {
-            invoiceId: invoice.id,
-            amount: p.amount,
-            method: p.method,
-            reference: p.reference || null,
-            notes: p.notes || null,
-            createdById: (session.user as any).id,
-          },
-        })
-      }
-
-      // Update cash shift for all payment methods (track all sales)
-      // We already fetched openShift outside transaction, but we need to fetch it inside tx to lock/update
-      const txOpenShift = await tx.cashShift.findUnique({
-        where: { id: openShift.id }
-      })
-
-      if (txOpenShift) {
-        // For CASH payments, create cash movement and update expected cash
-        if (cashApplied > 0) {
-          // Create cash movement IN
-          await tx.cashMovement.create({
-            data: {
-              cashShiftId: txOpenShift.id,
-              type: 'IN',
-              amount: cashApplied,
-              reason: `Venta POS - ${invoiceNumber}${change > 0 ? ` (cambio ${change})` : ''}`,
-              createdById: (session.user as any).id,
-            },
-          })
-
-          // Update expected cash
-          await tx.cashShift.update({
-            where: { id: txOpenShift.id },
-            data: {
-              expectedCash: txOpenShift.expectedCash + cashApplied,
-            },
-          })
-        }
-        // Note: CARD and TRANSFER payments are tracked via Payment model
-        // and will be shown in the cash shift payments list
-      }
-
-      // Create stock movements for tracked products
-      for (const item of data.items) {
-        const product = await tx.product.findUnique({
-          where: { id: item.productId },
+            status: 'EN_COBRANZA',
+            balance: finalTotal,
+            paidAt: null
+          }
         })
 
-        if (!product) continue
+        // Update Customer Balance
+        await tx.customer.update({
+          where: { id: customerId },
+          data: { currentBalance: { increment: finalTotal } }
+        })
 
-        const isRestaurantMode = (tenantSettings as any)?.enableRestaurantMode === true
-        const useRecipe = isRestaurantMode && (product as any).enableRecipeConsumption
+        // No Payment record created yet, and no cash movement
+      } else {
+        // Normal Payment Logic (PAID)
+        if (data.payments?.length) {
+          change = tenderedTotal - finalTotal
+          for (const p of data.payments) {
+            const methodInfo = await tx.paymentMethod.findUnique({ where: { id: p.paymentMethodId } })
+            if (!methodInfo) throw new Error(`Método de pago ${p.paymentMethodId} no encontrado`)
 
-        if (useRecipe) {
-          logger.info('[POS Sale] Processing recipe consumption', { productId: item.productId, quantity: item.quantity })
-          const ingredients = await resolveAllIngredients(tx, item.productId, item.quantity)
+            // Skip if it were mixed with credit (future feature), for now assume split is only immediate payments
+            if (methodInfo.type === 'CREDIT') continue;
 
-          for (const ing of ingredients) {
-            const ingProduct = await tx.product.findUnique({ where: { id: ing.ingredientId } })
-            if (!ingProduct?.trackStock) continue
+            const amountToApply = methodInfo.type === 'CASH' ? Math.max(0, p.amount - change) : p.amount
 
-            // Create OUT movement for ingredient
-            await tx.stockMovement.create({
-              data: {
-                warehouseId: data.warehouseId,
-                productId: ing.ingredientId,
-                variantId: null, // Ingredients usually don't use variants in this BOM impl yet
-                type: 'OUT',
-                quantity: toDecimal(ing.quantity),
-                reason: `Consumo Receta: ${product.name} (Venta ${invoiceNumber})`,
-                reasonCode: 'RECIPE' as any,
-                reference: invoiceNumber,
-                createdById: (session.user as any).id,
-              },
-            })
-
-            // Update stock level for ingredient
-            const stockLevel = await tx.stockLevel.findFirst({
-              where: {
-                warehouseId: data.warehouseId,
-                productId: ing.ingredientId,
-                variantId: null,
-              },
-            })
-
-            if (stockLevel) {
-              await tx.stockLevel.update({
-                where: { id: stockLevel.id },
+            if (amountToApply > 0) {
+              await tx.payment.create({
                 data: {
-                  quantity: { decrement: toDecimal(ing.quantity) },
-                },
+                  invoice: { connect: { id: invoice.id } },
+                  amount: amountToApply,
+                  method: methodInfo.name,
+                  paymentMethodId: p.paymentMethodId,
+                  reference: p.reference,
+                  notes: methodInfo.type === 'CASH' && change > 0 ? `Efectivo: ${p.amount}, Cambio: ${change}` : p.notes,
+                  createdById: (session.user as any).id,
+                }
               })
-            } else {
-              // Should not happen if data is consistent, but create if missing to prevent crash
-              await tx.stockLevel.create({
-                data: {
-                  warehouseId: data.warehouseId,
-                  productId: ing.ingredientId,
-                  variantId: null,
-                  quantity: -toDecimal(ing.quantity),
+
+              // Update Shift Summary
+              await tx.shiftSummary.upsert({
+                where: {
+                  shiftId_paymentMethodId: {
+                    shiftId: openShift.id,
+                    paymentMethodId: p.paymentMethodId
+                  }
                 },
+                update: {
+                  expectedAmount: { increment: amountToApply }
+                },
+                create: {
+                  shiftId: openShift.id,
+                  paymentMethodId: p.paymentMethodId,
+                  expectedAmount: amountToApply
+                }
               })
+
+              // If it's CASH, also update the main expectedCash field for legacy support
+              if (methodInfo.type === 'CASH') {
+                await tx.cashShift.update({
+                  where: { id: openShift.id },
+                  data: { expectedCash: { increment: amountToApply } }
+                })
+
+                await tx.cashMovement.create({
+                  data: {
+                    cashShiftId: openShift.id,
+                    type: 'IN',
+                    amount: amountToApply,
+                    reason: `Venta POS - ${invoiceNumber}`,
+                    createdById: (session.user as any).id,
+                  }
+                })
+              }
             }
           }
-        } else if (product.trackStock) {
-          logger.debug('[POS Sale] Processing retail stock', { productId: item.productId, quantity: item.quantity })
+        } else {
+          // Fallback for legacy clients
+          const method = data.paymentMethod || 'CASH'
+          change = method === 'CASH' ? (data.cashReceived || finalTotal) - finalTotal : 0
 
-          // Create OUT movement
-          const movement = await tx.stockMovement.create({
+          let pm = await tx.paymentMethod.findFirst({ where: { name: method } })
+          if (!pm) {
+            pm = await tx.paymentMethod.create({
+              data: { name: method, type: method === 'CASH' ? 'CASH' : 'ELECTRONIC' }
+            })
+          }
+
+          await tx.payment.create({
             data: {
-              warehouseId: data.warehouseId,
-              productId: item.productId,
-              variantId: item.variantId || null,
-              type: 'OUT',
-              quantity: toDecimal(item.quantity),
-              reason: 'POS Sale',
-              reasonCode: 'SALE' as any,
-              reference: invoiceNumber,
+              invoice: { connect: { id: invoice.id } },
+              amount: finalTotal,
+              method: method,
+              paymentMethodId: pm.id,
               createdById: (session.user as any).id,
-            },
-          })
-          logger.debug('[POS Sale] Stock movement created', { movementId: movement.id })
-
-          // Update stock level directly in transaction (more reliable)
-          const whereClause: any = {
-            warehouseId: data.warehouseId,
-            productId: item.productId,
-            variantId: item.variantId || null,
-          }
-
-          const existingStock = await tx.stockLevel.findFirst({
-            where: whereClause,
+            }
           })
 
-          if (existingStock) {
-            const newQuantity = existingStock.quantity - item.quantity
-            logger.debug('[POS Sale] Updating existing stock', { from: existingStock.quantity, delta: -item.quantity, to: newQuantity })
-            await tx.stockLevel.update({
-              where: { id: existingStock.id },
-              data: { quantity: newQuantity },
+          await tx.shiftSummary.upsert({
+            where: { shiftId_paymentMethodId: { shiftId: openShift.id, paymentMethodId: pm.id } },
+            update: { expectedAmount: { increment: finalTotal } },
+            create: { shiftId: openShift.id, paymentMethodId: pm.id, expectedAmount: finalTotal }
+          })
+
+          if (method === 'CASH') {
+            await tx.cashShift.update({
+              where: { id: openShift.id },
+              data: { expectedCash: { increment: finalTotal } }
             })
-            logger.debug('[POS Sale] Stock updated')
-          } else {
-            // No existe registro, crear uno con cantidad negativa
-            logger.debug('[POS Sale] Creating new stock record', { quantity: -item.quantity })
-            await tx.stockLevel.create({
+            await tx.cashMovement.create({
               data: {
-                warehouseId: data.warehouseId,
-                productId: item.productId,
-                variantId: item.variantId || null,
-                quantity: -item.quantity,
-                minStock: 0,
-              },
+                cashShiftId: openShift.id,
+                type: 'IN',
+                amount: finalTotal,
+                reason: `Venta POS - ${invoiceNumber}`,
+                createdById: (session.user as any).id,
+              }
             })
-            logger.debug('[POS Sale] Stock record created')
           }
-
-          // Verificar que el stock se actualizó correctamente
-          const updatedStock = await tx.stockLevel.findFirst({
-            where: whereClause,
-          })
-
-          if (!updatedStock) {
-            logger.error('[POS Sale] Critical: could not verify updated stock', undefined, { productId: item.productId })
-            throw new Error(`Error al actualizar stock para producto ${product.name}. La transacción será revertida.`)
-          }
-
-          // Verificar que el stock se actualizó correctamente
-          const expectedQuantity = existingStock
-            ? existingStock.quantity - item.quantity
-            : -item.quantity
-
-          if (Math.abs(updatedStock.quantity - expectedQuantity) > 0.01) {
-            logger.error('[POS Sale] Critical: stock mismatch', undefined, {
-              productId: item.productId,
-              expectedQuantity,
-              actualQuantity: updatedStock.quantity,
-            })
-            throw new Error(`Error: El stock no se actualizó correctamente para ${product.name}. Esperado: ${expectedQuantity}, Actual: ${updatedStock.quantity}`)
-          }
-
-          logger.debug('[POS Sale] Stock verified', { productId: item.productId, quantity: updatedStock.quantity })
         }
       }
 
-      // Audit Log
-      await logActivity({
-        prisma: tx,
-        type: 'SALE_CREATE',
-        subject: `Venta POS: ${invoiceNumber}`,
-        description: `Total: ${total}. Pagado con: ${(data.payments || []).map(p => p.method).join(', ') || data.paymentMethod}.`,
-        userId: (session.user as any).id,
-        customerId: customerId,
-        metadata: { invoiceId: invoice.id, invoiceNumber, total, cashierId: (session.user as any).id }
-      })
+      // 9. Stock & Recipes
+      for (const item of data.items) {
+        const product = await tx.product.findUnique({ where: { id: item.productId } })
+        if (!product?.trackStock) continue
 
-      logger.debug('[POS Sale] Transaction completed')
-      return {
+        const isRestaurant = tenantSettings?.enableRestaurantMode
+        if (isRestaurant && (product as any).enableRecipeConsumption) {
+          const ingredients = await resolveAllIngredients(tx, item.productId, item.quantity)
+          for (const ing of ingredients) {
+            await updateStockLevel(data.warehouseId, ing.ingredientId, null, -ing.quantity, tx, {
+              type: 'OUT',
+              reason: `Receta: ${product.name}`,
+              reasonCode: 'RECIPE',
+              reference: invoiceNumber,
+              createdById: (session.user as any).id
+            })
+          }
+        } else {
+          await updateStockLevel(data.warehouseId, item.productId, item.variantId || null, -item.quantity, tx, {
+            type: 'OUT',
+            reason: 'POS Sale',
+            reasonCode: 'SALE',
+            reference: invoiceNumber,
+            createdById: (session.user as any).id
+          })
+        }
+      }
+
+      return NextResponse.json({
         invoiceId: invoice.id,
         invoiceNumber,
-        subtotal: subtotalAfterDiscount,
-        tax: tax,
-        total: total,
-        change,
-      }
-    }, {
-      timeout: 30000, // 30 segundos de timeout
+        total: finalTotal,
+        change
+      }, { status: 201 })
     })
-    logger.debug('[POS Sale] Transaction result', { invoiceNumber: result.invoiceNumber })
 
-    // Non-blocking: Trigger electronic invoice transmission if configured
-    try {
-      const config = await (masterPrisma as any).electronicInvoiceProviderConfig.findUnique({
-        where: { tenantId_provider: { tenantId: (session.user as any).tenantId, provider: 'ALEGRA' } }
-      })
-      if (config?.status === 'connected') {
-        enqueueJob('ei_send_to_alegra', {
-          invoiceId: result.invoiceId,
-          tenantId: (session.user as any).tenantId
-        })
-      }
-    } catch (e) {
-      logger.error('Failed to trigger Alegra job', e)
-    }
-
-    return NextResponse.json(result, { status: 201 })
-  } catch (error: any) {
-    if (error instanceof z.ZodError) {
-      logger.warn('POS sale validation error', { errors: error.errors })
-      return NextResponse.json(
-        {
-          error: 'Error de validación',
-          code: 'VALIDATION_ERROR',
-          details: error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ')
-        },
-        { status: 400 }
-      )
-    }
-    logger.error('Error creating POS sale', error, { endpoint: '/api/pos/sale', method: 'POST' })
-    return NextResponse.json(
-      {
-        error: error.message || 'Error al procesar la venta',
-        code: 'SERVER_ERROR',
-        details: process.env.NODE_ENV === 'development' ? error.stack : undefined
-      },
-      { status: 500 }
-    )
+  } catch (error) {
+    return handleError(error, 'POST /api/pos/sale')
   }
 }
 

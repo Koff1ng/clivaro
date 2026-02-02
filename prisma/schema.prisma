@@ -3,44 +3,50 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL") // Transaction pooler para runtime
+  provider  = "postgresql"
+  url       = env("DATABASE_URL") // Transaction pooler para runtime
   directUrl = env("DIRECT_URL") // Conexión directa para migraciones (opcional, solo en planes pagos de Supabase)
 }
 
 model User {
-  id             String          @id @default(cuid())
-  username       String          @unique
-  email          String?         @unique
-  password       String
-  name           String
-  active         Boolean         @default(true)
-  isSuperAdmin   Boolean         @default(false) // Usuario super administrador del sistema
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
-  createdById    String?
-  updatedById    String?
-  accounts       Account[]
-  activities     Activity[]      @relation("ActivityCreatedBy")
-  cashMovements  CashMovement[]
-  cashShifts     CashShift[]
-  assignedLeads  Lead[]          @relation("LeadAssignedTo")
-  createdLeads   Lead[]          @relation("LeadCreatedBy")
-  leadStageHistory LeadStageHistory[] @relation("LeadStageHistoryChangedBy")
-  sessions       Session[]
-  stockMovements StockMovement[]
-  updatedBy      User?           @relation("UserUpdatedBy", fields: [updatedById], references: [id])
-  updatedUsers   User[]          @relation("UserUpdatedBy")
-  createdBy      User?           @relation("UserCreatedBy", fields: [createdById], references: [id])
-  createdUsers   User[]          @relation("UserCreatedBy")
-  userRoles      UserRole[]
-  physicalInventories PhysicalInventory[] @relation("PhysicalInventoryCreatedBy")
-  paymentsCreated Payment[] @relation("PaymentCreatedBy")
-  invoicesCreated Invoice[] @relation("InvoiceCreatedBy")
-  invoicesUpdated Invoice[] @relation("InvoiceUpdatedBy")
-  campaignsCreated MarketingCampaign[] @relation("CampaignCreatedBy")
-  returnsCreated Return[] @relation("ReturnCreatedBy")
-  returnPaymentsCreated ReturnPayment[] @relation("ReturnPaymentCreatedBy")
+  id                    String              @id @default(cuid())
+  username              String              @unique
+  email                 String?             @unique
+  password              String
+  name                  String
+  active                Boolean             @default(true)
+  isSuperAdmin          Boolean             @default(false) // Usuario super administrador del sistema
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+  createdById           String?
+  updatedById           String?
+  accounts              Account[]
+  activities            Activity[]          @relation("ActivityCreatedBy")
+  cashMovements         CashMovement[]
+  cashShifts            CashShift[]
+  assignedLeads         Lead[]              @relation("LeadAssignedTo")
+  createdLeads          Lead[]              @relation("LeadCreatedBy")
+  leadStageHistory      LeadStageHistory[]  @relation("LeadStageHistoryChangedBy")
+  sessions              Session[]
+  stockMovements        StockMovement[]
+  updatedBy             User?               @relation("UserUpdatedBy", fields: [updatedById], references: [id])
+  updatedUsers          User[]              @relation("UserUpdatedBy")
+  createdBy             User?               @relation("UserCreatedBy", fields: [createdById], references: [id])
+  createdUsers          User[]              @relation("UserCreatedBy")
+  userRoles             UserRole[]
+  physicalInventories   PhysicalInventory[] @relation("PhysicalInventoryCreatedBy")
+  paymentsCreated       Payment[]           @relation("PaymentCreatedBy")
+  invoicesCreated       Invoice[]           @relation("InvoiceCreatedBy")
+  invoicesUpdated       Invoice[]           @relation("InvoiceUpdatedBy")
+  returnsCreated        Return[]            @relation("ReturnCreatedBy")
+  returnPaymentsCreated ReturnPayment[]     @relation("ReturnPaymentCreatedBy")
+  crmCampaignsCreated   Campaign[]          @relation("CampaignCreatedBy")
+  opportunitiesCreated  Opportunity[]       @relation("OpportunityCreatedBy")
+  opportunitiesAssigned Opportunity[]       @relation("OpportunityAssignedTo")
+  quotesCreated         Quote[]             @relation("QuoteCreatedBy")
+  approvedPhysicalInventories PhysicalInventory[] @relation("PhysicalInventoryApprovedBy")
+  journalEntriesCreated JournalEntry[]      @relation("JournalCreatedBy")
+  marketingCampaignsCreated MarketingCampaign[] @relation("MarketingCampaignCreatedBy")
 }
 
 model Session {
@@ -108,97 +114,126 @@ model UserRole {
 }
 
 model Product {
-  id                 String              @id @default(cuid())
-  sku                String              @unique
-  barcode            String?             @unique
-  name               String
-  brand              String?
-  category           String?
-  unitOfMeasure      String              @default("UNIT")
-  cost               Float               @default(0)
-  price              Float
-  taxRate            Float               @default(0)
-  trackStock         Boolean             @default(true)
-  active             Boolean             @default(true)
-  description        String?
-  productType        String              @default("RETAIL") // RETAIL, RAW, PREPARED, SELLABLE
-  enableRecipeConsumption Boolean        @default(false)
-  
-  createdAt          DateTime            @default(now())
-  updatedAt          DateTime            @updatedAt
-  createdById        String?
-  updatedById        String?
-  goodsReceiptItems  GoodsReceiptItem[]
-  invoiceItems       InvoiceItem[]
-  priceListItems     PriceListItem[]
-  variants           ProductVariant[]
-  purchaseOrderItems PurchaseOrderItem[]
-  quotationItems     QuotationItem[]
-  salesOrderItems    SalesOrderItem[]
-  stockLevels        StockLevel[]
-  stockMovements     StockMovement[]
-  physicalInventoryItems PhysicalInventoryItem[]
-  
-  recipe             Recipe?             // One-to-one relationship with its recipe
-  recipeItems        RecipeItem[]        @relation("Ingredient")
+  id                      String                  @id @default(cuid())
+  sku                     String                  @unique
+  barcode                 String?                 @unique
+  name                    String
+  brand                   String?
+  category                String?
+  unitOfMeasure           String                  @default("UNIT")
+  productType             String                  @default("RETAIL") // RETAIL, RAW, PREPARED, SELLABLE
+  enableRecipeConsumption Boolean                 @default(false)
+  printerStation          String? // KITCHEN, BAR, CASHIER, null (for kitchen printer routing)
+  cost                    Float                   @default(0)
+  price                   Float
+  taxRate                 Float                   @default(0)
+  trackStock              Boolean                 @default(true)
+  active                  Boolean                 @default(true)
+  description             String?
+  createdAt               DateTime                @default(now())
+  updatedAt               DateTime                @updatedAt
+  createdById             String?
+  updatedById             String?
+  goodsReceiptItems       GoodsReceiptItem[]
+  invoiceItems            InvoiceItem[]
+  priceListItems          PriceListItem[]
+  variants                ProductVariant[]
+  purchaseOrderItems      PurchaseOrderItem[]
+  quotationItems          QuotationItem[]
+  salesOrderItems         SalesOrderItem[]
+  stockLevels             StockLevel[]
+  stockMovements          StockMovement[]
+  physicalInventoryItems  PhysicalInventoryItem[]
+
+  recipe      Recipe?
+  recipeItems RecipeItem[] @relation("Ingredient")
+  QuoteItem   QuoteItem[]
+  taxes       TaxRate[]    @relation("ProductTaxes")
+  preferredZoneId String?
+  preferredZone   WarehouseZone? @relation("PreferredZone", fields: [preferredZoneId], references: [id])
 }
 
 model ProductVariant {
-  id                 String              @id @default(cuid())
-  productId          String
-  name               String
-  sku                String?             @unique
-  barcode            String?             @unique
-  cost               Float?
-  price              Float?
-  active             Boolean             @default(true)
-  createdAt          DateTime            @default(now())
-  updatedAt          DateTime            @updatedAt
-  goodsReceiptItems  GoodsReceiptItem[]
-  invoiceItems       InvoiceItem[]
-  product            Product             @relation(fields: [productId], references: [id], onDelete: Cascade)
-  purchaseOrderItems PurchaseOrderItem[]
-  quotationItems     QuotationItem[]
-  salesOrderItems    SalesOrderItem[]
-  stockLevels        StockLevel[]
-  stockMovements     StockMovement[]
+  id                     String                  @id @default(cuid())
+  productId              String
+  name                   String
+  sku                    String?                 @unique
+  barcode                String?                 @unique
+  cost                   Float?
+  price                  Float?
+  active                 Boolean                 @default(true)
+  createdAt              DateTime                @default(now())
+  updatedAt              DateTime                @updatedAt
+  goodsReceiptItems      GoodsReceiptItem[]
+  invoiceItems           InvoiceItem[]
+  product                Product                 @relation(fields: [productId], references: [id], onDelete: Cascade)
+  purchaseOrderItems     PurchaseOrderItem[]
+  quotationItems         QuotationItem[]
+  salesOrderItems        SalesOrderItem[]
+  stockLevels            StockLevel[]
+  stockMovements         StockMovement[]
   physicalInventoryItems PhysicalInventoryItem[]
 }
 
 model Warehouse {
-  id             String          @id @default(cuid())
-  name           String          @unique
-  address        String?
-  active         Boolean         @default(true)
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
-  goodsReceipts  GoodsReceipt[]
-  stockLevels    StockLevel[]
-  stockMovements StockMovement[]
+  id                  String              @id @default(cuid())
+  name                String              @unique
+  address             String?
+  active              Boolean             @default(true)
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+  goodsReceipts       GoodsReceipt[]
+  stockLevels         StockLevel[]
+  stockMovements      StockMovement[]
   physicalInventories PhysicalInventory[]
+  zones               WarehouseZone[]
+}
+
+model WarehouseZone {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  warehouseId String
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  warehouse   Warehouse               @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  stockLevels StockLevel[]
+  physicalInventoryItems PhysicalInventoryItem[]
+  stockMovements         StockMovement[]
+  preferredForProducts   Product[]               @relation("PreferredZone")
+
+  @@unique([warehouseId, name])
+  @@index([warehouseId])
 }
 
 model StockLevel {
   id          String          @id @default(cuid())
   warehouseId String
+  zoneId      String?
   productId   String?
   variantId   String?
   quantity    Float           @default(0)
   minStock    Float           @default(0)
   maxStock    Float           @default(0) // 0 = sin máximo configurado
   updatedAt   DateTime        @updatedAt
+
+  zone        WarehouseZone?  @relation(fields: [zoneId], references: [id])
   variant     ProductVariant? @relation(fields: [variantId], references: [id], onDelete: Cascade)
   product     Product?        @relation(fields: [productId], references: [id], onDelete: Cascade)
   warehouse   Warehouse       @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
 
-  @@unique([warehouseId, productId, variantId])
+  @@unique([warehouseId, zoneId, productId, variantId])
   @@index([warehouseId])
+  @@index([zoneId])
   @@index([productId])
 }
 
 model StockMovement {
   id          String          @id @default(cuid())
   warehouseId String
+  zoneId      String?
   productId   String?
   variantId   String?
   type        String
@@ -206,10 +241,12 @@ model StockMovement {
   cost        Float?
   reference   String?
   reason      String?
-  reasonCode  String?         // SALE, RECIPE, WASTE, SPILL, EXPIRED, STAFF_MEAL
+  reasonCode  String?
   reasonNote  String?
   createdAt   DateTime        @default(now())
   createdById String
+
+  zone        WarehouseZone?  @relation(fields: [zoneId], references: [id])
   createdBy   User            @relation(fields: [createdById], references: [id])
   variant     ProductVariant? @relation(fields: [variantId], references: [id])
   product     Product?        @relation(fields: [productId], references: [id])
@@ -218,21 +255,25 @@ model StockMovement {
   @@index([warehouseId, productId])
   @@index([createdAt])
   @@index([type])
+  @@index([zoneId])
 }
 
 model PhysicalInventory {
   id          String                  @id @default(cuid())
   number      String                  @unique
   warehouseId String
-  status      String                  @default("PENDING") // PENDING, COUNTING, COMPLETED, CANCELLED
+  status      String                  @default("PENDING") // PENDING, COUNTING, COMPLETED, APPROVED, CANCELLED
   startedAt   DateTime?
   completedAt DateTime?
+  approvedAt  DateTime?
+  approvedById String?
   notes       String?
   createdAt   DateTime                @default(now())
   updatedAt   DateTime                @updatedAt
   createdById String
   warehouse   Warehouse               @relation(fields: [warehouseId], references: [id])
   createdBy   User                    @relation("PhysicalInventoryCreatedBy", fields: [createdById], references: [id])
+  approvedBy  User?                   @relation("PhysicalInventoryApprovedBy", fields: [approvedById], references: [id])
   items       PhysicalInventoryItem[]
 
   @@index([warehouseId])
@@ -243,89 +284,96 @@ model PhysicalInventory {
 model PhysicalInventoryItem {
   id                  String            @id @default(cuid())
   physicalInventoryId String
+  zoneId              String?
   productId           String?
   variantId           String?
-  systemQuantity      Float             // Cantidad en el sistema
-  countedQuantity     Float?            // Cantidad contada físicamente
-  difference          Float?            // Diferencia (counted - system)
+  systemQuantity      Float // Cantidad en el sistema
+  countedQuantity     Float? // Cantidad contada físicamente
+  difference          Float? // Diferencia (counted - system)
   notes               String?
   createdAt           DateTime          @default(now())
   updatedAt           DateTime          @updatedAt
+
+  zone                WarehouseZone?    @relation(fields: [zoneId], references: [id])
   physicalInventory   PhysicalInventory @relation(fields: [physicalInventoryId], references: [id], onDelete: Cascade)
   product             Product?          @relation(fields: [productId], references: [id])
   variant             ProductVariant?   @relation(fields: [variantId], references: [id])
 
-  @@unique([physicalInventoryId, productId, variantId])
+  @@unique([physicalInventoryId, zoneId, productId, variantId])
   @@index([physicalInventoryId])
   @@index([productId])
+  @@index([zoneId])
 }
 
 model Customer {
-  id             String          @id @default(cuid())
-  name           String
-  phone          String?
-  email          String?
-  address        String?
-  taxId          String?
-  tags           String?
-  notes          String?
-  active         Boolean         @default(true)
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
-  createdById    String?
-  updatedById    String?
-  activities     Activity[]
-  invoices       Invoice[]
-  leads          Lead[]
-  priceListItems PriceListItem[]
-  quotations     Quotation[]
-  salesOrders    SalesOrder[]
+  id                 String                       @id @default(cuid())
+  name               String
+  phone              String?
+  email              String?
+  address            String?
+  taxId              String?
+  tags               String?
+  notes              String?
+  creditLimit        Float                        @default(0)
+  currentBalance     Float                        @default(0) // Total current debt
+  active             Boolean                      @default(true)
+  createdAt          DateTime                     @default(now())
+  updatedAt          DateTime                     @updatedAt
+  createdById        String?
+  updatedById        String?
+  activities         Activity[]
+  invoices           Invoice[]
+  leads              Lead[]
+  priceListItems     PriceListItem[]
+  quotations         Quotation[]
+  salesOrders        SalesOrder[]
   campaignRecipients MarketingCampaignRecipient[]
+  Opportunity        Opportunity[]
+  Quote              Quote[]
 }
 
 model Lead {
-  id              String      @id @default(cuid())
-  customerId      String?
-  name            String
-  phone           String?
-  email           String?
-  company         String?
-  instagram       String?     // Usuario o URL de Instagram
-  stage           String      @default("NEW")
-  value           Float?
-  expectedRevenue Float?
-  probability     Float?      @default(0)
+  id                String             @id @default(cuid())
+  customerId        String?
+  name              String
+  phone             String?
+  email             String?
+  company           String?
+  instagram         String? // Usuario o URL de Instagram
+  stage             String             @default("NEW")
+  value             Float?
+  expectedRevenue   Float?
+  probability       Float?             @default(0)
   expectedCloseDate DateTime?
-  assignedToId    String?
-  source          String?
-  notes           String?
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
-  createdById     String?
-  updatedById     String?
-  activities      Activity[]
-  stageHistory    LeadStageHistory[]
-  assignedTo      User?       @relation("LeadAssignedTo", fields: [assignedToId], references: [id])
-  createdBy       User?       @relation("LeadCreatedBy", fields: [createdById], references: [id])
-  customer        Customer?   @relation(fields: [customerId], references: [id])
-  quotations      Quotation[]
-  chatMessages    ChatMessage[]
+  assignedToId      String?
+  source            String?
+  notes             String?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  createdById       String?
+  updatedById       String?
+  activities        Activity[]
+  stageHistory      LeadStageHistory[]
+  assignedTo        User?              @relation("LeadAssignedTo", fields: [assignedToId], references: [id])
+  createdBy         User?              @relation("LeadCreatedBy", fields: [createdById], references: [id])
+  customer          Customer?          @relation(fields: [customerId], references: [id])
+  quotations        Quotation[]
+  chatMessages      ChatMessage[]
 }
 
 model LeadStageHistory {
-  id        String   @id @default(cuid())
-  leadId    String
-  fromStage String?
-  toStage   String
+  id          String   @id @default(cuid())
+  leadId      String
+  fromStage   String?
+  toStage     String
   changedById String?
-  changedAt DateTime @default(now())
-  notes     String?
-  lead      Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
-  changedBy User?    @relation("LeadStageHistoryChangedBy", fields: [changedById], references: [id])
-  
+  changedAt   DateTime @default(now())
+  notes       String?
+  lead        Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  changedBy   User?    @relation("LeadStageHistoryChangedBy", fields: [changedById], references: [id])
+
   @@index([leadId])
 }
-
 
 model Activity {
   id          String    @id @default(cuid())
@@ -434,79 +482,129 @@ model SalesOrderItem {
 }
 
 model Invoice {
-  id                 String        @id @default(cuid())
-  number             String        @unique
-  prefix             String?
-  consecutive        String?
-  salesOrderId       String?
-  customerId         String
-  status             String        @default("EMITIDA") // EMITIDA, PAGADA, ANULADA, EN_COBRANZA
-  subtotal           Float         @default(0)
-  discount           Float         @default(0)
-  tax                Float         @default(0)
-  total              Float         @default(0)
-  notes              String?
-  issuedAt           DateTime?
-  dueDate            DateTime?
-  paidAt             DateTime?
-  cufe               String?       @unique
-  qrCode             String?
-  electronicStatus   String?
-  electronicSentAt   DateTime?
-  electronicResponse String?
-  resolutionNumber   String?
-  createdAt          DateTime      @default(now())
-  updatedAt          DateTime      @updatedAt
-  createdById        String?
-  updatedById        String?
-  customer           Customer      @relation(fields: [customerId], references: [id])
-  salesOrder         SalesOrder?   @relation(fields: [salesOrderId], references: [id])
-  items              InvoiceItem[]
-  payments           Payment[]
-  returns            Return[]
+  id                      String                          @id @default(cuid())
+  number                  String                          @unique
+  prefix                  String?
+  consecutive             String?
+  salesOrderId            String?
+  customerId              String
+  status                  String                          @default("EMITIDA") // EMITIDA, PAGADA, ANULADA, EN_COBRANZA
+  subtotal                Float                           @default(0)
+  discount                Float                           @default(0)
+  tax                     Float                           @default(0) // Total tax (grand total of all applied taxes)
+  total                   Float                           @default(0)
+  balance                 Float                           @default(0) // Remaining amount to be paid
+  notes                   String?
+  issuedAt                DateTime?
+  dueDate                 DateTime?
+  paidAt                  DateTime?
+  cufe                    String?                         @unique
+  qrCode                  String?
+  electronicStatus        String?
+  electronicSentAt        DateTime?
+  electronicResponse      String?
+  resolutionNumber        String?
+  createdAt               DateTime                        @default(now())
+  updatedAt               DateTime                        @updatedAt
+  createdById             String?
+  updatedById             String?
+  customer                Customer                        @relation(fields: [customerId], references: [id])
+  salesOrder              SalesOrder?                     @relation(fields: [salesOrderId], references: [id])
+  items                   InvoiceItem[]
+  payments                Payment[]
+  returns                 Return[]
   electronicTransmissions ElectronicInvoiceTransmission[]
-  createdBy          User?         @relation("InvoiceCreatedBy", fields: [createdById], references: [id])
-  updatedBy          User?         @relation("InvoiceUpdatedBy", fields: [updatedById], references: [id])
+  taxSummary              InvoiceTaxSummary[]
+  createdBy               User?                           @relation("InvoiceCreatedBy", fields: [createdById], references: [id])
+  updatedBy               User?                           @relation("InvoiceUpdatedBy", fields: [updatedById], references: [id])
 }
 
 model InvoiceItem {
-  id        String          @id @default(cuid())
-  invoiceId String
-  productId String
-  variantId String?
-  quantity  Float
-  unitPrice Float
-  discount  Float           @default(0)
-  taxRate   Float
-  subtotal  Float
-  createdAt DateTime        @default(now())
-  variant   ProductVariant? @relation(fields: [variantId], references: [id])
-  product   Product         @relation(fields: [productId], references: [id])
-  invoice   Invoice         @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
-  returnItems ReturnItem[]
+  id               String           @id @default(cuid())
+  invoiceId        String
+  productId        String
+  variantId        String?
+  quantity         Float
+  unitPrice        Float
+  discount         Float            @default(0)
+  taxRate          Float            @default(0) // Legacy: keep for simplicity or backward compat
+  subtotal         Float
+  preparationNotes String? // Customer notes: "sin cebolla", "extra queso"
+  createdAt        DateTime         @default(now())
+  variant          ProductVariant?  @relation(fields: [variantId], references: [id])
+  product          Product          @relation(fields: [productId], references: [id])
+  invoice          Invoice          @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  returnItems      ReturnItem[]
+  lineTaxes        InvoiceLineTax[]
+}
+
+model TaxRate {
+  id                String              @id @default(cuid())
+  name              String // e.g., "IVA 19%", "ICA Bogotá"
+  type              String // "IVA", "ICA", "WHT" (Retención), etc.
+  rate              Float // e.g., 19.0
+  description       String?
+  active            Boolean             @default(true)
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  products          Product[]           @relation("ProductTaxes")
+  invoiceLineTaxes  InvoiceLineTax[]
+  invoiceTaxSummary InvoiceTaxSummary[]
+}
+
+model InvoiceLineTax {
+  id            String      @id @default(cuid())
+  invoiceItemId String
+  taxRateId     String?
+  baseAmount    Float // Base for tax calculation
+  taxAmount     Float // Resulting tax amount
+  rate          Float // Rate used at that time (snapshot)
+  name          String // Name used at that time (snapshot)
+  invoiceItem   InvoiceItem @relation(fields: [invoiceItemId], references: [id], onDelete: Cascade)
+  taxRate       TaxRate?    @relation(fields: [taxRateId], references: [id])
+
+  @@index([invoiceItemId])
+  @@index([taxRateId])
+}
+
+model InvoiceTaxSummary {
+  id         String  @id @default(cuid())
+  invoiceId  String
+  taxRateId  String?
+  name       String // Snapshot name
+  baseAmount Float // Total base for this tax
+  taxAmount  Float // Total tax for this tax
+  rate       Float // Snapshot rate
+  invoice    Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  taxRate    TaxRate? @relation(fields: [taxRateId], references: [id])
+
+  @@index([invoiceId])
+  @@index([taxRateId])
 }
 
 model Payment {
-  id          String   @id @default(cuid())
-  invoiceId   String
-  amount      Float
-  method      String   // CASH, CARD, TRANSFER, MERCADOPAGO
-  reference   String?
-  notes       String?
+  id                       String   @id @default(cuid())
+  invoiceId                String
+  amount                   Float
+  method                   String // CASH, CARD, TRANSFER, MERCADOPAGO (Snaphot/Legacy)
+  paymentMethodId          String?
+  reference                String?
+  notes                    String?
   // Mercado Pago fields
-  mercadoPagoPaymentId String?  @unique // ID del pago en Mercado Pago
-  mercadoPagoPreferenceId String? // ID de la preferencia de pago
-  mercadoPagoStatus     String?  // approved, pending, rejected, cancelled, refunded, charged_back
-  mercadoPagoStatusDetail String? // Detalle del estado
+  mercadoPagoPaymentId     String?  @unique // ID del pago en Mercado Pago
+  mercadoPagoPreferenceId  String? // ID de la preferencia de pago
+  mercadoPagoStatus        String? // approved, pending, rejected, cancelled, refunded, charged_back
+  mercadoPagoStatusDetail  String? // Detalle del estado
   mercadoPagoPaymentMethod String? // credit_card, debit_card, ticket, bank_transfer, etc.
   mercadoPagoTransactionId String? // ID de la transacción
-  mercadoPagoResponse   String? // JSON con respuesta completa de MP
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  createdById String?
-  invoice     Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
-  createdBy   User?    @relation("PaymentCreatedBy", fields: [createdById], references: [id])
-  
+  mercadoPagoResponse      String? // JSON con respuesta completa de MP
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+  createdById              String?
+  invoice                  Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  paymentMethod            PaymentMethod? @relation(fields: [paymentMethodId], references: [id])
+  createdBy                User?    @relation("PaymentCreatedBy", fields: [createdById], references: [id])
+
   @@index([mercadoPagoPaymentId])
   @@index([mercadoPagoPreferenceId])
 }
@@ -520,24 +618,24 @@ model Return {
   createdAt   DateTime @default(now())
   createdById String?
 
-  invoice     Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
-  createdBy   User?    @relation("ReturnCreatedBy", fields: [createdById], references: [id])
-  items       ReturnItem[]
-  payments    ReturnPayment[]
+  invoice   Invoice         @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  createdBy User?           @relation("ReturnCreatedBy", fields: [createdById], references: [id])
+  items     ReturnItem[]
+  payments  ReturnPayment[]
 
   @@index([invoiceId])
   @@index([createdAt])
 }
 
 model ReturnItem {
-  id        String   @id @default(cuid())
-  returnId  String
+  id            String   @id @default(cuid())
+  returnId      String
   invoiceItemId String
-  quantity  Float
-  total     Float    @default(0) // Total devuelto por ítem (incluye IVA)
-  createdAt DateTime @default(now())
+  quantity      Float
+  total         Float    @default(0) // Total devuelto por ítem (incluye IVA)
+  createdAt     DateTime @default(now())
 
-  return    Return      @relation(fields: [returnId], references: [id], onDelete: Cascade)
+  return      Return      @relation(fields: [returnId], references: [id], onDelete: Cascade)
   invoiceItem InvoiceItem @relation(fields: [invoiceItemId], references: [id])
 
   @@index([returnId])
@@ -545,17 +643,17 @@ model ReturnItem {
 }
 
 model ReturnPayment {
-  id        String   @id @default(cuid())
-  returnId  String
-  amount    Float
-  method    String
-  reference String?
-  notes     String?
-  createdAt DateTime @default(now())
+  id          String   @id @default(cuid())
+  returnId    String
+  amount      Float
+  method      String
+  reference   String?
+  notes       String?
+  createdAt   DateTime @default(now())
   createdById String?
 
-  return    Return   @relation(fields: [returnId], references: [id], onDelete: Cascade)
-  createdBy User?    @relation("ReturnPaymentCreatedBy", fields: [createdById], references: [id])
+  return    Return @relation(fields: [returnId], references: [id], onDelete: Cascade)
+  createdBy User?  @relation("ReturnPaymentCreatedBy", fields: [createdById], references: [id])
 
   @@index([returnId])
   @@index([createdAt])
@@ -578,18 +676,18 @@ model Supplier {
 }
 
 model MarketingCampaign {
-  id          String                    @id @default(cuid())
+  id          String                       @id @default(cuid())
   name        String
   subject     String
   htmlContent String
-  status      String                    @default("DRAFT") // DRAFT, SCHEDULED, SENDING, SENT, CANCELLED
+  status      String                       @default("DRAFT") // DRAFT, SCHEDULED, SENDING, SENT, CANCELLED
   scheduledAt DateTime?
   sentAt      DateTime?
-  createdAt   DateTime                  @default(now())
-  updatedAt   DateTime                  @updatedAt
+  createdAt   DateTime                     @default(now())
+  updatedAt   DateTime                     @updatedAt
   createdById String?
   recipients  MarketingCampaignRecipient[]
-  createdBy   User?                     @relation("CampaignCreatedBy", fields: [createdById], references: [id])
+  createdBy   User?                        @relation("MarketingCampaignCreatedBy", fields: [createdById], references: [id])
 }
 
 model MarketingCampaignRecipient {
@@ -603,10 +701,18 @@ model MarketingCampaignRecipient {
   createdAt  DateTime          @default(now())
   campaign   MarketingCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   customer   Customer?         @relation(fields: [customerId], references: [id], onDelete: SetNull)
-  
+
   @@index([campaignId])
   @@index([customerId])
   @@index([email])
+  retryCount Int      @default(0)
+}
+
+model Unsubscribe {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  reason    String?
+  createdAt DateTime @default(now())
 }
 
 model PurchaseOrder {
@@ -688,6 +794,7 @@ model CashShift {
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
   movements    CashMovement[]
+  summaryItems ShiftSummary[]
   user         User           @relation(fields: [userId], references: [id])
 }
 
@@ -703,172 +810,198 @@ model CashMovement {
   cashShift   CashShift @relation(fields: [cashShiftId], references: [id], onDelete: Cascade)
 }
 
+model PaymentMethod {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  type      String   @default("ELECTRONIC") // CASH, ELECTRONIC, CARD, TRANSFER
+  active    Boolean  @default(true)
+  config    String?  // JSON configuration string
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  payments     Payment[]
+  summaryItems ShiftSummary[]
+}
+
+model ShiftSummary {
+  id              String   @id @default(cuid())
+  shiftId         String
+  paymentMethodId String
+  expectedAmount  Float    @default(0)
+  actualAmount    Float?
+  
+  shift         CashShift     @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+  paymentMethod PaymentMethod @relation(fields: [paymentMethodId], references: [id])
+
+  @@unique([shiftId, paymentMethodId])
+}
+
 // Multi-tenant models
 model Tenant {
-  id          String        @id @default(cuid())
-  name        String
-  slug        String        @unique
-  email       String?
-  phone       String?
-  address     String?
-  databaseUrl String        @unique // URL de la base de datos específica del tenant
-  active      Boolean       @default(true)
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+  id            String          @id @default(cuid())
+  name          String
+  slug          String          @unique
+  email         String?
+  phone         String?
+  address       String?
+  databaseUrl   String          @unique // URL de la base de datos específica del tenant
+  active        Boolean         @default(true)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
   subscriptions Subscription[]
-  settings    TenantSettings?
+  settings      TenantSettings?
 }
 
 model Plan {
-  id          String        @id @default(cuid())
-  name        String        @unique
-  description String?
-  price       Float
-  currency    String        @default("COP")
-  interval    String        // "monthly" | "annual"
-  features    String?       // JSON string con las características
-  active      Boolean       @default(true)
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+  id            String         @id @default(cuid())
+  name          String         @unique
+  description   String?
+  price         Float
+  currency      String         @default("COP")
+  interval      String // "monthly" | "annual"
+  features      String? // JSON string con las características
+  active        Boolean        @default(true)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
   subscriptions Subscription[]
 }
 
 model Subscription {
-  id            String    @id @default(cuid())
-  tenantId      String    @unique // Un tenant solo puede tener una suscripción activa
-  planId        String
-  status        String    // "active" | "cancelled" | "expired" | "trial" | "pending_payment"
-  startDate     DateTime
-  endDate       DateTime?
-  trialEndDate  DateTime?
-  autoRenew     Boolean   @default(true)
+  id                       String    @id @default(cuid())
+  tenantId                 String    @unique // Un tenant solo puede tener una suscripción activa
+  planId                   String
+  status                   String // "active" | "cancelled" | "expired" | "trial" | "pending_payment"
+  startDate                DateTime
+  endDate                  DateTime?
+  trialEndDate             DateTime?
+  autoRenew                Boolean   @default(true)
   // Mercado Pago fields
-  mercadoPagoPaymentId String?  @unique // ID del pago en Mercado Pago
-  mercadoPagoPreferenceId String? // ID de la preferencia de pago
-  mercadoPagoStatus     String?  // approved, pending, rejected, cancelled, refunded, charged_back
-  mercadoPagoStatusDetail String? // Detalle del estado
+  mercadoPagoPaymentId     String?   @unique // ID del pago en Mercado Pago
+  mercadoPagoPreferenceId  String? // ID de la preferencia de pago
+  mercadoPagoStatus        String? // approved, pending, rejected, cancelled, refunded, charged_back
+  mercadoPagoStatusDetail  String? // Detalle del estado
   mercadoPagoPaymentMethod String? // credit_card, debit_card, ticket, bank_transfer, etc.
   mercadoPagoTransactionId String? // ID de la transacción
-  mercadoPagoResponse   String? // JSON con respuesta completa de MP
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  tenant        Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  plan          Plan      @relation(fields: [planId], references: [id])
-  
+  mercadoPagoResponse      String? // JSON con respuesta completa de MP
+  createdAt                DateTime  @default(now())
+  updatedAt                DateTime  @updatedAt
+  tenant                   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  plan                     Plan      @relation(fields: [planId], references: [id])
+
   @@index([mercadoPagoPaymentId])
   @@index([mercadoPagoPreferenceId])
 }
 
 model TenantSettings {
-  id                    String    @id @default(cuid())
-  tenantId              String    @unique
+  id                          String    @id @default(cuid())
+  tenantId                    String    @unique
   // Facturación Electrónica
-  electronicBillingProvider String? // "FEG" | "CUSTOM" | "DIAN_DIRECT"
-  electronicBillingApiUrl   String?
-  electronicBillingApiKey   String?
-  companyNit            String?
-  companyName            String?
-  companyAddress         String?
-  companyPhone           String?
-  companyEmail           String?
-  billingResolutionNumber String?
-  billingResolutionPrefix String?
-  billingResolutionFrom   String?
-  billingResolutionTo     String?
-  billingResolutionValidFrom DateTime?
-  billingResolutionValidTo   DateTime?
+  electronicBillingProvider   String? // "FEG" | "CUSTOM" | "DIAN_DIRECT"
+  electronicBillingApiUrl     String?
+  electronicBillingApiKey     String?
+  companyNit                  String?
+  companyName                 String?
+  companyAddress              String?
+  companyPhone                String?
+  companyEmail                String?
+  billingResolutionNumber     String?
+  billingResolutionPrefix     String?
+  billingResolutionFrom       String?
+  billingResolutionTo         String?
+  billingResolutionValidFrom  DateTime?
+  billingResolutionValidTo    DateTime?
   // Suscripciones
-  subscriptionTrialDays Int?      @default(14) // Días de prueba
-  subscriptionGracePeriodDays Int? @default(7)  // Días de gracia después de expiración
-  subscriptionAutoRenew  Boolean?  @default(true)
+  subscriptionTrialDays       Int?      @default(14) // Días de prueba
+  subscriptionGracePeriodDays Int?      @default(7) // Días de gracia después de expiración
+  subscriptionAutoRenew       Boolean?  @default(true)
   // Configuraciones Generales
-  timezone              String?    @default("America/Bogota")
-  currency              String?    @default("COP")
-  dateFormat            String?    @default("DD/MM/YYYY")
-  timeFormat            String?    @default("24h") // "12h" | "24h"
-  language              String?    @default("es")
-  invoicePrefix         String?    @default("FV")
-  invoiceNumberFormat   String?    @default("000000")
-  quotationPrefix       String?    @default("COT")
-  quotationNumberFormat String?    @default("000000")
-  purchaseOrderPrefix   String?    @default("OC")
-  purchaseOrderNumberFormat String? @default("000000")
+  timezone                    String?   @default("America/Bogota")
+  currency                    String?   @default("COP")
+  dateFormat                  String?   @default("DD/MM/YYYY")
+  timeFormat                  String?   @default("24h") // "12h" | "24h"
+  language                    String?   @default("es")
+  invoicePrefix               String?   @default("FV")
+  invoiceNumberFormat         String?   @default("000000")
+  quotationPrefix             String?   @default("COT")
+  quotationNumberFormat       String?   @default("000000")
+  purchaseOrderPrefix         String?   @default("OC")
+  purchaseOrderNumberFormat   String?   @default("000000")
   // Configuraciones adicionales (JSON para flexibilidad)
-  customSettings        String?    // JSON string con configuraciones personalizadas
+  customSettings              String? // JSON string con configuraciones personalizadas
   // Onboarding
-  onboardingCompleted   Boolean?    @default(false)
-  onboardingUserName    String?     // Nombre del usuario recopilado en onboarding
-  onboardingCompanyName String?    // Nombre de la empresa recopilado en onboarding
-  // Mercado Pago
-  mercadoPagoAccessToken String?    // Access Token de Mercado Pago
-  mercadoPagoPublicKey   String?    // Public Key de Mercado Pago
-  mercadoPagoEnabled     Boolean?   @default(false) // Habilitar pagos con Mercado Pago
-  mercadoPagoWebhookUrl  String?    // URL del webhook configurado en MP
-  
-  // Meta (WhatsApp / Instagram)
-  metaBusinessId         String?    // ID del negocio en Meta
-  metaAccessToken        String?    // Token de acceso permanente (System User)
-  whatsappPhoneNumberId  String?    // ID del número de teléfono de WhatsApp
-  instagramAccountId     String?    // ID de la cuenta de Instagram vinculada
-
+  onboardingCompleted         Boolean?  @default(false)
+  onboardingUserName          String? // Nombre del usuario recopilado en onboarding
+  onboardingCompanyName       String? // Nombre de la empresa recopilado en onboarding
   // Restaurant Mode
-  enableRestaurantMode   Boolean?   @default(false)
+  enableRestaurantMode        Boolean?  @default(false)
 
-  createdAt             DateTime    @default(now())
-  updatedAt             DateTime    @updatedAt
-  tenant                Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  
+  // Mercado Pago
+  mercadoPagoAccessToken String? // Access Token de Mercado Pago
+  mercadoPagoPublicKey   String? // Public Key de Mercado Pago
+  mercadoPagoEnabled     Boolean? @default(false) // Habilitar pagos con Mercado Pago
+  mercadoPagoWebhookUrl  String? // URL del webhook configurado en MP
+
+  // Meta (WhatsApp / Instagram)
+  metaBusinessId        String? // ID del negocio en Meta
+  metaAccessToken       String? // Token de acceso permanente (System User)
+  whatsappPhoneNumberId String? // ID del número de teléfono de WhatsApp
+  instagramAccountId    String? // ID de la cuenta de Instagram vinculada
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
   @@index([tenantId])
 }
 
 model ChatMessage {
-  id          String   @id @default(cuid())
-  leadId      String
-  direction   String   // "INBOUND" | "OUTBOUND"
-  channel     String   // "WHATSAPP" | "INSTAGRAM"
-  type        String   @default("text") // "text", "image", "document", etc.
-  content     String   // Texto del mensaje
-  mediaUrl    String?  // URL si es imagen/doc
-  externalId  String?  @unique // ID del mensaje en Meta (wamid...)
-  status      String   @default("SENT") // "SENT", "DELIVERED", "READ", "FAILED"
-  createdAt   DateTime @default(now())
-  
-  lead        Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  id         String   @id @default(cuid())
+  leadId     String
+  direction  String // "INBOUND" | "OUTBOUND"
+  channel    String // "WHATSAPP" | "INSTAGRAM"
+  type       String   @default("text") // "text", "image", "document", etc.
+  content    String // Texto del mensaje
+  mediaUrl   String? // URL si es imagen/doc
+  externalId String?  @unique // ID del mensaje en Meta (wamid...)
+  status     String   @default("SENT") // "SENT", "DELIVERED", "READ", "FAILED"
+  createdAt  DateTime @default(now())
+
+  lead Lead @relation(fields: [leadId], references: [id], onDelete: Cascade)
 
   @@index([leadId])
   @@index([externalId])
 }
 
 model ElectronicInvoiceProviderConfig {
-  id                    String   @id @default(cuid())
-  tenantId              String
-  provider              String   @default("ALEGRA")
-  alegraEmail           String
-  alegraTokenEncrypted  String
-  status                String   @default("disconnected") // disconnected, connected, invalid
-  lastCheckedAt         DateTime?
-  companyInfo           Json?    // Resumen de la empresa (nombre/id)
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
+  id                   String    @id @default(cuid())
+  tenantId             String
+  provider             String    @default("ALEGRA")
+  alegraEmail          String
+  alegraTokenEncrypted String
+  status               String    @default("disconnected") // disconnected, connected, invalid
+  lastCheckedAt        DateTime?
+  companyInfo          Json? // Resumen de la empresa (nombre/id)
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
 
   @@unique([tenantId, provider])
 }
 
 model ElectronicInvoiceTransmission {
-  id               String   @id @default(cuid())
+  id               String    @id @default(cuid())
   tenantId         String
   invoiceId        String
-  provider         String   @default("ALEGRA")
-  status           String   @default("QUEUED") // NOT_CONFIGURED, QUEUED, SENT_TO_ALEGRA, ALEGRA_ACCEPTED, ALEGRA_REJECTED, ERROR
-  attemptCount     Int      @default(0)
+  provider         String    @default("ALEGRA")
+  status           String    @default("QUEUED") // NOT_CONFIGURED, QUEUED, SENT_TO_ALEGRA, ALEGRA_ACCEPTED, ALEGRA_REJECTED, ERROR
+  attemptCount     Int       @default(0)
   lastAttemptAt    DateTime?
   alegraInvoiceId  String?
   lastErrorMessage String?
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 
-  invoice          Invoice  @relation(fields: [invoiceId], references: [id])
-  events           ElectronicInvoiceEvent[]
+  invoice Invoice                  @relation(fields: [invoiceId], references: [id])
+  events  ElectronicInvoiceEvent[]
 
   @@unique([tenantId, invoiceId])
   @@index([tenantId, status])
@@ -879,66 +1012,262 @@ model ElectronicInvoiceEvent {
   id               String   @id @default(cuid())
   tenantId         String
   transmissionId   String
-  eventType        String   // QUEUED, REQUEST_SENT, RESPONSE_OK, RESPONSE_ERR, RETRY, FINAL
+  eventType        String // QUEUED, REQUEST_SENT, RESPONSE_OK, RESPONSE_ERR, RETRY, FINAL
   payloadSanitized Json?
   createdAt        DateTime @default(now())
 
-  transmission     ElectronicInvoiceTransmission @relation(fields: [transmissionId], references: [id])
+  transmission ElectronicInvoiceTransmission @relation(fields: [transmissionId], references: [id])
 
   @@index([transmissionId, createdAt])
 }
 
 model Unit {
-  id          String   @id @default(cuid())
-  name        String
-  symbol      String   // kg, g, l, ml, unit
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
-  recipeItems RecipeItem[]
+  id        String   @id @default(cuid())
+  name      String
+  symbol    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  recipeItems     RecipeItem[]
   conversionsFrom UnitConversion[] @relation("FromUnit")
   conversionsTo   UnitConversion[] @relation("ToUnit")
 }
 
 model UnitConversion {
-  id          String   @id @default(cuid())
-  fromUnitId  String
-  toUnitId    String
-  multiplier  Float    // quantityInFromUnit * multiplier = quantityInToUnit
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id         String   @id @default(cuid())
+  fromUnitId String
+  toUnitId   String
+  multiplier Float
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
-  fromUnit    Unit     @relation("FromUnit", fields: [fromUnitId], references: [id], onDelete: Cascade)
-  toUnit      Unit     @relation("ToUnit", fields: [toUnitId], references: [id], onDelete: Cascade)
+  fromUnit Unit @relation("FromUnit", fields: [fromUnitId], references: [id], onDelete: Cascade)
+  toUnit   Unit @relation("ToUnit", fields: [toUnitId], references: [id], onDelete: Cascade)
 
-  @@index([fromUnitId, toUnitId])
+  @@unique([fromUnitId, toUnitId])
 }
 
 model Recipe {
-  id          String   @id @default(cuid())
-  productId   String   @unique
-  yield       Float    @default(1)
-  active      Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id        String   @id @default(cuid())
+  productId String   @unique
+  yield     Float    @default(1)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  items       RecipeItem[]
+  product Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
+  items   RecipeItem[]
 }
 
 model RecipeItem {
-  id          String   @id @default(cuid())
-  recipeId    String
+  id           String   @id @default(cuid())
+  recipeId     String
   ingredientId String
   quantity     Float
-  unitId      String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  unitId       String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
-  recipe      Recipe   @relation(fields: [recipeId], references: [id], onDelete: Cascade)
-  ingredient  Product  @relation("Ingredient", fields: [ingredientId], references: [id], onDelete: Restrict)
-  unit        Unit?    @relation(fields: [unitId], references: [id], onDelete: SetNull)
+  recipe     Recipe  @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  ingredient Product @relation("Ingredient", fields: [ingredientId], references: [id])
+  unit       Unit?   @relation(fields: [unitId], references: [id])
 
   @@index([recipeId])
   @@index([ingredientId])
 }
+
+// ============================================
+// CRM MODELS
+// ============================================
+
+model Campaign {
+  id            String        @id @default(cuid())
+  name          String
+  type          String // EMAIL, SMS, SOCIAL_MEDIA, EVENT
+  status        String        @default("DRAFT") // DRAFT, ACTIVE, PAUSED, COMPLETED
+  startDate     DateTime?
+  endDate       DateTime?
+  budget        Float?
+  spent         Float?        @default(0)
+  description   String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  createdById   String?
+  opportunities Opportunity[]
+  createdBy     User?         @relation("CampaignCreatedBy", fields: [createdById], references: [id])
+}
+
+model Opportunity {
+  id                String    @id @default(cuid())
+  customerId        String
+  campaignId        String?
+  title             String
+  value             Float
+  stage             String    @default("LEAD") // LEAD, QUALIFIED, PROPOSAL, NEGOTIATION, CLOSED_WON, CLOSED_LOST
+  probability       Int       @default(0) // 0-100
+  expectedCloseDate DateTime?
+  closedDate        DateTime?
+  notes             String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  createdById       String?
+  assignedToId      String?
+  customer          Customer  @relation(fields: [customerId], references: [id])
+  campaign          Campaign? @relation(fields: [campaignId], references: [id])
+  createdBy         User?     @relation("OpportunityCreatedBy", fields: [createdById], references: [id])
+  assignedTo        User?     @relation("OpportunityAssignedTo", fields: [assignedToId], references: [id])
+  quotes            Quote[]
+
+  @@index([customerId])
+  @@index([campaignId])
+  @@index([stage])
+  @@index([assignedToId])
+}
+
+model Quote {
+  id            String       @id @default(cuid())
+  quoteNumber   String       @unique
+  customerId    String
+  opportunityId String?
+  status        String       @default("DRAFT") // DRAFT, SENT, ACCEPTED, REJECTED, EXPIRED
+  validUntil    DateTime?
+  subtotal      Float        @default(0)
+  discount      Float        @default(0)
+  tax           Float        @default(0)
+  total         Float        @default(0)
+  notes         String?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  createdById   String?
+  customer      Customer     @relation(fields: [customerId], references: [id])
+  opportunity   Opportunity? @relation(fields: [opportunityId], references: [id])
+  createdBy     User?        @relation("QuoteCreatedBy", fields: [createdById], references: [id])
+  items         QuoteItem[]
+
+  @@index([customerId])
+  @@index([opportunityId])
+  @@index([status])
+}
+
+model QuoteItem {
+  id          String   @id @default(cuid())
+  quoteId     String
+  productId   String?
+  description String
+  quantity    Float
+  unitPrice   Float
+  discount    Float    @default(0)
+  taxRate     Float    @default(0)
+  subtotal    Float
+  quote       Quote    @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  product     Product? @relation(fields: [productId], references: [id])
+
+  @@index([quoteId])
+  @@index([productId])
+}
+
+// ============================================
+// ACCOUNTING MODELS
+// ============================================
+
+model AccountingAccount {
+  id              String             @id @default(cuid())
+  code            String             @unique
+  name            String
+  type            String             // ASSET, LIABILITY, EQUITY, INCOME, EXPENSE
+  parentAccountId String?
+  active          Boolean            @default(true)
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  
+  parentAccount   AccountingAccount? @relation("AccountHierarchy", fields: [parentAccountId], references: [id])
+  childAccounts   AccountingAccount[] @relation("AccountHierarchy")
+  journalLines    JournalEntryLine[]
+
+  @@index([code])
+}
+
+model JournalEntry {
+  id          String             @id @default(cuid())
+  date        DateTime
+  description String
+  reference   String?            // Invoice ID, Payment ID, etc.
+  status      String             @default("DRAFT") // DRAFT, POSTED
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  createdById String?
+  
+  lines       JournalEntryLine[]
+  createdBy   User?              @relation("JournalCreatedBy", fields: [createdById], references: [id])
+
+  @@index([date])
+  @@index([reference])
+}
+
+model JournalEntryLine {
+  id             String            @id @default(cuid())
+  journalEntryId String
+  accountId      String
+  description    String?
+  debit          Float             @default(0)
+  credit         Float             @default(0)
+  
+  journalEntry   JournalEntry      @relation(fields: [journalEntryId], references: [id], onDelete: Cascade)
+  account        AccountingAccount @relation(fields: [accountId], references: [id])
+
+  @@index([journalEntryId])
+  @@index([accountId])
+}
+
+// ============================================
+// PAYROLL MODELS
+// ============================================
+
+model Employee {
+  id             String        @id @default(cuid())
+  userId         String?       @unique // Optional link to system user
+  firstName      String
+  lastName       String
+  documentId     String        @unique
+  email          String?
+  phone          String?
+  address        String?
+  hireDate       DateTime
+  baseSalary     Float
+  status         String        @default("ACTIVE") // ACTIVE, INACTIVE, TERMINATED
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  
+  payrollItems   PayrollItem[]
+}
+
+model PayrollRun {
+  id          String        @id @default(cuid())
+  startDate   DateTime
+  endDate     DateTime
+  paymentDate DateTime?
+  status      String        @default("DRAFT") // DRAFT, APPROVED, PAID
+  total       Float         @default(0)
+  notes       String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  
+  items       PayrollItem[]
+}
+
+model PayrollItem {
+  id           String     @id @default(cuid())
+  payrollRunId String
+  employeeId   String
+  type         String     // SALARY, BONUS, COMMISSION, DEDUCTION
+  description  String?
+  amount       Float
+  createdAt    DateTime   @default(now())
+  
+  payrollRun   PayrollRun @relation(fields: [payrollRunId], references: [id], onDelete: Cascade)
+  employee     Employee   @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([payrollRunId])
+  @@index([employeeId])
+}
+
