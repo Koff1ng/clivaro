@@ -704,7 +704,6 @@ model MarketingCampaignRecipient {
   @@index([campaignId])
   @@index([customerId])
   @@index([campaignId])
-  @@index([customerId])
   @@index([email])
   retryCount Int      @default(0)
 }
@@ -1272,11 +1271,3 @@ model PayrollItem {
   @@index([employeeId])
 }
 
-model Unsubscribe {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  reason    String?
-  createdAt DateTime @default(now())
-
-  @@index([email])
-}
