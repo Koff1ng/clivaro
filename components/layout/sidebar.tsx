@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react'
 import { cn } from '@/lib/utils'
 import {
   NavArrowRight,
+  NavArrowDown, // New import
   Box,
   Archive,
   Group,
@@ -24,48 +25,88 @@ import {
   PasteClipboard,
   Truck,
   StatsUpSquare,
+  Calculator, // For Accounting/General
+  Cash, // For Finances
 } from 'iconoir-react'
 import { Logo } from '@/components/ui/logo'
 import { AppIcon } from '@/components/ui/app-icon'
 import { useSidebar } from '@/lib/sidebar-context'
-import { Button } from '@/components/ui/button'
 import { useTenantPlan } from '@/lib/hooks/use-plan-features'
-import { ROUTE_FEATURES } from '@/lib/plan-features'
+// import { Button } from '@/components/ui/button' // Unused
 
-const menuItems = [
-  { href: '/dashboard', label: 'Dashboard', icon: NavArrowRight, permission: ['view_reports', 'manage_sales'], planFeature: 'viewReports' },
-  { href: '/dashboard/reports', label: 'Reportes', icon: StatsUpSquare, permission: 'view_reports', planFeature: 'viewReports' },
-  { href: '/products', label: 'Productos', icon: Box, permission: 'manage_products', planFeature: 'manageProducts' },
-  { href: '/inventory', label: 'Inventario', icon: Archive, permission: 'manage_inventory', planFeature: 'manageInventory' },
-  { href: '/crm/customers', label: 'Clientes', icon: Group, permission: ['manage_crm', 'manage_sales'], planFeature: 'manageSales' },
-  { href: '/crm/leads', label: 'Oportunidades', icon: KanbanBoard, permission: 'manage_crm', planFeature: 'leads' },
-  { href: '/marketing/campaigns', label: 'Campañas', icon: Mail, permission: 'manage_crm', planFeature: 'marketing' },
-  { href: '/sales/quotes', label: 'Cotizaciones', icon: PasteClipboard, permission: 'manage_sales', planFeature: 'quotations' },
-  { href: '/sales/orders', label: 'Órdenes', icon: PasteClipboard, permission: 'manage_sales', planFeature: 'manageSales' },
-  { href: '/sales/invoices', label: 'Facturas', icon: Page, permission: 'manage_sales', planFeature: 'invoices' },
-  { href: '/dashboard/electronic-invoicing', label: 'Fact. Electrónica', icon: ShieldCheck, permission: 'manage_sales', planFeature: 'invoices' },
-  { href: '/purchases/suppliers', label: 'Proveedores', icon: Shop, permission: 'manage_purchases', planFeature: 'managePurchases' },
-  { href: '/purchases/orders', label: 'Órdenes Compra', icon: Bag, permission: 'manage_purchases', planFeature: 'managePurchases' },
-  { href: '/purchases/receipts', label: 'Recepciones', icon: Truck, permission: 'manage_purchases', planFeature: 'managePurchases' },
-  { href: '/pos', label: 'Punto de Venta', icon: CartIcon, permission: 'manage_sales', planFeature: 'pos' },
-  { href: '/cash/shifts', label: 'Caja', icon: WalletIcon, permission: ['manage_cash', 'manage_sales'], planFeature: 'manageCash' },
-  { href: '/admin/users', label: 'Usuarios', icon: UserSquare, permission: 'manage_users', planFeature: 'manageUsers' },
-  { href: '/settings', label: 'Configuración', icon: SettingsIcon, permission: 'manage_users', planFeature: 'manageUsers' },
-]
+// Define Group Structure
+type MenuItem = {
+  href: string
+  label: string
+  icon: any
+  permission?: string | string[]
+  planFeature?: string
+}
 
-const accountingItems = [
-  { href: '/accounting/accounts', label: 'Plan de Cuentas', icon: Page, permission: 'manage_crm', planFeature: 'accounting' },
-  { href: '/accounting/journal', label: 'Libro Diario', icon: Page, permission: 'manage_crm', planFeature: 'accounting' },
-]
+type MenuGroup = {
+  title: string
+  key: string
+  items: MenuItem[]
+}
 
-const payrollItems = [
-  { href: '/payroll/employees', label: 'Empleados', icon: Group, permission: 'manage_users', planFeature: 'payroll' }, // Reuse Group (User) icon
-  { href: '/payroll/runs', label: 'Nómina', icon: WalletIcon, permission: 'manage_users', planFeature: 'payroll' },
+const menuGroups: MenuGroup[] = [
+  {
+    title: 'General',
+    key: 'general',
+    items: [
+      { href: '/dashboard', label: 'Dashboard', icon: NavArrowRight, permission: ['view_reports', 'manage_sales'], planFeature: 'viewReports' },
+      { href: '/dashboard/reports', label: 'Reportes', icon: StatsUpSquare, permission: 'view_reports', planFeature: 'viewReports' },
+    ]
+  },
+  {
+    title: 'Comercial',
+    key: 'comercial',
+    items: [
+      { href: '/crm/customers', label: 'Clientes', icon: Group, permission: ['manage_crm', 'manage_sales'], planFeature: 'manageSales' },
+      { href: '/crm/leads', label: 'Oportunidades', icon: KanbanBoard, permission: 'manage_crm', planFeature: 'leads' },
+      { href: '/marketing/campaigns', label: 'Campañas', icon: Mail, permission: 'manage_crm', planFeature: 'marketing' },
+      { href: '/sales/quotes', label: 'Cotizaciones', icon: PasteClipboard, permission: 'manage_sales', planFeature: 'quotations' },
+      { href: '/sales/orders', label: 'Órdenes', icon: PasteClipboard, permission: 'manage_sales', planFeature: 'manageSales' },
+      { href: '/sales/invoices', label: 'Facturas', icon: Page, permission: 'manage_sales', planFeature: 'invoices' },
+      { href: '/dashboard/electronic-invoicing', label: 'Fact. Electrónica', icon: ShieldCheck, permission: 'manage_sales', planFeature: 'invoices' },
+      { href: '/pos', label: 'Punta de Venta', icon: CartIcon, permission: 'manage_sales', planFeature: 'pos' },
+    ]
+  },
+  {
+    title: 'Inventario & Compras',
+    key: 'inventory',
+    items: [
+      { href: '/products', label: 'Productos', icon: Box, permission: 'manage_products', planFeature: 'manageProducts' },
+      { href: '/inventory', label: 'Inventario', icon: Archive, permission: 'manage_inventory', planFeature: 'manageInventory' },
+      { href: '/purchases/suppliers', label: 'Proveedores', icon: Shop, permission: 'manage_purchases', planFeature: 'managePurchases' },
+      { href: '/purchases/orders', label: 'Órdenes Compra', icon: Bag, permission: 'manage_purchases', planFeature: 'managePurchases' },
+      { href: '/purchases/receipts', label: 'Recepciones', icon: Truck, permission: 'manage_purchases', planFeature: 'managePurchases' },
+    ]
+  },
+  {
+    title: 'Finanzas',
+    key: 'finances',
+    items: [
+      { href: '/cash/shifts', label: 'Caja', icon: WalletIcon, permission: ['manage_cash', 'manage_sales'], planFeature: 'manageCash' },
+      { href: '/accounting/accounts', label: 'Plan de Cuentas', icon: Page, permission: 'manage_crm', planFeature: 'accounting' },
+      { href: '/accounting/journal', label: 'Libro Diario', icon: Page, permission: 'manage_crm', planFeature: 'accounting' },
+      { href: '/payroll/employees', label: 'Empleados', icon: Group, permission: 'manage_users', planFeature: 'payroll' },
+      { href: '/payroll/runs', label: 'Nómina', icon: WalletIcon, permission: 'manage_users', planFeature: 'payroll' },
+    ]
+  },
+  {
+    title: 'Sistema',
+    key: 'system',
+    items: [
+      { href: '/admin/users', label: 'Usuarios', icon: UserSquare, permission: 'manage_users', planFeature: 'manageUsers' },
+      { href: '/settings', label: 'Configuración', icon: SettingsIcon, permission: 'manage_users', planFeature: 'manageUsers' },
+    ]
+  }
 ]
 
 export function Sidebar() {
   const pathname = usePathname()
-  const router = useRouter()
+  // const router = useRouter() // Unused
   const { data: session } = useSession()
   const { isOpen, toggle } = useSidebar()
   const userPermissions = (session?.user as any)?.permissions || []
@@ -73,119 +114,105 @@ export function Sidebar() {
   const { hasFeature: hasPlanFeature, isNewFeature, newFeatures, isLoading, planName } = useTenantPlan()
   const [visitedFeatures, setVisitedFeatures] = useState<Record<string, number>>({})
 
-  // Cargar features visitadas desde localStorage
+  // State for collapsible groups. Default all open or specific logic.
+  // Using a map for open/closed state. Default to true (open).
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
+    general: true,
+    comercial: true,
+    inventory: true,
+    finances: true,
+    system: true
+  })
+
+  const toggleGroup = (key: string) => {
+    setOpenGroups(prev => ({ ...prev, [key]: !prev[key] }))
+  }
+
+  // Effect for Visited Features (Persistance) - SAME AS BEFORE
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const stored = localStorage.getItem('visited-new-features')
       if (stored) {
         try {
           const parsed = JSON.parse(stored)
-          // Las features visitadas se guardan permanentemente hasta que se limpien manualmente
-          // Convertir a un objeto simple de strings (sin timestamps, solo marcar como visitadas)
           const visited: Record<string, number> = {}
           Object.keys(parsed).forEach((key) => {
-            visited[key] = Date.now() // Mantener timestamp para compatibilidad
+            visited[key] = Date.now()
           })
           setVisitedFeatures(visited)
-        } catch (e) {
-          // Ignorar errores de parseo
-        }
+        } catch (e) { }
       }
     }
   }, [])
 
-  // Marcar feature como visitada cuando se hace click en ella
   const handleFeatureClick = (feature: string) => {
     if (!isNewFeature(feature as any)) return
-
     const featureKey = feature
     const now = Date.now()
 
-    // Si no está visitada, marcar timestamp de click
     if (!visitedFeatures[featureKey]) {
       const updated = { ...visitedFeatures, [featureKey]: now }
       setVisitedFeatures(updated)
       if (typeof window !== 'undefined') {
         localStorage.setItem('visited-new-features', JSON.stringify(updated))
       }
-
-      // Después de 1 minuto, marcar como permanentemente visitada
       setTimeout(() => {
         setVisitedFeatures(prev => {
           const newVisited = { ...prev }
-          // Mantener el timestamp para indicar que fue visitada permanentemente
           if (typeof window !== 'undefined') {
             localStorage.setItem('visited-new-features', JSON.stringify(newVisited))
           }
           return newVisited
         })
-      }, 60 * 1000) // 1 minuto
+      }, 60 * 1000)
     }
   }
 
-  // Marcar feature como visitada cuando se navega a ella (fallback)
   useEffect(() => {
     if (!pathname || !newFeatures || newFeatures.length === 0) return
-
-    // Encontrar la feature correspondiente a la ruta actual
-    const currentFeature = menuItems.find(item => {
+    const allItems = menuGroups.flatMap(g => g.items)
+    const currentFeature = allItems.find(item => {
       const isActive = pathname === item.href || pathname?.startsWith(item.href + '/')
       return isActive && item.planFeature && isNewFeature(item.planFeature as any)
     })
-
     if (currentFeature?.planFeature) {
       handleFeatureClick(currentFeature.planFeature)
     }
   }, [pathname, newFeatures, isNewFeature])
 
-  // Función para verificar si una feature debe mostrar la etiqueta "NUEVO"
   const shouldShowNewBadge = (feature: string) => {
     if (!isNewFeature(feature as any)) return false
-
     const visitTime = visitedFeatures[feature]
-    if (!visitTime) return true // No ha sido visitada, mostrar
-
-    // Si fue visitada hace menos de 1 minuto, aún mostrar el badge
-    // Después de 1 minuto, desaparecer permanentemente
+    if (!visitTime) return true
     const now = Date.now()
     const timeSinceClick = now - visitTime
-    return timeSinceClick < 60 * 1000 // Mostrar solo si pasó menos de 1 minuto
+    return timeSinceClick < 60 * 1000
   }
 
-  const filteredMenuItems = menuItems.filter(item => {
-    // Verificar permisos de usuario primero
-    let hasPermission = true
-    if (item.permission) {
-      if (Array.isArray(item.permission)) {
-        hasPermission = item.permission.some(perm => userPermissions.includes(perm))
-      } else {
-        hasPermission = userPermissions.includes(item.permission)
+  // Filter Items Function
+  const filterGroupItems = (items: MenuItem[]) => {
+    return items.filter(item => {
+      let hasPermission = true
+      if (item.permission) {
+        if (Array.isArray(item.permission)) {
+          hasPermission = item.permission.some(perm => userPermissions.includes(perm))
+        } else {
+          hasPermission = userPermissions.includes(item.permission)
+        }
       }
-    }
+      if (!hasPermission) return false
 
-    if (!hasPermission) return false
-
-    // Verificar feature del plan
-    // Si no hay plan activo o está cargando, mostrar elementos basándose solo en permisos
-    // (asumir acceso completo si no hay plan para evitar ocultar el sidebar)
-    if (item.planFeature && !isSuperAdmin) {
-      // Si está cargando el plan, mostrar el elemento (evitar ocultar mientras carga)
-      if (isLoading) {
-        return true
+      if (item.planFeature && !isSuperAdmin) {
+        if (isLoading) return true
+        if (!planName) return true
+        return hasPlanFeature(item.planFeature as any)
       }
-      // Si no hay plan activo, mostrar todos los elementos (asumir acceso completo)
-      if (!planName) {
-        return true
-      }
-      return hasPlanFeature(item.planFeature as any)
-    }
-
-    return true
-  })
+      return true
+    })
+  }
 
   return (
     <>
-      {/* Overlay para móviles cuando el sidebar está abierto */}
       {isOpen && (
         <div
           className="fixed inset-0 bg-black/50 z-40 md:hidden transition-opacity duration-300"
@@ -193,7 +220,6 @@ export function Sidebar() {
         />
       )}
 
-      {/* Sidebar */}
       <aside
         className={cn(
           'fixed md:static top-0 left-0 z-50 h-screen flex flex-col border-r border-slate-800 bg-[#0F172A] text-slate-100 transition-all duration-300 ease-in-out',
@@ -215,14 +241,7 @@ export function Sidebar() {
                   overflow: 'hidden',
                 }}
               >
-                <div
-                  style={{
-                    transform: 'scale(1.1)',
-                    transformOrigin: 'center',
-                    marginTop: 0,
-                    marginBottom: 0,
-                  }}
-                >
+                <div style={{ transform: 'scale(1.1)' }}>
                   <div className="text-white">
                     <Logo size="md" showByline={false} />
                   </div>
@@ -234,205 +253,117 @@ export function Sidebar() {
 
         <nav className={cn(
           'flex-1 transition-opacity duration-300',
-          isOpen ? 'opacity-100 overflow-y-auto space-y-1 p-4' : 'opacity-0 md:opacity-100 md:overflow-visible space-y-0.5 p-1'
+          isOpen ? 'opacity-100 overflow-y-auto' : 'opacity-0 md:opacity-100 md:overflow-visible'
         )}>
-          {filteredMenuItems.map((item) => {
-            const Icon = item.icon
-            const isActive = pathname === item.href || pathname?.startsWith(item.href + '/')
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                prefetch
-                onClick={() => {
-                  // Si tiene badge "NUEVO", marcar como visitada al hacer click
-                  if (item.planFeature && shouldShowNewBadge(item.planFeature)) {
-                    handleFeatureClick(item.planFeature)
-                  }
-                }}
-                className={cn(
-                  'flex items-center gap-3 rounded-lg text-sm font-medium transition-colors relative group',
-                  isActive
-                    ? 'bg-[#0EA5E9] text-white shadow-lg shadow-cyan-500/20'
-                    : 'text-slate-400 hover:bg-slate-800 hover:text-white',
-                  isOpen ? 'px-3 py-2' : 'px-2 py-2 md:justify-center'
-                )}
-                title={!isOpen ? item.label : undefined}
-              >
-                <AppIcon icon={Icon} />
-                <span className={cn(
-                  'transition-opacity duration-300 whitespace-nowrap flex items-center gap-1.5',
-                  isOpen ? 'opacity-100' : 'opacity-0 md:hidden'
-                )}>
-                  {item.label}
-                  {item.planFeature && shouldShowNewBadge(item.planFeature) && (
-                    <span className="px-1 py-0.5 text-[9px] font-bold text-white bg-green-500 rounded-full animate-pulse">
-                      NUEVO
-                    </span>
-                  )}
-                </span>
-                {/* Tooltip para cuando está colapsado */}
-                {!isOpen && (
-                  <span className="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50 hidden md:block">
-                    {item.label}
-                  </span>
-                )}
-              </Link>
-            )
-          })}
+          <div className={cn('flex flex-col gap-1', isOpen ? 'p-3' : 'p-1')}>
 
-          {/* Accounting Section */}
-          {accountingItems.some(item => {
-            // Logic to check if any accounting item is visible
-            // Replicating permission check logic for simplicity inside the map or here
-            return true // Simplified for now, the map below handles individual visibility
-          }) && (
-              <div className="pt-2 mt-2 border-t border-slate-800">
-                {isOpen && <p className="px-4 mb-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Contabilidad</p>}
-                {accountingItems.map(item => {
-                  // Simplified permission check (reusing logic from filteredMenuItems would be better but requires refactor)
-                  // For now, access userPermissions from scope
-                  return (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      prefetch
-                      className={cn(
-                        'flex items-center gap-3 rounded-lg text-sm font-medium transition-colors relative group',
-                        pathname === item.href || pathname?.startsWith(item.href + '/')
-                          ? 'bg-[#0EA5E9] text-white shadow-lg shadow-cyan-500/20'
-                          : 'text-slate-400 hover:bg-slate-800 hover:text-white',
-                        isOpen ? 'px-3 py-2' : 'px-2 py-2 md:justify-center'
-                      )}
-                      title={!isOpen ? item.label : undefined}
+            {menuGroups.map((group, groupIndex) => {
+              const visibleItems = filterGroupItems(group.items)
+              if (visibleItems.length === 0) return null
+
+              const isGroupOpen = openGroups[group.key]
+
+              return (
+                <div key={group.key} className={cn("mb-2", { 'border-t border-slate-800 pt-2 mt-2': groupIndex > 0 && !isOpen })}>
+                  {/* Group Header - Only visible when Open */}
+                  {isOpen && (
+                    <div
+                      className="flex items-center justify-between px-3 py-2 text-xs font-semibold text-slate-400 uppercase tracking-wider cursor-pointer hover:text-white transition-colors select-none"
+                      onClick={() => toggleGroup(group.key)}
                     >
-                      <AppIcon icon={item.icon} />
-                      <span className={cn(
-                        'transition-opacity duration-300 whitespace-nowrap',
-                        isOpen ? 'opacity-100' : 'opacity-0 md:hidden'
-                      )}>
-                        {item.label}
-                      </span>
-                      {!isOpen && (
-                        <span className="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50 hidden md:block">
-                          {item.label}
-                        </span>
-                      )}
-                    </Link>
-                  )
-                })}
-              </div>
-            )}
+                      <span>{group.title}</span>
+                      <NavArrowDown className={cn("w-3 h-3 transition-transform duration-200", !isGroupOpen && "-rotate-90")} />
+                    </div>
+                  )}
 
-          {/* Payroll Section */}
-          {payrollItems.some(item => {
-            // Logic to check if any item is visible
-            return true
-          }) && (
+                  {/* Render Items */}
+                  <div className={cn(
+                    "flex flex-col gap-0.5 transition-all duration-300 ease-in-out overflow-hidden",
+                    isOpen && !isGroupOpen ? "max-h-0 opacity-0" : "max-h-[500px] opacity-100"
+                  )}>
+                    {visibleItems.map(item => {
+                      const Icon = item.icon
+                      const isActive = pathname === item.href || pathname?.startsWith(item.href + '/')
+
+                      return (
+                        <Link
+                          key={item.href}
+                          href={item.href}
+                          prefetch
+                          onClick={() => {
+                            if (item.planFeature && shouldShowNewBadge(item.planFeature)) {
+                              handleFeatureClick(item.planFeature)
+                            }
+                          }}
+                          className={cn(
+                            'flex items-center gap-3 rounded-lg text-sm font-medium transition-colors relative group',
+                            isActive
+                              ? 'bg-[#0EA5E9] text-white shadow-lg shadow-cyan-500/20'
+                              : 'text-slate-400 hover:bg-slate-800 hover:text-white',
+                            isOpen ? 'px-3 py-2 ml-1' : 'px-2 py-2 md:justify-center'
+                          )}
+                          title={!isOpen ? item.label : undefined}
+                        >
+                          <AppIcon icon={Icon} className="w-5 h-5 flex-shrink-0" />
+                          <span className={cn(
+                            'transition-opacity duration-300 whitespace-nowrap flex items-center gap-1.5',
+                            isOpen ? 'opacity-100' : 'opacity-0 md:hidden'
+                          )}>
+                            {item.label}
+                            {item.planFeature && shouldShowNewBadge(item.planFeature) && (
+                              <span className="px-1 py-0.5 text-[9px] font-bold text-white bg-green-500 rounded-full animate-pulse">
+                                NUEVO
+                              </span>
+                            )}
+                          </span>
+                          {!isOpen && (
+                            <span className="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50 hidden md:block">
+                              {item.label}
+                            </span>
+                          )}
+                        </Link>
+                      )
+                    })}
+                  </div>
+                </div>
+              )
+            })}
+
+            {isSuperAdmin && (
               <div className="pt-2 mt-2 border-t border-slate-800">
-                {isOpen && <p className="px-4 mb-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Nómina</p>}
-                {payrollItems.map(item => (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    prefetch
-                    className={cn(
-                      'flex items-center gap-3 rounded-lg text-sm font-medium transition-colors relative group',
-                      pathname === item.href || pathname?.startsWith(item.href + '/')
-                        ? 'bg-[#0EA5E9] text-white shadow-lg shadow-cyan-500/20'
-                        : 'text-slate-400 hover:bg-slate-800 hover:text-white',
-                      isOpen ? 'px-3 py-2' : 'px-2 py-2 md:justify-center'
-                    )}
-                    title={!isOpen ? item.label : undefined}
-                  >
-                    <AppIcon icon={item.icon} />
-                    <span className={cn(
-                      'transition-opacity duration-300 whitespace-nowrap',
-                      isOpen ? 'opacity-100' : 'opacity-0 md:hidden'
-                    )}>
-                      {item.label}
-                    </span>
-                    {!isOpen && (
-                      <span className="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50 hidden md:block">
-                        {item.label}
-                      </span>
-                    )}
-                  </Link>
-                ))}
+                {isOpen && <p className="px-3 py-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">Super Admin</p>}
+                <Link
+                  href="/admin/tenants"
+                  prefetch
+                  className={cn(
+                    'flex items-center gap-3 rounded-lg text-sm font-medium transition-colors relative group',
+                    pathname?.startsWith('/admin/tenants')
+                      ? 'bg-[#0EA5E9]/20 text-[#0EA5E9]'
+                      : 'text-slate-500 hover:bg-slate-800 hover:text-slate-300',
+                    isOpen ? 'px-3 py-2 ml-1' : 'px-2 py-2 md:justify-center'
+                  )}
+                  title={!isOpen ? 'Tenants' : undefined}
+                >
+                  <ShieldCheck className="w-5 h-5 flex-shrink-0" />
+                  <span className={cn(
+                    'transition-opacity duration-300 whitespace-nowrap',
+                    isOpen ? 'opacity-100' : 'opacity-0 md:hidden'
+                  )}>
+                    Tenants
+                  </span>
+                </Link>
               </div>
             )}
 
-          {/* Payroll Section */}
-          {payrollItems.some(item => {
-            return true
-          }) && (
-              <div className="pt-2 mt-2 border-t border-slate-800">
-                {isOpen && <p className="px-4 mb-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Nómina</p>}
-                {payrollItems.map(item => (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    prefetch
-                    className={cn(
-                      'flex items-center gap-3 rounded-lg text-sm font-medium transition-colors relative group',
-                      pathname === item.href || pathname?.startsWith(item.href + '/')
-                        ? 'bg-[#0EA5E9] text-white shadow-lg shadow-cyan-500/20'
-                        : 'text-slate-400 hover:bg-slate-800 hover:text-white',
-                      isOpen ? 'px-3 py-2' : 'px-2 py-2 md:justify-center'
-                    )}
-                    title={!isOpen ? item.label : undefined}
-                  >
-                    <AppIcon icon={item.icon} />
-                    <span className={cn(
-                      'transition-opacity duration-300 whitespace-nowrap',
-                      isOpen ? 'opacity-100' : 'opacity-0 md:hidden'
-                    )}>
-                      {item.label}
-                    </span>
-                    {!isOpen && (
-                      <span className="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50 hidden md:block">
-                        {item.label}
-                      </span>
-                    )}
-                  </Link>
-                ))}
-              </div>
-            )}
-
-          {isSuperAdmin && (
-            <Link
-              href="/admin/tenants"
-              prefetch
-              className={cn(
-                'flex items-center gap-3 rounded-lg text-sm font-medium transition-colors relative group',
-                pathname?.startsWith('/admin/tenants')
-                  ? 'bg-[#0EA5E9]/20 text-[#0EA5E9]'
-                  : 'text-slate-500 hover:bg-slate-800 hover:text-slate-300',
-                isOpen ? 'px-3 py-2' : 'px-2 py-2 md:justify-center'
-              )}
-              title={!isOpen ? 'Admin' : undefined}
-            >
-              <ShieldCheck className="h-4 w-4 flex-shrink-0 opacity-70" />
-              <span className={cn(
-                'transition-opacity duration-300 whitespace-nowrap text-xs',
-                isOpen ? 'opacity-100' : 'opacity-0 md:hidden'
-              )}>
-                Admin
-              </span>
-              {!isOpen && (
-                <span className="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50 hidden md:block">
-                  Admin
-                </span>
-              )}
-            </Link>
-          )}
+          </div>
         </nav>
+
         <div className={cn(
           'border-t border-slate-800 space-y-2 transition-opacity duration-300',
           isOpen ? 'opacity-100 p-4' : 'opacity-0 md:opacity-100 p-2'
         )}>
           {isOpen && (
-            <div className="px-3 text-sm text-slate-400">
+            <div className="px-3 text-sm text-slate-400 truncate">
               {session?.user?.name}
             </div>
           )}
@@ -451,11 +382,6 @@ export function Sidebar() {
             )}>
               Cerrar Sesión
             </span>
-            {!isOpen && (
-              <span className="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50 hidden md:block">
-                Cerrar Sesión
-              </span>
-            )}
           </button>
         </div>
       </aside>
