@@ -44,8 +44,41 @@ export const authOptions: NextAuthOptions = {
             tenantId = tenant.id
             console.log(`[AUTH] Tenant encontrado: ${tenant.id}. Ejecutando consulta en contexto de tenant.`)
 
-            user = await withTenantTx(tenant.id, async (tx: any) => {
-              return tx.user.findFirst({
+            try {
+              user = await withTenantTx(tenant.id, async (tx: any) => {
+                return tx.user.findFirst({
+                  where: {
+                    OR: [
+                      { username: credentials.username },
+                      { email: credentials.username }
+                    ]
+                  },
+                  include: {
+                    userRoles: {
+                      include: {
+                        role: {
+                          include: {
+                            rolePermissions: {
+                              include: {
+                                permission: true
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                })
+              })
+            } catch (e: any) {
+              console.warn(`[AUTH] Error querying tenant schema for user: ${e.message}. Falling back to public schema.`)
+            }
+
+            // Fallback: If user not found in tenant schema, look in public schema
+            // This supports legacy tenants where users haven't been migrated yet.
+            if (!user) {
+              console.log(`[AUTH] Usuario no encontrado en tenant schema. Buscando en public schema (Fallback Legacy).`)
+              user = await prisma.user.findFirst({
                 where: {
                   OR: [
                     { username: credentials.username },
@@ -68,7 +101,11 @@ export const authOptions: NextAuthOptions = {
                   }
                 }
               })
-            })
+
+              if (user) {
+                console.log(`[AUTH] Usuario encontrado en public schema. Permitiendo acceso (Legacy).`)
+              }
+            }
 
           } else {
             // 2. Global/SuperAdmin Login Strategy (Public Schema)
