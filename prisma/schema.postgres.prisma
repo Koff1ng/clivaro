@@ -38,7 +38,6 @@ model User {
   paymentsCreated       Payment[]           @relation("PaymentCreatedBy")
   invoicesCreated       Invoice[]           @relation("InvoiceCreatedBy")
   invoicesUpdated       Invoice[]           @relation("InvoiceUpdatedBy")
-  campaignsCreated      MarketingCampaign[] @relation("CampaignCreatedBy")
   returnsCreated        Return[]            @relation("ReturnCreatedBy")
   returnPaymentsCreated ReturnPayment[]     @relation("ReturnPaymentCreatedBy")
   crmCampaignsCreated   Campaign[]          @relation("CampaignCreatedBy")
@@ -46,6 +45,8 @@ model User {
   opportunitiesAssigned Opportunity[]       @relation("OpportunityAssignedTo")
   quotesCreated         Quote[]             @relation("QuoteCreatedBy")
   approvedPhysicalInventories PhysicalInventory[] @relation("PhysicalInventoryApprovedBy")
+  journalEntriesCreated JournalEntry[]      @relation("JournalCreatedBy")
+  marketingCampaignsCreated MarketingCampaign[] @relation("MarketingCampaignCreatedBy")
 }
 
 model Session {
@@ -686,7 +687,7 @@ model MarketingCampaign {
   updatedAt   DateTime                     @updatedAt
   createdById String?
   recipients  MarketingCampaignRecipient[]
-  createdBy   User?                        @relation("CampaignCreatedBy", fields: [createdById], references: [id])
+  createdBy   User?                        @relation("MarketingCampaignCreatedBy", fields: [createdById], references: [id])
 }
 
 model MarketingCampaignRecipient {
@@ -703,7 +704,6 @@ model MarketingCampaignRecipient {
 
   @@index([campaignId])
   @@index([customerId])
-  @@index([campaignId])
   @@index([email])
   retryCount Int      @default(0)
 }
