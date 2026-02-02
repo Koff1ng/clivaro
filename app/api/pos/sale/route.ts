@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server'
 import { requirePermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
-import { getPrismaForRequest } from '@/lib/get-tenant-prisma'
 import { logger } from '@/lib/logger'
 import { z } from 'zod'
 import { toDecimal } from '@/lib/numbers'

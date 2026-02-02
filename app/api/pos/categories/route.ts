@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requirePermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
-import { getPrismaForRequest } from '@/lib/get-tenant-prisma'
+import { withTenantTx } from '@/lib/tenancy'
 
 export async function GET(request: Request) {
   const session = await requirePermission(request as any, PERMISSIONS.MANAGE_SALES)
@@ -10,24 +10,25 @@ export async function GET(request: Request) {
     return session
   }
 
-  // Obtener el cliente Prisma correcto (tenant o master según el usuario)
-  const prisma = await getPrismaForRequest(request, session)
+  const tenantId = (session.user as any).tenantId
 
   try {
-    // Get all unique categories from products (exclude RAW ingredients)
-    const products = await prisma.product.findMany({
-      where: {
-        active: true,
-        productType: { not: 'RAW' }  // Exclude ingredient categories from POS
-      },
-      select: { category: true },
-      distinct: ['category'],
-    })
+    const categories = await withTenantTx(tenantId, async (prisma) => {
+      // Get all unique categories from products (exclude RAW ingredients)
+      const products = await prisma.product.findMany({
+        where: {
+          active: true,
+          productType: { not: 'RAW' }
+        },
+        select: { category: true },
+        distinct: ['category'],
+      })
 
-    const categories = products
-      .map(p => p.category)
-      .filter((cat): cat is string => cat !== null && cat !== undefined)
-      .sort()
+      return products
+        .map((p: any) => p.category)
+        .filter((cat: any): cat is string => cat !== null && cat !== undefined)
+        .sort()
+    })
 
     return NextResponse.json({ categories })
   } catch (error) {

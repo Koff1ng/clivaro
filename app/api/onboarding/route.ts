@@ -3,7 +3,7 @@ import { requireAuth } from '@/lib/api-middleware'
 import { prisma } from '@/lib/db'
 import { logger } from '@/lib/logger'
 import { z } from 'zod'
-import { getTenantPrisma } from '@/lib/tenant-db'
+import { withTenantTx } from '@/lib/tenancy'
 import bcrypt from 'bcryptjs'
 
 export const dynamic = 'force-dynamic'
@@ -21,7 +21,7 @@ async function executeWithRetry<T>(
     } catch (error: any) {
       lastError = error
       const errorMessage = error?.message || String(error)
-      
+
       // Si es error de límite de conexiones, esperar y reintentar
       if (errorMessage.includes('MaxClientsInSessionMode') || errorMessage.includes('max clients reached')) {
         if (attempt < maxRetries - 1) {
@@ -31,7 +31,7 @@ async function executeWithRetry<T>(
           continue
         }
       }
-      
+
       // Si no es error de conexión, lanzar inmediatamente
       throw error
     }
@@ -53,13 +53,13 @@ const onboardingSchema = z.object({
 export async function POST(request: Request) {
   try {
     const session = await requireAuth(request)
-    
+
     if (session instanceof NextResponse) {
       return session
     }
 
     const user = session.user as any
-    
+
     // Si es super admin, no puede hacer onboarding
     if (user.isSuperAdmin) {
       return NextResponse.json(
@@ -92,41 +92,38 @@ export async function POST(request: Request) {
 
     // Si se proporcionaron nuevas credenciales, actualizar el admin
     if (validatedData.newUsername || validatedData.newPassword) {
-      const tenantPrisma = getTenantPrisma(tenant.databaseUrl)
-      
-      // Buscar el usuario admin actual
-      const adminUser = await tenantPrisma.user.findUnique({
-        where: { username: 'admin' },
-      })
-
-      if (adminUser) {
-        const updateData: any = {}
-        
-        if (validatedData.newUsername) {
-          // Verificar que el nuevo username no exista
-          const existingUser = await tenantPrisma.user.findUnique({
-            where: { username: validatedData.newUsername },
-          })
-          
-          if (existingUser && existingUser.id !== adminUser.id) {
-            return NextResponse.json(
-              { error: 'El nombre de usuario ya está en uso' },
-              { status: 400 }
-            )
-          }
-          
-          updateData.username = validatedData.newUsername
-        }
-        
-        if (validatedData.newPassword) {
-          updateData.password = await bcrypt.hash(validatedData.newPassword, 10)
-        }
-        
-        await tenantPrisma.user.update({
-          where: { id: adminUser.id },
-          data: updateData,
+      await withTenantTx(user.tenantId, async (tenantPrisma: any) => {
+        // Buscar el usuario admin actual
+        const adminUser = await tenantPrisma.user.findUnique({
+          where: { username: 'admin' },
         })
-      }
+
+        if (adminUser) {
+          const updateData: any = {}
+
+          if (validatedData.newUsername) {
+            // Verificar que el nuevo username no exista
+            const existingUser = await tenantPrisma.user.findUnique({
+              where: { username: validatedData.newUsername },
+            })
+
+            if (existingUser && existingUser.id !== adminUser.id) {
+              throw new Error('El nombre de usuario ya está en uso')
+            }
+
+            updateData.username = validatedData.newUsername
+          }
+
+          if (validatedData.newPassword) {
+            updateData.password = await bcrypt.hash(validatedData.newPassword, 10)
+          }
+
+          await tenantPrisma.user.update({
+            where: { id: adminUser.id },
+            data: updateData,
+          })
+        }
+      })
     }
 
     // Actualizar o crear TenantSettings con los datos del onboarding
@@ -174,7 +171,7 @@ export async function POST(request: Request) {
         { status: 400 }
       )
     }
-    
+
     logger.error('Error completing onboarding', error, {
       endpoint: '/api/onboarding',
       method: 'POST'
@@ -193,13 +190,13 @@ export async function POST(request: Request) {
 export async function GET(request: Request) {
   try {
     const session = await requireAuth(request)
-    
+
     if (session instanceof NextResponse) {
       return session
     }
 
     const user = session.user as any
-    
+
     // Si es super admin, no necesita onboarding
     if (user.isSuperAdmin) {
       return NextResponse.json({
@@ -272,7 +269,7 @@ export async function GET(request: Request) {
         tenantId: user.tenantId,
         error: settingsError?.message || String(settingsError),
       })
-      
+
       // Retornar que NO necesita onboarding si hay error (para evitar mostrar onboarding a usuarios existentes)
       return NextResponse.json({
         needsOnboarding: false,

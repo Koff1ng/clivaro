@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requirePermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
-import { getPrismaForRequest } from '@/lib/get-tenant-prisma'
+import { withTenantTx } from '@/lib/tenancy'
 import { z } from 'zod'
 import { toDecimal } from '@/lib/numbers'
 import { logger } from '@/lib/logger'
@@ -46,39 +46,40 @@ export async function GET(
     return session
   }
 
-  // Obtener el cliente Prisma correcto (tenant o master según el usuario)
-  const prisma = await getPrismaForRequest(request, session)
+  const tenantId = session.user.tenantId
 
   try {
-    const product = await prisma.product.findUnique({
-      where: { id: params.id },
-      include: {
-        variants: true,
-        stockLevels: {
-          include: {
-            warehouse: true,
+    return await withTenantTx(tenantId, async (prisma) => {
+      const product = await prisma.product.findUnique({
+        where: { id: params.id },
+        include: {
+          variants: true,
+          stockLevels: {
+            include: {
+              warehouse: true,
+            },
           },
         },
-      },
-    })
+      })
 
-    if (!product) {
-      return NextResponse.json(
-        { error: 'Product not found' },
-        { status: 404 }
-      )
-    }
+      if (!product) {
+        return NextResponse.json(
+          { error: 'Product not found' },
+          { status: 404 }
+        )
+      }
 
-    return NextResponse.json({
-      ...product,
-      cost: product.cost,
-      price: product.price,
-      taxRate: product.taxRate,
-      stockLevels: product.stockLevels.map(sl => ({
-        ...sl,
-        quantity: sl.quantity,
-        minStock: sl.minStock,
-      })),
+      return NextResponse.json({
+        ...product,
+        cost: product.cost,
+        price: product.price,
+        taxRate: product.taxRate,
+        stockLevels: product.stockLevels.map(sl => ({
+          ...sl,
+          quantity: sl.quantity,
+          minStock: sl.minStock,
+        })),
+      })
     })
   } catch (error) {
     console.error('Error fetching product:', error)
@@ -99,28 +100,27 @@ export async function PATCH(
     return session
   }
 
-  // Obtener el cliente Prisma correcto (tenant o master según el usuario)
-  const prisma = await getPrismaForRequest(request, session)
+  const tenantId = session.user.tenantId
 
   try {
     const body = await request.json()
     const data = updateProductSchema.parse(body)
 
-    // Extract variants explicitly
-    const { variants, minStock, maxStock, trackStock, ...directUpdateData } = data
+    const result = await withTenantTx(tenantId, async (prisma) => {
+      // Extract variants explicitly
+      const { variants, minStock, maxStock, trackStock, ...directUpdateData } = data
 
-    const updateData: any = {
-      ...directUpdateData,
-      updatedById: (session.user as any).id,
-    }
+      const updateData: any = {
+        ...directUpdateData,
+        updatedById: (session.user as any).id,
+      }
 
-    if (data.cost !== undefined) updateData.cost = data.cost
-    if (data.price !== undefined) updateData.price = data.price
-    if (data.taxRate !== undefined) updateData.taxRate = data.taxRate
+      if (data.cost !== undefined) updateData.cost = data.cost
+      if (data.price !== undefined) updateData.price = data.price
+      if (data.taxRate !== undefined) updateData.taxRate = data.taxRate
 
-    // Transaction for Update + Variants + Audit
-    const product = await prisma.$transaction(async (tx) => {
-      const p = await tx.product.update({
+      // Use the provided transaction context (prisma)
+      const product = await prisma.product.update({
         where: { id: params.id },
         data: updateData,
       })
@@ -130,8 +130,8 @@ export async function PATCH(
         for (const v of variants) {
           if (v.id) {
             // Update existing
-            await tx.productVariant.update({
-              where: { id: v.id, productId: p.id }, // Security: enforce productId
+            await prisma.productVariant.update({
+              where: { id: v.id, productId: product.id }, // Security: enforce productId
               data: {
                 name: v.name,
                 sku: v.sku,
@@ -142,33 +142,32 @@ export async function PATCH(
             })
           } else {
             // Create new
-            await tx.productVariant.create({
+            await prisma.productVariant.create({
               data: {
-                productId: p.id,
+                productId: product.id,
                 name: v.name,
                 sku: v.sku,
                 barcode: v.barcode,
-                price: v.price ?? p.price,
-                cost: v.cost ?? p.cost,
+                price: v.price ?? product.price,
+                cost: v.cost ?? product.cost,
               }
             })
           }
         }
       }
 
-      // Handle Stock Levels (moved inside transaction)
-      // Actualizar stock levels si se proporcionaron minStock o maxStock
+      // Handle Stock Levels
       if (trackStock !== undefined || minStock !== undefined || maxStock !== undefined) {
-        const warehouse = await tx.warehouse.findFirst({
+        const warehouse = await prisma.warehouse.findFirst({
           where: { active: true },
           orderBy: { createdAt: 'asc' },
         })
 
         if (warehouse) {
-          const existing = await tx.stockLevel.findFirst({
+          const existing = await prisma.stockLevel.findFirst({
             where: {
               warehouseId: warehouse.id,
-              productId: p.id,
+              productId: product.id,
               variantId: null,
             },
             select: { id: true },
@@ -177,7 +176,7 @@ export async function PATCH(
           // Si trackStock está desactivado, eliminar el stock level
           if (trackStock === false) {
             if (existing) {
-              await tx.stockLevel.delete({
+              await prisma.stockLevel.delete({
                 where: { id: existing.id },
               })
             }
@@ -186,14 +185,14 @@ export async function PATCH(
             const minStockVal = minStock !== undefined && !isNaN(Number(minStock))
               ? Number(minStock)
               : existing
-                ? undefined // Mantener el valor existente si no se proporciona
+                ? undefined
                 : 0
 
             const maxStockVal = maxStock !== undefined && maxStock !== null && !isNaN(Number(maxStock)) && Number(maxStock) > 0
               ? Number(maxStock)
               : maxStock === null || (maxStock === 0 && maxStock !== undefined)
-                ? 0 // 0 significa sin máximo configurado
-                : undefined // Mantener el valor existente si no se proporciona
+                ? 0
+                : undefined
 
             const stockData: any = {}
             if (minStockVal !== undefined) stockData.minStock = minStockVal
@@ -201,16 +200,16 @@ export async function PATCH(
 
             if (existing) {
               if (Object.keys(stockData).length > 0) {
-                await tx.stockLevel.update({
+                await prisma.stockLevel.update({
                   where: { id: existing.id },
                   data: stockData,
                 })
               }
             } else {
-              await tx.stockLevel.create({
+              await prisma.stockLevel.create({
                 data: {
                   warehouseId: warehouse.id,
-                  productId: p.id,
+                  productId: product.id,
                   variantId: null,
                   quantity: 0,
                   minStock: minStockVal ?? 0,
@@ -224,18 +223,18 @@ export async function PATCH(
 
       // Audit Log
       await logActivity({
-        prisma: tx,
+        prisma: prisma,
         type: 'PRODUCT_UPDATE',
-        subject: `Producto actualizado: ${p.name}`,
+        subject: `Producto actualizado: ${product.name}`,
         description: `Actualizado por usuario. ${variants ? `Variantes procesadas: ${variants.length}` : ''}`,
         userId: (session.user as any).id,
-        metadata: { productId: p.id, updates: Object.keys(directUpdateData) }
+        metadata: { productId: product.id, updates: Object.keys(directUpdateData) }
       })
 
-      return p
+      return product
     })
 
-    return NextResponse.json(product)
+    return NextResponse.json(result)
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
@@ -261,12 +260,11 @@ export async function DELETE(
     return session
   }
 
-  // Obtener el cliente Prisma correcto (tenant o master según el usuario)
-  const prisma = await getPrismaForRequest(request, session)
+  const tenantId = session.user.tenantId
 
   try {
-    await prisma.$transaction(async (tx) => {
-      const p = await tx.product.update({
+    return await withTenantTx(tenantId, async (prisma) => {
+      const product = await prisma.product.update({
         where: { id: params.id },
         data: {
           active: false,
@@ -275,16 +273,16 @@ export async function DELETE(
       })
 
       await logActivity({
-        prisma: tx,
+        prisma: prisma,
         type: 'PRODUCT_DELETE',
-        subject: `Producto eliminado (soft): ${p.name}`,
+        subject: `Producto eliminado (soft): ${product.name}`,
         description: `El producto fue marcado como inactivo.`,
         userId: (session.user as any).id,
-        metadata: { productId: p.id, sku: p.sku }
+        metadata: { productId: product.id, sku: product.sku }
       })
-    })
 
-    return NextResponse.json({ success: true })
+      return NextResponse.json({ success: true })
+    })
   } catch (error) {
     console.error('Error deleting product:', error)
     return NextResponse.json(

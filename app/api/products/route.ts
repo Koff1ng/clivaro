@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requirePermission, requireAnyPermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
-import { getPrismaForRequest } from '@/lib/get-tenant-prisma'
+import { withTenantTx } from '@/lib/tenancy'
 import { z } from 'zod'
 import { toDecimal } from '@/lib/numbers'
 import { logger } from '@/lib/logger'
@@ -73,140 +73,136 @@ export async function GET(request: Request) {
     return session
   }
 
-  // Obtener el cliente Prisma correcto (tenant o master según el usuario)
-  const prisma = await getPrismaForRequest(request, session)
+  const tenantId = session.user.tenantId
 
   try {
-    const { searchParams } = new URL(request.url)
-    const page = parseInt(searchParams.get('page') || '1')
-    const limit = parseInt(searchParams.get('limit') || '20')
-    const search = searchParams.get('search') || ''
-    const category = searchParams.get('category') || ''
-    const productType = searchParams.get('productType') || ''
-    const orderBy = searchParams.get('orderBy') || 'name'
-    const skip = (page - 1) * limit
+    return await withTenantTx(tenantId, async (prisma) => {
+      const { searchParams } = new URL(request.url)
+      const page = parseInt(searchParams.get('page') || '1')
+      const limit = parseInt(searchParams.get('limit') || '20')
+      const search = searchParams.get('search') || ''
+      const category = searchParams.get('category') || ''
+      const productType = searchParams.get('productType') || ''
+      const orderBy = searchParams.get('orderBy') || 'name'
+      const skip = (page - 1) * limit
 
-    const where: any = {
-      active: true,
-    }
+      const where: any = {
+        active: true,
+      }
 
-    if (search) {
-      where.OR = [
-        { name: { contains: search } },
-        { sku: { contains: search } },
-        { barcode: { contains: search } },
-      ]
-    }
+      if (search) {
+        where.OR = [
+          { name: { contains: search } },
+          { sku: { contains: search } },
+          { barcode: { contains: search } },
+        ]
+      }
 
-    // Add Category Filter
-    if (category && category !== 'all') {
-      where.category = category
-    }
+      // Add Category Filter
+      if (category && category !== 'all') {
+        where.category = category
+      }
 
-    // Add ProductType Filter
-    if (productType && productType !== 'all') {
-      where.productType = productType
-    }
+      // Add ProductType Filter
+      if (productType && productType !== 'all') {
+        where.productType = productType
+      }
 
-    // Add hasRecipe Filter
-    const hasRecipe = searchParams.get('hasRecipe')
-    if (hasRecipe === 'true') {
-      where.enableRecipeConsumption = true
-    } else if (hasRecipe === 'false') {
-      where.enableRecipeConsumption = false
-    }
+      // Add hasRecipe Filter
+      const hasRecipe = searchParams.get('hasRecipe')
+      if (hasRecipe === 'true') {
+        where.enableRecipeConsumption = true
+      } else if (hasRecipe === 'false') {
+        where.enableRecipeConsumption = false
+      }
 
-    // Determinar ordenamiento
-    let orderByClause: any = { name: 'asc' }
-    if (orderBy === 'createdAt') {
-      orderByClause = { createdAt: 'desc' }
-    } else if (orderBy === 'name') {
-      orderByClause = { name: 'asc' }
-    }
+      // Determinar ordenamiento
+      let orderByClause: any = { name: 'asc' }
+      if (orderBy === 'createdAt') {
+        orderByClause = { createdAt: 'desc' }
+      } else if (orderBy === 'name') {
+        orderByClause = { name: 'asc' }
+      }
 
-    const [productsRaw, total] = await Promise.all([
-      executeWithRetry(() => prisma.product.findMany({
-        where,
-        skip,
-        take: limit,
-        orderBy: orderByClause,
-        include: {
-          _count: {
-            select: { variants: true },
-          },
-          stockLevels: {
-            select: { quantity: true, warehouseId: true }
-          },
-          recipe: {
-            include: {
-              items: {
-                include: {
-                  ingredient: {
-                    select: {
-                      id: true,
-                      stockLevels: {
-                        select: { quantity: true, warehouseId: true }
-                      },
-                      unitOfMeasure: true
+      const [productsRaw, total] = await Promise.all([
+        executeWithRetry(() => prisma.product.findMany({
+          where,
+          skip,
+          take: limit,
+          orderBy: orderByClause,
+          include: {
+            _count: {
+              select: { variants: true },
+            },
+            stockLevels: {
+              select: { quantity: true, warehouseId: true }
+            },
+            recipe: {
+              include: {
+                items: {
+                  include: {
+                    ingredient: {
+                      select: {
+                        id: true,
+                        stockLevels: {
+                          select: { quantity: true, warehouseId: true }
+                        },
+                        unitOfMeasure: true
+                      }
                     }
                   }
                 }
               }
             }
-          }
-        } as any,
-      })),
-      executeWithRetry(() => prisma.product.count({ where })),
-    ])
+          } as any,
+        })),
+        executeWithRetry(() => prisma.product.count({ where })),
+      ])
 
-    // Explicitly cast or handle the type safely
-    const productsWithStock = productsRaw.map((p: any) => {
-      let stock = 0
+      // Explicitly cast or handle the type safely
+      const productsWithStock = productsRaw.map((p: any) => {
+        let stock = 0
 
-      if (p.enableRecipeConsumption && p.recipe?.items?.length) {
-        // Calculate virtual stock based on ingredients
-        const maxQuantities = p.recipe.items.map((item: any) => {
-          if (!item.ingredient) return 0
+        if (p.enableRecipeConsumption && p.recipe?.items?.length) {
+          // Calculate virtual stock based on ingredients
+          const maxQuantities = p.recipe.items.map((item: any) => {
+            if (!item.ingredient) return 0
 
-          // Total ingredient stock across all warehouses (simplified for now)
-          const ingredientStock = item.ingredient.stockLevels?.reduce((sum: number, sl: any) => sum + sl.quantity, 0) || 0
+            // Total ingredient stock across all warehouses (simplified for now)
+            const ingredientStock = item.ingredient.stockLevels?.reduce((sum: number, sl: any) => sum + sl.quantity, 0) || 0
 
-          // TODO: Handle Unit Conversions (e.g., kg -> g)
-          // For now, assuming units are compatible or conversion logic is handled elsewhere.
-          // Ideally we need the 'lib/recipes.ts' logic here, but let's do a simple direct calc for MVP.
-          // If ingredient is in KG and recipe needs 0.150 KG, and we have 10 KG stock: 10 / 0.150 = 66
+            if (item.quantity <= 0) return 0
+            return Math.floor(ingredientStock / item.quantity)
+          })
 
-          if (item.quantity <= 0) return 0
-          return Math.floor(ingredientStock / item.quantity)
-        })
+          stock = maxQuantities.length > 0 ? Math.min(...maxQuantities) : 0
 
-        stock = maxQuantities.length > 0 ? Math.min(...maxQuantities) : 0
+        } else {
+          // Standard physical stock
+          stock = p.stockLevels?.reduce((sum: number, sl: any) => sum + sl.quantity, 0) || 0
+        }
 
-      } else {
-        // Standard physical stock
-        stock = p.stockLevels?.reduce((sum: number, sl: any) => sum + sl.quantity, 0) || 0
-      }
+        return {
+          ...p,
+          cost: p.cost,
+          price: p.price,
+          taxRate: p.taxRate,
+          stock, // Return the calculated stock
+          // Clean up internal relations to keep response light if needed, or leave them
+          recipe: undefined,
+          stockLevels: undefined
+        }
+      })
 
-      return {
-        ...p,
-        cost: p.cost,
-        price: p.price,
-        taxRate: p.taxRate,
-        stock, // Return the calculated stock
-        // Clean up internal relations to keep response light if needed, or leave them
-        recipe: undefined,
-        stockLevels: undefined
-      }
-    })
-
-    return NextResponse.json({
-      products: productsWithStock,
-      pagination: {
-        page,
-        limit,
-        total,
-        totalPages: Math.ceil(total / limit),
-      },
+      return NextResponse.json({
+        products: productsWithStock,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages: Math.ceil(total / limit),
+        },
+      })
     })
   } catch (error) {
     console.error('Error fetching products:', error)
@@ -228,20 +224,19 @@ export async function POST(request: Request) {
     return session
   }
 
-  // Obtener el cliente Prisma correcto (tenant o master según el usuario)
-  const prisma = await getPrismaForRequest(request, session)
-
+  const tenantId = session.user.tenantId
   let requestBody: any = null
+
   try {
     requestBody = await request.json()
     const data = createProductSchema.parse(requestBody)
 
-    // Extraer minStock y maxStock antes de crear el producto (no son campos del modelo Product)
-    const { minStock, maxStock, variants, ...productData } = data
+    return await withTenantTx(tenantId, async (prisma) => {
+      // Extraer minStock y maxStock antes de crear el producto (no son campos del modelo Product)
+      const { minStock, maxStock, variants, ...productData } = data
 
-    // Use transaction for product + variants + audit
-    const product = await prisma.$transaction(async (tx) => {
-      const p = await tx.product.create({
+      // Use the provided transaction context (prisma) for product + variants + audit
+      const product = await prisma.product.create({
         data: {
           ...productData,
           productType: data.productType as any,
@@ -271,37 +266,34 @@ export async function POST(request: Request) {
 
       // Log activity
       await logActivity({
-        prisma: tx,
+        prisma: prisma, // Use the same transaction context
         type: 'PRODUCT_CREATE',
-        subject: `Producto creado: ${p.name}`,
-        description: `Creado con SKU: ${p.sku}. ${variants?.length ? `Con ${variants.length} variantes.` : ''}`,
+        subject: `Producto creado: ${product.name}`,
+        description: `Creado con SKU: ${product.sku}. ${variants?.length ? `Con ${variants.length} variantes.` : ''}`,
         userId: (session.user as any).id,
-        metadata: { productId: p.id, sku: p.sku, variantsCount: variants?.length }
+        metadata: { productId: product.id, sku: product.sku, variantsCount: variants?.length }
       })
 
       // Create/update stock settings for default warehouse
       if (data.trackStock) {
-        const warehouse = await tx.warehouse.findFirst({
+        const warehouse = await prisma.warehouse.findFirst({
           where: { active: true },
           orderBy: { createdAt: 'asc' },
         })
         if (warehouse) {
-          // Asegurar que minStock y maxStock sean números válidos
-          // minStock es requerido si trackStock es true
           const minStockValue = minStock !== undefined && minStock !== null && !isNaN(Number(minStock))
             ? Number(minStock)
-            : 0 // Default a 0 si no se proporciona
+            : 0
 
-          // maxStock es opcional: si está vacío, undefined o null, usar 0 (sin máximo configurado)
           const maxStockValue = maxStock !== undefined && maxStock !== null && !isNaN(Number(maxStock)) && Number(maxStock) > 0
             ? Number(maxStock)
-            : 0 // 0 significa sin máximo configurado
+            : 0
 
-          // Crear stock para el producto principal (si trackStock activado)
-          await tx.stockLevel.create({
+          // Crear stock para el producto principal
+          await prisma.stockLevel.create({
             data: {
               warehouseId: warehouse.id,
-              productId: p.id,
+              productId: product.id,
               variantId: null,
               quantity: 0,
               minStock: minStockValue,
@@ -310,15 +302,15 @@ export async function POST(request: Request) {
           })
 
           // También crear stock para variantes si existen
-          if ((p as any).variants && (p as any).variants.length > 0) {
-            for (const v of (p as any).variants) {
-              await tx.stockLevel.create({
+          if (product.variants && product.variants.length > 0) {
+            for (const v of product.variants) {
+              await prisma.stockLevel.create({
                 data: {
                   warehouseId: warehouse.id,
-                  productId: p.id,
+                  productId: product.id,
                   variantId: v.id,
                   quantity: 0,
-                  minStock: minStockValue, // Heredar configuración por ahora
+                  minStock: minStockValue,
                   maxStock: maxStockValue,
                 }
               })
@@ -327,10 +319,9 @@ export async function POST(request: Request) {
         }
       }
 
-      return p
+      return NextResponse.json(product, { status: 201 })
     })
 
-    return NextResponse.json(product, { status: 201 })
   } catch (error: any) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
@@ -339,13 +330,9 @@ export async function POST(request: Request) {
       )
     }
 
-    // Log detailed error information
     const errorMessage = error instanceof Error ? error.message : String(error)
-    const errorStack = error instanceof Error ? error.stack : undefined
-    const errorName = error instanceof Error ? error.name : 'Unknown'
     const errorCode = error?.code || error?.meta?.code || undefined
 
-    // Check for Prisma unique constraint violations
     if (error?.code === 'P2002') {
       const target = error?.meta?.target
       let field = 'campo'
@@ -364,19 +351,13 @@ export async function POST(request: Request) {
 
     console.error('Error creating product:', {
       error: errorMessage,
-      reason: (error as any).reason,
-      reasonCode: (error as any).reasonCode,
-      reasonNote: (error as any).reasonNote,
-      createdAt: (error as any).createdAt,
       body: requestBody,
-      prismaError: error,
     })
 
     return NextResponse.json(
       {
         error: 'Failed to create product',
         details: errorMessage,
-        name: errorName,
         code: errorCode,
       },
       { status: 500 }
