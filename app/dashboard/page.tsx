@@ -22,9 +22,10 @@ export default async function DashboardPage() {
   }
 
   const userPermissions = (session.user as any).permissions || []
+  const isSuperAdmin = (session.user as any).isSuperAdmin || false
 
-  // Allow access to dashboard if user has view_reports OR manage_sales (for cashiers)
-  if (!userPermissions.includes('view_reports') && !userPermissions.includes('manage_sales')) {
+  // Allow access to dashboard if user has permissions OR is super admin
+  if (!isSuperAdmin && !userPermissions.includes('view_reports') && !userPermissions.includes('manage_sales')) {
     // Otherwise redirect to first available page
     redirect('/login')
   }

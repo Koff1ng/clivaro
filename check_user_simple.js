@@ -30,8 +30,8 @@ async function main() {
     }
 
     try {
-        const publicUsers = await prisma.$queryRaw`SELECT id, username, email, "tenantId", active FROM "public"."User" LIMIT 5`
-        console.log('Users found in PUBLIC schema:', publicUsers)
+        const publicUsers = await prisma.$queryRaw`SELECT id, username, email, "isSuperAdmin", active FROM "public"."User" WHERE username = 'julieth'`
+        console.log('User julieth in PUBLIC:', publicUsers)
     } catch (e) {
         console.error('Error querying public schema:', e.message)
     }

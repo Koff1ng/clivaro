@@ -193,7 +193,10 @@ export function Sidebar() {
   const filterGroupItems = (items: MenuItem[]) => {
     return items.filter(item => {
       let hasPermission = true
-      if (item.permission) {
+      // Super Admin bypass: Always has permission
+      if (isSuperAdmin) {
+        hasPermission = true
+      } else if (item.permission) {
         if (Array.isArray(item.permission)) {
           hasPermission = item.permission.some(perm => userPermissions.includes(perm))
         } else {
