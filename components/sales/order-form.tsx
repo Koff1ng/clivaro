@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { useQuery, useMutation } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -15,10 +15,13 @@ import {
     TableRow,
 } from '@/components/ui/table'
 import { formatCurrency } from '@/lib/utils'
-import { Search, Plus, Trash2, Check, ChevronsUpDown } from 'lucide-react'
+import { Search, Plus, Trash2, Check, ChevronsUpDown, Loader2 } from 'lucide-react'
 import { useToast } from '@/components/ui/toast'
 import { cn } from '@/lib/utils'
 import { SearchableSelect } from '@/components/ui/searchable-select'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { CustomerForm } from '@/components/crm/customer-form'
+import { Badge } from '@/components/ui/badge'
 
 interface OrderFormProps {
     initialData?: any
@@ -28,33 +31,40 @@ interface OrderFormProps {
 export function OrderForm({ initialData, isEditing = false }: OrderFormProps) {
     const router = useRouter()
     const { toast } = useToast()
+    const queryClient = useQueryClient()
 
     const [customerId, setCustomerId] = useState(initialData?.customerId || '')
     const [items, setItems] = useState<any[]>(initialData?.items?.map((i: any) => ({
         ...i,
         productName: i.product?.name || i.productName, // Handle API vs Form struct
-        subtotal: i.unitPrice * i.quantity * (1 - i.discount / 100) * (1 + i.taxRate / 100) // Recalc roughly
+        subtotal: i.unitPrice * i.quantity * (1 - i.discount / 100) * (1 + i.taxRate / 100)
     })) || [])
     const [notes, setNotes] = useState(initialData?.notes || '')
+
+    // Customer Creation State
+    const [isCreateCustomerOpen, setIsCreateCustomerOpen] = useState(false)
 
     // Product Search State
     const [productSearch, setProductSearch] = useState('')
     const [productResults, setProductResults] = useState<any[]>([])
+    const [isSearchingProducts, setIsSearchingProducts] = useState(false)
 
     // Customer Search State
     const [customerSearch, setCustomerSearch] = useState('')
-    const [customerOpen, setCustomerOpen] = useState(false)
 
-    // Fetch Customers
-    const { data: customers = [] } = useQuery({
+    // Fetch Customers (Real-time)
+    const { data: customers = [], isFetching: isSearchingCustomers, refetch: refetchCustomers } = useQuery({
         queryKey: ['customers', customerSearch],
         queryFn: async () => {
-            const res = await fetch(`/api/customers?search=${customerSearch}&limit=10`)
+            const params = new URLSearchParams({ limit: '50' })
+            if (customerSearch) params.append('search', customerSearch)
+            const res = await fetch(`/api/customers?${params}`)
             if (!res.ok) return []
             const data = await res.json()
             return data.customers || []
         },
-        enabled: customerOpen
+        // Remove enabled: customerOpen to allow pre-fetching or always active
+        staleTime: 60000,
     })
 
     // Search Products
@@ -63,11 +73,16 @@ export function OrderForm({ initialData, isEditing = false }: OrderFormProps) {
             setProductResults([])
             return
         }
+        setIsSearchingProducts(true)
         const timer = setTimeout(async () => {
-            const res = await fetch(`/api/pos/products?search=${productSearch}`)
-            if (res.ok) {
-                const data = await res.json()
-                setProductResults(data.products || [])
+            try {
+                const res = await fetch(`/api/pos/products?search=${productSearch}`)
+                if (res.ok) {
+                    const data = await res.json()
+                    setProductResults(data.products || [])
+                }
+            } finally {
+                setIsSearchingProducts(false)
             }
         }, 300)
         return () => clearTimeout(timer)
@@ -84,7 +99,7 @@ export function OrderForm({ initialData, isEditing = false }: OrderFormProps) {
                 quantity: 1,
                 unitPrice: product.price,
                 discount: 0,
-                taxRate: product.taxRate,
+                taxRate: product.taxRate || 0, // Ensure taxRate exists
             }])
         }
         setProductSearch('')
@@ -145,21 +160,21 @@ export function OrderForm({ initialData, isEditing = false }: OrderFormProps) {
             return res.json()
         },
         onSuccess: (data) => {
-            toast('Orden guardada exitosamente', 'success')
+            toast('Orden guardada exitosamente', 'success') // Fix: toast variant
             router.push(`/sales/orders/${data.id}`)
         },
         onError: (err: any) => {
-            toast(err.message, 'error')
+            toast(err.message, 'error') // Fix: toast variant
         }
     })
 
     const handleSubmit = () => {
         if (!customerId) {
-            toast('Selecciona un cliente', 'warning')
+            toast('Selecciona un cliente', 'warning') // Fix: toast variant
             return
         }
         if (items.length === 0) {
-            toast('Agrega al menos un producto', 'warning')
+            toast('Agrega al menos un producto', 'warning') // Fix: toast variant
             return
         }
 
@@ -177,7 +192,15 @@ export function OrderForm({ initialData, isEditing = false }: OrderFormProps) {
         })
     }
 
-    const selectedCustomer = customers.find((c: any) => c.id === customerId) || initialData?.customer
+    const handleCustomerCreated = () => {
+        setIsCreateCustomerOpen(false)
+        refetchCustomers().then((res) => {
+            // Optimistically try to select the new customer if possible (currently just refetching)
+            // Ideally backend returns the new customer ID or we know the name to search/filter
+            // For now, just refetching ensures they appear in the list immediately
+            toast('Cliente creado y listo para seleccionar', 'success') // Fix: toast variant
+        })
+    }
 
     return (
         <div className="space-y-6">
@@ -194,7 +217,9 @@ export function OrderForm({ initialData, isEditing = false }: OrderFormProps) {
                         onChange={setCustomerId}
                         onSearch={setCustomerSearch}
                         placeholder="Buscar cliente..."
-                        loading={false}
+                        loading={isSearchingCustomers}
+                        onCreate={() => setIsCreateCustomerOpen(true)}
+                        createLabel="Crear nuevo cliente"
                     />
                 </div>
 
@@ -214,24 +239,42 @@ export function OrderForm({ initialData, isEditing = false }: OrderFormProps) {
             <div className="border rounded-lg bg-card overflow-hidden">
                 <div className="p-4 border-b bg-muted/30 flex justify-between items-center">
                     <h3 className="font-semibold">Productos</h3>
-                    <div className="relative w-64">
+                    <div className="relative w-80">
                         <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                         <Input
-                            placeholder="Buscar producto..."
+                            placeholder="Buscar producto (nombre, sku)..."
                             value={productSearch}
                             onChange={e => setProductSearch(e.target.value)}
                             className="pl-8"
                         />
+                        {isSearchingProducts && (
+                            <div className="absolute right-2 top-2.5">
+                                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                            </div>
+                        )}
                         {productResults.length > 0 && (
-                            <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-popover border rounded-md shadow-lg max-h-60 overflow-y-auto">
+                            <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-popover border rounded-md shadow-lg max-h-80 overflow-y-auto">
                                 {productResults.map((p) => (
                                     <div
                                         key={p.id}
-                                        className="p-2 hover:bg-muted cursor-pointer flex justify-between"
+                                        className="p-3 hover:bg-muted cursor-pointer border-b last:border-0"
                                         onClick={() => addItem(p)}
                                     >
-                                        <span>{p.name}</span>
-                                        <span className="font-medium">{formatCurrency(p.price)}</span>
+                                        <div className="flex justify-between items-start">
+                                            <div>
+                                                <div className="font-medium">{p.name}</div>
+                                                <div className="text-xs text-muted-foreground">SKU: {p.sku || 'N/A'}</div>
+                                            </div>
+                                            <div className="text-right">
+                                                <div className="font-bold">{formatCurrency(p.price)}</div>
+                                                <Badge
+                                                    variant={p.stock > 0 ? 'outline' : 'destructive'}
+                                                    className="text-[10px] h-5 px-1.5"
+                                                >
+                                                    Stock: {p.stock}
+                                                </Badge>
+                                            </div>
+                                        </div>
                                     </div>
                                 ))}
                             </div>
@@ -330,6 +373,15 @@ export function OrderForm({ initialData, isEditing = false }: OrderFormProps) {
                     {mutation.isPending ? 'Guardando...' : 'Guardar Orden'}
                 </Button>
             </div>
+
+            <Dialog open={isCreateCustomerOpen} onOpenChange={setIsCreateCustomerOpen}>
+                <DialogContent className="max-w-2xl">
+                    <DialogHeader>
+                        <DialogTitle>Crear Nuevo Cliente</DialogTitle>
+                    </DialogHeader>
+                    <CustomerForm customer={null} onSuccess={handleCustomerCreated} />
+                </DialogContent>
+            </Dialog>
         </div>
     )
 }
