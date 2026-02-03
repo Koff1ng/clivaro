@@ -53,11 +53,20 @@ export function TaxSelector({ selectedTaxes, onTaxesChange, disabled }: TaxSelec
     }
 
     const toggleTax = (tax: TaxRate) => {
-        const isSelected = selectedTaxes.some((t) => t.id === tax.id)
+        // Match by ID or by content for legacy/default taxes
+        const isSelected = selectedTaxes.some((t) =>
+            t.id === tax.id ||
+            (t.id === 'default' && t.rate === tax.rate && t.type === tax.type)
+        )
+
         if (isSelected) {
-            onTaxesChange(selectedTaxes.filter((t) => t.id !== tax.id))
+            // Deselect: Remove matching taxes
+            onTaxesChange(selectedTaxes.filter((t) =>
+                !(t.id === tax.id || (t.id === 'default' && t.rate === tax.rate && t.type === tax.type))
+            ))
         } else {
-            onTaxesChange([...selectedTaxes, tax])
+            // Select: Replace all existing taxes with this one (Single Select behavior)
+            onTaxesChange([tax])
         }
     }
 
@@ -80,7 +89,7 @@ export function TaxSelector({ selectedTaxes, onTaxesChange, disabled }: TaxSelec
             </DialogTrigger>
             <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
-                    <DialogTitle>Seleccionar Impuestos</DialogTitle>
+                    <DialogTitle>Seleccionar Impuesto</DialogTitle>
                 </DialogHeader>
                 <ScrollArea className="max-h-[300px] pr-4">
                     <div className="space-y-2 py-4">
@@ -94,7 +103,10 @@ export function TaxSelector({ selectedTaxes, onTaxesChange, disabled }: TaxSelec
                             </div>
                         ) : (
                             availableTaxes.map((tax) => {
-                                const isSelected = selectedTaxes.some((t) => t.id === tax.id)
+                                const isSelected = selectedTaxes.some((t) =>
+                                    t.id === tax.id ||
+                                    (t.id === 'default' && t.rate === tax.rate && t.type === tax.type)
+                                )
                                 return (
                                     <Button
                                         key={tax.id}
