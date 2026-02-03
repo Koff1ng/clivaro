@@ -111,12 +111,12 @@ export async function POST(request: Request) {
                 resolutionTo: settings.billingResolutionTo || '',
                 resolutionValidFrom: settings.billingResolutionValidFrom ? new Date(settings.billingResolutionValidFrom).toISOString().split('T')[0] : '',
                 resolutionValidTo: settings.billingResolutionValidTo ? new Date(settings.billingResolutionValidTo).toISOString().split('T')[0] : '',
-                softwareId: settings.softwareId,
-                softwarePin: settings.softwarePin,
-                technicalKey: settings.technicalKey,
+                softwareId: settings.softwareId ?? undefined,
+                softwarePin: settings.softwarePin ?? undefined,
+                technicalKey: settings.technicalKey ?? undefined,
                 environment: '2', // Test by default for now
-                alegraEmail: settings.alegraEmail,
-                alegraToken: settings.alegraToken
+                alegraEmail: settings.alegraEmail ?? undefined,
+                alegraToken: settings.alegraToken ?? undefined
             }
 
             // 5. Validation
