@@ -99,9 +99,12 @@ export async function handleAlegraTransmission(payload: {
                     const newCustomer = await client.createCustomer({
                         name: invoice.customer.name,
                         identification: identification,
+                        idType: (invoice.customer as any).isCompany ? 'NIT' : 'CC',
                         email: invoice.customer.email,
                         address: { address: invoice.customer.address || '' },
-                        type: ['client']
+                        type: ['client'],
+                        kindOfPerson: (invoice.customer as any).isCompany ? 'LEGAL' : 'PERSON',
+                        regime: (invoice.customer as any).taxRegime === 'COMMON' ? 'COMMON' : 'SIMPLIFIED'
                     })
                     alegraCustomerId = String(newCustomer.id)
                 }

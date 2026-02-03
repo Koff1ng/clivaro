@@ -108,6 +108,8 @@ export async function POST(
           address: invoice.customer.address || '',
           phone: invoice.customer.phone || '',
           email: invoice.customer.email || '',
+          isCompany: (invoice.customer as any).isCompany || false,
+          taxRegime: (invoice.customer as any).taxRegime || 'SIMPLIFIED',
         },
         items: invoice.items.map(item => ({
           code: item.product?.sku || '',
