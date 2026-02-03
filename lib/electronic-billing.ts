@@ -361,9 +361,19 @@ async function sendToAlegra(
 
   } catch (error: any) {
     console.error('Alegra Sync Error:', error)
+
+    let errorMessage = error.message
+
+    // Check for specific known Alegra errors
+    if (errorMessage.includes('"code":3051') || errorMessage.includes('La numeración no es válida para facturación electrónica')) {
+      errorMessage = 'Alegra rechazó la factura porque no tienes una "Numeración Electrónica" configurada. Ve a Alegra > Configuración > Numeraciones y crea una marcada como "Electrónica".'
+    } else if (errorMessage.includes('"code":2035') || errorMessage.includes('tipo de identificación es obligatorio')) {
+      errorMessage = 'Alegra requiere un tipo de identificación válido (CC, NIT). Edita el cliente y guárdalo de nuevo.'
+    }
+
     return {
       success: false,
-      message: error.message
+      message: errorMessage
     }
   }
 }
