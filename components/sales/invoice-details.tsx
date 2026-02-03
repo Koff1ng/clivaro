@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
@@ -29,6 +30,7 @@ import {
 
 export function InvoiceDetails({ invoice }: { invoice: any }) {
   const { toast } = useToast()
+  const router = useRouter()
   const queryClient = useQueryClient()
 
   // Fetch settings for printers
@@ -83,6 +85,7 @@ export function InvoiceDetails({ invoice }: { invoice: any }) {
     onSuccess: () => {
       toast('Transmisión programada satisfactoriamente', 'success')
       queryClient.invalidateQueries({ queryKey: ['invoice', invoice.id] })
+      router.push('/dashboard/electronic-invoicing')
     },
     onError: (err: any) => {
       toast(err.message, 'error')
@@ -293,8 +296,7 @@ export function InvoiceDetails({ invoice }: { invoice: any }) {
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['invoices'] })
       toast(`Factura enviada exitosamente. CUFE: ${result.cufe}${result.note ? ` - ${result.note}` : ''}`, 'success')
-      // Recargar datos
-      window.location.reload()
+      router.push('/dashboard/electronic-invoicing')
     },
   })
 
@@ -625,6 +627,11 @@ export function InvoiceDetails({ invoice }: { invoice: any }) {
                   <>
                     <DropdownMenuItem
                       onClick={() => {
+                        if (!settingsData?.settings?.electronicBillingProvider) {
+                          toast('Configuración incompleta: Por favor configura el proveedor de facturación electrónica en Ajustes.', 'error')
+                          router.push('/dashboard/settings/electronic-billing')
+                          return
+                        }
                         if (confirm('¿Enviar esta factura a facturación electrónica DIAN?')) {
                           sendElectronicMutation.mutate()
                         }
@@ -636,6 +643,11 @@ export function InvoiceDetails({ invoice }: { invoice: any }) {
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       onClick={() => {
+                        if (!settingsData?.settings?.electronicBillingProvider) {
+                          toast('Configuración incompleta: Por favor configura el proveedor de facturación electrónica en Ajustes.', 'error')
+                          router.push('/dashboard/settings/electronic-billing')
+                          return
+                        }
                         if (confirm('¿Enviar esta factura a Alegra?')) {
                           sendToAlegraMutation.mutate()
                         }

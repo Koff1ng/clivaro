@@ -53,7 +53,7 @@ export async function POST(
       })
 
       if (!settings?.electronicBillingProvider) {
-        throw new Error('Configuración de facturación electrónica incompleta')
+        throw new Error('La configuración de facturación electrónica está incompleta. Por favor, ve a Configuración > Facturación Electrónica y selecciona un proveedor.')
       }
 
       const config: ElectronicBillingConfig = {

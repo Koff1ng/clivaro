@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useMemo, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import dynamic from 'next/dynamic'
 import { Button } from '@/components/ui/button'
@@ -47,6 +48,7 @@ export function InvoiceList() {
   const [customerFilter, setCustomerFilter] = useState('')
   const [viewInvoice, setViewInvoice] = useState<any>(null)
   const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set())
+  const router = useRouter()
   const queryClient = useQueryClient()
   const { toast } = useToast()
 
@@ -66,6 +68,16 @@ export function InvoiceList() {
     queryFn: () => fetchCustomers(debouncedCustomerSearch || undefined),
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 10 * 60 * 1000,
+  })
+
+  const { data: settingsData } = useQuery({
+    queryKey: ['settings'],
+    queryFn: async () => {
+      const res = await fetch('/api/settings')
+      if (!res.ok) throw new Error('Failed to fetch settings')
+      return res.json()
+    },
+    staleTime: 5 * 60 * 1000 // 5 min
   })
 
   const { data, isLoading } = useQuery({
@@ -189,10 +201,16 @@ export function InvoiceList() {
   }
 
   const handleSendElectronic = async (invoice: any) => {
-    if (confirm(`¿Enviar la factura ${invoice.number} a facturación electrónica DIAN?`)) {
+    if (!settingsData?.settings?.electronicBillingProvider) {
+      toast('Configuración incompleta: Por favor configura el proveedor de facturación electrónica en Ajustes.', 'error')
+      router.push('/dashboard/settings/electronic-billing')
+      return
+    }
+    if (confirm(`¿Enviar la factura ${invoice.number} a facturación electrónica?`)) {
       try {
         const result = await sendElectronicMutation.mutateAsync(invoice.id)
         toast(`Factura enviada exitosamente. CUFE: ${result.cufe}${result.note ? ` - ${result.note}` : ''}`, 'success')
+        router.push('/dashboard/electronic-invoicing')
       } catch (error: any) {
         toast(error.message || 'Error al enviar factura', 'error')
       }
