@@ -107,4 +107,14 @@ export class AlegraClient {
         const query = new URLSearchParams(params as any).toString()
         return this.request<any[]>(`/items?${query}`)
     }
+
+    /**
+     * Create Product/Item
+     */
+    async createItem(payload: any): Promise<any> {
+        return this.request('/items', {
+            method: 'POST',
+            body: JSON.stringify(payload),
+        })
+    }
 }

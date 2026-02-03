@@ -264,7 +264,10 @@ async function sendToAlegra(
       const contactPayload = {
         name: invoiceData.customer.name,
         identification: invoiceData.customer.nit.split('-')[0],
-        identificationType: invoiceData.customer.idType || (invoiceData.customer.isCompany ? 'NIT' : 'CC'),
+        identificationObject: {
+          type: invoiceData.customer.idType || (invoiceData.customer.isCompany ? 'NIT' : 'CC'),
+          number: invoiceData.customer.nit.split('-')[0]
+        },
         email: invoiceData.customer.email,
         phonePrimary: invoiceData.customer.phone,
         address: {
@@ -281,12 +284,25 @@ async function sendToAlegra(
 
     // 2. Map Items (Alegra requires an 'id' for each item)
     // We try to fetch active products from Alegra as a fallback
-    // The API error 3023 ("Solo puedes incluir ítems activos") means we must pick an active one.
-    const alegraProducts = await alegra.getProducts({ limit: 10 })
+    let alegraProducts = await alegra.getProducts({ limit: 10 })
 
     // Find first active product
-    const activeProduct = alegraProducts.find((p: any) => p.status === 'active')
-    const fallbackProductId = activeProduct ? activeProduct.id : (alegraProducts.length > 0 ? alegraProducts[0].id : 1)
+    let activeProduct = alegraProducts.find((p: any) => p.status === 'active')
+    let fallbackProductId: string | number
+
+    if (activeProduct) {
+      fallbackProductId = activeProduct.id
+    } else if (alegraProducts.length > 0) {
+      fallbackProductId = alegraProducts[0].id
+    } else {
+      // Create a dummy product if none exist
+      const newProduct = await alegra.createItem({
+        name: "Item Genérico",
+        price: 100,
+        inventory: { unit: "unit" }
+      })
+      fallbackProductId = (newProduct as any).id
+    }
 
     const items = invoiceData.items.map(item => {
       return {

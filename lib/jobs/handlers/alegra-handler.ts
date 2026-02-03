@@ -98,7 +98,10 @@ export async function handleAlegraTransmission(payload: {
             const newCustomer = await client.createCustomer({
                 name: invoice.customer.name,
                 identification: identification,
-                identificationType: (invoice.customer as any).idType || ((invoice.customer as any).isCompany ? 'NIT' : 'CC'),
+                identificationObject: {
+                    type: (invoice.customer as any).idType || ((invoice.customer as any).isCompany ? 'NIT' : 'CC'),
+                    number: identification
+                },
                 email: invoice.customer.email,
                 address: { address: invoice.customer.address || '' },
                 type: ['client'],
@@ -109,10 +112,22 @@ export async function handleAlegraTransmission(payload: {
         }
 
         // 7.2 Prepare Items with Fallback Product ID
-        // The API error 3023 ("Solo puedes incluir ítems activos") means we must pick an active one.
         const alegraProducts = await client.getProducts({ limit: 10 })
         const activeProduct = alegraProducts.find((p: any) => p.status === 'active')
-        const fallbackProductId = activeProduct ? activeProduct.id : (alegraProducts.length > 0 ? alegraProducts[0].id : 1)
+        let fallbackProductId: string | number
+
+        if (activeProduct) {
+            fallbackProductId = activeProduct.id
+        } else if (alegraProducts.length > 0) {
+            fallbackProductId = alegraProducts[0].id
+        } else {
+            const newProduct = await client.createItem({
+                name: "Item Genérico",
+                price: 100,
+                inventory: { unit: "unit" }
+            })
+            fallbackProductId = (newProduct as any).id
+        }
 
         const alegraPayload = {
             date: (invoice.issuedAt || new Date()).toISOString().split('T')[0],
