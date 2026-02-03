@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -14,6 +15,7 @@ interface AlegraConfigProps {
 
 export function AlegraConfig({ tenantId }: AlegraConfigProps) {
     const { toast } = useToast()
+    const queryClient = useQueryClient()
     const [email, setEmail] = useState('')
     const [token, setToken] = useState('')
     const [status, setStatus] = useState<'disconnected' | 'connected' | 'invalid'>('disconnected')
@@ -21,27 +23,28 @@ export function AlegraConfig({ tenantId }: AlegraConfigProps) {
     const [testing, setTesting] = useState(false)
     const [companyInfo, setCompanyInfo] = useState<any>(null)
 
-    useEffect(() => {
-        async function loadConfig() {
-            setLoading(true)
-            try {
-                const res = await fetch(`/api/settings/alegra/config`)
-                if (res.ok) {
-                    const data = await res.json()
-                    if (data.config) {
-                        setEmail(data.config.alegraEmail)
-                        setStatus(data.config.status)
-                        setCompanyInfo(data.config.companyInfo)
-                    }
+    const loadConfig = useCallback(async (showLoading = true) => {
+        if (showLoading) setLoading(true)
+        try {
+            const res = await fetch(`/api/settings/alegra/config`)
+            if (res.ok) {
+                const data = await res.json()
+                if (data.config) {
+                    setEmail(data.config.alegraEmail)
+                    setStatus(data.config.status)
+                    setCompanyInfo(data.config.companyInfo)
                 }
-            } catch (error) {
-                console.error('Error loading Alegra config', error)
-            } finally {
-                setLoading(false)
             }
+        } catch (error) {
+            console.error('Error loading Alegra config', error)
+        } finally {
+            if (showLoading) setLoading(false)
         }
-        loadConfig()
     }, [])
+
+    useEffect(() => {
+        loadConfig()
+    }, [loadConfig])
 
     const handleTestConnection = async () => {
         const trimmedEmail = email.trim()
@@ -85,7 +88,8 @@ export function AlegraConfig({ tenantId }: AlegraConfigProps) {
         const trimmedEmail = email.trim()
         const trimmedToken = token.trim()
 
-        if (!trimmedEmail || !trimmedToken) {
+        // Permitir guardar si ya está conectado aunque no se re-ingrese el token
+        if (!trimmedEmail || (!trimmedToken && status !== 'connected')) {
             toast('Email y Token son requeridos', 'error')
             return
         }
@@ -101,6 +105,10 @@ export function AlegraConfig({ tenantId }: AlegraConfigProps) {
             if (res.ok) {
                 setToken('')
                 toast('Configuración de Alegra guardada correctamente', 'success')
+                // Invalidar la query global de settings para que toda la app sepa que ya hay configuración
+                queryClient.invalidateQueries({ queryKey: ['settings'] })
+                // Recargar localmente para tener el estado fresco
+                await loadConfig(false)
             } else {
                 const data = await res.json()
                 throw new Error(data.error || 'No se pudo guardar la configuración')
@@ -216,7 +224,7 @@ export function AlegraConfig({ tenantId }: AlegraConfigProps) {
                         </Button>
                         <Button
                             onClick={handleSave}
-                            disabled={loading || !email || !token}
+                            disabled={loading || !email || (!token && status !== 'connected')}
                         >
                             {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
                             Guardar y Activar
