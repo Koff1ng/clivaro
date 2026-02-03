@@ -15,7 +15,8 @@ import { GeneralConfig } from './general-config'
 import { DataConfig } from './data-config'
 import { AlegraConfig } from './alegra-config'
 import { PaymentMethodsConfig } from './payment-methods-config'
-import { Wallet } from 'lucide-react'
+import { TaxesPage } from './taxes-page'
+import { Wallet, Percent } from 'lucide-react'
 
 async function fetchSettings() {
   const res = await fetch('/api/settings')
@@ -212,6 +213,10 @@ export function SettingsScreen() {
             <Wallet className="h-4 w-4" />
             Pagos
           </TabsTrigger>
+          <TabsTrigger value="taxes" className="flex items-center gap-2">
+            <Percent className="h-4 w-4" />
+            Impuestos
+          </TabsTrigger>
           <TabsTrigger value="data" className="flex items-center gap-2">
             <SettingsIcon className="h-4 w-4" />
             Datos / Backups
@@ -296,6 +301,10 @@ export function SettingsScreen() {
 
         <TabsContent value="payments-methods" className="space-y-4">
           <PaymentMethodsConfig />
+        </TabsContent>
+
+        <TabsContent value="taxes" className="space-y-4">
+          <TaxesPage />
         </TabsContent>
 
         <TabsContent value="data" className="space-y-4">

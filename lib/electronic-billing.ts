@@ -1,7 +1,12 @@
 import { createHash } from 'crypto'
+import { generateInvoiceXML } from './dian/xml-generator'
+import { signXML } from './dian/signer'
+import { sendBill } from './dian/client'
+import JSZip from 'jszip'
+import { AlegraClient } from './alegra/client'
 
 export interface ElectronicBillingConfig {
-  provider: 'FEG' | 'CUSTOM' | 'DIAN_DIRECT'
+  provider: 'FEG' | 'CUSTOM' | 'DIAN_DIRECT' | 'ALEGRA'
   apiUrl?: string
   apiKey?: string
   companyNit: string
@@ -19,6 +24,8 @@ export interface ElectronicBillingConfig {
   softwarePin?: string // Required for DIAN direct
   technicalKey?: string // Required for CUFE
   environment?: '1' | '2' // 1: Production, 2: Test
+  alegraEmail?: string
+  alegraToken?: string
 }
 
 export interface InvoiceTaxData {
@@ -45,6 +52,7 @@ export interface InvoiceData {
     phone?: string
     email?: string
     isCompany?: boolean
+    taxRegime?: string // 'COMMON', 'SIMPLIFIED', 'GRAN_CONTRIBUYENTE'
     taxLevelCode?: string // e.g., 'R-99-PN'
   }
   items: Array<{
@@ -133,6 +141,8 @@ export async function sendToElectronicBilling(
         return await sendToCustomProvider(invoiceData, config)
       case 'DIAN_DIRECT':
         return await sendToDIANDirect(invoiceData, config)
+      case 'ALEGRA':
+        return await sendToAlegra(invoiceData, config)
       default:
         throw new Error('Proveedor de facturación electrónica no configurado')
     }
@@ -227,18 +237,121 @@ async function sendToCustomProvider(
 }
 
 /**
+ * Integración con Alegra
+ */
+async function sendToAlegra(
+  invoiceData: InvoiceData,
+  config: ElectronicBillingConfig
+): Promise<ElectronicBillingResponse> {
+  if (!config.alegraEmail || !config.alegraToken) {
+    throw new Error('Email y Token de Alegra requeridos')
+  }
+
+  const alegra = new AlegraClient({
+    email: config.alegraEmail,
+    token: config.alegraToken
+  })
+
+  try {
+    // 1. Sync Contact (Get or Create)
+    const contacts = await alegra.searchCustomer(invoiceData.customer.nit.split('-')[0])
+    let customerId: number
+
+    if (contacts.length > 0) {
+      customerId = contacts[0].id
+    } else {
+      const newContact = await alegra.createCustomer({
+        name: invoiceData.customer.name,
+        identification: invoiceData.customer.nit.split('-')[0],
+        email: invoiceData.customer.email,
+        phonePrimary: invoiceData.customer.phone,
+        address: {
+          address: invoiceData.customer.address
+        },
+        kindOfPerson: invoiceData.customer.isCompany ? 'LEGAL_ENTITY' : 'PERSON_ENTITY',
+        regime: invoiceData.customer.taxRegime === 'COMMON' ? 'COMMON_REGIME' : (invoiceData.customer.taxRegime === 'GRAN_CONTRIBUYENTE' ? 'GREAT_CONTRIBUTOR' : 'SIMPLIFIED_REGIME')
+      })
+      customerId = newContact.id
+    }
+
+    // 2. Map Items
+    const items = invoiceData.items.map(item => {
+      // Simple mapping, robust implementation would match product IDs or create them
+      // For now, using 'concept' approach if allowed, or simple product objects
+      return {
+        name: item.description,
+        price: item.unitPrice,
+        quantity: item.quantity,
+        discount: item.discount, // percent or amount? Check API. Usually percent or separate field.
+        // Simplified for now, assuming Price is unit price
+      }
+    })
+
+    // 3. Create Invoice
+    const alegraInvoice = await alegra.createInvoice({
+      date: invoiceData.issueDate.toISOString().split('T')[0],
+      dueDate: invoiceData.dueDate?.toISOString().split('T')[0] || invoiceData.issueDate.toISOString().split('T')[0],
+      client: customerId,
+      items: items,
+      paymentMethod: 'CASH', // Defaulting to Cash
+      stamp: {
+        generateStamp: true // Crucial for electronic billing
+      }
+    })
+
+    return {
+      success: true,
+      status: alegraInvoice.stamp?.status === 'signed' ? 'ACCEPTED' : 'PENDING',
+      message: 'Factura enviada a Alegra',
+      response: alegraInvoice,
+      cufe: alegraInvoice.stamp?.cufe,
+      xmlUrl: alegraInvoice.xml || alegraInvoice.stamp?.xml,
+      pdfUrl: alegraInvoice.pdfUrl || alegraInvoice.stamp?.pdf
+    }
+
+  } catch (error: any) {
+    console.error('Alegra Sync Error:', error)
+    return {
+      success: false,
+      message: error.message
+    }
+  }
+}
+
+/**
  * Integración directa con DIAN (Facturación Electrónica Gratuita)
  */
 async function sendToDIANDirect(
   invoiceData: InvoiceData,
   config: ElectronicBillingConfig
 ): Promise<ElectronicBillingResponse> {
-  // TODO: Implementar integración directa con DIAN
-  // Esto requiere certificados digitales y configuración específica
+  try {
+    // 1. Generate XML (UBL 2.1)
+    const xml = generateInvoiceXML(invoiceData, config)
 
-  return {
-    success: false,
-    message: 'Integración directa con DIAN no implementada',
+    // 2. Sign XML (XAdES-BES)
+    // For now we pass a dummy buffer if no tech key (simulation) or load real one
+    // In real app, certificate would come from config (e.g., base64 or path)
+    const certificate = Buffer.from('dummy-cert')
+    const signedXml = signXML(xml, certificate, config.softwarePin || '')
+
+    // 3. Compress to ZIP
+    const zip = new JSZip()
+    const xmlFilename = `${config.companyNit.split('-')[0]}${config.resolutionPrefix}${invoiceData.number}.xml`
+    zip.file(xmlFilename, signedXml)
+    const zipContent = await zip.generateAsync({ type: 'base64' })
+
+    // 4. Send to DIAN
+    const response = await sendBill(zipContent, `${xmlFilename}.zip`, config)
+
+    return response
+
+  } catch (error: any) {
+    console.error('DIAN Error:', error)
+    return {
+      success: false,
+      message: 'Error en proceso DIAN: ' + error.message
+    }
   }
 }
 

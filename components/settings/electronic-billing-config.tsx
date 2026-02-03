@@ -24,6 +24,11 @@ interface ElectronicBillingFormData {
   billingResolutionTo: string
   billingResolutionValidFrom: string
   billingResolutionValidTo: string
+  softwareId?: string
+  softwarePin?: string
+  technicalKey?: string
+  alegraEmail?: string
+  alegraToken?: string
 }
 
 interface ElectronicBillingConfigProps {
@@ -47,12 +52,17 @@ export function ElectronicBillingConfig({ settings, onSave, isLoading }: Electro
       billingResolutionPrefix: settings?.billingResolutionPrefix || 'FV',
       billingResolutionFrom: settings?.billingResolutionFrom || '1',
       billingResolutionTo: settings?.billingResolutionTo || '999999',
-      billingResolutionValidFrom: settings?.billingResolutionValidFrom 
+      billingResolutionValidFrom: settings?.billingResolutionValidFrom
         ? format(new Date(settings.billingResolutionValidFrom), 'yyyy-MM-dd')
         : format(new Date(), 'yyyy-MM-dd'),
       billingResolutionValidTo: settings?.billingResolutionValidTo
         ? format(new Date(settings.billingResolutionValidTo), 'yyyy-MM-dd')
         : format(new Date(new Date().setFullYear(new Date().getFullYear() + 1)), 'yyyy-MM-dd'),
+      softwareId: settings?.softwareId || '',
+      softwarePin: settings?.softwarePin || '',
+      technicalKey: settings?.technicalKey || '',
+      alegraEmail: settings?.alegraEmail || '',
+      alegraToken: settings?.alegraToken || '',
     }
   })
 
@@ -90,12 +100,43 @@ export function ElectronicBillingConfig({ settings, onSave, isLoading }: Electro
                 <SelectValue placeholder="Selecciona un proveedor" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="ALEGRA">Alegra (Recomendado)</SelectItem>
                 <SelectItem value="FEG">Facturación Electrónica Gratuita (FEG)</SelectItem>
                 <SelectItem value="CUSTOM">Proveedor Personalizado</SelectItem>
                 <SelectItem value="DIAN_DIRECT">Integración Directa con DIAN</SelectItem>
               </SelectContent>
             </Select>
           </div>
+
+          {/* ALEGRA Configuration */}
+          {provider === 'ALEGRA' && (
+            <>
+              <div className="space-y-4 pt-4 border-t">
+                <h3 className="font-semibold">Credenciales de Alegra</h3>
+                <p className="text-sm text-muted-foreground">
+                  Ingresa el correo viculado a tu cuenta de Alegra y tu Token de API.
+                </p>
+                <div className="space-y-2">
+                  <Label htmlFor="alegraEmail">Correo Electrónico (Alegra)</Label>
+                  <Input
+                    id="alegraEmail"
+                    type="email"
+                    {...register('alegraEmail')}
+                    placeholder="ejemplo@empresa.com"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="alegraToken">Token API</Label>
+                  <Input
+                    id="alegraToken"
+                    type="password"
+                    {...register('alegraToken')}
+                    placeholder="Token de acceso..."
+                  />
+                </div>
+              </div>
+            </>
+          )}
 
           {/* API URL y Key (solo para CUSTOM) */}
           {provider === 'CUSTOM' && (
@@ -120,10 +161,59 @@ export function ElectronicBillingConfig({ settings, onSave, isLoading }: Electro
             </>
           )}
 
+          {/* Configuration for DIAN Direct */}
+          {provider === 'DIAN_DIRECT' && (
+            <>
+              <div className="space-y-4 pt-4 border-t">
+                <h3 className="font-semibold">Credenciales Técnicas DIAN</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="softwareId">ID de Software</Label>
+                    <Input
+                      id="softwareId"
+                      {...register('softwareId')}
+                      placeholder="Identificador del software habilitado"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="softwarePin">PIN de Software</Label>
+                    <Input
+                      id="softwarePin"
+                      type="password"
+                      {...register('softwarePin')}
+                      placeholder="PIN de 5 dígitos"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="technicalKey">Clave Técnica (Rango de Numeración)</Label>
+                  <Input
+                    id="technicalKey"
+                    type="password"
+                    {...register('technicalKey')}
+                    placeholder="Clave para cálculo de CUFE"
+                  />
+                </div>
+
+                <div className="space-y-2 mt-4">
+                  <Label>Certificado Digital (.p12)</Label>
+                  <div className="p-4 border rounded-md bg-muted/50 text-center">
+                    <p className="text-sm text-muted-foreground mb-2">
+                      Para habilitar la firma digital, carga tu certificado .p12 otorgado por una entidad autorizada (ej. Andes SCD, GSE).
+                    </p>
+                    <Button variant="outline" size="sm" type="button" onClick={() => alert('La carga de archivos estará disponible pronto')}>
+                      Seleccionar Archivo .p12
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+
           {/* Datos de la Empresa */}
           <div className="space-y-4 pt-4 border-t">
             <h3 className="font-semibold">Datos de la Empresa</h3>
-            
+
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="companyNit">NIT *</Label>
@@ -182,7 +272,7 @@ export function ElectronicBillingConfig({ settings, onSave, isLoading }: Electro
           {/* Resolución de Facturación */}
           <div className="space-y-4 pt-4 border-t">
             <h3 className="font-semibold">Resolución de Facturación</h3>
-            
+
             <div className="space-y-2">
               <Label htmlFor="billingResolutionNumber">Número de Resolución *</Label>
               <Input

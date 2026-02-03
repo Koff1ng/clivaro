@@ -26,13 +26,19 @@ export function calculateGranularTaxes(
 ): TaxCalculationResult {
     const taxes = rates.map(r => {
         // In Colombia, most taxes (IVA, ICA, Retente) are calculated on the Net Base
+        // Retentions are subtractive, so we apply a negative sign to the amount
+        let multiplier = 1
+        if (r.type && (r.type.startsWith('RETE') || r.type === 'RETENTION')) {
+            multiplier = -1
+        }
+
         // Rounding to 2 decimal places is standard for financial docs in COL
-        const amount = Math.round((baseAmount * r.rate) / 100 * 100) / 100
+        const amount = Math.round((baseAmount * r.rate * multiplier) / 100 * 100) / 100
 
         return {
             taxRateId: r.id,
             name: r.name,
-            rate: r.rate,
+            rate: r.rate, // Keep rate positive for display
             amount
         }
     })

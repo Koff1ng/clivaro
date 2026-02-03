@@ -780,11 +780,28 @@ export function POSScreen() {
 
   const computeTotalsFromCart = useCallback((items: CartItem[]) => {
     const subtotal = items.reduce((sum, item) => sum + (item.quantity * item.unitPrice * (1 - (item.discount || 0) / 100)), 0)
-    const tax = items.reduce((sum, item) => {
+
+    let tax = 0
+    let retention = 0
+
+    items.forEach((item) => {
       const base = item.quantity * item.unitPrice * (1 - (item.discount || 0) / 100)
-      return sum + (base * (item.taxRate || 0) / 100)
-    }, 0)
-    return { subtotal, tax, total: subtotal + tax }
+      if (item.appliedTaxes) {
+        item.appliedTaxes.forEach(t => {
+          const amount = base * (t.rate || 0) / 100
+          if (t.type && (t.type.startsWith('RETE') || t.type === 'RETENTION')) {
+            retention += amount
+          } else {
+            tax += amount
+          }
+        })
+      } else if (item.taxRate) {
+        // Fallback for legacy items without appliedTaxes array
+        tax += base * item.taxRate / 100
+      }
+    })
+
+    return { subtotal, tax, retention, total: subtotal + tax - retention }
   }, [])
 
   const enqueueOfflineSale = useCallback((payload: any) => {
@@ -1063,8 +1080,17 @@ export function POSScreen() {
   const updateCartItemTaxes = (productId: string, taxes: any[], variantId?: string | null) => {
     setCart(cart.map(item => {
       if (item.productId === productId && (item.variantId || null) === (variantId || null)) {
-        const totalTaxRate = taxes.reduce((sum, t) => sum + t.rate, 0)
-        return { ...item, appliedTaxes: taxes, taxRate: totalTaxRate }
+        const totalTaxRate = taxes.reduce((sum, t) => {
+          if (t.type && (t.type.startsWith('RETE') || t.type === 'RETENTION')) {
+            return sum - t.rate
+          }
+          return sum + t.rate
+        }, 0)
+
+        // Recalculate subtotal (Payable) with new net rate
+        const subtotal = item.quantity * item.unitPrice * (1 - (item.discount || 0) / 100) * (1 + totalTaxRate / 100)
+
+        return { ...item, appliedTaxes: taxes, taxRate: totalTaxRate, subtotal }
       }
       return item
     }))
@@ -1122,18 +1148,28 @@ export function POSScreen() {
 
   const calculateTotals = () => {
     const subtotal = cart.reduce((sum, item) => {
-      const itemSubtotal = item.quantity * item.unitPrice * (1 - item.discount / 100)
+      const itemSubtotal = item.quantity * item.unitPrice * (1 - (item.discount || 0) / 100)
       return sum + itemSubtotal
     }, 0)
-    const tax = cart.reduce((sum, item) => {
-      const itemSubtotal = item.quantity * item.unitPrice * (1 - item.discount / 100)
-      // Calculate each applied tax
-      const itemTax = item.appliedTaxes.reduce((tSum, t) => {
-        return tSum + (itemSubtotal * t.rate / 100)
-      }, 0)
-      return sum + itemTax
-    }, 0)
-    return { subtotal, tax, total: subtotal + tax }
+
+    let tax = 0
+    let retention = 0
+
+    cart.forEach((item) => {
+      const base = item.quantity * item.unitPrice * (1 - (item.discount || 0) / 100)
+      if (item.appliedTaxes) {
+        item.appliedTaxes.forEach(t => {
+          const amount = base * (t.rate || 0) / 100
+          if (t.type && (t.type.startsWith('RETE') || t.type === 'RETENTION')) {
+            retention += amount
+          } else {
+            tax += amount
+          }
+        })
+      }
+    })
+
+    return { subtotal, tax, retention, total: subtotal + tax - retention }
   }
 
   const handleCheckout = () => {
@@ -1771,6 +1807,12 @@ export function POSScreen() {
                 <span className="text-sm text-gray-600">Impuestos</span>
                 <span className="text-sm font-medium">{formatCurrency(totals.tax)}</span>
               </div>
+              {totals.retention > 0 && (
+                <div className="flex justify-between items-center text-orange-600">
+                  <span className="text-sm text-orange-600">Retenciones</span>
+                  <span className="text-sm font-medium">-{formatCurrency(totals.retention)}</span>
+                </div>
+              )}
               <div className="border-t pt-2 mt-2">
                 <div className="flex justify-between items-center">
                   <span className="text-lg font-bold">Total</span>

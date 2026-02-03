@@ -14,6 +14,8 @@ const updateCustomerSchema = z.object({
   tags: z.array(z.string()).optional(),
   notes: z.string().optional(),
   active: z.boolean().optional(),
+  isCompany: z.boolean().optional(),
+  taxRegime: z.string().optional(),
 })
 
 export async function GET(
@@ -22,8 +24,8 @@ export async function GET(
 ) {
   try {
     // Handle params as Promise (Next.js 15+)
-    const resolvedParams = typeof params === 'object' && 'then' in params 
-      ? await params 
+    const resolvedParams = typeof params === 'object' && 'then' in params
+      ? await params
       : params as { id: string }
     const customerId = resolvedParams.id
 
@@ -35,7 +37,7 @@ export async function GET(
     }
 
     const session = await requirePermission(request as any, PERMISSIONS.MANAGE_CRM)
-    
+
     if (session instanceof NextResponse) {
       return session
     }
@@ -65,8 +67,8 @@ export async function GET(
     let quotations: any[] = []
     let totalInvoices: any = { _sum: { total: null } }
 
-  let totalSales: any = { _sum: { total: null } }
-    
+    let totalSales: any = { _sum: { total: null } }
+
     try {
       const [invoicesResult, quotationsResult] = await Promise.all([
         prisma.invoice.findMany({
@@ -101,7 +103,7 @@ export async function GET(
           return []
         }),
       ])
-      
+
       invoices = invoicesResult || []
       quotations = quotationsResult || []
 
@@ -133,7 +135,7 @@ export async function GET(
             return { _sum: { total: null } }
           }),
         ])
-        
+
         totalInvoices = totalInvoicesResult || { _sum: { total: null } }
         totalSales = totalSalesResult || { _sum: { total: null } }
       } catch (aggError: any) {
@@ -167,11 +169,13 @@ export async function GET(
         tags: processedTags,
         notes: customer.notes ? String(customer.notes) : null,
         active: Boolean(customer.active ?? true),
-        createdAt: customer.createdAt instanceof Date 
-          ? customer.createdAt.toISOString() 
+        isCompany: Boolean(customer.isCompany || false),
+        taxRegime: customer.taxRegime ? String(customer.taxRegime) : null,
+        createdAt: customer.createdAt instanceof Date
+          ? customer.createdAt.toISOString()
           : (customer.createdAt ? new Date(customer.createdAt).toISOString() : null),
-        updatedAt: customer.updatedAt instanceof Date 
-          ? customer.updatedAt.toISOString() 
+        updatedAt: customer.updatedAt instanceof Date
+          ? customer.updatedAt.toISOString()
           : (customer.updatedAt ? new Date(customer.updatedAt).toISOString() : null),
         createdById: customer.createdById ? String(customer.createdById) : null,
         updatedById: customer.updatedById ? String(customer.updatedById) : null,
@@ -187,11 +191,11 @@ export async function GET(
         number: String(inv.number || ''),
         status: String(inv.status || ''),
         total: Number(inv.total || 0),
-        createdAt: inv.createdAt instanceof Date 
-          ? inv.createdAt.toISOString() 
+        createdAt: inv.createdAt instanceof Date
+          ? inv.createdAt.toISOString()
           : (inv.createdAt ? new Date(inv.createdAt).toISOString() : null),
-        paidAt: inv.paidAt instanceof Date 
-          ? inv.paidAt.toISOString() 
+        paidAt: inv.paidAt instanceof Date
+          ? inv.paidAt.toISOString()
           : (inv.paidAt ? new Date(inv.paidAt).toISOString() : null),
       }))
 
@@ -200,8 +204,8 @@ export async function GET(
         number: String(quot.number || ''),
         status: String(quot.status || ''),
         total: Number(quot.total || 0),
-        createdAt: quot.createdAt instanceof Date 
-          ? quot.createdAt.toISOString() 
+        createdAt: quot.createdAt instanceof Date
+          ? quot.createdAt.toISOString()
           : (quot.createdAt ? new Date(quot.createdAt).toISOString() : null),
       }))
 
@@ -225,9 +229,9 @@ export async function GET(
     }
   } catch (error: any) {
     logger.error('Error fetching customer', error, { endpoint: '/api/customers/[id]', method: 'GET' })
-    
+
     return NextResponse.json(
-      { 
+      {
         error: 'Failed to fetch customer',
         details: process.env.NODE_ENV === 'development' ? error?.message : undefined
       },
@@ -245,7 +249,7 @@ export async function PUT(
   const customerId = resolvedParams.id
 
   const session = await requirePermission(request as any, PERMISSIONS.MANAGE_CRM)
-  
+
   if (session instanceof NextResponse) {
     return session
   }
@@ -267,6 +271,8 @@ export async function PUT(
         taxId: data.taxId || null,
         tags: data.tags ? data.tags.join(',') : null,
         notes: data.notes || null,
+        isCompany: data.isCompany !== undefined ? data.isCompany : undefined,
+        taxRegime: data.taxRegime || null,
         updatedById: (session.user as any).id,
       },
     })
@@ -296,7 +302,7 @@ export async function DELETE(
   const customerId = resolvedParams.id
 
   const session = await requirePermission(request as any, PERMISSIONS.MANAGE_CRM)
-  
+
   if (session instanceof NextResponse) {
     return session
   }
