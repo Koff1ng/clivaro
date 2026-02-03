@@ -37,8 +37,7 @@ export async function GET(
                         variant: true
                     }
                 },
-                quotation: true,
-                created_by: { select: { name: true, email: true } }
+                quotation: true
             }
         })
 
