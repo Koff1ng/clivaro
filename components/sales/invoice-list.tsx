@@ -203,7 +203,7 @@ export function InvoiceList() {
   const handleSendElectronic = async (invoice: any) => {
     if (!settingsData?.settings?.electronicBillingProvider) {
       toast('Configuración incompleta: Por favor configura el proveedor de facturación electrónica en Ajustes.', 'error')
-      router.push('/dashboard/settings/electronic-billing')
+      router.push('/settings?tab=billing')
       return
     }
     if (confirm(`¿Enviar la factura ${invoice.number} a facturación electrónica?`)) {
