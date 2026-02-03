@@ -134,7 +134,12 @@ export async function POST(request: Request) {
                     }
                 },
                 include: {
-                    items: true
+                    items: {
+                        include: {
+                            product: true,
+                            variant: true
+                        }
+                    }
                 }
             })
 
