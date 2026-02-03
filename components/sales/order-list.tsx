@@ -12,6 +12,8 @@ import { formatCurrency, formatDate } from '@/lib/utils'
 import { Search, Eye, Trash2, Loader2, Plus } from 'lucide-react'
 import { useToast } from '@/components/ui/toast'
 import Link from 'next/link'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { OrderDetails } from '@/components/sales/order-details'
 
 async function fetchOrders(page: number, search: string, status: string) {
     const params = new URLSearchParams({
@@ -31,6 +33,7 @@ export function OrderList() {
     const [search, setSearch] = useState('')
     const [statusFilter, setStatusFilter] = useState('')
     const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set()) // For animation/loading state
+    const [viewOrder, setViewOrder] = useState<any>(null)
     const router = useRouter()
     const queryClient = useQueryClient()
     const { toast } = useToast()
@@ -86,6 +89,18 @@ export function OrderList() {
             } catch (error: any) {
                 // Handled in onError
             }
+        }
+    }
+
+    const handleView = async (orderSummary: any) => {
+        try {
+            // Fetch full details including items which might be paginated or not fully loaded in list
+            const res = await fetch(`/api/sales-orders/${orderSummary.id}`)
+            if (!res.ok) throw new Error('Error al cargar detalles')
+            const fullOrder = await res.json()
+            setViewOrder(fullOrder)
+        } catch (error) {
+            toast({ title: 'Error al cargar los detalles de la orden', variant: 'destructive' } as any)
         }
     }
 
@@ -175,15 +190,15 @@ export function OrderList() {
                                             <TableCell className="text-right font-bold">{formatCurrency(order.total)}</TableCell>
                                             <TableCell className="text-right">
                                                 <div className="flex justify-end gap-2">
-                                                    <Link href={`/sales/orders/${order.id}`}>
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            title="Ver detalles"
-                                                        >
-                                                            <Eye className="h-4 w-4" />
-                                                        </Button>
-                                                    </Link>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        title="Ver detalles"
+                                                        onClick={() => handleView(order)}
+                                                    >
+                                                        <Eye className="h-4 w-4" />
+                                                    </Button>
+
                                                     {order.status === 'OPEN' && (
                                                         <Button
                                                             variant="ghost"
@@ -232,6 +247,15 @@ export function OrderList() {
                     </div>
                 </div>
             )}
+
+            <Dialog open={!!viewOrder} onOpenChange={(open) => !open && setViewOrder(null)}>
+                <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                        <DialogTitle>Detalles de la Orden {viewOrder?.number}</DialogTitle>
+                    </DialogHeader>
+                    {viewOrder && <OrderDetails order={viewOrder} />}
+                </DialogContent>
+            </Dialog>
         </div>
     )
 }
