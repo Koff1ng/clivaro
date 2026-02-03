@@ -104,7 +104,7 @@ export function CustomerForm({ customer, onSuccess }: { customer: any; onSuccess
       toast('Cliente guardado correctamente')
       onSuccess()
     } catch (error: any) {
-      toast(error.message || 'Error al guardar cliente', 'destructive')
+      toast(error.message || 'Error al guardar cliente', 'error')
     } finally {
       setLoading(false)
     }

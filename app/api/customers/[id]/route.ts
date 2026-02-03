@@ -169,8 +169,8 @@ export async function GET(
         tags: processedTags,
         notes: customer.notes ? String(customer.notes) : null,
         active: Boolean(customer.active ?? true),
-        isCompany: Boolean(customer.isCompany || false),
-        taxRegime: customer.taxRegime ? String(customer.taxRegime) : null,
+        isCompany: !!customer.isCompany,
+        taxRegime: customer.taxRegime || null,
         createdAt: customer.createdAt instanceof Date
           ? customer.createdAt.toISOString()
           : (customer.createdAt ? new Date(customer.createdAt).toISOString() : null),
