@@ -16,6 +16,7 @@ async function main() {
     { name: 'manage_crm', description: 'Manage customers and leads' },
     { name: 'view_reports', description: 'View reports and analytics' },
     { name: 'manage_cash', description: 'Manage cash register and shifts' },
+    { name: 'manage_settings', description: 'Manage site settings and payment methods' },
   ]
 
   for (const perm of permissions) {
