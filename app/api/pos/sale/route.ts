@@ -468,8 +468,15 @@ export async function POST(request: Request) {
       }, { status: 201 })
     })
 
-  } catch (error) {
-    return handleError(error, 'POST /api/pos/sale')
+  } catch (error: any) {
+    return NextResponse.json(
+      {
+        error: 'Internal Server Error',
+        details: error?.message || String(error),
+        stack: error?.stack
+      },
+      { status: 500 }
+    )
   }
 }
 
