@@ -6,7 +6,7 @@ import { z } from 'zod'
 
 const updateSchema = z.object({
     name: z.string().min(1).optional(),
-    type: z.enum(['CASH', 'ELECTRONIC', 'CARD', 'TRANSFER']).optional(),
+    type: z.enum(['CASH', 'ELECTRONIC', 'CARD', 'TRANSFER', 'CREDIT']).optional(),
     active: z.boolean().optional(),
     color: z.string().nullable().optional(),
     icon: z.string().nullable().optional(),
