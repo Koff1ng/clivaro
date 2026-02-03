@@ -263,13 +263,15 @@ async function sendToAlegra(
       const newContact = await alegra.createCustomer({
         name: invoiceData.customer.name,
         identification: invoiceData.customer.nit.split('-')[0],
+        identificationType: invoiceData.customer.isCompany ? '31' : '13', // 31=NIT, 13=CC
         email: invoiceData.customer.email,
         phonePrimary: invoiceData.customer.phone,
         address: {
           address: invoiceData.customer.address
         },
-        kindOfPerson: invoiceData.customer.isCompany ? 'LEGAL_ENTITY' : 'PERSON_ENTITY',
-        regime: invoiceData.customer.taxRegime === 'COMMON' ? 'COMMON_REGIME' : (invoiceData.customer.taxRegime === 'GRAN_CONTRIBUYENTE' ? 'GREAT_CONTRIBUTOR' : 'SIMPLIFIED_REGIME')
+        type: ['client'],
+        kindOfPerson: invoiceData.customer.isCompany ? 'LEGAL' : 'PERSON',
+        regime: invoiceData.customer.taxRegime === 'COMMON' ? 'COMMON' : 'SIMPLIFIED'
       })
       customerId = newContact.id
     }

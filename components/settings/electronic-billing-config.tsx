@@ -52,12 +52,18 @@ export function ElectronicBillingConfig({ settings, onSave, isLoading }: Electro
       billingResolutionPrefix: settings?.billingResolutionPrefix || 'FV',
       billingResolutionFrom: settings?.billingResolutionFrom || '1',
       billingResolutionTo: settings?.billingResolutionTo || '999999',
-      billingResolutionValidFrom: settings?.billingResolutionValidFrom
-        ? format(new Date(settings.billingResolutionValidFrom), 'yyyy-MM-dd')
-        : format(new Date(), 'yyyy-MM-dd'),
-      billingResolutionValidTo: settings?.billingResolutionValidTo
-        ? format(new Date(settings.billingResolutionValidTo), 'yyyy-MM-dd')
-        : format(new Date(new Date().setFullYear(new Date().getFullYear() + 1)), 'yyyy-MM-dd'),
+      billingResolutionValidFrom: (() => {
+        try {
+          const d = settings?.billingResolutionValidFrom ? new Date(settings.billingResolutionValidFrom) : new Date()
+          return isNaN(d.getTime()) ? format(new Date(), 'yyyy-MM-dd') : format(d, 'yyyy-MM-dd')
+        } catch { return format(new Date(), 'yyyy-MM-dd') }
+      })(),
+      billingResolutionValidTo: (() => {
+        try {
+          const d = settings?.billingResolutionValidTo ? new Date(settings.billingResolutionValidTo) : new Date(new Date().setFullYear(new Date().getFullYear() + 1))
+          return isNaN(d.getTime()) ? format(new Date(new Date().setFullYear(new Date().getFullYear() + 1)), 'yyyy-MM-dd') : format(d, 'yyyy-MM-dd')
+        } catch { return format(new Date(new Date().setFullYear(new Date().getFullYear() + 1)), 'yyyy-MM-dd') }
+      })(),
       softwareId: settings?.softwareId || '',
       softwarePin: settings?.softwarePin || '',
       technicalKey: settings?.technicalKey || '',
