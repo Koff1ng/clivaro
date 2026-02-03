@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { ArrowLeft, Printer, FileText, XCircle, CheckCircle } from 'lucide-react'
 import { useToast } from '@/components/ui/toast'
+import { MainLayout } from '@/components/layout/main-layout'
 import {
     Card,
     CardContent,
@@ -56,7 +57,7 @@ export default function SalesOrderDetailPage() {
             toast({
                 title: "Orden Convertida",
                 description: `Factura ${invoice.number} creada exitosamente`,
-                variant: "success" // Using variant 'success' if available, otherwise default
+                variant: 'default' // Changed to default to avoid type issues if 'success' not in variants
             } as any)
             queryClient.invalidateQueries({ queryKey: ['sales-order', id] })
             // Optional: Redirect to invoice?
@@ -85,137 +86,148 @@ export default function SalesOrderDetailPage() {
         }
     })
 
-    if (isLoading) return <div className="p-8 text-center">Cargando detalles...</div>
-    if (!order) return <div className="p-8 text-center">Orden no encontrada</div>
+    if (isLoading) return (
+        <MainLayout>
+            <div className="p-8 text-center">Cargando detalles...</div>
+        </MainLayout>
+    )
+
+    if (!order) return (
+        <MainLayout>
+            <div className="p-8 text-center">Orden no encontrada</div>
+        </MainLayout>
+    )
 
     return (
-        <div className="space-y-6 max-w-5xl mx-auto">
-            <div className="flex items-center gap-4">
-                <Button variant="ghost" size="icon" onClick={() => router.back()}>
-                    <ArrowLeft className="h-4 w-4" />
-                </Button>
-                <div>
-                    <div className="flex items-center gap-3">
-                        <h1 className="text-3xl font-bold tracking-tight">{order.number}</h1>
-                        <Badge variant={order.status === 'OPEN' ? 'default' : order.status === 'COMPLETED' ? 'secondary' : 'destructive'}>
-                            {order.status === 'OPEN' ? 'ABIERTA' : order.status === 'COMPLETED' ? 'FACTURADA' : 'CANCELADA'}
-                        </Badge>
-                    </div>
-                    <p className="text-muted-foreground text-sm">
-                        Creada el {formatDate(order.createdAt)} por {order.created_by?.name || 'Sistema'}
-                    </p>
-                </div>
-                <div className="ml-auto flex gap-2">
-                    <Button variant="outline" onClick={() => window.print()}>
-                        <Printer className="h-4 w-4 mr-2" />
-                        Imprimir
+        <MainLayout>
+            <div className="space-y-6 max-w-5xl mx-auto">
+                <div className="flex items-center gap-4">
+                    <Button variant="ghost" size="icon" onClick={() => router.back()}>
+                        <ArrowLeft className="h-4 w-4" />
                     </Button>
-                    {order.status === 'OPEN' && (
-                        <>
-                            <Button variant="destructive" onClick={() => cancelMutation.mutate()} disabled={cancelMutation.isPending}>
-                                <XCircle className="h-4 w-4 mr-2" />
-                                Cancelar
-                            </Button>
-                            <Button
-                                onClick={() => convertMutation.mutate()}
-                                disabled={convertMutation.isPending}
-                                className="bg-green-600 hover:bg-green-700 text-white"
-                            >
-                                <CheckCircle className="h-4 w-4 mr-2" />
-                                Convertir a Factura
-                            </Button>
-                        </>
-                    )}
+                    <div>
+                        <div className="flex items-center gap-3">
+                            <h1 className="text-3xl font-bold tracking-tight">{order.number}</h1>
+                            <Badge variant={order.status === 'OPEN' ? 'default' : order.status === 'COMPLETED' ? 'secondary' : 'destructive'}>
+                                {order.status === 'OPEN' ? 'ABIERTA' : order.status === 'COMPLETED' ? 'FACTURADA' : 'CANCELADA'}
+                            </Badge>
+                        </div>
+                        <p className="text-muted-foreground text-sm">
+                            Creada el {formatDate(order.createdAt)} por {order.created_by?.name || 'Sistema'}
+                        </p>
+                    </div>
+                    <div className="ml-auto flex gap-2">
+                        <Button variant="outline" onClick={() => window.print()}>
+                            <Printer className="h-4 w-4 mr-2" />
+                            Imprimir
+                        </Button>
+                        {order.status === 'OPEN' && (
+                            <>
+                                <Button variant="destructive" onClick={() => cancelMutation.mutate()} disabled={cancelMutation.isPending}>
+                                    <XCircle className="h-4 w-4 mr-2" />
+                                    Cancelar
+                                </Button>
+                                <Button
+                                    onClick={() => convertMutation.mutate()}
+                                    disabled={convertMutation.isPending}
+                                    className="bg-green-600 hover:bg-green-700 text-white"
+                                >
+                                    <CheckCircle className="h-4 w-4 mr-2" />
+                                    Convertir a Factura
+                                </Button>
+                            </>
+                        )}
+                    </div>
                 </div>
-            </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <Card className="md:col-span-2">
-                    <CardHeader>
-                        <CardTitle>Items de la Orden</CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-0">
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Producto</TableHead>
-                                    <TableHead className="text-right">Cant.</TableHead>
-                                    <TableHead className="text-right">Precio Unit.</TableHead>
-                                    <TableHead className="text-right">Desc.</TableHead>
-                                    <TableHead className="text-right">Impuesto</TableHead>
-                                    <TableHead className="text-right">Subtotal</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {order.items.map((item: any) => (
-                                    <TableRow key={item.id}>
-                                        <TableCell className="font-medium">
-                                            {item.product?.name || 'Producto Desconocido'}
-                                            <div className="text-xs text-muted-foreground">{item.product?.sku}</div>
-                                        </TableCell>
-                                        <TableCell className="text-right">{item.quantity}</TableCell>
-                                        <TableCell className="text-right">{formatCurrency(item.unitPrice)}</TableCell>
-                                        <TableCell className="text-right">{item.discount}%</TableCell>
-                                        <TableCell className="text-right">{item.taxRate}%</TableCell>
-                                        <TableCell className="text-right font-semibold">{formatCurrency(item.subtotal)}</TableCell>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <Card className="md:col-span-2">
+                        <CardHeader>
+                            <CardTitle>Items de la Orden</CardTitle>
+                        </CardHeader>
+                        <CardContent className="p-0">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Producto</TableHead>
+                                        <TableHead className="text-right">Cant.</TableHead>
+                                        <TableHead className="text-right">Precio Unit.</TableHead>
+                                        <TableHead className="text-right">Desc.</TableHead>
+                                        <TableHead className="text-right">Impuesto</TableHead>
+                                        <TableHead className="text-right">Subtotal</TableHead>
                                     </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    </CardContent>
-                </Card>
-
-                <div className="space-y-6">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Cliente</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="space-y-2">
-                                <p className="font-semibold text-lg">{order.customer?.name}</p>
-                                <p className="text-sm text-muted-foreground">{order.customer?.email}</p>
-                                <p className="text-sm text-muted-foreground">{order.customer?.phone}</p>
-                                <p className="text-xs text-muted-foreground mt-2">ID: {order.customer?.taxId || 'N/A'}</p>
-                            </div>
+                                </TableHeader>
+                                <TableBody>
+                                    {order.items.map((item: any) => (
+                                        <TableRow key={item.id}>
+                                            <TableCell className="font-medium">
+                                                {item.product?.name || 'Producto Desconocido'}
+                                                <div className="text-xs text-muted-foreground">{item.product?.sku}</div>
+                                            </TableCell>
+                                            <TableCell className="text-right">{item.quantity}</TableCell>
+                                            <TableCell className="text-right">{formatCurrency(item.unitPrice)}</TableCell>
+                                            <TableCell className="text-right">{item.discount}%</TableCell>
+                                            <TableCell className="text-right">{item.taxRate}%</TableCell>
+                                            <TableCell className="text-right font-semibold">{formatCurrency(item.subtotal)}</TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
                         </CardContent>
                     </Card>
 
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Resumen Financiero</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-3">
-                            <div className="flex justify-between text-sm">
-                                <span className="text-muted-foreground">Subtotal</span>
-                                <span>{formatCurrency(order.subtotal)}</span>
-                            </div>
-                            <div className="flex justify-between text-sm">
-                                <span className="text-muted-foreground">Descuentos</span>
-                                <span>- {formatCurrency(order.discount)}</span>
-                            </div>
-                            <div className="flex justify-between text-sm">
-                                <span className="text-muted-foreground">Impuestos</span>
-                                <span>+ {formatCurrency(order.tax)}</span>
-                            </div>
-                            <div className="flex justify-between font-bold text-xl pt-4 border-t">
-                                <span>TOTAL</span>
-                                <span>{formatCurrency(order.total)}</span>
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    {order.notes && (
+                    <div className="space-y-6">
                         <Card>
                             <CardHeader>
-                                <CardTitle className="text-sm">Notas</CardTitle>
+                                <CardTitle>Cliente</CardTitle>
                             </CardHeader>
                             <CardContent>
-                                <p className="text-sm text-muted-foreground whitespace-pre-wrap">{order.notes}</p>
+                                <div className="space-y-2">
+                                    <p className="font-semibold text-lg">{order.customer?.name}</p>
+                                    <p className="text-sm text-muted-foreground">{order.customer?.email}</p>
+                                    <p className="text-sm text-muted-foreground">{order.customer?.phone}</p>
+                                    <p className="text-xs text-muted-foreground mt-2">ID: {order.customer?.taxId || 'N/A'}</p>
+                                </div>
                             </CardContent>
                         </Card>
-                    )}
+
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Resumen Financiero</CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-3">
+                                <div className="flex justify-between text-sm">
+                                    <span className="text-muted-foreground">Subtotal</span>
+                                    <span>{formatCurrency(order.subtotal)}</span>
+                                </div>
+                                <div className="flex justify-between text-sm">
+                                    <span className="text-muted-foreground">Descuentos</span>
+                                    <span>- {formatCurrency(order.discount)}</span>
+                                </div>
+                                <div className="flex justify-between text-sm">
+                                    <span className="text-muted-foreground">Impuestos</span>
+                                    <span>+ {formatCurrency(order.tax)}</span>
+                                </div>
+                                <div className="flex justify-between font-bold text-xl pt-4 border-t">
+                                    <span>TOTAL</span>
+                                    <span>{formatCurrency(order.total)}</span>
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        {order.notes && (
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle className="text-sm">Notas</CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <p className="text-sm text-muted-foreground whitespace-pre-wrap">{order.notes}</p>
+                                </CardContent>
+                            </Card>
+                        )}
+                    </div>
                 </div>
             </div>
-        </div>
+        </MainLayout>
     )
 }

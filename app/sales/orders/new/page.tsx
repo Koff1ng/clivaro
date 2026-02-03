@@ -1,16 +1,22 @@
 'use client'
 
 import { OrderForm } from '@/components/sales/order-form'
+import { MainLayout } from '@/components/layout/main-layout'
+import { PageHeader } from '@/components/ui/page-header'
+import { FilePlus } from 'lucide-react'
 
 export default function NewSalesOrderPage() {
     return (
-        <div className="space-y-6">
-            <div>
-                <h1 className="text-3xl font-bold tracking-tight">Nueva Orden de Venta</h1>
-                <p className="text-muted-foreground">Crea una orden o cotización formal para un cliente.</p>
-            </div>
+        <MainLayout>
+            <div className="space-y-6">
+                <PageHeader
+                    title="Nueva Orden de Venta"
+                    description="Crea una orden o cotización formal para un cliente."
+                    icon={<FilePlus className="h-5 w-5" />}
+                />
 
-            <OrderForm />
-        </div>
+                <OrderForm />
+            </div>
+        </MainLayout>
     )
 }
