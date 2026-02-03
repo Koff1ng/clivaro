@@ -14,6 +14,7 @@ const createCustomerSchema = z.object({
   notes: z.string().optional(),
   isCompany: z.boolean().default(false).optional(),
   taxRegime: z.string().optional(),
+  idType: z.string().optional(),
 })
 
 export async function GET(request: Request) {
@@ -99,6 +100,7 @@ export async function POST(request: Request) {
         tags: data.tags ? (Array.isArray(data.tags) ? data.tags.join(',') : data.tags) : null,
         isCompany: data.isCompany || false,
         taxRegime: data.taxRegime || null,
+        idType: data.idType || null,
         createdById: (session.user as any).id,
       },
     })

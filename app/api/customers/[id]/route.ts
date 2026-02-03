@@ -16,6 +16,7 @@ const updateCustomerSchema = z.object({
   active: z.boolean().optional(),
   isCompany: z.boolean().optional(),
   taxRegime: z.string().optional(),
+  idType: z.string().optional(),
 })
 
 export async function GET(
@@ -171,6 +172,7 @@ export async function GET(
         active: Boolean(customer.active ?? true),
         isCompany: !!customer.isCompany,
         taxRegime: customer.taxRegime || null,
+        idType: (customer as any).idType || null,
         createdAt: customer.createdAt instanceof Date
           ? customer.createdAt.toISOString()
           : (customer.createdAt ? new Date(customer.createdAt).toISOString() : null),
@@ -273,6 +275,7 @@ export async function PUT(
         notes: data.notes || null,
         isCompany: data.isCompany !== undefined ? data.isCompany : undefined,
         taxRegime: data.taxRegime || null,
+        idType: data.idType || null,
         updatedById: (session.user as any).id,
       },
     })

@@ -21,6 +21,7 @@ const customerSchema = z.object({
   active: z.boolean().default(true),
   isCompany: z.boolean().default(false),
   taxRegime: z.string().optional(),
+  idType: z.string().optional().default('CC'),
 }).superRefine((data, ctx) => {
   if (data.isCompany) {
     if (!data.taxId) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "NIT es obligatorio para empresas", path: ['taxId'] })
@@ -48,7 +49,8 @@ export function CustomerForm({ customer, onSuccess }: { customer: any; onSuccess
       notes: '',
       active: true,
       isCompany: false,
-      taxRegime: 'SIMPLIFIED' // Default 'No Responsable de IVA'
+      taxRegime: 'SIMPLIFIED', // Default 'No Responsable de IVA'
+      idType: 'CC'
     },
   })
 
@@ -67,6 +69,7 @@ export function CustomerForm({ customer, onSuccess }: { customer: any; onSuccess
       setValue('active', customer.active !== false)
       setValue('isCompany', customer.isCompany || false)
       setValue('taxRegime', customer.taxRegime || 'SIMPLIFIED')
+      setValue('idType', (customer as any).idType || 'CC')
     }
   }, [customer, setValue])
 
@@ -142,7 +145,22 @@ export function CustomerForm({ customer, onSuccess }: { customer: any; onSuccess
           )}
         </div>
         <div>
-          <Label htmlFor="taxId">NIT / Documento {isCompany && '*'}</Label>
+          <Label htmlFor="idType">Tipo Documento</Label>
+          <select
+            id="idType"
+            {...register('idType')}
+            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+          >
+            <option value="CC">Cédula de Ciudadanía (CC)</option>
+            <option value="NIT">NIT / RUT</option>
+            <option value="CE">Cédula de Extranjería (CE)</option>
+            <option value="TI">Tarjeta de Identidad (TI)</option>
+            <option value="PP">Pasaporte (PP)</option>
+            <option value="DIE">Doc. Identificación Extranjero (DIE)</option>
+          </select>
+        </div>
+        <div>
+          <Label htmlFor="taxId">Número Documento {isCompany && '*'}</Label>
           <Input
             id="taxId"
             {...register('taxId')}
