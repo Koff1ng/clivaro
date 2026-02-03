@@ -815,6 +815,8 @@ model PaymentMethod {
   name      String   @unique
   type      String   @default("ELECTRONIC") // CASH, ELECTRONIC, CARD, TRANSFER
   active    Boolean  @default(true)
+  color     String?  // Hex color code (e.g. #3b82f6)
+  icon      String?  // Lucide icon name (e.g. credit-card)
   config    String?  // JSON configuration string
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
