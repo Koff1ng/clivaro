@@ -280,9 +280,13 @@ async function sendToAlegra(
     }
 
     // 2. Map Items (Alegra requires an 'id' for each item)
-    // We try to fetch the first product from Alegra as a fallback if the user hasn't mapped products
-    const alegraProducts = await alegra.getProducts({ limit: 1 })
-    const fallbackProductId = alegraProducts.length > 0 ? alegraProducts[0].id : 1
+    // We try to fetch active products from Alegra as a fallback
+    // The API error 3023 ("Solo puedes incluir ítems activos") means we must pick an active one.
+    const alegraProducts = await alegra.getProducts({ limit: 10 })
+
+    // Find first active product
+    const activeProduct = alegraProducts.find((p: any) => p.status === 'active')
+    const fallbackProductId = activeProduct ? activeProduct.id : (alegraProducts.length > 0 ? alegraProducts[0].id : 1)
 
     const items = invoiceData.items.map(item => {
       return {

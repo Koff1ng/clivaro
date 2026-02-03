@@ -109,8 +109,10 @@ export async function handleAlegraTransmission(payload: {
         }
 
         // 7.2 Prepare Items with Fallback Product ID
-        const alegraProducts = await client.getProducts({ limit: 1 })
-        const fallbackProductId = alegraProducts.length > 0 ? alegraProducts[0].id : 1
+        // The API error 3023 ("Solo puedes incluir ítems activos") means we must pick an active one.
+        const alegraProducts = await client.getProducts({ limit: 10 })
+        const activeProduct = alegraProducts.find((p: any) => p.status === 'active')
+        const fallbackProductId = activeProduct ? activeProduct.id : (alegraProducts.length > 0 ? alegraProducts[0].id : 1)
 
         const alegraPayload = {
             date: (invoice.issuedAt || new Date()).toISOString().split('T')[0],
