@@ -403,8 +403,8 @@ export async function POST(request: Request) {
               invoice: { connect: { id: invoice.id } },
               amount: finalTotal,
               method: method,
-              paymentMethodId: pm.id,
-              createdById: (session.user as any).id,
+              paymentMethod: { connect: { id: pm.id } },
+              createdBy: { connect: { id: (session.user as any).id } },
             }
           })
 
