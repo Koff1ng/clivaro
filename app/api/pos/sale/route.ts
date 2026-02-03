@@ -342,9 +342,9 @@ export async function POST(request: Request) {
                   invoice: { connect: { id: invoice.id } },
                   amount: amountToApply,
                   method: methodInfo.name,
-                  paymentMethodId: p.paymentMethodId,
-                  reference: p.reference,
-                  notes: methodInfo.type === 'CASH' && change > 0 ? `Efectivo: ${p.amount}, Cambio: ${change}` : p.notes,
+                  paymentMethod: { connect: { id: p.paymentMethodId } },
+                  reference: p.reference ?? undefined,
+                  notes: methodInfo.type === 'CASH' && change > 0 ? `Efectivo: ${p.amount}, Cambio: ${change}` : (p.notes ?? undefined),
                   createdById: (session.user as any).id,
                 }
               })
