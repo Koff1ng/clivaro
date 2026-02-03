@@ -183,6 +183,7 @@ export function POSScreen() {
   const [customerSearch, setCustomerSearch] = useState('')
   const [showCustomerDialog, setShowCustomerDialog] = useState(false)
   const [showAddCustomer, setShowAddCustomer] = useState(false)
+  const [editCustomerData, setEditCustomerData] = useState<any>(null)
   const [selectedWarehouse, setSelectedWarehouse] = useState<string>('')
   const [paymentMode, setPaymentMode] = useState<'SINGLE' | 'SPLIT'>('SINGLE')
   const [paymentMethodId, setPaymentMethodId] = useState<string>('')
@@ -1573,14 +1574,29 @@ export function POSScreen() {
                 {selectedCustomer ? selectedCustomer.name : 'Cliente General'}
               </span>
             </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setShowCustomerDialog(true)}
-              className="h-7 px-2 flex-shrink-0"
-            >
-              {selectedCustomer ? 'Cambiar' : 'Seleccionar'}
-            </Button>
+            <div className="flex items-center gap-1">
+              {selectedCustomer && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setEditCustomerData(selectedCustomer)
+                    setShowAddCustomer(true)
+                  }}
+                  className="h-7 px-2"
+                >
+                  Editar
+                </Button>
+              )}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowCustomerDialog(true)}
+                className="h-7 px-2 flex-shrink-0"
+              >
+                {selectedCustomer ? 'Cambiar' : 'Seleccionar'}
+              </Button>
+            </div>
           </div>
 
           {/* Cart */}
@@ -2054,30 +2070,44 @@ export function POSScreen() {
               {customerResults.length > 0 ? (
                 <div className="border rounded-lg max-h-60 overflow-y-auto divide-y shadow-sm">
                   {customerResults.map((customer: any) => (
-                    <button
-                      key={customer.id}
-                      onClick={() => {
-                        setSelectedCustomer(customer)
-                        setShowCustomerDialog(false)
-                        setCustomerSearch('')
-                      }}
-                      className="w-full text-left p-3 hover:bg-muted transition-colors"
-                    >
-                      <div className="font-medium text-sm">{customer.name}</div>
-                      <div className="flex gap-2 mt-0.5">
-                        {customer.taxId && (
-                          <span className="text-[10px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded border border-blue-100 font-medium">
-                            NIT: {customer.taxId}
-                          </span>
-                        )}
-                        {customer.phone && (
-                          <span className="text-[10px] text-muted-foreground flex items-center gap-1">
-                            <Phone className="h-2.5 w-2.5" />
-                            {customer.phone}
-                          </span>
-                        )}
-                      </div>
-                    </button>
+                    <div key={customer.id} className="flex items-center hover:bg-muted transition-colors pr-2">
+                      <button
+                        onClick={() => {
+                          setSelectedCustomer(customer)
+                          setShowCustomerDialog(false)
+                          setCustomerSearch('')
+                        }}
+                        className="flex-1 text-left p-3"
+                      >
+                        <div className="font-medium text-sm">{customer.name}</div>
+                        <div className="flex gap-2 mt-0.5">
+                          {customer.taxId && (
+                            <span className="text-[10px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded border border-blue-100 font-medium">
+                              {customer.taxId}
+                            </span>
+                          )}
+                          {customer.phone && (
+                            <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                              <Phone className="h-2.5 w-2.5" />
+                              {customer.phone}
+                            </span>
+                          )}
+                        </div>
+                      </button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0 text-muted-foreground hover:text-primary"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setEditCustomerData(customer)
+                          setShowCustomerDialog(false)
+                          setShowAddCustomer(true)
+                        }}
+                      >
+                        <UserPlus className="h-4 w-4" />
+                      </Button>
+                    </div>
                   ))}
                 </div>
               ) : customerSearch.length > 2 ? (
@@ -2138,16 +2168,17 @@ export function POSScreen() {
           </DialogHeader>
           <div className="py-2">
             <CustomerForm
-              customer={customerSearch ? {
+              customer={editCustomerData || (customerSearch ? {
                 // Heuristic: if it looks like a number, it might be taxId
                 name: /^\d+$/.test(customerSearch) ? '' : customerSearch,
                 taxId: /^\d+$/.test(customerSearch) ? customerSearch : ''
-              } : null}
+              } : null)}
               onSuccess={() => {
                 setShowAddCustomer(false)
+                setEditCustomerData(null)
                 setCustomerSearch('')
                 queryClient.invalidateQueries({ queryKey: ['customer-search'] })
-                toast('Cliente registrado correctamente', 'success')
+                toast(editCustomerData ? 'Cliente actualizado correctamente' : 'Cliente registrado correctamente', 'success')
               }}
             />
           </div>

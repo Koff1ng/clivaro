@@ -68,6 +68,7 @@ export async function POST(request: Request) {
                     email: invoice.customer.email || undefined,
                     phone: invoice.customer.phone || undefined,
                     isCompany: (invoice.customer as any).isCompany || false,
+                    idType: (invoice.customer as any).idType || 'CC',
                     taxRegime: (invoice.customer as any).taxRegime || undefined
                 },
                 items: invoice.items.map((item: any) => ({

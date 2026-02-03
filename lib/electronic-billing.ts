@@ -52,6 +52,7 @@ export interface InvoiceData {
     phone?: string
     email?: string
     isCompany?: boolean
+    idType?: string // CC, NIT, etc.
     taxRegime?: string // 'COMMON', 'SIMPLIFIED', 'GRAN_CONTRIBUYENTE'
     taxLevelCode?: string // e.g., 'R-99-PN'
   }
@@ -260,10 +261,10 @@ async function sendToAlegra(
     if (contacts.length > 0) {
       customerId = contacts[0].id
     } else {
-      const newContact = await alegra.createCustomer({
+      const contactPayload = {
         name: invoiceData.customer.name,
         identification: invoiceData.customer.nit.split('-')[0],
-        identificationType: invoiceData.customer.isCompany ? 'NIT' : 'CC', // Alegra uses strings like 'NIT', 'CC', 'CE', 'TI'
+        identificationType: invoiceData.customer.idType || (invoiceData.customer.isCompany ? 'NIT' : 'CC'),
         email: invoiceData.customer.email,
         phonePrimary: invoiceData.customer.phone,
         address: {
@@ -272,7 +273,9 @@ async function sendToAlegra(
         type: ['client'],
         kindOfPerson: invoiceData.customer.isCompany ? 'LEGAL' : 'PERSON',
         regime: invoiceData.customer.taxRegime === 'COMMON' ? 'COMMON' : 'SIMPLIFIED'
-      })
+      }
+      console.log('[Alegra] Creating customer with payload:', JSON.stringify(contactPayload, null, 2))
+      const newContact = await alegra.createCustomer(contactPayload)
       customerId = newContact.id
     }
 

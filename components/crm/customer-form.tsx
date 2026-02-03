@@ -75,8 +75,9 @@ export function CustomerForm({ customer, onSuccess }: { customer: any; onSuccess
 
   const mutation = useMutation({
     mutationFn: async (data: CustomerFormData) => {
-      const url = customer ? `/api/customers/${customer.id}` : '/api/customers'
-      const method = customer ? 'PUT' : 'POST'
+      const isUpdate = !!(customer && (customer as any).id)
+      const url = isUpdate ? `/api/customers/${(customer as any).id}` : '/api/customers'
+      const method = isUpdate ? 'PUT' : 'POST'
 
       const tagsArray = data.tags ? data.tags.split(',').map(t => t.trim()).filter(Boolean) : []
 

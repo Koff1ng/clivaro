@@ -217,9 +217,23 @@ export async function POST(request: Request) {
       // 5. Customer resolution
       let customerId = data.customerId
       if (!customerId) {
-        const walkIn = await tx.customer.findFirst({ where: { name: 'Cliente General' } })
+        const walkIn = await tx.customer.findFirst({
+          where: {
+            OR: [
+              { name: 'Cliente General' },
+              { taxId: '222222222222' }
+            ]
+          }
+        })
         customerId = walkIn ? walkIn.id : (await tx.customer.create({
-          data: { name: 'Cliente General', createdById: (session.user as any).id }
+          data: {
+            name: 'Cliente General',
+            taxId: '222222222222',
+            idType: 'CC',
+            isCompany: false,
+            taxRegime: 'SIMPLIFIED',
+            createdById: (session.user as any).id
+          }
         })).id
       }
 

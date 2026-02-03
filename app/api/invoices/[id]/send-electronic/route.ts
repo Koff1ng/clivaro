@@ -109,6 +109,7 @@ export async function POST(
           phone: invoice.customer.phone || '',
           email: invoice.customer.email || '',
           isCompany: (invoice.customer as any).isCompany || false,
+          idType: (invoice.customer as any).idType || 'CC',
           taxRegime: (invoice.customer as any).taxRegime || 'SIMPLIFIED',
         },
         items: invoice.items.map(item => ({
