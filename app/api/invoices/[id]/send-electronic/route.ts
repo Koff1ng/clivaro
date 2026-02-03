@@ -88,6 +88,10 @@ export async function POST(
         resolutionValidTo: settings.billingResolutionValidTo?.toISOString() || new Date().toISOString(),
         environment: (process.env.DIAN_ENVIRONMENT as any) || '2',
         technicalKey: process.env.DIAN_TECHNICAL_KEY, // Should ideally be in settings too
+        alegraEmail: providerConfig?.alegraEmail || undefined,
+        alegraToken: providerConfig?.alegraTokenEncrypted
+          ? providerConfig.alegraTokenEncrypted.replace('enc_', '')
+          : undefined,
       }
 
       // 3. Prepare data in the new format
