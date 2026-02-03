@@ -32,14 +32,20 @@ export default function SalesOrderDetailPage() {
     const { toast } = useToast()
     const queryClient = useQueryClient()
 
-    const { data: order, isLoading } = useQuery({
+    const { data: order, isLoading, isError, error } = useQuery({
         queryKey: ['sales-order', id],
         queryFn: async () => {
             const res = await fetch(`/api/sales-orders/${id}`)
-            if (!res.ok) throw new Error('Orden no encontrada')
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({ error: 'Error desconocido' }))
+                throw new Error(err.error || 'Orden no encontrada')
+            }
             return res.json()
-        }
+        },
+        retry: 1
     })
+
+    // ... (useQuery above)
 
     const convertMutation = useMutation({
         mutationFn: async () => {
@@ -57,7 +63,7 @@ export default function SalesOrderDetailPage() {
             toast({
                 title: "Orden Convertida",
                 description: `Factura ${invoice.number} creada exitosamente`,
-                variant: 'default' // Changed to default to avoid type issues if 'success' not in variants
+                variant: 'default'
             } as any)
             queryClient.invalidateQueries({ queryKey: ['sales-order', id] })
             // Optional: Redirect to invoice?
@@ -88,7 +94,24 @@ export default function SalesOrderDetailPage() {
 
     if (isLoading) return (
         <MainLayout>
-            <div className="p-8 text-center">Cargando detalles...</div>
+            <div className="flex justify-center items-center main-h-[50vh] p-8">
+                <div className="text-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-4"></div>
+                    <p>Cargando detalles...</p>
+                </div>
+            </div>
+        </MainLayout>
+    )
+
+    if (isError) return (
+        <MainLayout>
+            <div className="p-8 text-center text-red-500">
+                <h3 className="text-lg font-bold">Error</h3>
+                <p>{error?.message || 'No se pudo cargar la orden'}</p>
+                <Button variant="outline" className="mt-4" onClick={() => router.push('/sales/orders')}>
+                    Volver a la lista
+                </Button>
+            </div>
         </MainLayout>
     )
 

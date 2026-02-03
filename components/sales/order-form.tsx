@@ -161,6 +161,8 @@ export function OrderForm({ initialData, isEditing = false }: OrderFormProps) {
         },
         onSuccess: (data) => {
             toast('Orden guardada exitosamente', 'success') // Fix: toast variant
+            // Pre-seed query cache to avoid immediate fetch race condition
+            queryClient.setQueryData(['sales-order', data.id], data)
             router.push(`/sales/orders/${data.id}`)
         },
         onError: (err: any) => {
