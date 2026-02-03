@@ -84,6 +84,16 @@ export async function PUT(request: Request) {
             }
         })
 
+        // Sincronizar con TenantSettings
+        await prisma.tenantSettings.upsert({
+            where: { tenantId: user.tenantId },
+            update: { electronicBillingProvider: 'ALEGRA' },
+            create: {
+                tenantId: user.tenantId,
+                electronicBillingProvider: 'ALEGRA'
+            }
+        })
+
         return NextResponse.json({ success: true })
     } catch (error: any) {
         logger.error('Error saving Alegra config', error)

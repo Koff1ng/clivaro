@@ -56,15 +56,30 @@ export async function POST(
         throw new Error('La configuración de facturación electrónica está incompleta. Por favor, ve a Configuración > Facturación Electrónica y selecciona un proveedor.')
       }
 
+      // 3. Fetch specialized provider config if needed (e.g. Alegra)
+      let providerConfig: any = null
+      if (settings.electronicBillingProvider === 'ALEGRA') {
+        providerConfig = await (tx as any).electronicInvoiceProviderConfig.findUnique({
+          where: {
+            tenantId_provider: {
+              tenantId,
+              provider: 'ALEGRA'
+            }
+          }
+        })
+      }
+
       const config: ElectronicBillingConfig = {
         provider: (settings.electronicBillingProvider as any) || 'FEG',
         apiUrl: settings.electronicBillingApiUrl || undefined,
-        apiKey: settings.electronicBillingApiKey || undefined,
+        apiKey: providerConfig?.alegraTokenEncrypted
+          ? providerConfig.alegraTokenEncrypted.replace('enc_', '')
+          : settings.electronicBillingApiKey || undefined,
         companyNit: settings.companyNit || '900000000-1',
         companyName: settings.companyName || 'Mi Empresa',
         companyAddress: settings.companyAddress || '',
         companyPhone: settings.companyPhone || '',
-        companyEmail: settings.companyEmail || '',
+        companyEmail: providerConfig?.alegraEmail || settings.companyEmail || '',
         resolutionNumber: settings.billingResolutionNumber || '',
         resolutionPrefix: settings.billingResolutionPrefix || 'FV',
         resolutionFrom: settings.billingResolutionFrom || '1',

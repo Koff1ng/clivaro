@@ -97,6 +97,19 @@ export async function POST(request: Request) {
                 total: invoice.total
             }
 
+            // 3. Fetch specialized provider config if needed (e.g. Alegra)
+            let providerConfig: any = null
+            if (settings.electronicBillingProvider === 'ALEGRA') {
+                providerConfig = await (tx as any).electronicInvoiceProviderConfig.findUnique({
+                    where: {
+                        tenantId_provider: {
+                            tenantId: session.user.tenantId,
+                            provider: 'ALEGRA'
+                        }
+                    }
+                })
+            }
+
             // 4. Map settings to Config
             const billingConfig: ElectronicBillingConfig = {
                 provider: (settings.electronicBillingProvider as any) || 'FEG',
@@ -104,19 +117,21 @@ export async function POST(request: Request) {
                 companyName: settings.companyName || '',
                 companyAddress: settings.companyAddress || '',
                 companyPhone: settings.companyPhone || '',
-                companyEmail: settings.companyEmail || '',
+                companyEmail: providerConfig?.alegraEmail || settings.companyEmail || '',
                 resolutionNumber: settings.billingResolutionNumber || '',
                 resolutionPrefix: settings.billingResolutionPrefix || '',
                 resolutionFrom: settings.billingResolutionFrom || '',
                 resolutionTo: settings.billingResolutionTo || '',
                 resolutionValidFrom: settings.billingResolutionValidFrom ? new Date(settings.billingResolutionValidFrom).toISOString().split('T')[0] : '',
                 resolutionValidTo: settings.billingResolutionValidTo ? new Date(settings.billingResolutionValidTo).toISOString().split('T')[0] : '',
-                softwareId: settings.softwareId ?? undefined,
-                softwarePin: settings.softwarePin ?? undefined,
-                technicalKey: settings.technicalKey ?? undefined,
+                softwareId: undefined, // No longer in TenantSettings
+                softwarePin: undefined, // No longer in TenantSettings
+                technicalKey: undefined, // No longer in TenantSettings
                 environment: '2', // Test by default for now
-                alegraEmail: settings.alegraEmail ?? undefined,
-                alegraToken: settings.alegraToken ?? undefined
+                alegraEmail: providerConfig?.alegraEmail || undefined,
+                alegraToken: providerConfig?.alegraTokenEncrypted
+                    ? providerConfig.alegraTokenEncrypted.replace('enc_', '')
+                    : undefined
             }
 
             // 5. Validation
