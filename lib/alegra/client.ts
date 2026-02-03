@@ -93,9 +93,18 @@ export class AlegraClient {
      * Create Customer
      */
     async createCustomer(payload: any): Promise<any> {
+        logger.info('Alegra: Creating customer', { payload })
         return this.request('/contacts', {
             method: 'POST',
             body: JSON.stringify(payload),
         })
+    }
+
+    /**
+     * Get Products
+     */
+    async getProducts(params: { start?: number, limit?: number } = {}): Promise<any[]> {
+        const query = new URLSearchParams(params as any).toString()
+        return this.request<any[]>(`/items?${query}`)
     }
 }

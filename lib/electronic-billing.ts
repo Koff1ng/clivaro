@@ -279,30 +279,39 @@ async function sendToAlegra(
       customerId = newContact.id
     }
 
-    // 2. Map Items
+    // 2. Map Items (Alegra requires an 'id' for each item)
+    // We try to fetch the first product from Alegra as a fallback if the user hasn't mapped products
+    const alegraProducts = await alegra.getProducts({ limit: 1 })
+    const fallbackProductId = alegraProducts.length > 0 ? alegraProducts[0].id : 1
+
     const items = invoiceData.items.map(item => {
-      // Simple mapping, robust implementation would match product IDs or create them
-      // For now, using 'concept' approach if allowed, or simple product objects
       return {
+        id: fallbackProductId, // Use fallback if we don't have a specific mapping yet
         name: item.description,
         price: item.unitPrice,
         quantity: item.quantity,
-        discount: item.discount, // percent or amount? Check API. Usually percent or separate field.
-        // Simplified for now, assuming Price is unit price
+        discount: item.discount,
+        tax: item.taxes.map(t => ({
+          id: '1', // Default tax ID in Alegra (usually 19% or generic)
+          name: t.name,
+          percentage: t.rate
+        }))
       }
     })
 
     // 3. Create Invoice
-    const alegraInvoice = await alegra.createInvoice({
+    const invoicePayload = {
       date: invoiceData.issueDate.toISOString().split('T')[0],
       dueDate: invoiceData.dueDate?.toISOString().split('T')[0] || invoiceData.issueDate.toISOString().split('T')[0],
       client: customerId,
       items: items,
-      paymentMethod: 'CASH', // Defaulting to Cash
+      paymentMethod: 'CASH',
       stamp: {
-        generateStamp: true // Crucial for electronic billing
+        generateStamp: true
       }
-    })
+    }
+    console.log('[Alegra] Creating invoice with payload:', JSON.stringify(invoicePayload, null, 2))
+    const alegraInvoice = await alegra.createInvoice(invoicePayload)
 
     return {
       success: true,

@@ -87,46 +87,46 @@ export async function handleAlegraTransmission(payload: {
 
         // 7. Map to Alegra Format
         // 7.1 Search or Create Customer in Alegra
-        let alegraCustomerId = '1' // Default/Placeholder
-        try {
-            const identification = invoice.customer.taxId || ''
-            if (identification) {
-                const searchResults = await client.searchCustomer(identification)
-                if (searchResults && searchResults.length > 0) {
-                    alegraCustomerId = String(searchResults[0].id)
-                } else {
-                    // Create customer
-                    const newCustomer = await client.createCustomer({
-                        name: invoice.customer.name,
-                        identification: identification,
-                        identificationType: (invoice.customer as any).idType || ((invoice.customer as any).isCompany ? 'NIT' : 'CC'),
-                        email: invoice.customer.email,
-                        address: { address: invoice.customer.address || '' },
-                        type: ['client'],
-                        kindOfPerson: (invoice.customer as any).isCompany ? 'LEGAL' : 'PERSON',
-                        regime: (invoice.customer as any).taxRegime === 'COMMON' ? 'COMMON' : 'SIMPLIFIED'
-                    })
-                    alegraCustomerId = String(newCustomer.id)
-                }
-            }
-        } catch (err) {
-            logger.error(`Failed to handle customer sync for Alegra. Using fallback.`, err)
+        let alegraCustomerId = ''
+        const identification = invoice.customer.taxId || '222222222222' // Standard fallback
+
+        const searchResults = await client.searchCustomer(identification)
+        if (searchResults && searchResults.length > 0) {
+            alegraCustomerId = String(searchResults[0].id)
+        } else {
+            // Create customer
+            const newCustomer = await client.createCustomer({
+                name: invoice.customer.name,
+                identification: identification,
+                identificationType: (invoice.customer as any).idType || ((invoice.customer as any).isCompany ? 'NIT' : 'CC'),
+                email: invoice.customer.email,
+                address: { address: invoice.customer.address || '' },
+                type: ['client'],
+                kindOfPerson: (invoice.customer as any).isCompany ? 'LEGAL' : 'PERSON',
+                regime: (invoice.customer as any).taxRegime === 'COMMON' ? 'COMMON' : 'SIMPLIFIED'
+            })
+            alegraCustomerId = String(newCustomer.id)
         }
+
+        // 7.2 Prepare Items with Fallback Product ID
+        const alegraProducts = await client.getProducts({ limit: 1 })
+        const fallbackProductId = alegraProducts.length > 0 ? alegraProducts[0].id : 1
 
         const alegraPayload = {
             date: (invoice.issuedAt || new Date()).toISOString().split('T')[0],
             dueDate: invoice.dueDate?.toISOString().split('T')[0] || (invoice.issuedAt || new Date()).toISOString().split('T')[0],
             customer: { id: alegraCustomerId },
             items: invoice.items.map(item => ({
+                id: fallbackProductId,
                 name: (item.product as any).name,
                 price: Number(item.unitPrice),
                 quantity: Number(item.quantity),
-                tax: [{ id: '1', name: 'IVA', percentage: item.taxRate }], // Simplified tax mapping (Alegra usually has '1' for generic VAT)
+                tax: [{ id: '1', name: 'IVA', percentage: item.taxRate }],
                 discount: item.discount,
                 description: (item.product as any).description || ''
             })),
             stamp: {
-                generateStamp: true, // Only for electronic invoicing environments
+                generateStamp: true,
             }
         }
 
