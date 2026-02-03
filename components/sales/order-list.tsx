@@ -12,8 +12,6 @@ import { formatCurrency, formatDate } from '@/lib/utils'
 import { Search, Eye, Trash2, Loader2, Plus } from 'lucide-react'
 import { useToast } from '@/components/ui/toast'
 import Link from 'next/link'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { OrderDetails } from '@/components/sales/order-details'
 
 async function fetchOrders(page: number, search: string, status: string) {
     const params = new URLSearchParams({
@@ -33,7 +31,6 @@ export function OrderList() {
     const [search, setSearch] = useState('')
     const [statusFilter, setStatusFilter] = useState('')
     const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set()) // For animation/loading state
-    const [viewOrder, setViewOrder] = useState<any>(null)
     const router = useRouter()
     const queryClient = useQueryClient()
     const { toast } = useToast()
@@ -74,7 +71,7 @@ export function OrderList() {
                     next.delete(orderId)
                     return next
                 })
-                toast({ title: 'Orden eliminada', variant: 'default' } as any) // Assuming standard variant is safe, checked InvoiceList used 'success' but toast types differ
+                toast({ title: 'Orden eliminada', variant: 'default' } as any)
             }, 500)
         },
         onError: (error: any) => {
@@ -92,16 +89,8 @@ export function OrderList() {
         }
     }
 
-    const handleView = async (orderSummary: any) => {
-        try {
-            // Fetch full details including items which might be paginated or not fully loaded in list
-            const res = await fetch(`/api/sales-orders/${orderSummary.id}`)
-            if (!res.ok) throw new Error('Error al cargar detalles')
-            const fullOrder = await res.json()
-            setViewOrder(fullOrder)
-        } catch (error) {
-            toast({ title: 'Error al cargar los detalles de la orden', variant: 'destructive' } as any)
-        }
+    const handleView = (order: any) => {
+        router.push(`/sales/orders/${order.id}`)
     }
 
     const getStatusBadge = (status: string) => {
@@ -115,7 +104,6 @@ export function OrderList() {
 
     const { orders, pagination } = useMemo(() => {
         if (!data) return { orders: [], pagination: { totalPages: 1, total: 0, page: 1 } }
-        // API returns { items: [], totalPages: x, ... } usually
         return {
             orders: data.items || [],
             pagination: {
@@ -247,15 +235,6 @@ export function OrderList() {
                     </div>
                 </div>
             )}
-
-            <Dialog open={!!viewOrder} onOpenChange={(open) => !open && setViewOrder(null)}>
-                <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-                    <DialogHeader>
-                        <DialogTitle>Detalles de la Orden {viewOrder?.number}</DialogTitle>
-                    </DialogHeader>
-                    {viewOrder && <OrderDetails order={viewOrder} />}
-                </DialogContent>
-            </Dialog>
         </div>
     )
 }
