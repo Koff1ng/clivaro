@@ -22,6 +22,7 @@ import { SearchableSelect } from '@/components/ui/searchable-select'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { CustomerForm } from '@/components/crm/customer-form'
 import { Badge } from '@/components/ui/badge'
+import { TaxSelector, TaxRate } from '@/components/pos/tax-selector'
 
 interface OrderFormProps {
     initialData?: any
@@ -37,6 +38,7 @@ export function OrderForm({ initialData, isEditing = false }: OrderFormProps) {
     const [items, setItems] = useState<any[]>(initialData?.items?.map((i: any) => ({
         ...i,
         productName: i.product?.name || i.productName, // Handle API vs Form struct
+        taxes: i.taxes || (i.taxRate ? [{ id: 'default', name: 'Impuesto', rate: i.taxRate, type: 'IVA' }] : []),
         subtotal: i.unitPrice * i.quantity * (1 - i.discount / 100) * (1 + i.taxRate / 100)
     })) || [])
     const [notes, setNotes] = useState(initialData?.notes || '')
@@ -100,16 +102,42 @@ export function OrderForm({ initialData, isEditing = false }: OrderFormProps) {
                 unitPrice: product.price,
                 discount: 0,
                 taxRate: product.taxRate || 0, // Ensure taxRate exists
+                taxes: product.taxRate ? [{ id: 'default', name: 'IVA Default', rate: product.taxRate, type: 'IVA' }] : []
             }])
         }
         setProductSearch('')
         setProductResults([])
     }
 
-    const updateItem = (productId: string, field: string, value: number) => {
+    const updateItem = (productId: string, field: string, value: any) => {
         setItems(items.map(item => {
             if (item.productId === productId) {
                 return { ...item, [field]: value }
+            }
+            return item
+        }))
+    }
+
+    const handleTaxesChange = (productId: string, newTaxes: TaxRate[]) => {
+        const totalRate = newTaxes.reduce((sum, t) => {
+            if (t.type.startsWith('RETE')) return sum - t.rate
+            return sum + t.rate
+        }, 0)
+
+        // Ensure non-negative? Actually rete can make it negative total tax technically but usually just reduces base. 
+        // Logic: (1 + rate/100). If rate is negative, it reduces price. 
+        // OrderForm logic: subtotal += base; tax += (base-disc)*(rate/100).
+        // If rate is negative (retention only?), tax is negative.
+        // Usually retention is handled separately but here we map to single taxRate.
+        // Let's assume standard behavior: pure mapping.
+
+        setItems(items.map(item => {
+            if (item.productId === productId) {
+                return {
+                    ...item,
+                    taxes: newTaxes,
+                    taxRate: totalRate
+                }
             }
             return item
         }))
@@ -289,8 +317,9 @@ export function OrderForm({ initialData, isEditing = false }: OrderFormProps) {
                         <TableRow>
                             <TableHead className="w-[40%]">Producto</TableHead>
                             <TableHead className="w-[12%] text-right">Cantidad</TableHead>
-                            <TableHead className="w-[15%] text-right">Precio</TableHead>
-                            <TableHead className="w-[12%] text-right">Desc %</TableHead>
+                            <TableHead className="w-[12%] text-right">Precio</TableHead>
+                            <TableHead className="w-[12%] text-right">Impuesto</TableHead>
+                            <TableHead className="w-[10%] text-right">Desc %</TableHead>
                             <TableHead className="w-[12%] text-right">Total</TableHead>
                             <TableHead className="w-[9%]"></TableHead>
                         </TableRow>
@@ -321,6 +350,12 @@ export function OrderForm({ initialData, isEditing = false }: OrderFormProps) {
                                         className="text-right h-8"
                                         value={item.unitPrice}
                                         onChange={e => updateItem(item.productId, 'unitPrice', parseFloat(e.target.value))}
+                                    />
+                                </TableCell>
+                                <TableCell className="text-right">
+                                    <TaxSelector
+                                        selectedTaxes={item.taxes || []}
+                                        onTaxesChange={(taxes) => handleTaxesChange(item.productId, taxes)}
                                     />
                                 </TableCell>
                                 <TableCell>

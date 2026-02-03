@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/dialog'
 import { ScrollArea } from '@/components/ui/scroll-area'
 
-interface TaxRate {
+export interface TaxRate {
     id: string
     name: string
     rate: number
