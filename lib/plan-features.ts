@@ -27,6 +27,10 @@ export interface PlanFeatures {
   // Caja
   manageCash: boolean
 
+  // Finanzas y RRHH
+  manageAccounting: boolean
+  managePayroll: boolean
+
   // Reportes
   viewReports: boolean
   advancedReports: boolean
@@ -58,6 +62,8 @@ export const PLAN_FEATURES: Record<PlanName, PlanFeatures> = {
     marketing: false,
     managePurchases: true,
     manageCash: true,
+    manageAccounting: false,
+    managePayroll: false,
     viewReports: true,
     advancedReports: false,
     manageUsers: true,
@@ -79,6 +85,8 @@ export const PLAN_FEATURES: Record<PlanName, PlanFeatures> = {
     marketing: true,
     managePurchases: true,
     manageCash: true,
+    manageAccounting: false, // Opcionalmente true si Business lo incluye, asumo Enterprise only por ahora
+    managePayroll: false,
     viewReports: true,
     advancedReports: true,
     manageUsers: true,
@@ -100,6 +108,8 @@ export const PLAN_FEATURES: Record<PlanName, PlanFeatures> = {
     marketing: true,
     managePurchases: true,
     manageCash: true,
+    manageAccounting: true,
+    managePayroll: true,
     viewReports: true,
     advancedReports: true,
     manageUsers: true,
@@ -128,6 +138,8 @@ export const ROUTE_FEATURES: Record<string, keyof PlanFeatures> = {
   '/pos': 'pos',
   '/cash/shifts': 'manageCash',
   '/admin/users': 'manageUsers',
+  '/accounting': 'manageAccounting',
+  '/payroll': 'managePayroll',
 }
 
 /**
