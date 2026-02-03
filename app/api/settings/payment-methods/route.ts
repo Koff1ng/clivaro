@@ -8,6 +8,8 @@ const paymentMethodSchema = z.object({
     name: z.string().min(1),
     type: z.enum(['CASH', 'ELECTRONIC', 'CARD', 'TRANSFER', 'CREDIT']).default('ELECTRONIC'),
     active: z.boolean().default(true),
+    color: z.string().nullable().optional(),
+    icon: z.string().nullable().optional(),
     config: z.string().optional().nullable(),
 })
 
@@ -45,6 +47,8 @@ export async function POST(request: Request) {
                     name: data.name,
                     type: data.type,
                     active: data.active,
+                    color: data.color,
+                    icon: data.icon,
                     config: data.config,
                 }
             })

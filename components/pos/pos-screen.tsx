@@ -8,7 +8,9 @@ import { formatCurrency } from '@/lib/utils'
 import { useToast } from '@/components/ui/toast'
 import { useThermalPrint } from '@/lib/hooks/use-thermal-print'
 import { useSession } from 'next-auth/react'
-import { Search, Plus, Minus, User, ShoppingCart, X, DollarSign, CreditCard, ArrowLeftRight, Check, Printer, Copy, Bookmark, FolderOpen, Keyboard, UserPlus, Phone, MessageSquare, Smartphone } from 'lucide-react'
+import { Search, Plus, Minus, User, ShoppingCart, X, DollarSign, CreditCard, ArrowLeftRight, Check, Printer, Copy, Bookmark, FolderOpen, Keyboard, UserPlus, Phone, MessageSquare, Smartphone, Wallet, Landmark, Coins, Receipt } from 'lucide-react'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -45,6 +47,8 @@ interface PaymentMethodInfo {
   id: string
   name: string
   type: string
+  color?: string
+  icon?: string
 }
 
 type SplitPaymentLine = {
@@ -1797,20 +1801,38 @@ export function POSScreen() {
             {/* Payment Methods */}
             {paymentMode === 'SINGLE' ? (
               <div className="space-y-3">
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-32 overflow-y-auto p-1">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-48 overflow-y-auto p-1">
                   {paymentMethods.map((pm) => (
                     <Button
                       key={pm.id}
                       variant={paymentMethodId === pm.id ? 'default' : 'outline'}
                       size="sm"
                       onClick={() => setPaymentMethodId(pm.id)}
-                      className="flex flex-col items-center gap-1 h-16 py-2"
+                      className={cn(
+                        "flex flex-col items-center gap-1 h-20 py-2 transition-all border-2",
+                        paymentMethodId === pm.id
+                          ? "ring-2 ring-offset-2 ring-primary border-primary"
+                          : "hover:border-primary/50"
+                      )}
+                      style={paymentMethodId === pm.id && pm.color ? { backgroundColor: pm.color, borderColor: pm.color, color: '#fff' } : {}}
                     >
-                      {pm.type === 'CASH' && <DollarSign className="h-4 w-4" />}
-                      {pm.type === 'CARD' && <CreditCard className="h-4 w-4" />}
-                      {pm.type === 'TRANSFER' && <ArrowLeftRight className="h-4 w-4" />}
-                      {pm.type === 'ELECTRONIC' && <Smartphone className="h-4 w-4" />}
-                      <span className="text-[10px] font-medium leading-tight truncate w-full text-center">{pm.name}</span>
+                      {/* Dynamic Icon Rendering */}
+                      {pm.icon === 'banknote' || pm.type === 'CASH' ? <DollarSign className="h-5 w-5" /> :
+                        pm.icon === 'credit-card' || pm.type === 'CARD' ? <CreditCard className="h-5 w-5" /> :
+                          pm.icon === 'smartphone' || pm.type === 'ELECTRONIC' ? <Smartphone className="h-5 w-5" /> :
+                            pm.icon === 'arrow-left-right' || pm.type === 'TRANSFER' ? <ArrowLeftRight className="h-5 w-5" /> :
+                              pm.icon === 'wallet' ? <Wallet className="h-5 w-5" /> :
+                                pm.icon === 'landmark' ? <Landmark className="h-5 w-5" /> :
+                                  pm.icon === 'coins' ? <Coins className="h-5 w-5" /> :
+                                    pm.icon === 'receipt' ? <Receipt className="h-5 w-5" /> :
+                                      <DollarSign className="h-5 w-5" />}
+
+                      <span className={cn(
+                        "text-[11px] font-bold leading-tight truncate w-full text-center px-1",
+                        paymentMethodId === pm.id && pm.color ? "text-white" : "text-foreground"
+                      )}>
+                        {pm.name}
+                      </span>
                     </Button>
                   ))}
                 </div>
@@ -1857,18 +1879,35 @@ export function POSScreen() {
                 <div className="space-y-2">
                   {splitPayments.map((p) => (
                     <div key={p.id} className="flex items-center gap-2">
-                      <select
+                      <Select
                         value={p.paymentMethodId}
-                        onChange={(e) => {
-                          const nextId = e.target.value
+                        onValueChange={(nextId) => {
                           setSplitPayments((prev) => prev.map((x) => (x.id === p.id ? { ...x, paymentMethodId: nextId } : x)))
                         }}
-                        className="h-10 rounded-md border border-input bg-background px-3 text-sm flex-1"
                       >
-                        {paymentMethods.map(m => (
-                          <option key={m.id} value={m.id}>{m.name}</option>
-                        ))}
-                      </select>
+                        <SelectTrigger className="flex-1 h-10">
+                          <SelectValue placeholder="Método" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {paymentMethods.map(m => (
+                            <SelectItem key={m.id} value={m.id}>
+                              <div className="flex items-center gap-2">
+                                {/* Simple Icon Logic for Select */}
+                                {m.icon === 'banknote' || m.type === 'CASH' ? <DollarSign className="h-3.5 w-3.5" /> :
+                                  m.icon === 'credit-card' || m.type === 'CARD' ? <CreditCard className="h-3.5 w-3.5" /> :
+                                    m.icon === 'smartphone' || m.type === 'ELECTRONIC' ? <Smartphone className="h-3.5 w-3.5" /> :
+                                      m.icon === 'arrow-left-right' || m.type === 'TRANSFER' ? <ArrowLeftRight className="h-3.5 w-3.5" /> :
+                                        m.icon === 'wallet' ? <Wallet className="h-3.5 w-3.5" /> :
+                                          m.icon === 'landmark' ? <Landmark className="h-3.5 w-3.5" /> :
+                                            m.icon === 'coins' ? <Coins className="h-3.5 w-3.5" /> :
+                                              m.icon === 'receipt' ? <Receipt className="h-3.5 w-3.5" /> :
+                                                <DollarSign className="h-3.5 w-3.5" />}
+                                <span>{m.name}</span>
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                       <Input
                         type="number"
                         step="0.01"

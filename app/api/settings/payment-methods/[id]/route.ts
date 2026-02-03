@@ -8,6 +8,8 @@ const updateSchema = z.object({
     name: z.string().min(1).optional(),
     type: z.enum(['CASH', 'ELECTRONIC', 'CARD', 'TRANSFER']).optional(),
     active: z.boolean().optional(),
+    color: z.string().nullable().optional(),
+    icon: z.string().nullable().optional(),
     config: z.string().optional().nullable(),
 })
 
