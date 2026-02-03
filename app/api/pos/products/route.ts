@@ -110,17 +110,10 @@ export async function GET(request: Request) {
   }
 
   try {
-    let products
-    if (isSuperAdmin && !tenantId) {
-      // Super admins view global products (public)
-      products = await productsCallback(masterPrisma)
-    } else {
-      // Regular users and tenant admins use isolated schema
-      if (!tenantId) {
-        throw new Error('Tenant context missing')
-      }
-      products = await withTenantTx(tenantId, productsCallback)
+    if (!tenantId) {
+      throw new Error('Tenant context missing. Please log in to a specific business.')
     }
+    const products = await withTenantTx(tenantId, productsCallback)
 
     return NextResponse.json({ products })
   } catch (error: any) {

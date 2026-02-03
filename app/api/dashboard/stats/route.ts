@@ -230,17 +230,10 @@ export async function GET(request: Request) {
     }
 
     let stats
-    if (isSuperAdmin && !tenantId) {
-      // Super admins accessing global stats (public schema)
-      stats = await statsCallback(prismaClient)
-    } else {
-      // Tenant-scoped stats
-      const effectiveTenantId = tenantId || (session.user as any).tenantId
-      if (!effectiveTenantId) {
-        throw new Error('Tenant ID is required for non-superadmin users.')
-      }
-      stats = await withTenantTx(effectiveTenantId, statsCallback)
+    if (!tenantId) {
+      throw new Error('Tenant context missing. Please log in to a specific business.')
     }
+    stats = await withTenantTx(tenantId, statsCallback)
 
     const duration = Date.now() - startTime
     logger.apiResponse('GET', '/api/dashboard/stats', 200, duration)
