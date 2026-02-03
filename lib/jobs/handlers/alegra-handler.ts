@@ -129,6 +129,15 @@ export async function handleAlegraTransmission(payload: {
             fallbackProductId = (newProduct as any).id
         }
 
+        // 7.3 Fetch Numbering Templates
+        const templates = await client.getNumberTemplates()
+        const electronicTemplate = templates.find((t: any) => t.isElectronic === true || t.isElectronic === 'true')
+        const numberTemplate = electronicTemplate ? { id: electronicTemplate.id } : undefined
+
+        if (!electronicTemplate) {
+            logger.warn('[AlegraHandler] No electronic numbering template found. Invoice might default to non-electronic.')
+        }
+
         const alegraPayload = {
             date: (invoice.issuedAt || new Date()).toISOString().split('T')[0],
             dueDate: invoice.dueDate?.toISOString().split('T')[0] || (invoice.issuedAt || new Date()).toISOString().split('T')[0],
@@ -142,6 +151,7 @@ export async function handleAlegraTransmission(payload: {
                 discount: item.discount,
                 description: (item.product as any).description || ''
             })),
+            numberTemplate: numberTemplate,
             stamp: {
                 generateStamp: true,
             }

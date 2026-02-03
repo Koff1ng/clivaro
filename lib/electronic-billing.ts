@@ -319,12 +319,28 @@ async function sendToAlegra(
       }
     })
 
-    // 3. Create Invoice
+    // 3. Prepare Invoice Data
+    // 3.1 Fetch Numbering Templates to find the electronic one
+    const templates = await alegra.getNumberTemplates()
+    const electronicTemplate = templates.find((t: any) => t.isElectronic === true || t.isElectronic === 'true')
+
+    // If no electronic template found, we use the default but it might fail for electronic invoicing.
+    // However, if we found one, we MUST send it.
+    const numberTemplate = electronicTemplate ? { id: electronicTemplate.id } : undefined
+
+    if (!electronicTemplate) {
+      console.warn('[Alegra] No electronic numbering template found. Invoice might default to non-electronic.')
+    } else {
+      console.log('[Alegra] Using electronic template:', electronicTemplate.name)
+    }
+
+    // 3.2 Create Invoice Payload
     const invoicePayload = {
       date: invoiceData.issueDate.toISOString().split('T')[0],
       dueDate: invoiceData.dueDate?.toISOString().split('T')[0] || invoiceData.issueDate.toISOString().split('T')[0],
       client: customerId,
       items: items,
+      numberTemplate: numberTemplate,
       paymentMethod: 'CASH',
       stamp: {
         generateStamp: true

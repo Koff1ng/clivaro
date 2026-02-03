@@ -117,4 +117,11 @@ export class AlegraClient {
             body: JSON.stringify(payload),
         })
     }
+
+    /**
+     * Get Numbering Templates
+     */
+    async getNumberTemplates(): Promise<any[]> {
+        return this.request<any[]>('/number-templates')
+    }
 }
