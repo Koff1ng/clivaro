@@ -263,7 +263,7 @@ async function sendToAlegra(
       const newContact = await alegra.createCustomer({
         name: invoiceData.customer.name,
         identification: invoiceData.customer.nit.split('-')[0],
-        idType: invoiceData.customer.isCompany ? 'NIT' : 'CC', // Alegra uses strings like 'NIT', 'CC', 'CE', 'TI'
+        identificationType: invoiceData.customer.isCompany ? 'NIT' : 'CC', // Alegra uses strings like 'NIT', 'CC', 'CE', 'TI'
         email: invoiceData.customer.email,
         phonePrimary: invoiceData.customer.phone,
         address: {
