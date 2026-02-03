@@ -30,7 +30,8 @@
     "check-db": "powershell -ExecutionPolicy Bypass -File ./scripts/check-db.ps1",
     "config:supabase": "powershell -ExecutionPolicy Bypass -File ./scripts/configurar-supabase.ps1",
     "paste-url": "powershell -ExecutionPolicy Bypass -File ./scripts/pegar-url-supabase.ps1",
-    "assets:webp": "tsx scripts/convert-public-images-to-webp.ts"
+    "assets:webp": "tsx scripts/convert-public-images-to-webp.ts",
+    "postinstall": "prisma generate"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.4.0",
