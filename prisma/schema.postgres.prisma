@@ -317,6 +317,7 @@ model Customer {
   creditLimit        Float                        @default(0)
   currentBalance     Float                        @default(0) // Total current debt
   active             Boolean                      @default(true)
+  idType             String?                      // CC, NIT, CE, TI, PP, etc.
   isCompany          Boolean                      @default(false) // Natural vs Juridica
   taxRegime          String?                      // Responsable de IVA (COMMON) o No Responsable (SIMPLIFIED)
   createdAt          DateTime                     @default(now())
