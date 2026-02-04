@@ -76,7 +76,7 @@ const menuGroups: MenuGroup[] = [
     title: 'Inventario & Compras',
     key: 'inventory',
     items: [
-      { href: '/products', label: 'Productos', icon: Box, permission: 'manage_products', planFeature: 'manageProducts' },
+      { href: '/products', label: 'Items', icon: Box, permission: 'manage_products', planFeature: 'manageProducts' },
       { href: '/inventory', label: 'Inventario', icon: Archive, permission: 'manage_inventory', planFeature: 'manageInventory' },
       { href: '/purchases/suppliers', label: 'Proveedores', icon: Shop, permission: 'manage_purchases', planFeature: 'managePurchases' },
       { href: '/purchases/orders', label: 'Órdenes Compra', icon: Bag, permission: 'manage_purchases', planFeature: 'managePurchases' },

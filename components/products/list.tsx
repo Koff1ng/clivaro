@@ -141,13 +141,13 @@ export function ProductsList() {
           <DialogTrigger asChild>
             <Button onClick={() => setEditingProduct(null)} className="w-full sm:w-auto">
               <Plus className="h-4 w-4 mr-2" />
-              Nuevo Producto
+              Nuevo Item
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
-                {editingProduct ? 'Editar Producto' : 'Nuevo Producto'}
+                {editingProduct ? 'Editar Item' : 'Nuevo Item'}
               </DialogTitle>
             </DialogHeader>
             <ProductForm
@@ -165,7 +165,7 @@ export function ProductsList() {
       {isLoading && products.length === 0 ? (
         <div className="flex items-center justify-center py-12">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground mr-2" />
-          <span className="text-muted-foreground">Cargando productos...</span>
+          <span className="text-muted-foreground">Cargando items...</span>
         </div>
       ) : (
         <div className="border rounded-lg">
@@ -187,7 +187,7 @@ export function ProductsList() {
               {products.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={9} className="text-center text-gray-500">
-                    No hay productos
+                    No hay items registrados
                   </TableCell>
                 </TableRow>
               ) : (

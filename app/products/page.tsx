@@ -9,7 +9,7 @@ import { Package } from 'lucide-react'
 
 export default async function ProductsPage() {
   const session = await getServerSession(authOptions)
-  
+
   if (!session) {
     redirect('/login')
   }
@@ -18,8 +18,8 @@ export default async function ProductsPage() {
     <MainLayout>
       <div className="space-y-6">
         <PageHeader
-          title="Productos"
-          description="Crea, organiza y controla tu catálogo con precios, impuestos y categorías."
+          title="Items"
+          description="Crea, organiza y controla tu catálogo de items (productos y servicios)."
           icon={<Package className="h-5 w-5" />}
           badges={<PageHeaderBadges />}
         />

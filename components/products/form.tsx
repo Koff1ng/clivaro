@@ -205,7 +205,7 @@ export function ProductForm({ product, onSuccess }: { product?: any; onSuccess: 
       </div>
 
       <div>
-        <Label htmlFor="printerStation">Impresora de Comandas</Label>
+        <Label htmlFor="printerStation">Impresora de Comandas (Opcional)</Label>
         <select
           id="printerStation"
           {...register('printerStation')}
