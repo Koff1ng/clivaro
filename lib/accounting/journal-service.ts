@@ -39,7 +39,7 @@ export async function createJournalEntry(tenantId: string, userId: string, data:
             data: {
                 tenantId,
                 number,
-                date: data.date,
+                date,
                 period,
                 type: data.type,
                 description: data.description,
