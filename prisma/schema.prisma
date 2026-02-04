@@ -1267,6 +1267,17 @@ model AccountingAccount {
   // Relations
   journalLines JournalEntryLine[]
   tenant       Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  // Config relations (as reference account for different purposes)
+  configAsCash              AccountingConfig[] @relation("CashAccount")
+  configAsBank              AccountingConfig[] @relation("BankAccount")
+  configAsAccountsReceivable AccountingConfig[] @relation("AccountsReceivable")
+  configAsAccountsPayable   AccountingConfig[] @relation("AccountsPayable")
+  configAsInventory         AccountingConfig[] @relation("InventoryAccount")
+  configAsSalesRevenue      AccountingConfig[] @relation("SalesRevenue")
+  configAsVATGenerated      AccountingConfig[] @relation("VATGenerated")
+  configAsVATDeductible     AccountingConfig[] @relation("VATDeductible")
+  configAsCostOfSales       AccountingConfig[] @relation("CostOfSales")
 
   @@unique([tenantId, code])
   @@index([tenantId, type])
@@ -1374,4 +1385,42 @@ model AccountingAuditLog {
   
   @@index([tenantId, entityType, entityId])
   @@index([tenantId, createdAt])
+}
+
+model AccountingConfig {
+  id                    String   @id @default(cuid())
+  tenantId              String   @unique
+  
+  // Cuentas de Balance
+  cashAccountId         String?  // Caja General (110505)
+  bankAccountId         String?  // Bancos (1110)
+  accountsReceivableId  String?  // Clientes (1305)
+  accountsPayableId     String?  // Proveedores (2205)
+  inventoryAccountId    String?  // Inventarios (1435)
+  
+  // Cuentas de Ingresos
+  salesRevenueId        String?  // Ingresos por Ventas (4135)
+  
+  // Cuentas de IVA
+  vatGeneratedId        String?  // IVA Generado (2408)
+  vatDeductibleId       String?  // IVA Descontable (240805)
+  
+  // Cuentas de Costos
+  costOfSalesId         String?  // Costo de Ventas (6135)
+  
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  
+  tenant                Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  // Optional relations for referential integrity
+  cashAccount           AccountingAccount? @relation("CashAccount", fields: [cashAccountId], references: [id])
+  bankAccount           AccountingAccount? @relation("BankAccount", fields: [bankAccountId], references: [id])
+  accountsReceivable    AccountingAccount? @relation("AccountsReceivable", fields: [accountsReceivableId], references: [id])
+  accountsPayable       AccountingAccount? @relation("AccountsPayable", fields: [accountsPayableId], references: [id])
+  inventoryAccount      AccountingAccount? @relation("InventoryAccount", fields: [inventoryAccountId], references: [id])
+  salesRevenue          AccountingAccount? @relation("SalesRevenue", fields: [salesRevenueId], references: [id])
+  vatGenerated          AccountingAccount? @relation("VATGenerated", fields: [vatGeneratedId], references: [id])
+  vatDeductible         AccountingAccount? @relation("VATDeductible", fields: [vatDeductibleId], references: [id])
+  costOfSales           AccountingAccount? @relation("CostOfSales", fields: [costOfSalesId], references: [id])
 }
