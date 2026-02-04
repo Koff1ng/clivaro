@@ -862,6 +862,7 @@ model Tenant {
   accountingAccounts AccountingAccount[]
   journalEntries     JournalEntry[]
   accountingPeriods  AccountingPeriod[]
+  accountingConfig   AccountingConfig?
 }
 
 model Plan {
