@@ -48,6 +48,7 @@ model User {
   quotesCreated         Quote[]             @relation("QuoteCreatedBy")
   approvedPhysicalInventories PhysicalInventory[] @relation("PhysicalInventoryApprovedBy")
   marketingCampaignsCreated MarketingCampaign[] @relation("MarketingCampaignCreatedBy")
+  accountingAuditLogs AccountingAuditLog[] @relation("AccountingAuditLogs")
 }
 
 model Session {
@@ -1357,4 +1358,20 @@ model AccountingPeriod {
   tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   
   @@unique([tenantId, year, month])
+}
+
+model AccountingAuditLog {
+  id          String   @id @default(cuid())
+  tenantId    String
+  entityType  String   // JOURNAL_ENTRY, PERIOD, ACCOUNT
+  entityId    String
+  action      String   // CREATED, APPROVED, ANNULLED, PERIOD_CLOSED, PERIOD_REOPENED
+  userId      String
+  changes     String?  // JSON snapshot of changes
+  createdAt   DateTime @default(now())
+  
+  user        User     @relation("AccountingAuditLogs", fields: [userId], references: [id])
+  
+  @@index([tenantId, entityType, entityId])
+  @@index([tenantId, createdAt])
 }

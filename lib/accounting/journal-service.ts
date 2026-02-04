@@ -1,5 +1,7 @@
 
 import { prisma } from '@/lib/db'
+import { validatePeriodNotClosed } from './period-service'
+import { logAction } from './audit-service'
 
 export type JournalEntryInput = {
     date: Date
@@ -28,6 +30,9 @@ export async function createJournalEntry(tenantId: string, userId: string, data:
 
     const date = new Date(data.date)
     const period = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+
+    // Validate period is not closed
+    await validatePeriodNotClosed(tenantId, date)
 
     return await prisma.$transaction(async (tx) => {
         const count = await tx.journalEntry.count({
@@ -61,6 +66,12 @@ export async function createJournalEntry(tenantId: string, userId: string, data:
                 }
             },
             include: { lines: true }
+        })
+
+        // Log creation
+        await logAction(tenantId, 'JOURNAL_ENTRY', entry.id, 'CREATED', userId, {
+            number: entry.number,
+            description: entry.description
         })
 
         return entry
