@@ -109,9 +109,42 @@ export async function getJournalEntries(tenantId: string, filters?: { status?: s
     })
 }
 
+
 export async function getJournalEntry(tenantId: string, id: string) {
     return await prisma.journalEntry.findUnique({
         where: { id },
         include: { lines: { include: { account: true } }, createdBy: true }
+    })
+}
+
+export async function getJournalLines(tenantId: string, filters?: { accountId?: string, thirdPartyId?: string, start?: Date, end?: Date }) {
+    const where: any = {
+        journalEntry: { tenantId }
+    }
+
+    // Filters
+    if (filters?.accountId) where.accountId = filters.accountId
+    if (filters?.thirdPartyId) where.thirdPartyId = filters.thirdPartyId
+
+    if (filters?.start && filters?.end) {
+        where.journalEntry.date = {
+            gte: filters.start,
+            lte: filters.end
+        }
+    } else if (filters?.start) {
+        where.journalEntry.date = { gte: filters.start }
+    } else if (filters?.end) {
+        where.journalEntry.date = { lte: filters.end }
+    }
+
+    return await prisma.journalEntryLine.findMany({
+        where,
+        include: {
+            account: { select: { code: true, name: true } },
+            journalEntry: { select: { date: true, number: true, type: true, status: true } }
+        },
+        orderBy: {
+            journalEntry: { date: 'desc' } // Chronological
+        }
     })
 }
