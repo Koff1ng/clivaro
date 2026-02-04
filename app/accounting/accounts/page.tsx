@@ -1,211 +1,137 @@
 'use client'
 
-import { useState } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, FolderTree } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { MainLayout } from '@/components/layout/main-layout'
+import { PageHeader } from '@/components/ui/page-header'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-    DialogTrigger,
-} from '@/components/ui/dialog'
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select'
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from '@/components/ui/table'
-import { useToast } from '@/components/ui/toast'
-import { Badge } from '@/components/ui/badge'
+import { Card, CardContent } from '@/components/ui/card'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { toast } from '@/components/ui/toast'
+import { Loader2, Plus, Search } from 'lucide-react'
 
-export default function ChartOfAccountsPage() {
-    const [isOpen, setIsOpen] = useState(false)
-    const { toast } = useToast()
-    const queryClient = useQueryClient()
+export default function AccountsPage() {
+    const [loading, setLoading] = useState(true)
+    const [initLoading, setInitLoading] = useState(false)
+    const [accounts, setAccounts] = useState<any[]>([])
+    const [search, setSearch] = useState('')
 
-    // Form State
-    const [formData, setFormData] = useState({
-        code: '',
-        name: '',
-        type: 'ASSET',
-        parentAccountId: 'none'
-    })
-
-    const { data: accounts, isLoading } = useQuery({
-        queryKey: ['accounting-accounts'],
-        queryFn: async () => {
+    const fetchAccounts = async () => {
+        setLoading(true)
+        try {
             const res = await fetch('/api/accounting/accounts')
-            if (!res.ok) throw new Error('Error fetching accounts')
-            return res.json()
-        }
-    })
-
-    const createMutation = useMutation({
-        mutationFn: async (data: any) => {
-            const payload = { ...data, parentAccountId: data.parentAccountId === 'none' ? null : data.parentAccountId }
-            const res = await fetch('/api/accounting/accounts', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            })
-            if (!res.ok) {
-                const error = await res.json()
-                throw new Error(error.error || 'Failed to create account')
+            if (res.ok) {
+                const data = await res.json()
+                setAccounts(data)
             }
-            return res.json()
-        },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['accounting-accounts'] })
-            setIsOpen(false)
-            setFormData({ code: '', name: '', type: 'ASSET', parentAccountId: 'none' })
-            toast('Cuenta creada correctamente', 'success')
-        },
-        onError: (error: Error) => {
-            toast(error.message, 'error')
+        } catch (error) {
+            console.error(error)
+            toast('Error cargando cuentas', 'error')
+        } finally {
+            setLoading(false)
         }
-    })
-
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault()
-        createMutation.mutate(formData)
     }
 
-    return (
-        <div className="space-y-6">
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Plan de Cuentas</h1>
-                    <p className="text-muted-foreground">Gestiona la estructura contable de la empresa.</p>
-                </div>
-                <Dialog open={isOpen} onOpenChange={setIsOpen}>
-                    <DialogTrigger asChild>
-                        <Button><Plus className="mr-2 h-4 w-4" /> Nueva Cuenta</Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                        <DialogHeader>
-                            <DialogTitle>Crear Cuenta Contable</DialogTitle>
-                            <DialogDescription>
-                                Define el código y nombre de la nueva cuenta.
-                            </DialogDescription>
-                        </DialogHeader>
-                        <form onSubmit={handleSubmit} className="space-y-4">
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="code">Código</Label>
-                                    <Input
-                                        id="code"
-                                        value={formData.code}
-                                        onChange={e => setFormData({ ...formData, code: e.target.value })}
-                                        placeholder="Ej. 1105"
-                                        required
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="type">Tipo</Label>
-                                    <Select
-                                        value={formData.type}
-                                        onValueChange={v => setFormData({ ...formData, type: v })}
-                                    >
-                                        <SelectTrigger><SelectValue /></SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="ASSET">Activo</SelectItem>
-                                            <SelectItem value="LIABILITY">Pasivo</SelectItem>
-                                            <SelectItem value="EQUITY">Patrimonio</SelectItem>
-                                            <SelectItem value="INCOME">Ingresos</SelectItem>
-                                            <SelectItem value="EXPENSE">Gastos</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                            </div>
+    useEffect(() => {
+        fetchAccounts()
+    }, [])
 
-                            <div className="space-y-2">
-                                <Label htmlFor="name">Nombre</Label>
+    const handleInitialize = async () => {
+        setInitLoading(true)
+        try {
+            const res = await fetch('/api/accounting/accounts', {
+                method: 'POST',
+                body: JSON.stringify({ action: 'initialize' }),
+                headers: { 'Content-Type': 'application/json' }
+            })
+            if (res.ok) {
+                toast('PUC Inicializado correctamente', 'success')
+                fetchAccounts()
+            } else {
+                toast('Error inicializando PUC', 'error')
+            }
+        } catch (e) {
+            toast('Error de conexión', 'error')
+        } finally {
+            setInitLoading(false)
+        }
+    }
+
+    const filteredAccounts = accounts.filter(acc =>
+        acc.code.includes(search) ||
+        acc.name.toLowerCase().includes(search.toLowerCase())
+    )
+
+    return (
+        <MainLayout>
+            <div className="space-y-6">
+                <PageHeader
+                    title="Catálogo de Cuentas (PUC)"
+                    description="Gestiona el Plan Único de Cuentas."
+                />
+
+                {!loading && accounts.length === 0 ? (
+                    <Card>
+                        <CardContent className="pt-6 text-center space-y-4">
+                            <p className="text-muted-foreground">No hay cuentas configuradas.</p>
+                            <Button onClick={handleInitialize} disabled={initLoading}>
+                                {initLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                Cargar PUC Colombia (Básico)
+                            </Button>
+                        </CardContent>
+                    </Card>
+                ) : (
+                    <div className="space-y-4">
+                        <div className="flex gap-2">
+                            <div className="relative flex-1 max-w-sm">
+                                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                                 <Input
-                                    id="name"
-                                    value={formData.name}
-                                    onChange={e => setFormData({ ...formData, name: e.target.value })}
-                                    placeholder="Ej. Caja General"
-                                    required
+                                    placeholder="Buscar por código o nombre..."
+                                    className="pl-8"
+                                    value={search}
+                                    onChange={e => setSearch(e.target.value)}
                                 />
                             </div>
+                        </div>
 
-                            <div className="space-y-2">
-                                <Label htmlFor="parent">Cuenta Padre (Opcional)</Label>
-                                <Select
-                                    value={formData.parentAccountId}
-                                    onValueChange={v => setFormData({ ...formData, parentAccountId: v })}
-                                >
-                                    <SelectTrigger><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="none">-- Ninguna --</SelectItem>
-                                        {accounts?.map((acc: any) => (
-                                            <SelectItem key={acc.id} value={acc.id}>{acc.code} - {acc.name}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-
-                            <DialogFooter>
-                                <Button type="submit" disabled={createMutation.isPending}>
-                                    {createMutation.isPending ? 'Guardando...' : 'Guardar'}
-                                </Button>
-                            </DialogFooter>
-                        </form>
-                    </DialogContent>
-                </Dialog>
+                        <div className="rounded-md border bg-white">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead className="w-[150px]">Código</TableHead>
+                                        <TableHead>Nombre</TableHead>
+                                        <TableHead className="w-[100px]">Tipo</TableHead>
+                                        <TableHead className="w-[100px]">Nivel</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {loading ? (
+                                        <TableRow>
+                                            <TableCell colSpan={4} className="text-center py-8">Cargando...</TableCell>
+                                        </TableRow>
+                                    ) : filteredAccounts.length === 0 ? (
+                                        <TableRow>
+                                            <TableCell colSpan={4} className="text-center py-8">No se encontraron cuentas</TableCell>
+                                        </TableRow>
+                                    ) : (
+                                        filteredAccounts.map(acc => (
+                                            <TableRow key={acc.id} className={acc.level === 1 ? 'font-bold bg-muted/50' : acc.level === 2 ? 'font-semibold' : ''}>
+                                                <TableCell>{acc.code}</TableCell>
+                                                <TableCell style={{ paddingLeft: `${(acc.level - 1) * 20}px` }}>{acc.name}</TableCell>
+                                                <TableCell><span className="text-xs px-2 py-1 rounded bg-slate-100">{acc.type}</span></TableCell>
+                                                <TableCell>{acc.level}</TableCell>
+                                            </TableRow>
+                                        ))
+                                    )}
+                                </TableBody>
+                            </Table>
+                        </div>
+                        <div className="text-xs text-muted-foreground text-center">
+                            Mostrando {filteredAccounts.length} cuentas
+                        </div>
+                    </div>
+                )}
             </div>
-
-            <div className="border rounded-lg">
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead>Código</TableHead>
-                            <TableHead>Nombre</TableHead>
-                            <TableHead>Tipo</TableHead>
-                            <TableHead>Padre</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {isLoading ? (
-                            <TableRow>
-                                <TableCell colSpan={4} className="text-center py-8">Caragndo...</TableCell>
-                            </TableRow>
-                        ) : accounts?.length === 0 ? (
-                            <TableRow>
-                                <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">No hay cuentas registradas</TableCell>
-                            </TableRow>
-                        ) : (
-                            accounts?.map((account: any) => (
-                                <TableRow key={account.id}>
-                                    <TableCell className="font-medium font-mono">{account.code}</TableCell>
-                                    <TableCell>{account.name}</TableCell>
-                                    <TableCell>
-                                        <Badge variant="outline">{account.type}</Badge>
-                                    </TableCell>
-                                    <TableCell className="text-muted-foreground text-sm">
-                                        {account.parentAccount ? `${account.parentAccount.code} - ${account.parentAccount.name}` : '-'}
-                                    </TableCell>
-                                </TableRow>
-                            ))
-                        )}
-                    </TableBody>
-                </Table>
-            </div>
-        </div>
+        </MainLayout>
     )
 }
