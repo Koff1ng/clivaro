@@ -4,8 +4,9 @@ generator client {
 
 datasource db {
   provider  = "postgresql"
-  url       = env("DATABASE_URL") // Transaction pooler para runtime
-  directUrl = env("DIRECT_URL") // Conexión directa para migraciones
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+  // Force Client Rebuild
 }
 
 model User {
@@ -27,6 +28,7 @@ model User {
   assignedLeads         Lead[]              @relation("LeadAssignedTo")
   createdLeads          Lead[]              @relation("LeadCreatedBy")
   leadStageHistory      LeadStageHistory[]  @relation("LeadStageHistoryChangedBy")
+  createdJournalEntries JournalEntry[] @relation("CreatedJournalEntries")
   sessions              Session[]
   stockMovements        StockMovement[]
   updatedBy             User?               @relation("UserUpdatedBy", fields: [updatedById], references: [id])
@@ -45,7 +47,6 @@ model User {
   opportunitiesAssigned Opportunity[]       @relation("OpportunityAssignedTo")
   quotesCreated         Quote[]             @relation("QuoteCreatedBy")
   approvedPhysicalInventories PhysicalInventory[] @relation("PhysicalInventoryApprovedBy")
-  journalEntriesCreated JournalEntry[]      @relation("JournalCreatedBy")
   marketingCampaignsCreated MarketingCampaign[] @relation("MarketingCampaignCreatedBy")
 }
 
@@ -93,11 +94,11 @@ model Permission {
 }
 
 model RolePermission {
-  id           String     @id @default(cuid())
-  roleId       String
+  id String @id @default(cuid())
+  roleId String
   permissionId String
-  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
-  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
 
   @@unique([roleId, permissionId])
 }
@@ -333,6 +334,7 @@ model Customer {
   campaignRecipients MarketingCampaignRecipient[]
   Opportunity        Opportunity[]
   Quote              Quote[]
+  journalEntryLines  JournalEntryLine[]
 }
 
 model Lead {
@@ -676,6 +678,7 @@ model Supplier {
   createdById    String?
   updatedById    String?
   purchaseOrders PurchaseOrder[]
+  journalEntryLines JournalEntryLine[]
 }
 
 model MarketingCampaign {
@@ -855,6 +858,9 @@ model Tenant {
   updatedAt     DateTime        @updatedAt
   subscriptions Subscription[]
   settings      TenantSettings?
+  accountingAccounts AccountingAccount[]
+  journalEntries     JournalEntry[]
+  accountingPeriods  AccountingPeriod[]
 }
 
 model Plan {
@@ -1180,58 +1186,7 @@ model QuoteItem {
   @@index([productId])
 }
 
-// ============================================
-// ACCOUNTING MODELS
-// ============================================
 
-model AccountingAccount {
-  id              String             @id @default(cuid())
-  code            String             @unique
-  name            String
-  type            String             // ASSET, LIABILITY, EQUITY, INCOME, EXPENSE
-  parentAccountId String?
-  active          Boolean            @default(true)
-  createdAt       DateTime           @default(now())
-  updatedAt       DateTime           @updatedAt
-  
-  parentAccount   AccountingAccount? @relation("AccountHierarchy", fields: [parentAccountId], references: [id])
-  childAccounts   AccountingAccount[] @relation("AccountHierarchy")
-  journalLines    JournalEntryLine[]
-
-  @@index([code])
-}
-
-model JournalEntry {
-  id          String             @id @default(cuid())
-  date        DateTime
-  description String
-  reference   String?            // Invoice ID, Payment ID, etc.
-  status      String             @default("DRAFT") // DRAFT, POSTED
-  createdAt   DateTime           @default(now())
-  updatedAt   DateTime           @updatedAt
-  createdById String?
-  
-  lines       JournalEntryLine[]
-  createdBy   User?              @relation("JournalCreatedBy", fields: [createdById], references: [id])
-
-  @@index([date])
-  @@index([reference])
-}
-
-model JournalEntryLine {
-  id             String            @id @default(cuid())
-  journalEntryId String
-  accountId      String
-  description    String?
-  debit          Float             @default(0)
-  credit         Float             @default(0)
-  
-  journalEntry   JournalEntry      @relation(fields: [journalEntryId], references: [id], onDelete: Cascade)
-  account        AccountingAccount @relation(fields: [accountId], references: [id])
-
-  @@index([journalEntryId])
-  @@index([accountId])
-}
 
 // ============================================
 // PAYROLL MODELS
@@ -1285,3 +1240,121 @@ model PayrollItem {
   @@index([employeeId])
 }
 
+
+// --- ACCOUNTING MODULE ---
+
+
+model AccountingAccount {
+  id          String    @id @default(cuid())
+  tenantId    String
+  code        String    // PUC Code (e.g. 110505)
+  name        String
+  description String?
+  type        String    // ASSET, LIABILITY, EQUITY, INCOME, EXPENSE, COST_SALES, COST_PRODUCTION, MEMORANDUM_DEBIT, MEMORANDUM_CREDIT
+  level       Int       @default(1)
+  parentId    String?
+  parent      AccountingAccount?  @relation("AccountHierarchy", fields: [parentId], references: [id], onDelete: Restrict)
+  children    AccountingAccount[] @relation("AccountHierarchy")
+  
+  // Tags for automation: CASH, BANK, VAT_GENERATED, VAT_DEDUCTIBLE, RETENTION_SOURCE, RETENTION_IVA, RETENTION_ICA
+  tags        String[]  @default([])
+  
+  active      Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  // Relations
+  journalLines JournalEntryLine[]
+  tenant       Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, code])
+  @@index([tenantId, type])
+}
+
+model JournalEntry {
+  id            String    @id @default(cuid())
+  tenantId      String
+  number        String    // Consecutivo único por tenant/año?
+  date          DateTime
+  period        String    // YYYY-MM para facilitar cierres
+  type          String    // INCOME, EXPENSE, JOURNAL, ADJUSTMENT, OPENING, CLOSING
+  description   String
+  status        String    @default("DRAFT") // DRAFT, APPROVED, ANNULLED
+  
+  // Origen
+  reference     String?   // Referencia externa (Fac #123)
+  sourceDocId   String?   // ID Documento interno (InvoiceId, etc)
+  sourceType    String?   // INVOICE, BILL, PAYMENT, etc.
+
+  // Totales (Denormalized for performance)
+  totalDebit    Float     @default(0)
+  totalCredit   Float     @default(0)
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  createdById   String?
+  updatedById   String?
+  approvedById  String?
+  approvedAt    DateTime?
+
+  // Relations
+  lines         JournalEntryLine[]
+  tenant        Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdBy     User?     @relation("CreatedJournalEntries", fields: [createdById], references: [id])
+  
+  @@unique([tenantId, number]) // Ensure unique numbering
+  @@index([tenantId, period])
+  @@index([tenantId, date])
+  @@index([tenantId, status])
+}
+
+model JournalEntryLine {
+  id             String       @id @default(cuid())
+  journalEntryId String
+  accountId      String
+  description    String?      // Detalle de línea
+  
+  debit          Float        @default(0)
+  credit         Float        @default(0)
+  
+  // Tercero (Beneficiario/Cliente/Proveedor)
+  thirdPartyId   String?      // Puede ser Customer, Supplier, Employee (User) - Simplicidad: String Ref o relacion polimórfica (Prisma no soporta poli real)
+  // En este sistema tenemos Customer y Supplier separados. 
+  // Opcion simple: Guardar ID y Name del tercero denormalizado o relacionar a un modelo "Entity" unificado si existiera.
+  // Por ahora usaremos un campo de texto para ID/Nombre o relacion opcional si es cliente/proveedor.
+  // RELACION: Vamos a probar relacionar con Customer y Supplier opcionalmente. 
+  // Si no es ninguno (ej. empleado u otro), se guarda en texto o se crea un modelo ThirdParty unificado.
+  // DADO EL REQUISITO "SIMPLE": Usaremos campos especificos.
+  
+  thirdPartyName String?      // Nombre snapshot
+  thirdPartyNit  String?      // NIT/CC snapshot
+  
+  // Opcional: Relations directas para integridad
+  customerId     String?
+  customer       Customer?    @relation(fields: [customerId], references: [id])
+  supplierId     String?
+  supplier       Supplier?    @relation(fields: [supplierId], references: [id])
+  
+  createdAt      DateTime     @default(now())
+  
+  // Relations
+  journalEntry   JournalEntry @relation(fields: [journalEntryId], references: [id], onDelete: Cascade)
+  account        AccountingAccount @relation(fields: [accountId], references: [id], onDelete: Restrict)
+
+  @@index([journalEntryId])
+  @@index([accountId])
+}
+
+model AccountingPeriod {
+  id          String   @id @default(cuid())
+  tenantId    String
+  year        Int
+  month       Int
+  isClosed    Boolean  @default(false)
+  closedAt    DateTime?
+  closedById  String?
+  
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  @@unique([tenantId, year, month])
+}
