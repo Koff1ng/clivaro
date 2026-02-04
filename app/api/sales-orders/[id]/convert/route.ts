@@ -128,7 +128,7 @@ export async function POST(
                     }
 
                     // Log Movement
-                    await tx.inventoryMovement.create({
+                    await tx.stockMovement.create({
                         data: {
                             type: 'OUT',
                             quantity: item.quantity,
