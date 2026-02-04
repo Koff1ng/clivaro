@@ -88,10 +88,10 @@ const menuGroups: MenuGroup[] = [
     key: 'finances',
     items: [
       { href: '/cash/shifts', label: 'Caja', icon: WalletIcon, permission: ['manage_cash', 'manage_sales'], planFeature: 'manageCash' },
-      { href: '/accounting/accounts', label: 'Plan de Cuentas', icon: Page, permission: 'manage_crm', planFeature: 'accounting' },
-      { href: '/accounting/journal', label: 'Libro Diario', icon: Page, permission: 'manage_crm', planFeature: 'accounting' },
-      { href: '/payroll/employees', label: 'Empleados', icon: Group, permission: 'manage_users', planFeature: 'payroll' },
-      { href: '/payroll/runs', label: 'Nómina', icon: WalletIcon, permission: 'manage_users', planFeature: 'payroll' },
+      { href: '/accounting/accounts', label: 'Plan de Cuentas', icon: Page, permission: 'manage_crm', planFeature: 'manageAccounting' },
+      { href: '/accounting/journal', label: 'Libro Diario', icon: Page, permission: 'manage_crm', planFeature: 'manageAccounting' },
+      { href: '/payroll/employees', label: 'Empleados', icon: Group, permission: 'manage_users', planFeature: 'managePayroll' },
+      { href: '/payroll/runs', label: 'Nómina', icon: WalletIcon, permission: 'manage_users', planFeature: 'managePayroll' },
     ]
   },
   {
