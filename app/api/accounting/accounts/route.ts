@@ -7,7 +7,7 @@ import { prisma } from '@/lib/db'
 import { getAccountTree, initializePUC } from '@/lib/accounting/service'
 
 export async function GET(request: Request) {
-    const session = await requirePermission(request as any, 'manage_accounting' as any) // Need to define permission or use 'manage_crm' temp? USER SAID NO EXTRA COMPLEXITY. I will check permissions.
+    const session = await requirePermission(request as any, PERMISSIONS.MANAGE_ACCOUNTING)
     if (session instanceof NextResponse) return session
 
     const tenantId = getTenantIdFromSession(session)
@@ -17,7 +17,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-    const session = await requirePermission(request as any, 'manage_accounting' as any)
+    const session = await requirePermission(request as any, PERMISSIONS.MANAGE_ACCOUNTING)
     if (session instanceof NextResponse) return session
 
     const tenantId = getTenantIdFromSession(session)

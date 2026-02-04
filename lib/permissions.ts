@@ -15,6 +15,7 @@ export const PERMISSIONS = {
   MANAGE_CASH: 'manage_cash',
   MANAGE_INVOICES: 'manage_sales', // Alias for now, or new permission
   MANAGE_SETTINGS: 'manage_settings',
+  MANAGE_ACCOUNTING: 'manage_accounting',
 } as const
 
 export type Permission = typeof PERMISSIONS[keyof typeof PERMISSIONS]
