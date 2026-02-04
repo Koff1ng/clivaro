@@ -9,12 +9,13 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Trash2, Plus, Save } from 'lucide-react'
-import { toast } from '@/components/ui/toast'
+import { useToast } from '@/components/ui/use-toast'
 import { AccountSelect } from '@/components/accounting/account-select'
 import { useRouter } from 'next/navigation'
 import { formatCurrency } from '@/lib/utils'
 
 export default function NewVoucherPage() {
+    const { toast } = useToast()
     const router = useRouter()
     const [loading, setLoading] = useState(false)
     const [accounts, setAccounts] = useState<any[]>([])

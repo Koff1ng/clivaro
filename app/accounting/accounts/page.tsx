@@ -7,10 +7,11 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { toast } from '@/components/ui/toast'
+import { useToast } from '@/components/ui/use-toast'
 import { Loader2, Plus, Search } from 'lucide-react'
 
 export default function AccountsPage() {
+    const { toast } = useToast()
     const [loading, setLoading] = useState(true)
     const [initLoading, setInitLoading] = useState(false)
     const [accounts, setAccounts] = useState<any[]>([])
