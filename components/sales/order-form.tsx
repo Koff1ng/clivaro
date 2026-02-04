@@ -266,13 +266,14 @@ export function OrderForm({ initialData, isEditing = false }: OrderFormProps) {
             </div>
 
             {/* Items Section */}
+            {/* Items Section */}
             <div className="border rounded-lg bg-card overflow-hidden">
                 <div className="p-4 border-b bg-muted/30 flex justify-between items-center">
-                    <h3 className="font-semibold">Productos</h3>
+                    <h3 className="font-semibold">Items</h3>
                     <div className="relative w-80">
                         <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                         <Input
-                            placeholder="Buscar producto (nombre, sku)..."
+                            placeholder="Buscar item (nombre, sku)..."
                             value={productSearch}
                             onChange={e => setProductSearch(e.target.value)}
                             className="pl-8"
@@ -315,7 +316,7 @@ export function OrderForm({ initialData, isEditing = false }: OrderFormProps) {
                 <Table>
                     <TableHeader>
                         <TableRow>
-                            <TableHead className="w-[40%]">Producto</TableHead>
+                            <TableHead className="w-[40%]">Item</TableHead>
                             <TableHead className="w-[12%] text-right">Cantidad</TableHead>
                             <TableHead className="w-[12%] text-right">Precio</TableHead>
                             <TableHead className="w-[12%] text-right">Impuesto</TableHead>
