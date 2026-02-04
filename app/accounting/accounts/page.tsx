@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { useToast } from '@/components/ui/use-toast'
+import { useToast } from '@/components/ui/toast'
 import { Loader2, Plus, Search } from 'lucide-react'
 
 export default function AccountsPage() {
