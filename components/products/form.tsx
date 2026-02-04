@@ -13,6 +13,7 @@ import { useRouter } from 'next/navigation'
 import { Plus, Trash2, Utensils, Loader2 } from 'lucide-react'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { RecipeEditor } from './recipe-editor'
+import { UnitSelect } from './unit-select'
 
 const productSchema = z.object({
   sku: z.string().min(1, 'SKU es requerido'),
@@ -20,7 +21,7 @@ const productSchema = z.object({
   name: z.string().min(1, 'Nombre es requerido'),
   brand: z.string().optional(),
   category: z.string().optional(),
-  unitOfMeasure: z.enum(['UNIT', 'BOX', 'METER', 'KILO', 'LITER']),
+  unitOfMeasure: z.string().min(1, 'Unidad requerida').default('UNIT'),
   cost: z.number().min(0, 'Costo debe ser mayor o igual a 0'),
   price: z.number().min(0, 'Precio debe ser mayor o igual a 0'),
   taxRate: z.number().min(0).max(100),
@@ -191,17 +192,16 @@ export function ProductForm({ product, onSuccess }: { product?: any; onSuccess: 
 
       <div>
         <Label htmlFor="unitOfMeasure">Unidad de Medida *</Label>
-        <select
-          id="unitOfMeasure"
-          {...register('unitOfMeasure')}
-          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-        >
-          <option value="UNIT">Unidad</option>
-          <option value="BOX">Caja</option>
-          <option value="METER">Metro</option>
-          <option value="KILO">Kilo</option>
-          <option value="LITER">Litro</option>
-        </select>
+        <Controller
+          control={control}
+          name="unitOfMeasure"
+          render={({ field }) => (
+            <UnitSelect
+              value={field.value}
+              onChange={field.onChange}
+            />
+          )}
+        />
       </div>
 
       <div>
