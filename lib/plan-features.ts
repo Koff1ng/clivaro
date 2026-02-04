@@ -139,6 +139,13 @@ export const ROUTE_FEATURES: Record<string, keyof PlanFeatures> = {
   '/cash/shifts': 'manageCash',
   '/admin/users': 'manageUsers',
   '/accounting': 'manageAccounting',
+  '/accounting/accounts': 'manageAccounting',
+  '/accounting/vouchers': 'manageAccounting',
+  '/accounting/journal': 'manageAccounting',
+  '/accounting/reports': 'manageAccounting',
+  '/accounting/tax-info': 'manageAccounting',
+  '/accounting/fiscal-conciliator': 'manageAccounting',
+  '/accounting/addons': 'manageAccounting',
   '/payroll': 'managePayroll',
 }
 

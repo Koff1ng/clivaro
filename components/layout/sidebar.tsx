@@ -84,12 +84,29 @@ const menuGroups: MenuGroup[] = [
     ]
   },
   {
-    title: 'Finanzas',
-    key: 'finances',
+    title: 'Tesoreria',
+    key: 'treasury',
     items: [
       { href: '/cash/shifts', label: 'Caja', icon: WalletIcon, permission: ['manage_cash', 'manage_sales'], planFeature: 'manageCash' },
-      { href: '/accounting/accounts', label: 'Plan de Cuentas', icon: Page, permission: 'manage_crm', planFeature: 'manageAccounting' },
-      { href: '/accounting/journal', label: 'Libro Diario', icon: Page, permission: 'manage_crm', planFeature: 'manageAccounting' },
+    ]
+  },
+  {
+    title: 'Contabilidad',
+    key: 'accounting',
+    items: [
+      { href: '/accounting/accounts', label: 'Catálogo de cuentas', icon: Page, permission: 'manage_crm', planFeature: 'manageAccounting' },
+      { href: '/accounting/vouchers', label: 'Comprobante contable', icon: PasteClipboard, permission: 'manage_crm', planFeature: 'manageAccounting' },
+      { href: '/accounting/journal', label: 'Libro diario', icon: Page, permission: 'manage_crm', planFeature: 'manageAccounting' },
+      { href: '/accounting/reports', label: 'Reportes contables', icon: StatsUpSquare, permission: 'manage_crm', planFeature: 'manageAccounting' },
+      { href: '/accounting/tax-info', label: 'Información exógena', icon: ShieldCheck, permission: 'manage_crm', planFeature: 'manageAccounting' },
+      { href: '/accounting/fiscal-conciliator', label: 'Conciliador fiscal', icon: Calculator, permission: 'manage_crm', planFeature: 'manageAccounting' },
+      { href: '/accounting/addons', label: 'Complementos contables', icon: Box, permission: 'manage_crm', planFeature: 'manageAccounting' },
+    ]
+  },
+  {
+    title: 'Recursos Humanos',
+    key: 'hr',
+    items: [
       { href: '/payroll/employees', label: 'Empleados', icon: Group, permission: 'manage_users', planFeature: 'managePayroll' },
       { href: '/payroll/runs', label: 'Nómina', icon: WalletIcon, permission: 'manage_users', planFeature: 'managePayroll' },
     ]
@@ -120,7 +137,9 @@ export function Sidebar() {
     general: true,
     comercial: true,
     inventory: true,
-    finances: true,
+    treasury: true,
+    accounting: true,
+    hr: true,
     system: true
   })
 
