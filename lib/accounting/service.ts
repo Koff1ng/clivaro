@@ -4,7 +4,7 @@ import { PUC_TEMPLATE } from './puc-data'
 
 export async function initializePUC(tenantId: string) {
     // Check if accounts exist
-    const count = await prisma.account.count({
+    const count = await prisma.accountingAccount.count({
         where: { tenantId }
     })
 
@@ -36,14 +36,14 @@ export async function initializePUC(tenantId: string) {
             if (parentCode) {
                 // Find parent in recently created or DB
                 // Optimization: Cache map of code -> id
-                const parent = await prisma.account.findUnique({
+                const parent = await prisma.accountingAccount.findUnique({
                     where: { tenantId_code: { tenantId, code: parentCode } }
                 })
                 if (parent) parentId = parent.id
             }
         }
 
-        await prisma.account.create({
+        await prisma.accountingAccount.create({
             data: {
                 tenantId,
                 code: acc.code,
@@ -60,7 +60,7 @@ export async function initializePUC(tenantId: string) {
 }
 
 export async function getAccountTree(tenantId: string) {
-    const accounts = await prisma.account.findMany({
+    const accounts = await prisma.accountingAccount.findMany({
         where: { tenantId },
         orderBy: { code: 'asc' }
     })

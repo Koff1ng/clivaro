@@ -47,7 +47,6 @@ model User {
   opportunitiesAssigned Opportunity[]       @relation("OpportunityAssignedTo")
   quotesCreated         Quote[]             @relation("QuoteCreatedBy")
   approvedPhysicalInventories PhysicalInventory[] @relation("PhysicalInventoryApprovedBy")
-  journalEntriesCreated JournalEntry[]      @relation("JournalCreatedBy")
   marketingCampaignsCreated MarketingCampaign[] @relation("MarketingCampaignCreatedBy")
 }
 
@@ -335,6 +334,7 @@ model Customer {
   campaignRecipients MarketingCampaignRecipient[]
   Opportunity        Opportunity[]
   Quote              Quote[]
+  journalEntryLines  JournalEntryLine[]
 }
 
 model Lead {
@@ -678,6 +678,7 @@ model Supplier {
   createdById    String?
   updatedById    String?
   purchaseOrders PurchaseOrder[]
+  journalEntryLines JournalEntryLine[]
 }
 
 model MarketingCampaign {
@@ -857,6 +858,9 @@ model Tenant {
   updatedAt     DateTime        @updatedAt
   subscriptions Subscription[]
   settings      TenantSettings?
+  accountingAccounts AccountingAccount[]
+  journalEntries     JournalEntry[]
+  accountingPeriods  AccountingPeriod[]
 }
 
 model Plan {
@@ -1182,58 +1186,7 @@ model QuoteItem {
   @@index([productId])
 }
 
-// ============================================
-// ACCOUNTING MODELS
-// ============================================
 
-model AccountingAccount {
-  id              String             @id @default(cuid())
-  code            String             @unique
-  name            String
-  type            String             // ASSET, LIABILITY, EQUITY, INCOME, EXPENSE
-  parentAccountId String?
-  active          Boolean            @default(true)
-  createdAt       DateTime           @default(now())
-  updatedAt       DateTime           @updatedAt
-  
-  parentAccount   AccountingAccount? @relation("AccountHierarchy", fields: [parentAccountId], references: [id])
-  childAccounts   AccountingAccount[] @relation("AccountHierarchy")
-  journalLines    JournalEntryLine[]
-
-  @@index([code])
-}
-
-model JournalEntry {
-  id          String             @id @default(cuid())
-  date        DateTime
-  description String
-  reference   String?            // Invoice ID, Payment ID, etc.
-  status      String             @default("DRAFT") // DRAFT, POSTED
-  createdAt   DateTime           @default(now())
-  updatedAt   DateTime           @updatedAt
-  createdById String?
-  
-  lines       JournalEntryLine[]
-  createdBy   User?              @relation("JournalCreatedBy", fields: [createdById], references: [id])
-
-  @@index([date])
-  @@index([reference])
-}
-
-model JournalEntryLine {
-  id             String            @id @default(cuid())
-  journalEntryId String
-  accountId      String
-  description    String?
-  debit          Float             @default(0)
-  credit         Float             @default(0)
-  
-  journalEntry   JournalEntry      @relation(fields: [journalEntryId], references: [id], onDelete: Cascade)
-  account        AccountingAccount @relation(fields: [accountId], references: [id])
-
-  @@index([journalEntryId])
-  @@index([accountId])
-}
 
 // ============================================
 // PAYROLL MODELS
@@ -1290,7 +1243,8 @@ model PayrollItem {
 
 // --- ACCOUNTING MODULE ---
 
-model Account {
+
+model AccountingAccount {
   id          String    @id @default(cuid())
   tenantId    String
   code        String    // PUC Code (e.g. 110505)
@@ -1299,8 +1253,8 @@ model Account {
   type        String    // ASSET, LIABILITY, EQUITY, INCOME, EXPENSE, COST_SALES, COST_PRODUCTION, MEMORANDUM_DEBIT, MEMORANDUM_CREDIT
   level       Int       @default(1)
   parentId    String?
-  parent      Account?  @relation("AccountHierarchy", fields: [parentId], references: [id], onDelete: Restrict)
-  children    Account[] @relation("AccountHierarchy")
+  parent      AccountingAccount?  @relation("AccountHierarchy", fields: [parentId], references: [id], onDelete: Restrict)
+  children    AccountingAccount[] @relation("AccountHierarchy")
   
   // Tags for automation: CASH, BANK, VAT_GENERATED, VAT_DEDUCTIBLE, RETENTION_SOURCE, RETENTION_IVA, RETENTION_ICA
   tags        String[]  @default([])
@@ -1385,7 +1339,7 @@ model JournalEntryLine {
   
   // Relations
   journalEntry   JournalEntry @relation(fields: [journalEntryId], references: [id], onDelete: Cascade)
-  account        Account      @relation(fields: [accountId], references: [id], onDelete: Restrict)
+  account        AccountingAccount @relation(fields: [accountId], references: [id], onDelete: Restrict)
 
   @@index([journalEntryId])
   @@index([accountId])
