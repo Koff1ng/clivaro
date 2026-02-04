@@ -28,7 +28,7 @@ const productSchema = z.object({
   minStock: z.number().min(0, 'Mínimo debe ser mayor o igual a 0').optional(),
   maxStock: z.number().min(0, 'Máximo debe ser mayor o igual a 0').optional().nullable(),
   description: z.string().optional(),
-  productType: z.enum(['RETAIL', 'RAW', 'PREPARED', 'SELLABLE']).default('RETAIL'),
+  productType: z.enum(['RETAIL', 'SERVICE', 'RAW', 'PREPARED', 'SELLABLE']).default('RETAIL'),
   enableRecipeConsumption: z.boolean().default(false),
   printerStation: z.enum(['KITCHEN', 'BAR', 'CASHIER']).optional().nullable(),
   // Variants
@@ -318,6 +318,7 @@ export function ProductForm({ product, onSuccess }: { product?: any; onSuccess: 
               className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
             >
               <option value="RETAIL">Retail (Normal)</option>
+              <option value="SERVICE">Servicio</option>
               <option value="RAW">Insumo / Materia Prima</option>
               <option value="PREPARED">Item Elaborado (No vendible)</option>
               <option value="SELLABLE">Plato / Vendible con Receta</option>
