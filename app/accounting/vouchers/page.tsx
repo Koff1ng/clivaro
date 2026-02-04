@@ -30,7 +30,7 @@ export default function VouchersPage() {
                 <PageHeader
                     title="Comprobantes Contables"
                     description="Gestión de movimiento contable (Ingresos, Egresos, Diario)."
-                    action={
+                    actions={
                         <Link href="/accounting/vouchers/new">
                             <Button>
                                 <Plus className="h-4 w-4 mr-2" />
@@ -69,8 +69,8 @@ export default function VouchersPage() {
                                             <TableCell className="text-right font-mono">{formatCurrency(v.totalDebit)}</TableCell>
                                             <TableCell>
                                                 <span className={`px-2 py-1 rounded text-xs font-semibold ${v.status === 'APPROVED' ? 'bg-green-100 text-green-700' :
-                                                        v.status === 'ANNULLED' ? 'bg-red-100 text-red-700' :
-                                                            'bg-yellow-100 text-yellow-800'
+                                                    v.status === 'ANNULLED' ? 'bg-red-100 text-red-700' :
+                                                        'bg-yellow-100 text-yellow-800'
                                                     }`}>
                                                     {v.status === 'DRAFT' ? 'Borrador' : v.status === 'APPROVED' ? 'Aprobado' : 'Anulado'}
                                                 </span>
