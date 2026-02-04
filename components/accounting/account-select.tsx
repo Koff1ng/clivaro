@@ -4,14 +4,7 @@ import { useState, useMemo, useEffect } from 'react'
 import { Check, ChevronsUpDown } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import {
-    Command,
-    CommandEmpty,
-    CommandGroup,
-    CommandInput,
-    CommandItem,
-    CommandList,
-} from "@/components/ui/command" // If command exists... checking... Ah, I saw earlier "Check for Command" and I didn't verify file content, just dir. `searchable-select` implemented custom.
+// Command imports removed as component is missing
 // Using custom implementation to avoid dependency issues if Command isn't full.
 // Actually, `searchable-select` is good enough base.
 
