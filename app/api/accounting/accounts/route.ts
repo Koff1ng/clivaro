@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server'
 import { requirePermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
 import { getTenantIdFromSession } from '@/lib/tenancy'
-import { prisma } from '@/lib/prisma'
+import { prisma } from '@/lib/db'
 import { getAccountTree, initializePUC } from '@/lib/accounting/service'
 
 export async function GET(request: Request) {

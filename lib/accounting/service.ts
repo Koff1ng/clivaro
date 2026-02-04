@@ -1,5 +1,5 @@
 
-import { prisma } from '@/lib/prisma'
+import { prisma } from '@/lib/db'
 import { PUC_TEMPLATE } from './puc-data'
 
 export async function initializePUC(tenantId: string) {

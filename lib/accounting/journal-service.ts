@@ -1,5 +1,5 @@
 
-import { prisma } from '@/lib/prisma'
+import { prisma } from '@/lib/db'
 
 export type JournalEntryInput = {
     date: Date
