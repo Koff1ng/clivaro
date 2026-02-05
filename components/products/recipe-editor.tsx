@@ -157,7 +157,11 @@ export function RecipeEditor({ productId, productName, onSave }: { productId: st
                                 onValueChange={(val) => updateItem(index, 'ingredientId', val)}
                             >
                                 <SelectTrigger>
-                                    <SelectValue placeholder="Seleccione producto..." />
+                                    <SelectValue placeholder="Seleccione producto...">
+                                        {item.ingredient ?
+                                            `${item.ingredient.name} (${item.ingredient.sku}) - ${item.ingredient.unitOfMeasure}`
+                                            : 'Seleccione producto...'}
+                                    </SelectValue>
                                 </SelectTrigger>
                                 <SelectContent>
                                     {ingredientsData?.map((p: any) => (
