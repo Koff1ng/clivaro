@@ -22,15 +22,16 @@ export async function GET(request: Request) {
 
     const users = await prisma.user.findMany({
       where: {
+        tenantId: (session.user as any).tenantId, // Filter by tenant
         active: true,
         ...(q
           ? {
-              OR: [
-                { name: { contains: q } },
-                { username: { contains: q } },
-                { email: { contains: q } },
-              ],
-            }
+            OR: [
+              { name: { contains: q } },
+              { username: { contains: q } },
+              { email: { contains: q } },
+            ],
+          }
           : {}),
       },
       select: {
