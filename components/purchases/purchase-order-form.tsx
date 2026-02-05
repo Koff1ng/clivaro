@@ -16,13 +16,19 @@ import { formatCurrency } from '@/lib/utils'
 import { toDateInputValue } from '@/lib/utils'
 import { Plus, Trash2 } from 'lucide-react'
 import { ProductQuickCreate } from './product-quick-create'
+import { TaxSelector, TaxRate } from '@/components/pos/tax-selector'
 
 const orderItemSchema = z.object({
   productId: z.string().min(1, 'Producto requerido'),
   variantId: z.string().optional().nullable(),
   quantity: z.number().positive('Cantidad debe ser mayor a 0'),
   unitCost: z.number().min(0, 'Costo debe ser mayor o igual a 0'),
-  taxRate: z.number().min(0).max(100),
+  taxes: z.array(z.object({
+    id: z.string(),
+    name: z.string(),
+    rate: z.number(),
+    type: z.string(),
+  })).default([]),
 })
 
 const orderSchema = z.object({
@@ -81,7 +87,7 @@ export function PurchaseOrderForm({ order, onSuccess }: { order?: any; onSuccess
     resolver: zodResolver(orderSchema),
     defaultValues: {
       supplierId: '',
-      items: [{ productId: '', quantity: 1, unitCost: 0, taxRate: 19 }],
+      items: [{ productId: '', quantity: 1, unitCost: 0, taxes: [] }],
       discount: 0,
       expectedDate: '',
       notes: '',
@@ -110,7 +116,11 @@ export function PurchaseOrderForm({ order, onSuccess }: { order?: any; onSuccess
     const tax = watchedItems.reduce((sum, item) => {
       if (item.productId && item.quantity > 0 && item.unitCost >= 0) {
         const itemSubtotal = item.quantity * item.unitCost
-        return sum + (itemSubtotal * (item.taxRate || 0) / 100)
+        const itemTaxes = (item.taxes || []).filter((t: TaxRate) => t.type === 'IVA' || t.type === 'ICO')
+        const itemRetentions = (item.taxes || []).filter((t: TaxRate) => t.type.startsWith('RETE'))
+        const taxAmount = itemTaxes.reduce((s, t) => s + (itemSubtotal * t.rate / 100), 0)
+        const retentionAmount = itemRetentions.reduce((s, t) => s + (itemSubtotal * t.rate / 100), 0)
+        return sum + taxAmount - retentionAmount
       }
       return sum
     }, 0)
@@ -129,7 +139,7 @@ export function PurchaseOrderForm({ order, onSuccess }: { order?: any; onSuccess
           variantId: item.variantId || null,
           quantity: item.quantity,
           unitCost: item.unitCost,
-          taxRate: item.taxRate || 19,
+          taxes: item.taxes || [],
         })))
       }
     }
@@ -139,7 +149,7 @@ export function PurchaseOrderForm({ order, onSuccess }: { order?: any; onSuccess
     mutationFn: async (data: OrderFormData) => {
       const url = order ? `/api/purchases/orders/${order.id}` : '/api/purchases/orders'
       const method = order ? 'PUT' : 'POST'
-      
+
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
@@ -171,7 +181,7 @@ export function PurchaseOrderForm({ order, onSuccess }: { order?: any; onSuccess
   }
 
   const addItem = () => {
-    append({ productId: '', quantity: 1, unitCost: 0, taxRate: 19 })
+    append({ productId: '', quantity: 1, unitCost: 0, taxes: [] })
   }
 
   const removeItem = (index: number) => {
@@ -192,7 +202,11 @@ export function PurchaseOrderForm({ order, onSuccess }: { order?: any; onSuccess
     const tax = watchedItems.reduce((sum, item) => {
       if (item.productId && item.quantity > 0 && item.unitCost >= 0) {
         const itemSubtotal = item.quantity * item.unitCost
-        return sum + (itemSubtotal * (item.taxRate || 0) / 100)
+        const itemTaxes = (item.taxes || []).filter((t: TaxRate) => t.type === 'IVA' || t.type === 'ICO')
+        const itemRetentions = (item.taxes || []).filter((t: TaxRate) => t.type.startsWith('RETE'))
+        const taxAmount = itemTaxes.reduce((s, t) => s + (itemSubtotal * t.rate / 100), 0)
+        const retentionAmount = itemRetentions.reduce((s, t) => s + (itemSubtotal * t.rate / 100), 0)
+        return sum + taxAmount - retentionAmount
       }
       return sum
     }, 0)
@@ -242,7 +256,7 @@ export function PurchaseOrderForm({ order, onSuccess }: { order?: any; onSuccess
         <div className="flex justify-between items-center mb-2">
           <Label>Productos</Label>
           <div className="flex gap-2">
-            <ProductQuickCreate 
+            <ProductQuickCreate
               onProductCreated={async (productId) => {
                 // Refresh products list
                 await refetchProducts()
@@ -255,13 +269,27 @@ export function PurchaseOrderForm({ order, onSuccess }: { order?: any; onSuccess
                   if (lastIndex >= 0) {
                     setValue(`items.${lastIndex}.productId`, productId)
                     setValue(`items.${lastIndex}.unitCost`, newProduct.cost || 0)
-                    setValue(`items.${lastIndex}.taxRate`, newProduct.taxRate || 19)
+                    // Set default taxes based on product taxRate if available
+                    if (newProduct.taxRate && newProduct.taxRate > 0) {
+                      setValue(`items.${lastIndex}.taxes`, [{
+                        id: 'default',
+                        name: `IVA ${newProduct.taxRate}%`,
+                        rate: newProduct.taxRate,
+                        type: 'IVA'
+                      }])
+                    }
                   } else {
-                    append({ 
-                      productId, 
-                      quantity: 1, 
-                      unitCost: newProduct.cost || 0, 
-                      taxRate: newProduct.taxRate || 19 
+                    const defaultTaxes = newProduct.taxRate && newProduct.taxRate > 0 ? [{
+                      id: 'default',
+                      name: `IVA ${newProduct.taxRate}%`,
+                      rate: newProduct.taxRate,
+                      type: 'IVA'
+                    }] : []
+                    append({
+                      productId,
+                      quantity: 1,
+                      unitCost: newProduct.cost || 0,
+                      taxes: defaultTaxes
                     })
                   }
                 } else {
@@ -270,7 +298,7 @@ export function PurchaseOrderForm({ order, onSuccess }: { order?: any; onSuccess
                   if (lastIndex >= 0) {
                     setValue(`items.${lastIndex}.productId`, productId)
                   } else {
-                    append({ productId, quantity: 1, unitCost: 0, taxRate: 19 })
+                    append({ productId, quantity: 1, unitCost: 0, taxes: [] })
                   }
                 }
               }}
@@ -288,7 +316,7 @@ export function PurchaseOrderForm({ order, onSuccess }: { order?: any; onSuccess
                 <TableHead>Producto</TableHead>
                 <TableHead>Cantidad</TableHead>
                 <TableHead>Costo Unit.</TableHead>
-                <TableHead>IVA %</TableHead>
+                <TableHead>Impuestos</TableHead>
                 <TableHead>Subtotal</TableHead>
                 <TableHead></TableHead>
               </TableRow>
@@ -298,8 +326,11 @@ export function PurchaseOrderForm({ order, onSuccess }: { order?: any; onSuccess
                 const item = watchedItems[index]
                 const product = products.find((p: any) => p.id === item?.productId)
                 const itemSubtotal = (item?.quantity || 0) * (item?.unitCost || 0)
-                const itemTax = itemSubtotal * ((item?.taxRate || 0) / 100)
-                const itemTotal = itemSubtotal + itemTax
+                const itemTaxes = (item?.taxes || []).filter((t: TaxRate) => t.type === 'IVA' || t.type === 'ICO')
+                const itemRetentions = (item?.taxes || []).filter((t: TaxRate) => t.type.startsWith('RETE'))
+                const taxAmount = itemTaxes.reduce((s, t) => s + (itemSubtotal * t.rate / 100), 0)
+                const retentionAmount = itemRetentions.reduce((s, t) => s + (itemSubtotal * t.rate / 100), 0)
+                const itemTotal = itemSubtotal + taxAmount - retentionAmount
 
                 return (
                   <TableRow key={field.id}>
@@ -315,7 +346,17 @@ export function PurchaseOrderForm({ order, onSuccess }: { order?: any; onSuccess
                               const selected = products.find((p: any) => p.id === selectedId)
                               if (selected) {
                                 setValue(`items.${index}.unitCost`, Number(selected.cost || 0))
-                                setValue(`items.${index}.taxRate`, Number(selected.taxRate || 19))
+                                // Set default taxes based on product taxRate
+                                if (selected.taxRate && selected.taxRate > 0) {
+                                  setValue(`items.${index}.taxes`, [{
+                                    id: 'default',
+                                    name: `IVA ${selected.taxRate}%`,
+                                    rate: selected.taxRate,
+                                    type: 'IVA'
+                                  }])
+                                } else {
+                                  setValue(`items.${index}.taxes`, [])
+                                }
                               }
                             }}
                             className="flex h-9 w-full rounded-md border border-input bg-background px-2 py-1 text-sm"
@@ -350,13 +391,15 @@ export function PurchaseOrderForm({ order, onSuccess }: { order?: any; onSuccess
                       />
                     </TableCell>
                     <TableCell>
-                      <Input
-                        type="number"
-                        step="0.1"
-                        min="0"
-                        max="100"
-                        {...register(`items.${index}.taxRate`, { valueAsNumber: true })}
-                        className="w-20"
+                      <Controller
+                        name={`items.${index}.taxes`}
+                        control={control}
+                        render={({ field }) => (
+                          <TaxSelector
+                            selectedTaxes={field.value || []}
+                            onTaxesChange={field.onChange}
+                          />
+                        )}
                       />
                     </TableCell>
                     <TableCell>{formatCurrency(itemTotal)}</TableCell>
