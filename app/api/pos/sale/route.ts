@@ -474,6 +474,29 @@ export async function POST(request: Request) {
         }
       }
 
+      // 10. Accounting Integration (Non-blocking)
+      // Fire-and-forget to avoid blocking sales if accounting config is incomplete
+      if (isPaid) {
+        // Import at runtime to avoid circular dependencies
+        import('@/lib/accounting/invoice-integration').then(async ({ createJournalEntryFromInvoice }) => {
+          try {
+            await createJournalEntryFromInvoice(invoice.id, (session.user as any).tenantId, (session.user as any).id)
+          } catch (error) {
+            console.error('[Accounting] Failed to create journal entry from invoice:', error)
+            // Don't throw - sale should succeed even if accounting fails
+          }
+        }).catch(e => console.error('[Accounting] Import failed:', e))
+
+        import('@/lib/accounting/inventory-integration').then(async ({ createCostOfSalesEntry }) => {
+          try {
+            await createCostOfSalesEntry(invoice.id, (session.user as any).tenantId, (session.user as any).id)
+          } catch (error) {
+            console.error('[Accounting] Failed to create cost of sales entry:', error)
+            // Don't throw - sale should succeed even if accounting fails
+          }
+        }).catch(e => console.error('[Accounting] Import failed:', e))
+      }
+
       return NextResponse.json({
         invoiceId: invoice.id,
         invoiceNumber,

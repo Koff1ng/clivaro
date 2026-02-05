@@ -204,6 +204,16 @@ export async function POST(
       metadata: { invoiceId: invoice.id, paymentId: result.payment.id, amount: data.amount }
     })
 
+    // Accounting Integration (Non-blocking)
+    import('@/lib/accounting/payment-integration').then(async ({ createJournalEntryFromPayment }) => {
+      try {
+        await createJournalEntryFromPayment(result.payment.id, (session.user as any).tenantId, (session.user as any).id)
+      } catch (error) {
+        console.error('[Accounting] Failed to create journal entry from payment:', error)
+        // Don't throw - payment should succeed even if accounting fails
+      }
+    }).catch(e => console.error('[Accounting] Import failed:', e))
+
     return NextResponse.json({
       payment: result.payment,
       invoiceStatus: result.newStatus,
