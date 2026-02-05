@@ -112,8 +112,8 @@ export default function AccountingConfigPage() {
             {/* Validation Status */}
             <div
                 className={`rounded-lg p-4 mb-6 flex items-start gap-3 ${validation.isValid
-                        ? 'bg-green-50 border border-green-200'
-                        : 'bg-yellow-50 border border-yellow-200'
+                    ? 'bg-green-50 border border-green-200'
+                    : 'bg-yellow-50 border border-yellow-200'
                     }`}
             >
                 {validation.isValid ? (
@@ -157,7 +157,6 @@ export default function AccountingConfigPage() {
                                     value={config.cashAccountId || ''}
                                     onChange={(val) => setConfig({ ...config, cashAccountId: val })}
                                     accounts={accounts}
-                                    placeholder="Ej: 110505 - Caja General"
                                 />
                             </div>
 
@@ -167,7 +166,6 @@ export default function AccountingConfigPage() {
                                     value={config.bankAccountId || ''}
                                     onChange={(val) => setConfig({ ...config, bankAccountId: val })}
                                     accounts={accounts}
-                                    placeholder="Ej: 1110 - Bancos"
                                 />
                             </div>
 
@@ -179,7 +177,6 @@ export default function AccountingConfigPage() {
                                     value={config.accountsReceivableId || ''}
                                     onChange={(val) => setConfig({ ...config, accountsReceivableId: val })}
                                     accounts={accounts}
-                                    placeholder="Ej: 1305 - Clientes"
                                 />
                             </div>
 
@@ -189,7 +186,6 @@ export default function AccountingConfigPage() {
                                     value={config.accountsPayableId || ''}
                                     onChange={(val) => setConfig({ ...config, accountsPayableId: val })}
                                     accounts={accounts}
-                                    placeholder="Ej: 2205 - Proveedores"
                                 />
                             </div>
 
@@ -201,7 +197,6 @@ export default function AccountingConfigPage() {
                                     value={config.inventoryAccountId || ''}
                                     onChange={(val) => setConfig({ ...config, inventoryAccountId: val })}
                                     accounts={accounts}
-                                    placeholder="Ej: 1435 - Mercancías"
                                 />
                             </div>
                         </div>
@@ -220,7 +215,6 @@ export default function AccountingConfigPage() {
                                     value={config.salesRevenueId || ''}
                                     onChange={(val) => setConfig({ ...config, salesRevenueId: val })}
                                     accounts={accounts}
-                                    placeholder="Ej: 4135 - Comercio al por mayor y menor"
                                 />
                             </div>
 
@@ -232,7 +226,6 @@ export default function AccountingConfigPage() {
                                     value={config.vatGeneratedId || ''}
                                     onChange={(val) => setConfig({ ...config, vatGeneratedId: val })}
                                     accounts={accounts}
-                                    placeholder="Ej: 2408 - IVA por Pagar"
                                 />
                             </div>
 
@@ -242,7 +235,6 @@ export default function AccountingConfigPage() {
                                     value={config.vatDeductibleId || ''}
                                     onChange={(val) => setConfig({ ...config, vatDeductibleId: val })}
                                     accounts={accounts}
-                                    placeholder="Ej: 240805 - IVA Descontable"
                                 />
                             </div>
 
@@ -254,7 +246,6 @@ export default function AccountingConfigPage() {
                                     value={config.costOfSalesId || ''}
                                     onChange={(val) => setConfig({ ...config, costOfSalesId: val })}
                                     accounts={accounts}
-                                    placeholder="Ej: 6135 - Comercio al por mayor y menor"
                                 />
                             </div>
                         </div>
