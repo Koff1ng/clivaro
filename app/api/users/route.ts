@@ -20,10 +20,17 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url)
     const q = (searchParams.get('q') || '').trim()
 
+    // Users are in master DB, filter by userRoles that belong to this tenant
     const users = await prisma.user.findMany({
       where: {
-        tenantId: (session.user as any).tenantId, // Filter by tenant
         active: true,
+        userRoles: {
+          some: {
+            role: {
+              tenantId: (session.user as any).tenantId
+            }
+          }
+        },
         ...(q
           ? {
             OR: [
@@ -50,5 +57,4 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Failed to fetch users' }, { status: 500 })
   }
 }
-
 
