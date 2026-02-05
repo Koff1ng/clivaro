@@ -27,7 +27,7 @@ export async function createJournalEntryFromPayment(
         }
     })
 
-    if (!payment || payment.tenantId !== tenantId) {
+    if (!payment) {
         throw new Error('Payment not found')
     }
 
@@ -78,7 +78,7 @@ export async function createJournalEntryFromPayment(
         debit: 0,
         credit: payment.amount,
         thirdPartyName: payment.invoice?.customer?.name,
-        thirdPartyNit: payment.invoice?.customer?.nit
+        thirdPartyNit: payment.invoice?.customer?.taxId || undefined
     })
 
     // Create journal entry

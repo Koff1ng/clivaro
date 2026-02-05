@@ -29,7 +29,7 @@ export async function createJournalEntryFromInvoice(
         }
     })
 
-    if (!invoice || invoice.tenantId !== tenantId) {
+    if (!invoice) {
         throw new Error('Invoice not found')
     }
 
@@ -68,7 +68,7 @@ export async function createJournalEntryFromInvoice(
         debit: total,
         credit: 0,
         thirdPartyName: invoice.customer?.name,
-        thirdPartyNit: invoice.customer?.nit
+        thirdPartyNit: invoice.customer?.taxId || undefined
     })
 
     // CREDIT: Sales Revenue
@@ -133,20 +133,20 @@ export async function reverseInvoiceEntry(
     }
 
     // Create reversal (swap debits and credits)
-    const reversalLines = originalEntry.lines.map(line => ({
+    const reversalLines = originalEntry.lines.map((line: any) => ({
         accountId: line.accountId,
         description: `REVERSA - ${line.description}`,
         debit: line.credit,
         credit: line.debit,
         thirdPartyName: line.thirdPartyName,
-        thirdPartyNit: line.thirdPartyNit
+        thirdPartyNit: line.thirdPartyNit || undefined
     }))
 
     const reversalEntry = await createJournalEntry(tenantId, userId, {
         date: new Date(),
         type: 'JOURNAL',
         description: `ANULACIÓN - ${originalEntry.description}`,
-        reference: originalEntry.reference,
+        reference: originalEntry.reference || undefined,
         lines: reversalLines
     })
 

@@ -27,7 +27,7 @@ export async function createCostOfSalesEntry(
         }
     })
 
-    if (!invoice || invoice.tenantId !== tenantId) {
+    if (!invoice) {
         throw new Error('Invoice not found')
     }
 
