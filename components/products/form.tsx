@@ -25,9 +25,6 @@ const productSchema = z.object({
   cost: z.number().min(0, 'Costo debe ser mayor o igual a 0'),
   price: z.number().min(0, 'Precio debe ser mayor o igual a 0'),
   taxRate: z.number().min(0).max(100),
-  trackStock: z.boolean(),
-  minStock: z.number().min(0, 'Mínimo debe ser mayor o igual a 0').optional(),
-  maxStock: z.number().min(0, 'Máximo debe ser mayor o igual a 0').optional().nullable(),
   description: z.string().optional(),
   productType: z.enum(['RETAIL', 'SERVICE', 'RAW', 'PREPARED', 'SELLABLE']).default('RETAIL'),
   enableRecipeConsumption: z.boolean().default(false),
@@ -61,10 +58,6 @@ export function ProductForm({ product, onSuccess }: { product?: any; onSuccess: 
       cost: product.cost,
       price: product.price,
       taxRate: product.taxRate,
-      trackStock: product.trackStock,
-      // Use first stockLevel if present, else defaults
-      minStock: product.stockLevels?.[0]?.minStock ?? 0,
-      maxStock: product.stockLevels?.[0]?.maxStock ?? undefined,
       description: product.description || '',
       variants: product.variants?.map((v: any) => ({
         id: v.id,
@@ -82,8 +75,6 @@ export function ProductForm({ product, onSuccess }: { product?: any; onSuccess: 
       cost: 0,
       price: 0,
       taxRate: 0,
-      trackStock: true,
-      minStock: 0,
       productType: 'RETAIL',
       enableRecipeConsumption: false,
       printerStation: null,
@@ -96,8 +87,6 @@ export function ProductForm({ product, onSuccess }: { product?: any; onSuccess: 
     name: 'variants',
   })
 
-  const trackStock = watch('trackStock')
-
   const onSubmit = async (data: ProductFormData) => {
     setLoading(true)
     try {
@@ -105,27 +94,9 @@ export function ProductForm({ product, onSuccess }: { product?: any; onSuccess: 
       const method = product ? 'PATCH' : 'POST'
 
       // Asegurar que category se envíe correctamente
-      // Manejar minStock y maxStock correctamente
       const payload: any = {
         ...data,
         category: data.category && data.category.trim() !== '' ? data.category.trim() : null,
-      }
-
-      // Solo incluir minStock y maxStock si trackStock está activado
-      if (data.trackStock) {
-        payload.minStock = data.minStock !== undefined && data.minStock !== null && !isNaN(Number(data.minStock))
-          ? Number(data.minStock)
-          : 0
-        // maxStock es opcional: si está vacío, undefined o NaN, enviar 0 (sin máximo)
-        if (data.maxStock !== undefined && data.maxStock !== null && !isNaN(Number(data.maxStock)) && Number(data.maxStock) > 0) {
-          payload.maxStock = Number(data.maxStock)
-        } else {
-          payload.maxStock = 0 // 0 significa sin máximo configurado
-        }
-      } else {
-        // Si no se controla stock, no enviar estos campos
-        delete payload.minStock
-        delete payload.maxStock
       }
 
       const res = await fetch(url, {
@@ -250,51 +221,6 @@ export function ProductForm({ product, onSuccess }: { product?: any; onSuccess: 
           />
           {errors.taxRate && <p className="text-sm text-red-500">{errors.taxRate.message}</p>}
         </div>
-      </div>
-
-      {trackStock && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <Label htmlFor="minStock">Stock mínimo *</Label>
-            <Input
-              id="minStock"
-              type="number"
-              step="0.01"
-              min="0"
-              {...register('minStock', { valueAsNumber: true })}
-            />
-            {errors.minStock && <p className="text-sm text-red-500">{errors.minStock.message}</p>}
-          </div>
-          <div>
-            <Label htmlFor="maxStock">Stock máximo (opcional)</Label>
-            <Input
-              id="maxStock"
-              type="number"
-              step="0.01"
-              min="0"
-              {...register('maxStock', {
-                valueAsNumber: true,
-                setValueAs: (v) => {
-                  if (v === '' || v === null || v === undefined) return undefined
-                  const num = Number(v)
-                  return isNaN(num) ? undefined : num
-                }
-              })}
-            />
-            {errors.maxStock && <p className="text-sm text-red-500">{errors.maxStock.message}</p>}
-          </div>
-        </div>
-      )}
-
-      <div>
-        <label className="flex items-center gap-2">
-          <input
-            type="checkbox"
-            {...register('trackStock')}
-            className="rounded border-gray-300"
-          />
-          <span>Controlar stock</span>
-        </label>
       </div>
 
       <div>

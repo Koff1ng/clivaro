@@ -179,14 +179,13 @@ export function ProductsList() {
                 <TableHead>Unidad</TableHead>
                 <TableHead>Costo</TableHead>
                 <TableHead>Precio</TableHead>
-                <TableHead>Stock</TableHead>
                 <TableHead>Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {products.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={9} className="text-center text-gray-500">
+                  <TableCell colSpan={8} className="text-center text-gray-500">
                     No hay items registrados
                   </TableCell>
                 </TableRow>
@@ -254,13 +253,6 @@ const ProductRow = React.memo(({ product, onEdit }: { product: any; onEdit: (pro
     <TableCell>{product.unitOfMeasure}</TableCell>
     <TableCell>{formatCurrency(product.cost)}</TableCell>
     <TableCell>{formatCurrency(product.price)}</TableCell>
-    <TableCell>
-      {product.trackStock ? (
-        <span className={product.stock <= 0 ? 'text-red-500 font-bold' : ''}>
-          {product.stock !== undefined ? product.stock : 'Sí'}
-        </span>
-      ) : 'No'}
-    </TableCell>
     <TableCell>
       <Button
         variant="ghost"

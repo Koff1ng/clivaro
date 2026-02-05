@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requireAnyPermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
-import { getPrismaForRequest } from '@/lib/get-tenant-prisma'
+import { withTenantTx, getTenantIdFromSession } from '@/lib/tenancy'
 
 // Minimal users list for filters (inventory/cash/reports)
 export async function GET(request: Request) {
@@ -14,41 +14,36 @@ export async function GET(request: Request) {
 
   if (session instanceof NextResponse) return session
 
-  const prisma = await getPrismaForRequest(request, session)
+  const tenantId = getTenantIdFromSession(session)
 
   try {
     const { searchParams } = new URL(request.url)
     const q = (searchParams.get('q') || '').trim()
 
-    // Users are in master DB, filter by userRoles that belong to this tenant
-    const users = await prisma.user.findMany({
-      where: {
-        active: true,
-        userRoles: {
-          some: {
-            role: {
-              tenantId: (session.user as any).tenantId
+    // Users are tenant-isolated via withTenantTx
+    const users = await withTenantTx(tenantId, async (tx) => {
+      return await tx.user.findMany({
+        where: {
+          active: true,
+          ...(q
+            ? {
+              OR: [
+                { name: { contains: q } },
+                { username: { contains: q } },
+                { email: { contains: q } },
+              ],
             }
-          }
+            : {}),
         },
-        ...(q
-          ? {
-            OR: [
-              { name: { contains: q } },
-              { username: { contains: q } },
-              { email: { contains: q } },
-            ],
-          }
-          : {}),
-      },
-      select: {
-        id: true,
-        name: true,
-        username: true,
-        email: true,
-      },
-      orderBy: { name: 'asc' },
-      take: 100,
+        select: {
+          id: true,
+          name: true,
+          username: true,
+          email: true,
+        },
+        orderBy: { name: 'asc' },
+        take: 100,
+      })
     })
 
     return NextResponse.json({ users })
