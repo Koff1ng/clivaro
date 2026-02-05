@@ -12,7 +12,6 @@ import { PageHeader } from '@/components/ui/page-header'
 import { PageHeaderBadges } from '@/components/ui/page-header-badges'
 import { DashboardGreeting } from '@/components/dashboard/greeting'
 import { InventoryValueReport } from '@/components/dashboard/inventory-value-report'
-import { DashboardExportActions } from '@/components/dashboard/export-actions'
 
 export default async function DashboardPage() {
   const session = await getServerSession(authOptions)
@@ -36,7 +35,6 @@ export default async function DashboardPage() {
         <PageHeader
           title="Dashboard"
           badges={<PageHeaderBadges />}
-          actions={<DashboardExportActions />}
         />
 
         {/* Saludo Personalizado */}
