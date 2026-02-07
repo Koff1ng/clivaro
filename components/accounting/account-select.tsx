@@ -1,15 +1,16 @@
+
 'use client'
 
-import { useState, useMemo, useEffect } from 'react'
-import { Check, ChevronsUpDown } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { useState, useMemo } from 'react'
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from "@/components/ui/popover"
 import { Button } from "@/components/ui/button"
-// Command imports removed as component is missing
-// Using custom implementation to avoid dependency issues if Command isn't full.
-// Actually, `searchable-select` is good enough base.
-
-import { Input } from '@/components/ui/input'
-import { ChevronDown } from 'lucide-react'
+import { Input } from "@/components/ui/input"
+import { Check, ChevronsUpDown, Search } from "lucide-react"
+import { cn } from "@/lib/utils"
 
 interface AccountSelectProps {
     value?: string
@@ -23,56 +24,93 @@ export function AccountSelect({ value, onChange, accounts }: AccountSelectProps)
 
     const selected = accounts.find(a => a.id === value)
 
-    const filtered = accounts.filter(a =>
-        a.code.includes(search) ||
-        a.name.toLowerCase().includes(search.toLowerCase())
-    ).slice(0, 50)
+    const filtered = useMemo(() => {
+        if (!search) return accounts.slice(0, 100) // Show first 100 if no search
+        const s = search.toLowerCase()
+        return accounts.filter(a =>
+            a.code.includes(s) ||
+            a.name.toLowerCase().includes(s)
+        ).slice(0, 100) // Increase limit for search
+    }, [accounts, search])
 
     return (
-        <div className="relative">
-            <Button
-                variant="outline"
-                role="combobox"
-                aria-expanded={open}
-                className="w-full justify-between font-normal"
-                onClick={() => setOpen(!open)}
-            >
-                {selected ? `${selected.code} - ${selected.name}` : "Seleccionar cuenta..."}
-                <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-            </Button>
-            {open && (
-                <div className="absolute z-50 w-full mt-1 bg-white border rounded shadow-lg max-h-60 overflow-hidden flex flex-col">
-                    <Input
-                        placeholder="Buscar cuenta..."
-                        className="border-0 border-b rounded-none focus-visible:ring-0"
-                        autoFocus
-                        value={search}
-                        onChange={e => setSearch(e.target.value)}
-                    />
-                    <div className="overflow-y-auto flex-1 p-1">
-                        {filtered.length === 0 ? (
-                            <div className="text-sm text-muted-foreground p-2 text-center">No encontrado.</div>
+        <Popover open={open} onOpenChange={setOpen}>
+            <PopoverTrigger asChild>
+                <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={open}
+                    className="w-full justify-between h-9 text-xs font-normal"
+                >
+                    <div className="truncate flex items-center">
+                        {selected ? (
+                            <span className="truncate">
+                                <span className="font-mono font-bold mr-2 text-slate-500">{selected.code}</span>
+                                {selected.name}
+                            </span>
                         ) : (
-                            filtered.map(acc => (
-                                <div
+                            "Seleccionar cuenta..."
+                        )}
+                    </div>
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[400px] p-0" align="start">
+                <div className="flex flex-col">
+                    <div className="p-2 border-b">
+                        <div className="relative">
+                            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                            <Input
+                                placeholder="Buscar por código o nombre..."
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                                className="pl-8 h-9 text-xs"
+                                autoFocus
+                            />
+                        </div>
+                    </div>
+                    <div className="max-h-[300px] overflow-y-auto p-1">
+                        {filtered.length === 0 ? (
+                            <div className="p-4 text-center text-xs text-muted-foreground">
+                                No se encontraron cuentas.
+                            </div>
+                        ) : (
+                            filtered.map((acc) => (
+                                <button
                                     key={acc.id}
-                                    className={cn(
-                                        "cursor-pointer text-sm p-2 hover:bg-slate-100 rounded",
-                                        value === acc.id && "bg-slate-100 font-medium"
-                                    )}
                                     onClick={() => {
                                         onChange(acc.id)
                                         setOpen(false)
+                                        setSearch('')
                                     }}
+                                    className={cn(
+                                        "w-full text-left px-2 py-1.5 rounded-sm text-xs transition-colors hover:bg-slate-100 flex items-center justify-between",
+                                        value === acc.id && "bg-slate-50 font-medium"
+                                    )}
                                 >
-                                    <span className="font-mono mr-2 text-slate-500">{acc.code}</span>
-                                    {acc.name}
-                                </div>
+                                    <div className="flex items-center truncate mr-2">
+                                        <span className={cn(
+                                            "font-mono font-bold mr-3 w-16 shrink-0",
+                                            acc.code.length === 1 ? "text-blue-700" :
+                                                acc.code.length === 2 ? "text-blue-600" :
+                                                    acc.code.length === 4 ? "text-slate-600" : "text-slate-500"
+                                        )}>
+                                            {acc.code}
+                                        </span>
+                                        <span className="truncate">{acc.name}</span>
+                                    </div>
+                                    {value === acc.id && <Check className="h-3 w-3 shrink-0 text-blue-600" />}
+                                </button>
                             ))
+                        )}
+                        {filtered.length >= 100 && (
+                            <div className="p-2 text-center text-[10px] text-muted-foreground border-t">
+                                Mostrando primeros 100 resultados. Use la búsqueda para filtrar.
+                            </div>
                         )}
                     </div>
                 </div>
-            )}
-        </div>
+            </PopoverContent>
+        </Popover>
     )
 }
