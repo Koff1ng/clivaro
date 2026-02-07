@@ -3,6 +3,8 @@ import { requireAuth } from '@/lib/api-middleware'
 import { getPrismaForRequest } from '@/lib/get-tenant-prisma'
 import { prisma as masterPrisma } from '@/lib/db'
 
+export const dynamic = 'force-dynamic'
+
 /**
  * Endpoint de depuración para verificar qué base de datos está siendo usada
  * y qué stock tiene el tenant
