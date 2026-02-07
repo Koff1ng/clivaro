@@ -68,7 +68,7 @@ export default function NewVoucherPage() {
     const totalCredit = lines.reduce((sum, l) => sum + (Number(l.credit) || 0), 0)
     const difference = totalDebit - totalCredit
 
-    const handleSave = async () => {
+    const handleSave = async (status: 'DRAFT' | 'APPROVED' = 'DRAFT') => {
         if (!description) return toast('Descripción requerida', 'error')
         if (Math.abs(difference) > 0.01) return toast('El comprobante no está balanceado', 'error')
 
@@ -90,6 +90,7 @@ export default function NewVoucherPage() {
                     type,
                     description,
                     reference,
+                    status,
                     lines: lines.map(l => ({
                         accountId: l.accountId,
                         description: l.description,
@@ -109,7 +110,7 @@ export default function NewVoucherPage() {
                 throw new Error(err.error || 'Error al guardar')
             }
 
-            toast('Comprobante guardado', 'success')
+            toast(status === 'APPROVED' ? 'Comprobante contabilizado' : 'Borrador guardado', 'success')
             router.push('/accounting/vouchers')
         } catch (e: any) {
             toast(e.message, 'error')
@@ -244,14 +245,20 @@ export default function NewVoucherPage() {
                             </TableBody>
                         </Table>
                         <div className="p-4 bg-slate-50 border-t flex justify-between">
-                            <Button variant="outline" onClick={addLine}>
+                            <Button variant="outline" onClick={addLine} type="button">
                                 <Plus className="h-4 w-4 mr-2" />
                                 Agregar Línea
                             </Button>
-                            <Button onClick={handleSave} disabled={loading || Math.abs(difference) > 0.01}>
-                                <Save className="h-4 w-4 mr-2" />
-                                Guardar Borrador
-                            </Button>
+                            <div className="flex gap-2">
+                                <Button variant="secondary" onClick={() => handleSave('DRAFT')} disabled={loading || Math.abs(difference) > 0.01}>
+                                    <Save className="h-4 w-4 mr-2" />
+                                    Guardar Borrador
+                                </Button>
+                                <Button onClick={() => handleSave('APPROVED')} disabled={loading || Math.abs(difference) > 0.01}>
+                                    <Save className="h-4 w-4 mr-2" />
+                                    Contabilizar
+                                </Button>
+                            </div>
                         </div>
                     </CardContent>
                 </Card>

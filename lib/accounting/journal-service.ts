@@ -8,6 +8,7 @@ export type JournalEntryInput = {
     type: string
     description: string
     reference?: string
+    status?: 'DRAFT' | 'APPROVED'
     lines: Array<{
         accountId: string
         description?: string
@@ -51,7 +52,7 @@ export async function createJournalEntry(tenantId: string, userId: string, data:
                 type: data.type,
                 description: data.description,
                 reference: data.reference,
-                status: 'DRAFT',
+                status: data.status || 'DRAFT',
                 totalDebit,
                 totalCredit,
                 createdById: userId,
