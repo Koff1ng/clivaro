@@ -80,13 +80,17 @@ export function CreditNoteDetails({ creditNoteId }: CreditNoteDetailsProps) {
 
     if (!creditNote) return null
 
-    const statusIcon = {
+    const statusIconMap: Record<string, React.ReactElement> = {
         PENDING: <Clock className="h-5 w-5 text-yellow-500" />,
         PROCESSING: <Clock className="h-5 w-5 text-blue-500 animate-spin" />,
         SENT: <Clock className="h-5 w-5 text-cyan-500" />,
         ACCEPTED: <CheckCircle className="h-5 w-5 text-green-500" />,
-        REJECTED: <XCircle className="h-5 w-5 text-red-500" />
-    }[creditNote.electronicStatus || 'PENDING']
+        REJECTED: <XCircle className="h-5 w-5 text-red-500" />,
+    }
+
+    const statusIcon = creditNote.electronicStatus
+        ? (statusIconMap[creditNote.electronicStatus] || statusIconMap.PENDING)
+        : statusIconMap.PENDING
 
     return (
         <div className="space-y-6 max-w-4xl mx-auto">
