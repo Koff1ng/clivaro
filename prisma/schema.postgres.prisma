@@ -49,6 +49,7 @@ model User {
   approvedPhysicalInventories PhysicalInventory[] @relation("PhysicalInventoryApprovedBy")
   marketingCampaignsCreated MarketingCampaign[] @relation("MarketingCampaignCreatedBy")
   accountingAuditLogs AccountingAuditLog[] @relation("AccountingAuditLogs")
+  creditNotesCreated CreditNote[] @relation("CreditNoteCreatedBy")
 }
 
 model Session {
@@ -153,6 +154,7 @@ model Product {
   taxes       TaxRate[]    @relation("ProductTaxes")
   preferredZoneId String?
   preferredZone   WarehouseZone? @relation("PreferredZone", fields: [preferredZoneId], references: [id])
+  creditNoteItems CreditNoteItem[]
 }
 
 model ProductVariant {
@@ -175,6 +177,7 @@ model ProductVariant {
   stockLevels            StockLevel[]
   stockMovements         StockMovement[]
   physicalInventoryItems PhysicalInventoryItem[]
+  creditNoteItems        CreditNoteItem[]
 }
 
 model Warehouse {
@@ -523,6 +526,7 @@ model Invoice {
   taxSummary              InvoiceTaxSummary[]
   createdBy               User?                           @relation("InvoiceCreatedBy", fields: [createdById], references: [id])
   updatedBy               User?                           @relation("InvoiceUpdatedBy", fields: [updatedById], references: [id])
+  creditNotes             CreditNote[]
 }
 
 model InvoiceItem {
@@ -542,6 +546,7 @@ model InvoiceItem {
   invoice          Invoice          @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
   returnItems      ReturnItem[]
   lineTaxes        InvoiceLineTax[]
+  creditNoteItems  CreditNoteItem[]
 }
 
 model TaxRate {
@@ -556,6 +561,8 @@ model TaxRate {
   products          Product[]           @relation("ProductTaxes")
   invoiceLineTaxes  InvoiceLineTax[]
   invoiceTaxSummary InvoiceTaxSummary[]
+  creditNoteLineTaxes  CreditNoteLineTax[]
+  creditNoteTaxSummary CreditNoteTaxSummary[]
 }
 
 model InvoiceLineTax {
@@ -628,6 +635,7 @@ model Return {
   createdBy User?           @relation("ReturnCreatedBy", fields: [createdById], references: [id])
   items     ReturnItem[]
   payments  ReturnPayment[]
+  creditNote CreditNote?
 
   @@index([invoiceId])
   @@index([createdAt])
@@ -663,6 +671,141 @@ model ReturnPayment {
 
   @@index([returnId])
   @@index([createdAt])
+}
+
+model CreditNote {
+  id                  String    @id @default(cuid())
+  number              String    @unique
+  prefix              String?
+  consecutive         String?
+  invoiceId           String
+  returnId            String?   @unique
+  type                String
+  referenceCode       String
+  affectedPeriod      String?
+  subtotal            Float     @default(0)
+  discount            Float     @default(0)
+  tax                 Float     @default(0)
+  total               Float     @default(0)
+  cufe                String?   @unique
+  qrCode              String?
+  electronicStatus    String?
+  electronicSentAt    DateTime?
+  electronicResponse  String?
+  resolutionNumber    String?
+  reason              String
+  notes               String?
+  status              String    @default("PENDING")
+  issuedAt            DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  createdById         String?
+  alegraId            String?
+
+  invoice       Invoice                 @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+  return        Return?                 @relation(fields: [returnId], references: [id])
+  createdBy     User?                   @relation("CreditNoteCreatedBy", fields: [createdById], references: [id])
+  items         CreditNoteItem[]
+  taxSummary    CreditNoteTaxSummary[]
+  transmission  CreditNoteTransmission?
+
+  @@index([invoiceId])
+  @@index([returnId])
+  @@index([status])
+  @@index([createdAt])
+  @@index([electronicStatus])
+}
+
+model CreditNoteItem {
+  id            String   @id @default(cuid())
+  creditNoteId  String
+  invoiceItemId String?
+  productId     String
+  variantId     String?
+  description   String
+  quantity      Float
+  unitPrice     Float
+  discount      Float    @default(0)
+  taxRate       Float    @default(0)
+  subtotal      Float
+  createdAt     DateTime @default(now())
+
+  creditNote  CreditNote        @relation(fields: [creditNoteId], references: [id], onDelete: Cascade)
+  invoiceItem InvoiceItem?      @relation(fields: [invoiceItemId], references: [id])
+  product     Product           @relation(fields: [productId], references: [id], onDelete: Restrict)
+  variant     ProductVariant?   @relation(fields: [variantId], references: [id])
+  lineTaxes   CreditNoteLineTax[]
+
+  @@index([creditNoteId])
+  @@index([invoiceItemId])
+  @@index([productId])
+}
+
+model CreditNoteLineTax {
+  id                String   @id @default(cuid())
+  creditNoteItemId  String
+  taxRateId         String
+  taxableAmount     Float
+  taxAmount         Float
+  taxPercentage     Float
+  createdAt         DateTime @default(now())
+
+  creditNoteItem CreditNoteItem @relation(fields: [creditNoteItemId], references: [id], onDelete: Cascade)
+  taxRate        TaxRate        @relation(fields: [taxRateId], references: [id], onDelete: Restrict)
+
+  @@index([creditNoteItemId])
+  @@index([taxRateId])
+}
+
+model CreditNoteTaxSummary {
+  id            String   @id @default(cuid())
+  creditNoteId  String
+  taxRateId     String
+  taxableAmount Float
+  taxAmount     Float
+  taxPercentage Float
+  createdAt     DateTime @default(now())
+
+  creditNote CreditNote @relation(fields: [creditNoteId], references: [id], onDelete: Cascade)
+  taxRate    TaxRate    @relation(fields: [taxRateId], references: [id], onDelete: Restrict)
+
+  @@index([creditNoteId])
+  @@index([taxRateId])
+}
+
+model CreditNoteTransmission {
+  id            String    @id @default(cuid())
+  creditNoteId  String    @unique
+  provider      String
+  externalId    String?
+  status        String    @default("PENDING")
+  xmlGenerated  Boolean   @default(false)
+  xmlContent    String?
+  transmittedAt DateTime?
+  responseData  String?
+  errorMessage  String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  creditNote CreditNote         @relation(fields: [creditNoteId], references: [id], onDelete: Cascade)
+  events     CreditNoteEvent[]
+
+  @@index([creditNoteId])
+  @@index([status])
+}
+
+model CreditNoteEvent {
+  id             String   @id @default(cuid())
+  transmissionId String
+  event          String
+  message        String?
+  data           String?
+  createdAt      DateTime @default(now())
+
+  transmission CreditNoteTransmission @relation(fields: [transmissionId], references: [id], onDelete: Cascade)
+
+  @@index([transmissionId])
+  @@index([event])
 }
 
 model Supplier {
