@@ -34,11 +34,11 @@ export async function transmitCreditNoteToAlegra(
         }
 
         // 2. Get Alegra config from integration
-        const integration = await prisma.integration.findFirst({
+        const integration = await prisma.electronicInvoiceProviderConfig.findFirst({
             where: {
                 tenantId,
                 provider: 'ALEGRA',
-                status: 'ACTIVE'
+                status: 'connected'
             }
         })
 
