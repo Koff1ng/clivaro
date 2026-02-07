@@ -613,33 +613,34 @@ model ReturnPayment {
 }
 
 model CreditNote {
-  id                 String    @id @default(cuid())
-  number             String    @unique
-  prefix             String?
-  consecutive        String?
-  invoiceId          String
-  returnId           String?   @unique
-  type               String
-  referenceCode      String
-  affectedPeriod     String?
-  subtotal           Float     @default(0)
-  discount           Float     @default(0)
-  tax                Float     @default(0)
-  total              Float     @default(0)
-  cufe               String?   @unique
-  qrCode             String?
-  electronicStatus   String?
-  electronicSentAt   DateTime?
-  electronicResponse String?
-  resolutionNumber   String?
-  reason             String
-  notes              String?
-  status             String    @default("PENDING")
-  issuedAt           DateTime?
-  createdAt          DateTime  @default(now())
-  updatedAt          DateTime  @updatedAt
-  createdById        String?
-  alegraId           String?
+  id                     String                  @id @default(cuid())
+  number                 String                  @unique
+  prefix                 String?
+  consecutive            String?
+  invoiceId              String
+  returnId               String?                 @unique
+  type                   String
+  referenceCode          String
+  affectedPeriod         String?
+  subtotal               Float                   @default(0)
+  discount               Float                   @default(0)
+  tax                    Float                   @default(0)
+  total                  Float                   @default(0)
+  cufe                   String?                 @unique
+  qrCode                 String?
+  electronicStatus       String?
+  electronicSentAt       DateTime?
+  electronicResponse     String?
+  resolutionNumber       String?
+  reason                 String
+  notes                  String?
+  status                 String                  @default("PENDING")
+  issuedAt               DateTime?
+  createdAt              DateTime                @default(now())
+  updatedAt              DateTime                @updatedAt
+  createdById            String?
+  alegraId               String?
+  CreditNoteTransmission CreditNoteTransmission?
 
   @@index([invoiceId])
   @@index([status])
@@ -706,7 +707,7 @@ model CreditNoteTransmission {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  creditNote CreditNote         @relation(fields: [creditNoteId], references: [id], onDelete: Cascade)
+  creditNote CreditNote        @relation(fields: [creditNoteId], references: [id], onDelete: Cascade)
   events     CreditNoteEvent[]
 
   @@index([creditNoteId])
