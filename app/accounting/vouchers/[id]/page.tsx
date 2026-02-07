@@ -41,7 +41,10 @@ export default function VoucherDetailPage() {
                 headers: { 'Content-Type': 'application/json' }
             })
 
-            if (!res.ok) throw new Error('Error al aprobar')
+            if (!res.ok) {
+                const errorData = await res.json().catch(() => ({ error: 'Error inesperado del servidor' }))
+                throw new Error(errorData.error || 'Error al aprobar')
+            }
 
             toast('Comprobante aprobado y contabilizado', 'success')
             // Refresh
@@ -139,8 +142,8 @@ export default function VoucherDetailPage() {
                                     <span className="text-[10px] font-bold text-slate-400 uppercase">Estado</span>
                                     <div>
                                         <span className={`px-2 py-1 rounded text-xs font-bold ${voucher.status === 'APPROVED' ? 'bg-green-100 text-green-700' :
-                                                voucher.status === 'ANNULLED' ? 'bg-red-100 text-red-700' :
-                                                    'bg-yellow-100 text-yellow-800'
+                                            voucher.status === 'ANNULLED' ? 'bg-red-100 text-red-700' :
+                                                'bg-yellow-100 text-yellow-800'
                                             }`}>
                                             {voucher.status === 'DRAFT' ? 'Borrador' : voucher.status === 'APPROVED' ? 'Aprobado' : 'Anulado'}
                                         </span>

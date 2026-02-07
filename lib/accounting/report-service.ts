@@ -106,8 +106,8 @@ export async function getAuxiliaryByThirdParty(tenantId: string, thirdPartyId: s
             OR: [
                 { customerId: thirdPartyId },
                 { supplierId: thirdPartyId },
-                { accountingThirdPartyId: thirdPartyId }
-            ]
+                { accountingThirdPartyId: thirdPartyId as any }
+            ] as any
         },
         include: {
             account: { select: { code: true, name: true } },

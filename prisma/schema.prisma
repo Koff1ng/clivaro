@@ -1504,7 +1504,7 @@ model JournalEntryLine {
   // Relations
   journalEntry   JournalEntry @relation(fields: [journalEntryId], references: [id], onDelete: Cascade)
   account        AccountingAccount @relation(fields: [accountId], references: [id], onDelete: Restrict)
-  accountingThirdParty   AccountingThirdParty? @relation(fields: [accountingThirdPartyId], references: [id])
+  accountingThirdParty   AccountingThirdParty? @relation("AccountingThirdPartyLines", fields: [accountingThirdPartyId], references: [id])
 
   @@index([journalEntryId])
   @@index([accountId])
@@ -1526,7 +1526,7 @@ model AccountingThirdParty {
   updatedAt      DateTime @updatedAt
   
   tenant         Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  journalLines   JournalEntryLine[]
+  journalLines   JournalEntryLine[] @relation("AccountingThirdPartyLines")
 
   @@unique([tenantId, documentNumber])
   @@index([tenantId, type])

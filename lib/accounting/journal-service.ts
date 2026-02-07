@@ -99,14 +99,29 @@ export async function approveJournalEntry(tenantId: string, entryId: string, use
         throw new Error(`Entry is not balanced. Diff: ${diff}`)
     }
 
-    return await prisma.journalEntry.update({
+    // Validate period is not closed
+    await validatePeriodNotClosed(tenantId, entry.date)
+
+    const updated = await prisma.journalEntry.update({
         where: { id: entryId },
         data: {
             status: 'APPROVED',
             approvedById: userId,
             approvedAt: new Date()
+        },
+        include: {
+            lines: { include: { account: true } },
+            createdBy: true
         }
     })
+
+    // Log approval
+    await logAction(tenantId, 'JOURNAL_ENTRY', updated.id, 'APPROVED', userId, {
+        number: updated.number,
+        description: updated.description
+    })
+
+    return updated
 }
 
 export async function getJournalEntries(tenantId: string, filters?: { status?: string, start?: Date, end?: Date }) {
