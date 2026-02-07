@@ -177,8 +177,8 @@ export async function transmitCreditNoteToAlegra(
             where: { id: transmission.id },
             data: {
                 status: 'SENT',
-                alegraId: String(response.id),
-                response: JSON.stringify(response)
+                externalId: String(response.id),
+                responseData: JSON.stringify(response)
             }
         })
 
@@ -224,7 +224,7 @@ export async function transmitCreditNoteToAlegra(
                 where: { id: transmission.id },
                 data: {
                     status: 'FAILED',
-                    error: error.message || 'Unknown error'
+                    errorMessage: error.message || 'Unknown error'
                 }
             })
 

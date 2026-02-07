@@ -706,6 +706,9 @@ model CreditNoteTransmission {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
+  creditNote CreditNote         @relation(fields: [creditNoteId], references: [id], onDelete: Cascade)
+  events     CreditNoteEvent[]
+
   @@index([creditNoteId])
   @@index([status])
 }
@@ -717,6 +720,8 @@ model CreditNoteEvent {
   message        String?
   data           String?
   createdAt      DateTime @default(now())
+
+  transmission CreditNoteTransmission @relation(fields: [transmissionId], references: [id], onDelete: Cascade)
 
   @@index([transmissionId])
   @@index([event])
