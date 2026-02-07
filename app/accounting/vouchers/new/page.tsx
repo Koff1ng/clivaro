@@ -11,6 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Trash2, Plus, Save } from 'lucide-react'
 import { useToast } from '@/components/ui/toast'
 import { AccountSelect } from '@/components/accounting/account-select'
+import { ThirdPartySelect } from '@/components/accounting/third-party-select'
 import { useRouter } from 'next/navigation'
 import { formatCurrency } from '@/lib/utils'
 
@@ -28,7 +29,7 @@ export default function NewVoucherPage() {
 
     // Lines
     const [lines, setLines] = useState<any[]>([
-        { id: 1, accountId: '', description: '', debit: 0, credit: 0, thirdPartyName: '' }
+        { id: 1, accountId: '', description: '', debit: 0, credit: 0, thirdPartyId: '', thirdPartyName: '', requiresThirdParty: false }
     ])
 
     useEffect(() => {
@@ -38,7 +39,7 @@ export default function NewVoucherPage() {
     }, [])
 
     const addLine = () => {
-        setLines([...lines, { id: Date.now(), accountId: '', description: '', debit: 0, credit: 0 }])
+        setLines([...lines, { id: Date.now(), accountId: '', description: '', debit: 0, credit: 0, thirdPartyId: '', thirdPartyName: '', requiresThirdParty: false }])
     }
 
     const removeLine = (id: number) => {
@@ -47,7 +48,20 @@ export default function NewVoucherPage() {
     }
 
     const updateLine = (id: number, field: string, value: any) => {
-        setLines(lines.map(l => l.id === id ? { ...l, [field]: value } : l))
+        setLines(lines.map(l => {
+            if (l.id === id) {
+                const newLine = { ...l, [field]: value }
+                // Special case for account selection: cache the requiresThirdParty flag
+                if (field === 'accountId') {
+                    const account = accounts.find(a => a.id === value)
+                    if (account) {
+                        newLine.requiresThirdParty = account.requiresThirdParty
+                    }
+                }
+                return newLine
+            }
+            return l
+        }))
     }
 
     const totalDebit = lines.reduce((sum, l) => sum + (Number(l.debit) || 0), 0)
@@ -59,7 +73,13 @@ export default function NewVoucherPage() {
         if (Math.abs(difference) > 0.01) return toast('El comprobante no está balanceado', 'error')
 
         // Validate lines
-        if (lines.some(l => !l.accountId)) return toast('Selecciona cuenta en todas las líneas', 'error')
+        for (const l of lines) {
+            if (!l.accountId) return toast('Selecciona cuenta en todas las líneas', 'error')
+            if (l.requiresThirdParty && !l.thirdPartyId) {
+                const account = accounts.find(a => a.id === l.accountId)
+                return toast(`La cuenta ${account?.code} requiere un tercero`, 'error')
+            }
+        }
 
         setLoading(true)
         try {
@@ -75,7 +95,8 @@ export default function NewVoucherPage() {
                         description: l.description,
                         debit: Number(l.debit),
                         credit: Number(l.credit),
-                        thirdPartyName: l.thirdPartyName
+                        accountingThirdPartyId: l.thirdPartyId, // Use the ID
+                        thirdPartyName: l.thirdPartyName // Keep name for legacy/reference
                     }))
                 }),
                 headers: { 'Content-Type': 'application/json' }
@@ -163,7 +184,7 @@ export default function NewVoucherPage() {
                             <TableHeader>
                                 <TableRow>
                                     <TableHead className="w-[300px]">Cuenta</TableHead>
-                                    <TableHead>Tercero (Opcional)</TableHead>
+                                    <TableHead>Tercero {lines.some(l => l.requiresThirdParty) && <span className="text-red-500">*</span>}</TableHead>
                                     <TableHead className="w-[150px]">Débito</TableHead>
                                     <TableHead className="w-[150px]">Crédito</TableHead>
                                     <TableHead className="w-[50px]"></TableHead>
@@ -180,12 +201,17 @@ export default function NewVoucherPage() {
                                             />
                                         </TableCell>
                                         <TableCell>
-                                            <Input
-                                                placeholder="Nombre tercero..."
-                                                value={row.thirdPartyName}
-                                                onChange={e => updateLine(row.id, 'thirdPartyName', e.target.value)}
-                                                className="h-9"
+                                            <ThirdPartySelect
+                                                value={row.thirdPartyId}
+                                                onChange={(id, name) => {
+                                                    updateLine(row.id, 'thirdPartyId', id)
+                                                    updateLine(row.id, 'thirdPartyName', name)
+                                                }}
+                                                disabled={!row.accountId}
                                             />
+                                            {row.requiresThirdParty && !row.thirdPartyId && (
+                                                <span className="text-[10px] text-red-500 font-medium">Requerido</span>
+                                            )}
                                         </TableCell>
                                         <TableCell>
                                             <Input

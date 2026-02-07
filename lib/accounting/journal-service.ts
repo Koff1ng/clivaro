@@ -13,7 +13,9 @@ export type JournalEntryInput = {
         description?: string
         debit?: number
         credit?: number
-        thirdPartyId?: string
+        accountingThirdPartyId?: string // New field
+        thirdPartyId?: string // Legacy/Auto (Customer)
+        supplierId?: string // Legacy/Auto (Supplier)
         thirdPartyName?: string
         thirdPartyNit?: string
     }>
@@ -59,7 +61,9 @@ export async function createJournalEntry(tenantId: string, userId: string, data:
                         description: l.description || data.description,
                         debit: l.debit || 0,
                         credit: l.credit || 0,
+                        accountingThirdPartyId: l.accountingThirdPartyId, // Map the new ID
                         thirdPartyId: l.thirdPartyId,
+                        supplierId: l.supplierId,
                         thirdPartyName: l.thirdPartyName,
                         thirdPartyNit: l.thirdPartyNit
                     }))
@@ -152,6 +156,9 @@ export async function getJournalLines(tenantId: string, filters?: { accountId?: 
         where,
         include: {
             account: { select: { code: true, name: true } },
+            accountingThirdParty: { select: { name: true, documentNumber: true, documentType: true } },
+            customer: { select: { name: true, taxId: true } },
+            supplier: { select: { name: true, taxId: true } },
             journalEntry: { select: { date: true, number: true, type: true, status: true } }
         },
         orderBy: {

@@ -149,9 +149,9 @@ export function Sidebar() {
   // Using a map for open/closed state. Default to true (open).
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
     general: true,
-    comercial: true,
+    marketing: true,
+    pos: true,
     inventory: true,
-    treasury: true,
     accounting: true,
     hr: true,
     system: true

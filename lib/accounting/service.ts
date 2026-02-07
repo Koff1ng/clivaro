@@ -49,6 +49,7 @@ export async function initializePUC(tenantId: string) {
                 code: acc.code,
                 name: acc.name,
                 type: acc.type,
+                nature: (acc as any).nature || 'DEBIT',
                 level: acc.code.length === 1 ? 1 : acc.code.length === 2 ? 2 : acc.code.length === 4 ? 3 : 4,
                 parentId,
                 tags: acc.tags || []
@@ -57,6 +58,19 @@ export async function initializePUC(tenantId: string) {
     }
 
     return { initialized: true, count: sorted.length }
+}
+
+export async function updateAccount(tenantId: string, accountId: string, data: any) {
+    return await prisma.accountingAccount.update({
+        where: { id: accountId, tenantId },
+        data: {
+            name: data.name,
+            nature: data.nature,
+            requiresThirdParty: data.requiresThirdParty,
+            requiresCostCenter: data.requiresCostCenter,
+            active: data.active
+        }
+    })
 }
 
 export async function getAccountTree(tenantId: string) {

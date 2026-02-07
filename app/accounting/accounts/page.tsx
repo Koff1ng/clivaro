@@ -8,7 +8,23 @@ import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { useToast } from '@/components/ui/toast'
-import { Loader2, Plus, Search } from 'lucide-react'
+import { Loader2, Plus, Search, Edit2, Check, X } from 'lucide-react'
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogFooter,
+} from '@/components/ui/dialog'
+import { Label } from '@/components/ui/label'
+import { Checkbox } from '@/components/ui/checkbox'
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select'
 
 export default function AccountsPage() {
     const { toast } = useToast()
@@ -16,6 +32,38 @@ export default function AccountsPage() {
     const [initLoading, setInitLoading] = useState(false)
     const [accounts, setAccounts] = useState<any[]>([])
     const [search, setSearch] = useState('')
+
+    // Editing State
+    const [isEditing, setIsEditing] = useState(false)
+    const [currentAccount, setCurrentAccount] = useState<any>(null)
+    const [editLoading, setEditLoading] = useState(false)
+
+    const handleEdit = (account: any) => {
+        setCurrentAccount({ ...account })
+        setIsEditing(true)
+    }
+
+    const handleSave = async () => {
+        setEditLoading(true)
+        try {
+            const res = await fetch('/api/accounting/accounts', {
+                method: 'PATCH',
+                body: JSON.stringify(currentAccount),
+                headers: { 'Content-Type': 'application/json' }
+            })
+            if (res.ok) {
+                toast('Cuenta actualizada', 'success')
+                setIsEditing(false)
+                fetchAccounts()
+            } else {
+                toast('Error actualizando cuenta', 'error')
+            }
+        } catch (e) {
+            toast('Error de conexión', 'error')
+        } finally {
+            setEditLoading(false)
+        }
+    }
 
     const fetchAccounts = async () => {
         setLoading(true)
@@ -102,7 +150,11 @@ export default function AccountsPage() {
                                         <TableHead className="w-[150px]">Código</TableHead>
                                         <TableHead>Nombre</TableHead>
                                         <TableHead className="w-[100px]">Tipo</TableHead>
+                                        <TableHead className="w-[80px]">Nat.</TableHead>
+                                        <TableHead className="w-[80px]">Tercero</TableHead>
+                                        <TableHead className="w-[80px]">C.Costo</TableHead>
                                         <TableHead className="w-[100px]">Nivel</TableHead>
+                                        <TableHead className="w-[50px]"></TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -120,7 +172,15 @@ export default function AccountsPage() {
                                                 <TableCell>{acc.code}</TableCell>
                                                 <TableCell style={{ paddingLeft: `${(acc.level - 1) * 20}px` }}>{acc.name}</TableCell>
                                                 <TableCell><span className="text-xs px-2 py-1 rounded bg-slate-100">{acc.type}</span></TableCell>
+                                                <TableCell className="text-xs">{acc.nature === 'DEBIT' ? 'D' : 'C'}</TableCell>
+                                                <TableCell className="text-center">{acc.requiresThirdParty ? '✅' : '-'}</TableCell>
+                                                <TableCell className="text-center">{acc.requiresCostCenter ? '✅' : '-'}</TableCell>
                                                 <TableCell>{acc.level}</TableCell>
+                                                <TableCell>
+                                                    <Button variant="ghost" size="sm" onClick={() => handleEdit(acc)}>
+                                                        <Edit2 className="h-4 w-4" />
+                                                    </Button>
+                                                </TableCell>
                                             </TableRow>
                                         ))
                                     )}
@@ -132,6 +192,71 @@ export default function AccountsPage() {
                         </div>
                     </div>
                 )}
+
+                <Dialog open={isEditing} onOpenChange={setIsEditing}>
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>Editar Cuenta: {currentAccount?.code}</DialogTitle>
+                        </DialogHeader>
+                        {currentAccount && (
+                            <div className="space-y-4 py-4">
+                                <div className="space-y-2">
+                                    <Label>Nombre de la Cuenta</Label>
+                                    <Input
+                                        value={currentAccount.name}
+                                        onChange={e => setCurrentAccount({ ...currentAccount, name: e.target.value })}
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Naturaleza</Label>
+                                    <Select
+                                        value={currentAccount.nature}
+                                        onValueChange={val => setCurrentAccount({ ...currentAccount, nature: val })}
+                                    >
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Seleccionar naturaleza" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="DEBIT">DÉBITO</SelectItem>
+                                            <SelectItem value="CREDIT">CRÉDITO</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="flex items-center space-x-2 pt-2">
+                                    <Checkbox
+                                        id="requiresThirdParty"
+                                        checked={currentAccount.requiresThirdParty}
+                                        onCheckedChange={checked => setCurrentAccount({ ...currentAccount, requiresThirdParty: !!checked })}
+                                    />
+                                    <Label htmlFor="requiresThirdParty">Requiere Tercero</Label>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                    <Checkbox
+                                        id="requiresCostCenter"
+                                        checked={currentAccount.requiresCostCenter}
+                                        onCheckedChange={checked => setCurrentAccount({ ...currentAccount, requiresCostCenter: !!checked })}
+                                    />
+                                    <Label htmlFor="requiresCostCenter">Requiere Centro de Costo</Label>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                    <Checkbox
+                                        id="active"
+                                        checked={currentAccount.active}
+                                        onCheckedChange={checked => setCurrentAccount({ ...currentAccount, active: !!checked })}
+                                    />
+                                    <Label htmlFor="active">Cuenta Activa</Label>
+                                </div>
+                            </div>
+                        )}
+                        <DialogFooter>
+                            <Button variant="outline" onClick={() => setIsEditing(false)}>Cancelar</Button>
+                            <Button onClick={handleSave} disabled={editLoading}>
+                                {editLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                Guardar Cambios
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
             </div>
         </MainLayout>
     )

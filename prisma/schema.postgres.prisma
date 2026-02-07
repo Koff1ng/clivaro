@@ -605,7 +605,7 @@ model Payment {
   reference                String?
   notes                    String?
   // Mercado Pago fields
-  mercadoPagoPaymentId     String?  @unique // ID del pago en Mercado Pago
+  mercadoPagoPaymentId     String? // @unique removed to fix migration error
   mercadoPagoPreferenceId  String? // ID de la preferencia de pago
   mercadoPagoStatus        String? // approved, pending, rejected, cancelled, refunded, charged_back
   mercadoPagoStatusDetail  String? // Detalle del estado
@@ -619,8 +619,8 @@ model Payment {
   paymentMethod            PaymentMethod? @relation(fields: [paymentMethodId], references: [id])
   createdBy                User?    @relation("PaymentCreatedBy", fields: [createdById], references: [id])
 
-  @@index([mercadoPagoPaymentId])
-  @@index([mercadoPagoPreferenceId])
+  // @@index([mercadoPagoPaymentId]) removed to fix migration error
+  // @@index([mercadoPagoPreferenceId]) removed to fix migration error
 }
 
 model Return {
@@ -1004,6 +1004,7 @@ model Tenant {
   subscriptions Subscription[]
   settings      TenantSettings?
   accountingAccounts AccountingAccount[]
+  accountingThirdParties AccountingThirdParty[]
   journalEntries     JournalEntry[]
   accountingPeriods  AccountingPeriod[]
   accountingConfig   AccountingConfig?
@@ -1033,7 +1034,7 @@ model Subscription {
   trialEndDate             DateTime?
   autoRenew                Boolean   @default(true)
   // Mercado Pago fields
-  mercadoPagoPaymentId     String?   @unique // ID del pago en Mercado Pago
+  mercadoPagoPaymentId     String? // @unique removed to fix migration error
   mercadoPagoPreferenceId  String? // ID de la preferencia de pago
   mercadoPagoStatus        String? // approved, pending, rejected, cancelled, refunded, charged_back
   mercadoPagoStatusDetail  String? // Detalle del estado
@@ -1045,8 +1046,8 @@ model Subscription {
   tenant                   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   plan                     Plan      @relation(fields: [planId], references: [id])
 
-  @@index([mercadoPagoPaymentId])
-  @@index([mercadoPagoPreferenceId])
+  // @@index([mercadoPagoPaymentId])
+  // @@index([mercadoPagoPreferenceId])
 }
 
 model TenantSettings {
@@ -1405,6 +1406,11 @@ model AccountingAccount {
   // Tags for automation: CASH, BANK, VAT_GENERATED, VAT_DEDUCTIBLE, RETENTION_SOURCE, RETENTION_IVA, RETENTION_ICA
   tags        String[]  @default([])
   
+  // Classification
+  nature              String    @default("DEBIT") // DEBIT, CREDIT
+  requiresThirdParty  Boolean   @default(false)
+  requiresCostCenter  Boolean   @default(false)
+  
   active      Boolean   @default(true)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
@@ -1491,15 +1497,39 @@ model JournalEntryLine {
   customer       Customer?    @relation(fields: [customerId], references: [id])
   supplierId     String?
   supplier       Supplier?    @relation(fields: [supplierId], references: [id])
+  accountingThirdPartyId String?
   
   createdAt      DateTime     @default(now())
   
   // Relations
   journalEntry   JournalEntry @relation(fields: [journalEntryId], references: [id], onDelete: Cascade)
   account        AccountingAccount @relation(fields: [accountId], references: [id], onDelete: Restrict)
+  accountingThirdParty   AccountingThirdParty? @relation(fields: [accountingThirdPartyId], references: [id])
 
   @@index([journalEntryId])
   @@index([accountId])
+  @@index([accountingThirdPartyId])
+}
+
+model AccountingThirdParty {
+  id             String   @id @default(cuid())
+  tenantId       String
+  type           String   // OTHER, DIAN, PARTNER, BANK, SHAREHOLDER
+  documentType   String   // NIT, CC, CE, TI, PP
+  documentNumber String
+  name           String
+  email          String?
+  phone          String?
+  address        String?
+  active         Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  
+  tenant         Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  journalLines   JournalEntryLine[]
+
+  @@unique([tenantId, documentNumber])
+  @@index([tenantId, type])
 }
 
 model AccountingPeriod {
