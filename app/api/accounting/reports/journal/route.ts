@@ -13,11 +13,9 @@ export async function GET(request: Request) {
 
     const start = searchParams.get('start') ? new Date(searchParams.get('start')!) : undefined
     const end = searchParams.get('end') ? new Date(searchParams.get('end')!) : undefined
-    const accountId = searchParams.get('accountId') || undefined
-    const thirdPartyId = searchParams.get('thirdPartyId') || undefined
 
     try {
-        const lines = await getJournalLines(tenantId, { start, end, accountId, thirdPartyId })
+        const lines = await getJournalLines(tenantId, { start, end })
         return NextResponse.json(lines)
     } catch (e: any) {
         return NextResponse.json({ error: e.message }, { status: 500 })

@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server'
 import { requirePermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
 import { getTenantIdFromSession } from '@/lib/tenancy'
-import { getTrialBalance } from '@/lib/accounting/ledger-service'
+import { getGeneralLedger } from '@/lib/accounting/ledger-service'
 
 export async function GET(request: Request) {
     const session = await requirePermission(request as any, PERMISSIONS.MANAGE_ACCOUNTING)
@@ -12,10 +12,15 @@ export async function GET(request: Request) {
     const tenantId = getTenantIdFromSession(session)
     const { searchParams } = new URL(request.url)
 
-    const dateParam = searchParams.get('date')
-    const asOfDate = dateParam ? new Date(dateParam) : undefined
+    const accountId = searchParams.get('accountId') || undefined
+    const startDate = searchParams.get('startDate') ? new Date(searchParams.get('startDate')!) : undefined
+    const endDate = searchParams.get('endDate') ? new Date(searchParams.get('endDate')!) : undefined
 
-    const trialBalance = await getTrialBalance(tenantId, asOfDate)
+    const ledger = await getGeneralLedger(tenantId, {
+        accountId,
+        startDate,
+        endDate
+    })
 
-    return NextResponse.json(trialBalance)
+    return NextResponse.json(ledger)
 }
