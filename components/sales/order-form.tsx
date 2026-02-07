@@ -15,7 +15,7 @@ import {
     TableRow,
 } from '@/components/ui/table'
 import { formatCurrency } from '@/lib/utils'
-import { Search, Plus, Trash2, Check, ChevronsUpDown, Loader2 } from 'lucide-react'
+import { Search, Plus, Trash2, Check, ChevronsUpDown, Loader2, UserPlus } from 'lucide-react'
 import { useToast } from '@/components/ui/toast'
 import { cn } from '@/lib/utils'
 import { SearchableSelect } from '@/components/ui/searchable-select'
@@ -415,7 +415,10 @@ export function OrderForm({ initialData, isEditing = false }: OrderFormProps) {
             <Dialog open={isCreateCustomerOpen} onOpenChange={setIsCreateCustomerOpen}>
                 <DialogContent className="max-w-2xl">
                     <DialogHeader>
-                        <DialogTitle>Crear Nuevo Cliente</DialogTitle>
+                        <DialogTitle className="flex items-center gap-2">
+                            <UserPlus className="h-5 w-5" />
+                            Crear Nuevo Cliente
+                        </DialogTitle>
                     </DialogHeader>
                     <CustomerForm customer={null} onSuccess={handleCustomerCreated} />
                 </DialogContent>

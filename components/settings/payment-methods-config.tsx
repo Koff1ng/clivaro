@@ -224,7 +224,10 @@ export function PaymentMethodsConfig() {
                 <Dialog open={isOpen} onOpenChange={setIsOpen}>
                     <DialogContent className="max-w-md">
                         <DialogHeader>
-                            <DialogTitle>{editingMethod ? 'Editar Método' : 'Nuevo Método de Pago'}</DialogTitle>
+                            <DialogTitle className="flex items-center gap-2">
+                                <CreditCard className="h-5 w-5" />
+                                {editingMethod ? 'Editar Método' : 'Nuevo Método de Pago'}
+                            </DialogTitle>
                             <DialogDescription>
                                 Personaliza el aspecto y comportamiento del método de pago.
                             </DialogDescription>

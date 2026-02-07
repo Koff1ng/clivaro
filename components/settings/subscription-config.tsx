@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Rocket, Calendar, CheckCircle2, Minus, ExternalLink, Loader2, X, AlertTriangle, CreditCard, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Rocket, Calendar, CheckCircle2, Minus, ExternalLink, Loader2, X, AlertTriangle, CreditCard, RefreshCw, ChevronLeft, ChevronRight, Package } from 'lucide-react'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { useQuery } from '@tanstack/react-query'
 import { useState, useEffect } from 'react'
@@ -174,14 +174,14 @@ export function SubscriptionConfig({ settings, onSave, isLoading }: Subscription
   // Obtener información de la tarjeta de pago
   const getPaymentMethodInfo = () => {
     if (!subscription?.mercadoPagoPaymentMethod) return null
-    
+
     const methodMap: Record<string, string> = {
       'credit_card': 'Tarjeta de Crédito',
       'debit_card': 'Tarjeta de Débito',
       'ticket': 'Ticket',
       'bank_transfer': 'Transferencia Bancaria',
     }
-    
+
     return methodMap[subscription.mercadoPagoPaymentMethod] || subscription.mercadoPagoPaymentMethod
   }
 
@@ -303,15 +303,15 @@ export function SubscriptionConfig({ settings, onSave, isLoading }: Subscription
                     Suscripción Pendiente
                   </h3>
                   <p className="text-sm text-orange-800 dark:text-orange-200 mb-4">
-                    Tu suscripción está en estado <strong>{getStatusBadge(subscription.status)}</strong>. 
-                    {subscription.status === 'pending_payment' || subscription.status === 'pending' 
+                    Tu suscripción está en estado <strong>{getStatusBadge(subscription.status)}</strong>.
+                    {subscription.status === 'pending_payment' || subscription.status === 'pending'
                       ? ' Completa el pago para activar tu suscripción.'
                       : ' Contacta con el administrador para más información.'}
                   </p>
                   {(subscription.status === 'pending_payment' || subscription.status === 'pending') && subscription.id && (
                     <div className="mt-4">
                       <p className="text-sm text-orange-800 dark:text-orange-200 mb-4">
-                        {plan 
+                        {plan
                           ? `Completa el pago de ${formatCurrency(plan.price)} para activar tu suscripción.`
                           : 'Completa el pago para activar tu suscripción. Contacta al administrador si necesitas información sobre el monto.'}
                       </p>
@@ -388,10 +388,10 @@ export function SubscriptionConfig({ settings, onSave, isLoading }: Subscription
                     <span className="text-sm font-medium text-muted-foreground">Renewal date</span>
                   </div>
                   <p className="text-base font-semibold">
-                    {renewalDate.toLocaleDateString('es-ES', { 
-                      year: 'numeric', 
-                      month: 'long', 
-                      day: 'numeric' 
+                    {renewalDate.toLocaleDateString('es-ES', {
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric'
                     })}
                   </p>
                 </div>
@@ -414,10 +414,10 @@ export function SubscriptionConfig({ settings, onSave, isLoading }: Subscription
                     <span className="text-sm font-medium text-muted-foreground">Next payment</span>
                   </div>
                   <p className="text-base font-semibold">
-                    {nextPaymentDate.toLocaleDateString('es-ES', { 
-                      year: 'numeric', 
-                      month: 'long', 
-                      day: 'numeric' 
+                    {nextPaymentDate.toLocaleDateString('es-ES', {
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric'
                     })}
                   </p>
                   {paymentMethod && (
@@ -433,8 +433,8 @@ export function SubscriptionConfig({ settings, onSave, isLoading }: Subscription
           {/* Manage Subscription Button */}
           {subscription?.status === 'active' && (
             <div className="flex justify-center">
-              <Button 
-                variant="default" 
+              <Button
+                variant="default"
                 className="w-full sm:w-auto"
                 onClick={() => setShowManageDialog(true)}
               >
@@ -545,10 +545,10 @@ export function SubscriptionConfig({ settings, onSave, isLoading }: Subscription
                       <TableCell>
                         <div className="flex flex-col">
                           <span className="font-medium">
-                            {new Date(payment.date).toLocaleDateString('es-ES', { 
-                              year: 'numeric', 
-                              month: 'short', 
-                              day: 'numeric' 
+                            {new Date(payment.date).toLocaleDateString('es-ES', {
+                              year: 'numeric',
+                              month: 'short',
+                              day: 'numeric'
                             })}
                           </span>
                           <span className="text-xs text-muted-foreground">
@@ -586,8 +586,8 @@ export function SubscriptionConfig({ settings, onSave, isLoading }: Subscription
                         {payment.paymentMethod ? (
                           <Badge variant="outline" className="text-xs">
                             {payment.paymentMethod === 'credit_card' ? 'Tarjeta Crédito' :
-                             payment.paymentMethod === 'debit_card' ? 'Tarjeta Débito' :
-                             payment.paymentMethod}
+                              payment.paymentMethod === 'debit_card' ? 'Tarjeta Débito' :
+                                payment.paymentMethod}
                           </Badge>
                         ) : (
                           <span className="text-muted-foreground text-sm">-</span>
@@ -648,7 +648,7 @@ export function SubscriptionConfig({ settings, onSave, isLoading }: Subscription
                         } else {
                           pageNum = paymentCurrentPage - 2 + i
                         }
-                        
+
                         return (
                           <Button
                             key={pageNum}
@@ -684,12 +684,15 @@ export function SubscriptionConfig({ settings, onSave, isLoading }: Subscription
       <Dialog open={showManageDialog} onOpenChange={setShowManageDialog}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Manage Subscription</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <Package className="h-5 w-5" />
+              Manage Subscription
+            </DialogTitle>
             <DialogDescription>
               Gestiona tu suscripción y configuración de renovación automática
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-6 py-4">
             {/* Current Plan Info */}
             {plan && subscription && (
@@ -708,10 +711,10 @@ export function SubscriptionConfig({ settings, onSave, isLoading }: Subscription
                 </div>
                 {renewalDate && (
                   <div className="text-sm text-muted-foreground mt-2">
-                    Renews on {renewalDate.toLocaleDateString('es-ES', { 
-                      year: 'numeric', 
-                      month: 'long', 
-                      day: 'numeric' 
+                    Renews on {renewalDate.toLocaleDateString('es-ES', {
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric'
                     })}
                   </div>
                 )}
@@ -831,14 +834,17 @@ export function SubscriptionConfig({ settings, onSave, isLoading }: Subscription
       <Dialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Método de Pago</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <CreditCard className="h-5 w-5" />
+              Método de Pago
+            </DialogTitle>
             <DialogDescription>
-              {paymentMethod 
+              {paymentMethod
                 ? 'Actualiza tu método de pago para futuras suscripciones'
                 : 'Agrega un método de pago para procesar tu suscripción'}
             </DialogDescription>
           </DialogHeader>
-          
+
           {subscription && plan ? (
             <div className="mt-4">
               <MercadoPagoCardForm
@@ -876,12 +882,15 @@ export function SubscriptionConfig({ settings, onSave, isLoading }: Subscription
       <Dialog open={showChangePlanDialog} onOpenChange={setShowChangePlanDialog}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Cambiar de Plan</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <Calendar className="h-5 w-5" />
+              Cambiar de Plan
+            </DialogTitle>
             <DialogDescription>
               Selecciona un plan para cambiar tu suscripción. Los cambios se aplicarán según el tipo de cambio.
             </DialogDescription>
           </DialogHeader>
-          
+
           {isLoadingPlans ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -892,9 +901,9 @@ export function SubscriptionConfig({ settings, onSave, isLoading }: Subscription
                 const isCurrentPlan = plan?.id === availablePlan.id
                 const isUpgrade = plan && availablePlan.price > plan.price
                 const isDowngrade = plan && availablePlan.price < plan.price
-                
+
                 return (
-                  <Card 
+                  <Card
                     key={availablePlan.id}
                     className={`relative ${isCurrentPlan ? 'ring-2 ring-primary' : ''}`}
                   >
@@ -916,7 +925,7 @@ export function SubscriptionConfig({ settings, onSave, isLoading }: Subscription
                           / {availablePlan.interval === 'monthly' ? 'mes' : 'año'}
                         </div>
                       </div>
-                      
+
                       {availablePlan.features && availablePlan.features.length > 0 && (
                         <ul className="space-y-2 text-sm">
                           {availablePlan.features.map((feature: string, idx: number) => (
@@ -934,7 +943,7 @@ export function SubscriptionConfig({ settings, onSave, isLoading }: Subscription
                         disabled={isCurrentPlan || changePlanMutation.isPending}
                         onClick={() => {
                           if (confirm(
-                            isUpgrade 
+                            isUpgrade
                               ? `¿Estás seguro de cambiar a ${availablePlan.name}? El cambio es inmediato y se cobrará la diferencia prorrateada.`
                               : `¿Estás seguro de cambiar a ${availablePlan.name}? El cambio se aplicará en tu próximo ciclo de facturación.`
                           )) {

@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/toast'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { PackagePlus } from 'lucide-react'
 
 const productSchema = z.object({
   name: z.string().min(1, 'El nombre es requerido'),
@@ -25,10 +26,10 @@ const productSchema = z.object({
 
 type ProductFormData = z.infer<typeof productSchema>
 
-export function ProductQuickCreate({ 
-  onProductCreated 
-}: { 
-  onProductCreated: (productId: string) => void 
+export function ProductQuickCreate({
+  onProductCreated
+}: {
+  onProductCreated: (productId: string) => void
 }) {
   const { toast } = useToast()
   const [open, setOpen] = useState(false)
@@ -95,7 +96,10 @@ export function ProductQuickCreate({
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Crear Producto Nuevo</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <PackagePlus className="h-5 w-5" />
+              Crear Producto Nuevo
+            </DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">

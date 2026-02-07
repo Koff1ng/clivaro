@@ -10,7 +10,7 @@ import { useToast } from '@/components/ui/toast'
 import { ReceiptForm } from './receipt-form'
 import { ReceiptDetails } from './receipt-details'
 import { formatCurrency, formatDate } from '@/lib/utils'
-import { Search, Plus, Eye, Loader2 } from 'lucide-react'
+import { Search, Plus, Eye, Loader2, PackagePlus, FileText } from 'lucide-react'
 
 async function fetchReceipts(page: number, search: string, purchaseOrderId: string) {
   const params = new URLSearchParams({
@@ -195,7 +195,10 @@ export function ReceiptList() {
       <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
         <DialogContent className="w-auto sm:max-w-fit max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Nueva Recepción de Mercancía</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <PackagePlus className="h-5 w-5" />
+              Nueva Recepción de Mercancía
+            </DialogTitle>
           </DialogHeader>
           <ReceiptForm
             purchaseOrderId={selectedPurchaseOrder}
@@ -211,7 +214,10 @@ export function ReceiptList() {
         <Dialog open={!!viewReceipt} onOpenChange={() => setViewReceipt(null)}>
           <DialogContent className="w-auto sm:max-w-fit max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Detalles de la Recepción</DialogTitle>
+              <DialogTitle className="flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                Detalles de la Recepción
+              </DialogTitle>
             </DialogHeader>
             <ReceiptDetails receipt={viewReceipt} />
           </DialogContent>

@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { useToast } from '@/components/ui/toast'
 import { useDebounce } from '@/lib/hooks/use-debounce'
 import { formatCurrency, formatDate } from '@/lib/utils'
-import { Search, Plus, Eye, Edit, Trash2, Loader2 } from 'lucide-react'
+import { Search, Plus, Eye, Edit, Trash2, Loader2, ClipboardEdit, FileText } from 'lucide-react'
 
 // Lazy load heavy components
 const PurchaseOrderForm = dynamic(() => import('./purchase-order-form').then(mod => ({ default: mod.PurchaseOrderForm })), {
@@ -300,7 +300,8 @@ export function PurchaseOrderList() {
       <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
         <DialogContent className="w-auto sm:max-w-fit max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <ClipboardEdit className="h-5 w-5" />
               {selectedOrder ? 'Editar Orden de Compra' : 'Nueva Orden de Compra'}
             </DialogTitle>
           </DialogHeader>
@@ -318,7 +319,10 @@ export function PurchaseOrderList() {
         <Dialog open={!!viewOrder} onOpenChange={() => setViewOrder(null)}>
           <DialogContent className="w-auto sm:max-w-fit max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Detalles de la Orden de Compra</DialogTitle>
+              <DialogTitle className="flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                Detalles de la Orden de Compra
+              </DialogTitle>
             </DialogHeader>
             <PurchaseOrderDetails order={viewOrder} />
           </DialogContent>

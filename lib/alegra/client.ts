@@ -76,6 +76,23 @@ export class AlegraClient {
     }
 
     /**
+     * Create Credit Note in Alegra
+     * Documentation: https://developer.alegra.com/docs/credit-notes
+     */
+    async createCreditNote(payload: any): Promise<any> {
+        try {
+            const response = await this.request('/credit-notes', {
+                method: 'POST',
+                body: JSON.stringify(payload),
+            })
+            return response
+        } catch (error) {
+            logger.error('[AlegraClient] Error creating credit note:', error)
+            throw error
+        }
+    }
+
+    /**
      * Get Invoice by ID
      */
     async getInvoice(id: string): Promise<any> {

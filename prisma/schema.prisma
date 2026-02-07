@@ -6,49 +6,42 @@ datasource db {
   provider  = "postgresql"
   url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
-  // Force Client Rebuild
 }
 
 model User {
-  id                          String               @id @default(cuid())
-  username                    String               @unique
-  email                       String?              @unique
-  password                    String
-  name                        String
-  active                      Boolean              @default(true)
-  isSuperAdmin                Boolean              @default(false) // Usuario super administrador del sistema
-  createdAt                   DateTime             @default(now())
-  updatedAt                   DateTime             @updatedAt
-  createdById                 String?
-  updatedById                 String?
-  accounts                    Account[]
-  activities                  Activity[]           @relation("ActivityCreatedBy")
-  cashMovements               CashMovement[]
-  cashShifts                  CashShift[]
-  assignedLeads               Lead[]               @relation("LeadAssignedTo")
-  createdLeads                Lead[]               @relation("LeadCreatedBy")
-  leadStageHistory            LeadStageHistory[]   @relation("LeadStageHistoryChangedBy")
-  createdJournalEntries       JournalEntry[]       @relation("CreatedJournalEntries")
-  sessions                    Session[]
-  stockMovements              StockMovement[]
-  updatedBy                   User?                @relation("UserUpdatedBy", fields: [updatedById], references: [id])
-  updatedUsers                User[]               @relation("UserUpdatedBy")
-  createdBy                   User?                @relation("UserCreatedBy", fields: [createdById], references: [id])
-  createdUsers                User[]               @relation("UserCreatedBy")
-  userRoles                   UserRole[]
-  physicalInventories         PhysicalInventory[]  @relation("PhysicalInventoryCreatedBy")
-  paymentsCreated             Payment[]            @relation("PaymentCreatedBy")
-  invoicesCreated             Invoice[]            @relation("InvoiceCreatedBy")
-  invoicesUpdated             Invoice[]            @relation("InvoiceUpdatedBy")
-  returnsCreated              Return[]             @relation("ReturnCreatedBy")
-  returnPaymentsCreated       ReturnPayment[]      @relation("ReturnPaymentCreatedBy")
-  crmCampaignsCreated         Campaign[]           @relation("CampaignCreatedBy")
-  opportunitiesCreated        Opportunity[]        @relation("OpportunityCreatedBy")
-  opportunitiesAssigned       Opportunity[]        @relation("OpportunityAssignedTo")
-  quotesCreated               Quote[]              @relation("QuoteCreatedBy")
-  approvedPhysicalInventories PhysicalInventory[]  @relation("PhysicalInventoryApprovedBy")
-  marketingCampaignsCreated   MarketingCampaign[]  @relation("MarketingCampaignCreatedBy")
-  accountingAuditLogs         AccountingAuditLog[] @relation("AccountingAuditLogs")
+  id                        String              @id @default(cuid())
+  username                  String              @unique
+  email                     String?             @unique
+  password                  String
+  name                      String
+  active                    Boolean             @default(true)
+  isSuperAdmin              Boolean             @default(false)
+  createdAt                 DateTime            @default(now())
+  updatedAt                 DateTime            @updatedAt
+  createdById               String?
+  updatedById               String?
+  accounts                  Account[]
+  activities                Activity[]          @relation("ActivityCreatedBy")
+  cashMovements             CashMovement[]
+  cashShifts                CashShift[]
+  invoicesCreated           Invoice[]           @relation("InvoiceCreatedBy")
+  invoicesUpdated           Invoice[]           @relation("InvoiceUpdatedBy")
+  createdJournalEntries     JournalEntry[]      @relation("CreatedJournalEntries")
+  assignedLeads             Lead[]              @relation("LeadAssignedTo")
+  createdLeads              Lead[]              @relation("LeadCreatedBy")
+  leadStageHistory          LeadStageHistory[]  @relation("LeadStageHistoryChangedBy")
+  marketingCampaignsCreated MarketingCampaign[] @relation("MarketingCampaignCreatedBy")
+  paymentsCreated           Payment[]           @relation("PaymentCreatedBy")
+  physicalInventories       PhysicalInventory[] @relation("PhysicalInventoryCreatedBy")
+  returnsCreated            Return[]            @relation("ReturnCreatedBy")
+  returnPaymentsCreated     ReturnPayment[]     @relation("ReturnPaymentCreatedBy")
+  sessions                  Session[]
+  stockMovements            StockMovement[]
+  createdBy                 User?               @relation("UserCreatedBy", fields: [createdById], references: [id])
+  createdUsers              User[]              @relation("UserCreatedBy")
+  updatedBy                 User?               @relation("UserUpdatedBy", fields: [updatedById], references: [id])
+  updatedUsers              User[]              @relation("UserUpdatedBy")
+  userRoles                 UserRole[]
 }
 
 model Session {
@@ -123,9 +116,6 @@ model Product {
   brand                   String?
   category                String?
   unitOfMeasure           String                  @default("UNIT")
-  productType             String                  @default("RETAIL") // RETAIL, RAW, PREPARED, SELLABLE
-  enableRecipeConsumption Boolean                 @default(false)
-  printerStation          String? // KITCHEN, BAR, CASHIER, null (for kitchen printer routing)
   cost                    Float                   @default(0)
   price                   Float
   taxRate                 Float                   @default(0)
@@ -136,23 +126,22 @@ model Product {
   updatedAt               DateTime                @updatedAt
   createdById             String?
   updatedById             String?
+  productType             String                  @default("RETAIL")
+  enableRecipeConsumption Boolean                 @default(false)
+  printerStation          String?
+  preferredZoneId         String?
   goodsReceiptItems       GoodsReceiptItem[]
   invoiceItems            InvoiceItem[]
+  physicalInventoryItems  PhysicalInventoryItem[]
   priceListItems          PriceListItem[]
   variants                ProductVariant[]
   purchaseOrderItems      PurchaseOrderItem[]
   quotationItems          QuotationItem[]
+  recipe                  Recipe?
+  recipeItems             RecipeItem[]            @relation("Ingredient")
   salesOrderItems         SalesOrderItem[]
   stockLevels             StockLevel[]
   stockMovements          StockMovement[]
-  physicalInventoryItems  PhysicalInventoryItem[]
-
-  recipe          Recipe?
-  recipeItems     RecipeItem[]   @relation("Ingredient")
-  QuoteItem       QuoteItem[]
-  taxes           TaxRate[]      @relation("ProductTaxes")
-  preferredZoneId String?
-  preferredZone   WarehouseZone? @relation("PreferredZone", fields: [preferredZoneId], references: [id])
 }
 
 model ProductVariant {
@@ -168,13 +157,13 @@ model ProductVariant {
   updatedAt              DateTime                @updatedAt
   goodsReceiptItems      GoodsReceiptItem[]
   invoiceItems           InvoiceItem[]
+  physicalInventoryItems PhysicalInventoryItem[]
   product                Product                 @relation(fields: [productId], references: [id], onDelete: Cascade)
   purchaseOrderItems     PurchaseOrderItem[]
   quotationItems         QuotationItem[]
   salesOrderItems        SalesOrderItem[]
   stockLevels            StockLevel[]
   stockMovements         StockMovement[]
-  physicalInventoryItems PhysicalInventoryItem[]
 }
 
 model Warehouse {
@@ -185,10 +174,9 @@ model Warehouse {
   createdAt           DateTime            @default(now())
   updatedAt           DateTime            @updatedAt
   goodsReceipts       GoodsReceipt[]
+  physicalInventories PhysicalInventory[]
   stockLevels         StockLevel[]
   stockMovements      StockMovement[]
-  physicalInventories PhysicalInventory[]
-  zones               WarehouseZone[]
 }
 
 model WarehouseZone {
@@ -199,43 +187,29 @@ model WarehouseZone {
   active      Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-
-  warehouse              Warehouse               @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
-  stockLevels            StockLevel[]
-  physicalInventoryItems PhysicalInventoryItem[]
-  stockMovements         StockMovement[]
-  preferredForProducts   Product[]               @relation("PreferredZone")
-
-  @@unique([warehouseId, name])
-  @@index([warehouseId])
 }
 
 model StockLevel {
-  id          String   @id @default(cuid())
+  id          String          @id @default(cuid())
   warehouseId String
-  zoneId      String?
   productId   String?
   variantId   String?
-  quantity    Float    @default(0)
-  minStock    Float    @default(0)
-  maxStock    Float    @default(0) // 0 = sin máximo configurado
-  updatedAt   DateTime @updatedAt
+  quantity    Float           @default(0)
+  minStock    Float           @default(0)
+  maxStock    Float           @default(0)
+  updatedAt   DateTime        @updatedAt
+  zoneId      String?
+  product     Product?        @relation(fields: [productId], references: [id], onDelete: Cascade)
+  variant     ProductVariant? @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  warehouse   Warehouse       @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
 
-  zone      WarehouseZone?  @relation(fields: [zoneId], references: [id])
-  variant   ProductVariant? @relation(fields: [variantId], references: [id], onDelete: Cascade)
-  product   Product?        @relation(fields: [productId], references: [id], onDelete: Cascade)
-  warehouse Warehouse       @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
-
-  @@unique([warehouseId, zoneId, productId, variantId])
   @@index([warehouseId])
-  @@index([zoneId])
   @@index([productId])
 }
 
 model StockMovement {
-  id          String   @id @default(cuid())
+  id          String          @id @default(cuid())
   warehouseId String
-  zoneId      String?
   productId   String?
   variantId   String?
   type        String
@@ -243,39 +217,36 @@ model StockMovement {
   cost        Float?
   reference   String?
   reason      String?
+  createdAt   DateTime        @default(now())
+  createdById String
   reasonCode  String?
   reasonNote  String?
-  createdAt   DateTime @default(now())
-  createdById String
-
-  zone      WarehouseZone?  @relation(fields: [zoneId], references: [id])
-  createdBy User            @relation(fields: [createdById], references: [id])
-  variant   ProductVariant? @relation(fields: [variantId], references: [id])
-  product   Product?        @relation(fields: [productId], references: [id])
-  warehouse Warehouse       @relation(fields: [warehouseId], references: [id])
+  zoneId      String?
+  createdBy   User            @relation(fields: [createdById], references: [id])
+  product     Product?        @relation(fields: [productId], references: [id])
+  variant     ProductVariant? @relation(fields: [variantId], references: [id])
+  warehouse   Warehouse       @relation(fields: [warehouseId], references: [id])
 
   @@index([warehouseId, productId])
   @@index([createdAt])
   @@index([type])
-  @@index([zoneId])
 }
 
 model PhysicalInventory {
   id           String                  @id @default(cuid())
   number       String                  @unique
   warehouseId  String
-  status       String                  @default("PENDING") // PENDING, COUNTING, COMPLETED, APPROVED, CANCELLED
+  status       String                  @default("PENDING")
   startedAt    DateTime?
   completedAt  DateTime?
-  approvedAt   DateTime?
-  approvedById String?
   notes        String?
   createdAt    DateTime                @default(now())
   updatedAt    DateTime                @updatedAt
   createdById  String
-  warehouse    Warehouse               @relation(fields: [warehouseId], references: [id])
+  approvedAt   DateTime?
+  approvedById String?
   createdBy    User                    @relation("PhysicalInventoryCreatedBy", fields: [createdById], references: [id])
-  approvedBy   User?                   @relation("PhysicalInventoryApprovedBy", fields: [approvedById], references: [id])
+  warehouse    Warehouse               @relation(fields: [warehouseId], references: [id])
   items        PhysicalInventoryItem[]
 
   @@index([warehouseId])
@@ -284,27 +255,23 @@ model PhysicalInventory {
 }
 
 model PhysicalInventoryItem {
-  id                  String   @id @default(cuid())
+  id                  String            @id @default(cuid())
   physicalInventoryId String
-  zoneId              String?
   productId           String?
   variantId           String?
-  systemQuantity      Float // Cantidad en el sistema
-  countedQuantity     Float? // Cantidad contada físicamente
-  difference          Float? // Diferencia (counted - system)
+  systemQuantity      Float
+  countedQuantity     Float?
+  difference          Float?
   notes               String?
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+  zoneId              String?
+  physicalInventory   PhysicalInventory @relation(fields: [physicalInventoryId], references: [id], onDelete: Cascade)
+  product             Product?          @relation(fields: [productId], references: [id])
+  variant             ProductVariant?   @relation(fields: [variantId], references: [id])
 
-  zone              WarehouseZone?    @relation(fields: [zoneId], references: [id])
-  physicalInventory PhysicalInventory @relation(fields: [physicalInventoryId], references: [id], onDelete: Cascade)
-  product           Product?          @relation(fields: [productId], references: [id])
-  variant           ProductVariant?   @relation(fields: [variantId], references: [id])
-
-  @@unique([physicalInventoryId, zoneId, productId, variantId])
   @@index([physicalInventoryId])
   @@index([productId])
-  @@index([zoneId])
 }
 
 model Customer {
@@ -316,26 +283,23 @@ model Customer {
   taxId              String?
   tags               String?
   notes              String?
-  creditLimit        Float                        @default(0)
-  currentBalance     Float                        @default(0) // Total current debt
   active             Boolean                      @default(true)
-  idType             String? // CC, NIT, CE, TI, PP, etc.
-  isCompany          Boolean                      @default(false) // Natural vs Juridica
-  taxRegime          String? // Responsable de IVA (COMMON) o No Responsable (SIMPLIFIED)
   createdAt          DateTime                     @default(now())
   updatedAt          DateTime                     @updatedAt
   createdById        String?
   updatedById        String?
+  creditLimit        Float                        @default(0)
+  currentBalance     Float                        @default(0)
+  isCompany          Boolean                      @default(false)
+  taxRegime          String?
+  idType             String?
   activities         Activity[]
   invoices           Invoice[]
   leads              Lead[]
+  campaignRecipients MarketingCampaignRecipient[]
   priceListItems     PriceListItem[]
   quotations         Quotation[]
   salesOrders        SalesOrder[]
-  campaignRecipients MarketingCampaignRecipient[]
-  Opportunity        Opportunity[]
-  Quote              Quote[]
-  journalEntryLines  JournalEntryLine[]
 }
 
 model Lead {
@@ -345,7 +309,6 @@ model Lead {
   phone             String?
   email             String?
   company           String?
-  instagram         String? // Usuario o URL de Instagram
   stage             String             @default("NEW")
   value             Float?
   expectedRevenue   Float?
@@ -358,13 +321,14 @@ model Lead {
   updatedAt         DateTime           @updatedAt
   createdById       String?
   updatedById       String?
+  instagram         String?
   activities        Activity[]
-  stageHistory      LeadStageHistory[]
+  chatMessages      ChatMessage[]
   assignedTo        User?              @relation("LeadAssignedTo", fields: [assignedToId], references: [id])
   createdBy         User?              @relation("LeadCreatedBy", fields: [createdById], references: [id])
   customer          Customer?          @relation(fields: [customerId], references: [id])
+  stageHistory      LeadStageHistory[]
   quotations        Quotation[]
-  chatMessages      ChatMessage[]
 }
 
 model LeadStageHistory {
@@ -375,8 +339,8 @@ model LeadStageHistory {
   changedById String?
   changedAt   DateTime @default(now())
   notes       String?
-  lead        Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
   changedBy   User?    @relation("LeadStageHistoryChangedBy", fields: [changedById], references: [id])
+  lead        Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
 
   @@index([leadId])
 }
@@ -406,8 +370,8 @@ model PriceListItem {
   specialPrice Float
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
-  product      Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
   customer     Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  product      Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   @@unique([customerId, productId])
 }
@@ -428,8 +392,8 @@ model Quotation {
   updatedAt   DateTime        @updatedAt
   createdById String?
   updatedById String?
-  lead        Lead?           @relation(fields: [leadId], references: [id])
   customer    Customer        @relation(fields: [customerId], references: [id])
+  lead        Lead?           @relation(fields: [leadId], references: [id])
   items       QuotationItem[]
   salesOrders SalesOrder[]
 }
@@ -445,9 +409,9 @@ model QuotationItem {
   taxRate     Float
   subtotal    Float
   createdAt   DateTime        @default(now())
-  variant     ProductVariant? @relation(fields: [variantId], references: [id])
   product     Product         @relation(fields: [productId], references: [id])
   quotation   Quotation       @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  variant     ProductVariant? @relation(fields: [variantId], references: [id])
 }
 
 model SalesOrder {
@@ -482,167 +446,150 @@ model SalesOrderItem {
   taxRate      Float
   subtotal     Float
   createdAt    DateTime        @default(now())
-  variant      ProductVariant? @relation(fields: [variantId], references: [id])
   product      Product         @relation(fields: [productId], references: [id])
   salesOrder   SalesOrder      @relation(fields: [salesOrderId], references: [id], onDelete: Cascade)
+  variant      ProductVariant? @relation(fields: [variantId], references: [id])
 }
 
 model Invoice {
-  id                      String                          @id @default(cuid())
-  number                  String                          @unique
-  prefix                  String?
-  consecutive             String?
-  salesOrderId            String?
-  customerId              String
-  status                  String                          @default("EMITIDA") // EMITIDA, PAGADA, ANULADA, EN_COBRANZA
-  subtotal                Float                           @default(0)
-  discount                Float                           @default(0)
-  tax                     Float                           @default(0) // Total tax (grand total of all applied taxes)
-  total                   Float                           @default(0)
-  balance                 Float                           @default(0) // Remaining amount to be paid
-  notes                   String?
-  issuedAt                DateTime?
-  dueDate                 DateTime?
-  paidAt                  DateTime?
-  cufe                    String?                         @unique
-  qrCode                  String?
-  electronicStatus        String?
-  electronicSentAt        DateTime?
-  electronicResponse      String?
-  resolutionNumber        String?
-  createdAt               DateTime                        @default(now())
-  updatedAt               DateTime                        @updatedAt
-  createdById             String?
-  updatedById             String?
-  customer                Customer                        @relation(fields: [customerId], references: [id])
-  salesOrder              SalesOrder?                     @relation(fields: [salesOrderId], references: [id])
-  items                   InvoiceItem[]
-  payments                Payment[]
-  returns                 Return[]
-  electronicTransmissions ElectronicInvoiceTransmission[]
-  taxSummary              InvoiceTaxSummary[]
-  createdBy               User?                           @relation("InvoiceCreatedBy", fields: [createdById], references: [id])
-  updatedBy               User?                           @relation("InvoiceUpdatedBy", fields: [updatedById], references: [id])
+  id                 String        @id @default(cuid())
+  number             String        @unique
+  prefix             String?
+  consecutive        String?
+  salesOrderId       String?
+  customerId         String
+  status             String        @default("EMITIDA")
+  subtotal           Float         @default(0)
+  discount           Float         @default(0)
+  tax                Float         @default(0)
+  total              Float         @default(0)
+  notes              String?
+  issuedAt           DateTime?
+  dueDate            DateTime?
+  paidAt             DateTime?
+  cufe               String?       @unique
+  qrCode             String?
+  electronicStatus   String?
+  electronicSentAt   DateTime?
+  electronicResponse String?
+  resolutionNumber   String?
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+  createdById        String?
+  updatedById        String?
+  balance            Float         @default(0)
+  createdBy          User?         @relation("InvoiceCreatedBy", fields: [createdById], references: [id])
+  customer           Customer      @relation(fields: [customerId], references: [id])
+  salesOrder         SalesOrder?   @relation(fields: [salesOrderId], references: [id])
+  updatedBy          User?         @relation("InvoiceUpdatedBy", fields: [updatedById], references: [id])
+  items              InvoiceItem[]
+  payments           Payment[]
+  returns            Return[]
 }
 
 model InvoiceItem {
-  id               String           @id @default(cuid())
+  id               String          @id @default(cuid())
   invoiceId        String
   productId        String
   variantId        String?
   quantity         Float
   unitPrice        Float
-  discount         Float            @default(0)
-  taxRate          Float            @default(0) // Legacy: keep for simplicity or backward compat
+  discount         Float           @default(0)
+  taxRate          Float           @default(0)
   subtotal         Float
-  preparationNotes String? // Customer notes: "sin cebolla", "extra queso"
-  createdAt        DateTime         @default(now())
-  variant          ProductVariant?  @relation(fields: [variantId], references: [id])
-  product          Product          @relation(fields: [productId], references: [id])
-  invoice          Invoice          @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  createdAt        DateTime        @default(now())
+  preparationNotes String?
+  invoice          Invoice         @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  product          Product         @relation(fields: [productId], references: [id])
+  variant          ProductVariant? @relation(fields: [variantId], references: [id])
   returnItems      ReturnItem[]
-  lineTaxes        InvoiceLineTax[]
 }
 
 model TaxRate {
-  id                String              @id @default(cuid())
-  name              String // e.g., "IVA 19%", "ICA Bogotá"
-  type              String // "IVA", "ICA", "WHT" (Retención), etc.
-  rate              Float // e.g., 19.0
-  description       String?
-  active            Boolean             @default(true)
-  createdAt         DateTime            @default(now())
-  updatedAt         DateTime            @updatedAt
-  products          Product[]           @relation("ProductTaxes")
-  invoiceLineTaxes  InvoiceLineTax[]
-  invoiceTaxSummary InvoiceTaxSummary[]
+  id          String   @id @default(cuid())
+  name        String
+  type        String
+  rate        Float
+  description String?
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 model InvoiceLineTax {
-  id            String      @id @default(cuid())
+  id            String  @id @default(cuid())
   invoiceItemId String
   taxRateId     String?
-  baseAmount    Float // Base for tax calculation
-  taxAmount     Float // Resulting tax amount
-  rate          Float // Rate used at that time (snapshot)
-  name          String // Name used at that time (snapshot)
-  invoiceItem   InvoiceItem @relation(fields: [invoiceItemId], references: [id], onDelete: Cascade)
-  taxRate       TaxRate?    @relation(fields: [taxRateId], references: [id])
+  baseAmount    Float
+  taxAmount     Float
+  rate          Float
+  name          String
 
   @@index([invoiceItemId])
   @@index([taxRateId])
 }
 
 model InvoiceTaxSummary {
-  id         String   @id @default(cuid())
+  id         String  @id @default(cuid())
   invoiceId  String
   taxRateId  String?
-  name       String // Snapshot name
-  baseAmount Float // Total base for this tax
-  taxAmount  Float // Total tax for this tax
-  rate       Float // Snapshot rate
-  invoice    Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
-  taxRate    TaxRate? @relation(fields: [taxRateId], references: [id])
+  name       String
+  baseAmount Float
+  taxAmount  Float
+  rate       Float
 
   @@index([invoiceId])
   @@index([taxRateId])
 }
 
 model Payment {
-  id                       String         @id @default(cuid())
+  id                       String   @id @default(cuid())
   invoiceId                String
   amount                   Float
-  method                   String // CASH, CARD, TRANSFER, MERCADOPAGO (Snaphot/Legacy)
-  paymentMethodId          String?
+  method                   String
   reference                String?
   notes                    String?
-  // Mercado Pago fields
-  mercadoPagoPaymentId     String?        @unique // ID del pago en Mercado Pago
-  mercadoPagoPreferenceId  String? // ID de la preferencia de pago
-  mercadoPagoStatus        String? // approved, pending, rejected, cancelled, refunded, charged_back
-  mercadoPagoStatusDetail  String? // Detalle del estado
-  mercadoPagoPaymentMethod String? // credit_card, debit_card, ticket, bank_transfer, etc.
-  mercadoPagoTransactionId String? // ID de la transacción
-  mercadoPagoResponse      String? // JSON con respuesta completa de MP
-  createdAt                DateTime       @default(now())
-  updatedAt                DateTime       @updatedAt
+  createdAt                DateTime @default(now())
   createdById              String?
-  invoice                  Invoice        @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
-  paymentMethod            PaymentMethod? @relation(fields: [paymentMethodId], references: [id])
-  createdBy                User?          @relation("PaymentCreatedBy", fields: [createdById], references: [id])
-
-  @@index([mercadoPagoPaymentId])
-  @@index([mercadoPagoPreferenceId])
+  mercadoPagoPaymentId     String?
+  mercadoPagoPreferenceId  String?
+  mercadoPagoStatus        String?
+  mercadoPagoStatusDetail  String?
+  mercadoPagoPaymentMethod String?
+  mercadoPagoTransactionId String?
+  mercadoPagoResponse      String?
+  updatedAt                DateTime @updatedAt
+  paymentMethodId          String?
+  createdBy                User?    @relation("PaymentCreatedBy", fields: [createdById], references: [id])
+  invoice                  Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
 }
 
 model Return {
-  id          String   @id @default(cuid())
+  id          String          @id @default(cuid())
   invoiceId   String
-  status      String   @default("COMPLETED") // COMPLETED, CANCELLED
+  status      String          @default("COMPLETED")
   reason      String
-  total       Float    @default(0) // Total devuelto (incluye IVA)
-  createdAt   DateTime @default(now())
+  total       Float           @default(0)
+  createdAt   DateTime        @default(now())
   createdById String?
-
-  invoice   Invoice         @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
-  createdBy User?           @relation("ReturnCreatedBy", fields: [createdById], references: [id])
-  items     ReturnItem[]
-  payments  ReturnPayment[]
+  createdBy   User?           @relation("ReturnCreatedBy", fields: [createdById], references: [id])
+  invoice     Invoice         @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  items       ReturnItem[]
+  payments    ReturnPayment[]
 
   @@index([invoiceId])
   @@index([createdAt])
 }
 
 model ReturnItem {
-  id            String   @id @default(cuid())
+  id            String      @id @default(cuid())
   returnId      String
   invoiceItemId String
   quantity      Float
-  total         Float    @default(0) // Total devuelto por ítem (incluye IVA)
-  createdAt     DateTime @default(now())
-
-  return      Return      @relation(fields: [returnId], references: [id], onDelete: Cascade)
-  invoiceItem InvoiceItem @relation(fields: [invoiceItemId], references: [id])
+  total         Float       @default(0)
+  createdAt     DateTime    @default(now())
+  invoiceItem   InvoiceItem @relation(fields: [invoiceItemId], references: [id])
+  return        Return      @relation(fields: [returnId], references: [id], onDelete: Cascade)
 
   @@index([returnId])
   @@index([invoiceItemId])
@@ -657,29 +604,137 @@ model ReturnPayment {
   notes       String?
   createdAt   DateTime @default(now())
   createdById String?
-
-  return    Return @relation(fields: [returnId], references: [id], onDelete: Cascade)
-  createdBy User?  @relation("ReturnPaymentCreatedBy", fields: [createdById], references: [id])
+  createdBy   User?    @relation("ReturnPaymentCreatedBy", fields: [createdById], references: [id])
+  return      Return   @relation(fields: [returnId], references: [id], onDelete: Cascade)
 
   @@index([returnId])
   @@index([createdAt])
 }
 
+model CreditNote {
+  id                 String    @id @default(cuid())
+  number             String    @unique
+  prefix             String?
+  consecutive        String?
+  invoiceId          String
+  returnId           String?   @unique
+  type               String
+  referenceCode      String
+  affectedPeriod     String?
+  subtotal           Float     @default(0)
+  discount           Float     @default(0)
+  tax                Float     @default(0)
+  total              Float     @default(0)
+  cufe               String?   @unique
+  qrCode             String?
+  electronicStatus   String?
+  electronicSentAt   DateTime?
+  electronicResponse String?
+  resolutionNumber   String?
+  reason             String
+  notes              String?
+  status             String    @default("PENDING")
+  issuedAt           DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  createdById        String?
+  alegraId           String?
+
+  @@index([invoiceId])
+  @@index([status])
+  @@index([createdAt])
+  @@index([electronicStatus])
+}
+
+model CreditNoteItem {
+  id            String   @id @default(cuid())
+  creditNoteId  String
+  invoiceItemId String?
+  productId     String
+  variantId     String?
+  description   String
+  quantity      Float
+  unitPrice     Float
+  discount      Float    @default(0)
+  taxRate       Float    @default(0)
+  subtotal      Float
+  createdAt     DateTime @default(now())
+
+  @@index([creditNoteId])
+  @@index([invoiceItemId])
+  @@index([productId])
+}
+
+model CreditNoteLineTax {
+  id               String  @id @default(cuid())
+  creditNoteItemId String
+  taxRateId        String?
+  baseAmount       Float
+  taxAmount        Float
+  rate             Float
+  name             String
+
+  @@index([creditNoteItemId])
+  @@index([taxRateId])
+}
+
+model CreditNoteTaxSummary {
+  id           String  @id @default(cuid())
+  creditNoteId String
+  taxRateId    String?
+  name         String
+  baseAmount   Float
+  taxAmount    Float
+  rate         Float
+
+  @@index([creditNoteId])
+  @@index([taxRateId])
+}
+
+model CreditNoteTransmission {
+  id            String    @id @default(cuid())
+  creditNoteId  String    @unique
+  provider      String
+  externalId    String?
+  status        String    @default("PENDING")
+  xmlGenerated  Boolean   @default(false)
+  xmlContent    String?
+  transmittedAt DateTime?
+  responseData  String?
+  errorMessage  String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([creditNoteId])
+  @@index([status])
+}
+
+model CreditNoteEvent {
+  id             String   @id @default(cuid())
+  transmissionId String
+  event          String
+  message        String?
+  data           String?
+  createdAt      DateTime @default(now())
+
+  @@index([transmissionId])
+  @@index([event])
+}
+
 model Supplier {
-  id                String             @id @default(cuid())
-  name              String
-  phone             String?
-  email             String?
-  address           String?
-  taxId             String?
-  notes             String?
-  active            Boolean            @default(true)
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
-  createdById       String?
-  updatedById       String?
-  purchaseOrders    PurchaseOrder[]
-  journalEntryLines JournalEntryLine[]
+  id             String          @id @default(cuid())
+  name           String
+  phone          String?
+  email          String?
+  address        String?
+  taxId          String?
+  notes          String?
+  active         Boolean         @default(true)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  createdById    String?
+  updatedById    String?
+  purchaseOrders PurchaseOrder[]
 }
 
 model MarketingCampaign {
@@ -687,14 +742,14 @@ model MarketingCampaign {
   name        String
   subject     String
   htmlContent String
-  status      String                       @default("DRAFT") // DRAFT, SCHEDULED, SENDING, SENT, CANCELLED
+  status      String                       @default("DRAFT")
   scheduledAt DateTime?
   sentAt      DateTime?
   createdAt   DateTime                     @default(now())
   updatedAt   DateTime                     @updatedAt
   createdById String?
-  recipients  MarketingCampaignRecipient[]
   createdBy   User?                        @relation("MarketingCampaignCreatedBy", fields: [createdById], references: [id])
+  recipients  MarketingCampaignRecipient[]
 }
 
 model MarketingCampaignRecipient {
@@ -702,13 +757,13 @@ model MarketingCampaignRecipient {
   campaignId String
   customerId String?
   email      String
-  status     String            @default("PENDING") // PENDING, SENT, FAILED, BOUNCED
+  status     String            @default("PENDING")
   sentAt     DateTime?
   error      String?
   createdAt  DateTime          @default(now())
-  campaign   MarketingCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  customer   Customer?         @relation(fields: [customerId], references: [id], onDelete: SetNull)
   retryCount Int               @default(0)
+  campaign   MarketingCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  customer   Customer?         @relation(fields: [customerId], references: [id])
 
   @@index([campaignId])
   @@index([customerId])
@@ -752,9 +807,9 @@ model PurchaseOrderItem {
   taxRate         Float
   subtotal        Float
   createdAt       DateTime        @default(now())
-  variant         ProductVariant? @relation(fields: [variantId], references: [id])
   product         Product         @relation(fields: [productId], references: [id])
   purchaseOrder   PurchaseOrder   @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  variant         ProductVariant? @relation(fields: [variantId], references: [id])
 }
 
 model GoodsReceipt {
@@ -768,8 +823,8 @@ model GoodsReceipt {
   updatedAt       DateTime           @updatedAt
   createdById     String?
   updatedById     String?
-  warehouse       Warehouse          @relation(fields: [warehouseId], references: [id])
   purchaseOrder   PurchaseOrder      @relation(fields: [purchaseOrderId], references: [id])
+  warehouse       Warehouse          @relation(fields: [warehouseId], references: [id])
   items           GoodsReceiptItem[]
 }
 
@@ -782,9 +837,9 @@ model GoodsReceiptItem {
   quantity            Float
   unitCost            Float
   createdAt           DateTime        @default(now())
-  variant             ProductVariant? @relation(fields: [variantId], references: [id])
-  product             Product         @relation(fields: [productId], references: [id])
   goodsReceipt        GoodsReceipt    @relation(fields: [goodsReceiptId], references: [id], onDelete: Cascade)
+  product             Product         @relation(fields: [productId], references: [id])
+  variant             ProductVariant? @relation(fields: [variantId], references: [id])
 }
 
 model CashShift {
@@ -801,7 +856,6 @@ model CashShift {
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
   movements    CashMovement[]
-  summaryItems ShiftSummary[]
   user         User           @relation(fields: [userId], references: [id])
 }
 
@@ -813,23 +867,20 @@ model CashMovement {
   reason      String?
   createdAt   DateTime  @default(now())
   createdById String
-  createdBy   User      @relation(fields: [createdById], references: [id])
   cashShift   CashShift @relation(fields: [cashShiftId], references: [id], onDelete: Cascade)
+  createdBy   User      @relation(fields: [createdById], references: [id])
 }
 
 model PaymentMethod {
   id        String   @id @default(cuid())
   name      String   @unique
-  type      String   @default("ELECTRONIC") // CASH, ELECTRONIC, CARD, TRANSFER
+  type      String   @default("ELECTRONIC")
   active    Boolean  @default(true)
-  color     String? // Hex color code (e.g. #3b82f6)
-  icon      String? // Lucide icon name (e.g. credit-card)
-  config    String? // JSON configuration string
+  config    String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  payments     Payment[]
-  summaryItems ShiftSummary[]
+  color     String?
+  icon      String?
 }
 
 model ShiftSummary {
@@ -839,30 +890,22 @@ model ShiftSummary {
   expectedAmount  Float  @default(0)
   actualAmount    Float?
 
-  shift         CashShift     @relation(fields: [shiftId], references: [id], onDelete: Cascade)
-  paymentMethod PaymentMethod @relation(fields: [paymentMethodId], references: [id])
-
   @@unique([shiftId, paymentMethodId])
 }
 
-// Multi-tenant models
 model Tenant {
-  id                 String              @id @default(cuid())
-  name               String
-  slug               String              @unique
-  email              String?
-  phone              String?
-  address            String?
-  databaseUrl        String              @unique // URL de la base de datos específica del tenant
-  active             Boolean             @default(true)
-  createdAt          DateTime            @default(now())
-  updatedAt          DateTime            @updatedAt
-  subscriptions      Subscription[]
-  settings           TenantSettings?
-  accountingAccounts AccountingAccount[]
-  journalEntries     JournalEntry[]
-  accountingPeriods  AccountingPeriod[]
-  accountingConfig   AccountingConfig?
+  id            String          @id @default(cuid())
+  name          String
+  slug          String          @unique
+  email         String?
+  phone         String?
+  address       String?
+  databaseUrl   String          @unique
+  active        Boolean         @default(true)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  subscriptions Subscription?
+  settings      TenantSettings?
 }
 
 model Plan {
@@ -871,8 +914,8 @@ model Plan {
   description   String?
   price         Float
   currency      String         @default("COP")
-  interval      String // "monthly" | "annual"
-  features      String? // JSON string con las características
+  interval      String
+  features      String?
   active        Boolean        @default(true)
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
@@ -881,97 +924,78 @@ model Plan {
 
 model Subscription {
   id                       String    @id @default(cuid())
-  tenantId                 String    @unique // Un tenant solo puede tener una suscripción activa
+  tenantId                 String    @unique
   planId                   String
-  status                   String // "active" | "cancelled" | "expired" | "trial" | "pending_payment"
+  status                   String
   startDate                DateTime
   endDate                  DateTime?
   trialEndDate             DateTime?
   autoRenew                Boolean   @default(true)
-  // Mercado Pago fields
-  mercadoPagoPaymentId     String?   @unique // ID del pago en Mercado Pago
-  mercadoPagoPreferenceId  String? // ID de la preferencia de pago
-  mercadoPagoStatus        String? // approved, pending, rejected, cancelled, refunded, charged_back
-  mercadoPagoStatusDetail  String? // Detalle del estado
-  mercadoPagoPaymentMethod String? // credit_card, debit_card, ticket, bank_transfer, etc.
-  mercadoPagoTransactionId String? // ID de la transacción
-  mercadoPagoResponse      String? // JSON con respuesta completa de MP
   createdAt                DateTime  @default(now())
   updatedAt                DateTime  @updatedAt
-  tenant                   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  mercadoPagoPaymentId     String?
+  mercadoPagoPreferenceId  String?
+  mercadoPagoStatus        String?
+  mercadoPagoStatusDetail  String?
+  mercadoPagoPaymentMethod String?
+  mercadoPagoTransactionId String?
+  mercadoPagoResponse      String?
   plan                     Plan      @relation(fields: [planId], references: [id])
-
-  @@index([mercadoPagoPaymentId])
-  @@index([mercadoPagoPreferenceId])
+  tenant                   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 }
 
 model TenantSettings {
-  id                         String    @id @default(cuid())
-  tenantId                   String    @unique
-  // Facturación Electrónica
-  electronicBillingProvider  String? // "FEG" | "CUSTOM" | "DIAN_DIRECT"
-  electronicBillingApiUrl    String?
-  electronicBillingApiKey    String?
-  companyNit                 String?
-  companyName                String?
-  companyAddress             String?
-  companyPhone               String?
-  companyEmail               String?
-  billingResolutionNumber    String?
-  billingResolutionPrefix    String?
-  billingResolutionFrom      String?
-  billingResolutionTo        String?
-  billingResolutionValidFrom DateTime?
-  billingResolutionValidTo   DateTime?
-
-  // DIAN Direct Fields
-  softwareId   String?
-  softwarePin  String?
-  technicalKey String?
-
-  // Alegra Fields
+  id                          String    @id @default(cuid())
+  tenantId                    String    @unique
+  electronicBillingProvider   String?
+  electronicBillingApiUrl     String?
+  electronicBillingApiKey     String?
+  companyNit                  String?
+  companyName                 String?
+  companyAddress              String?
+  companyPhone                String?
+  companyEmail                String?
+  billingResolutionNumber     String?
+  billingResolutionPrefix     String?
+  billingResolutionFrom       String?
+  billingResolutionTo         String?
+  billingResolutionValidFrom  DateTime?
+  billingResolutionValidTo    DateTime?
+  subscriptionTrialDays       Int?      @default(14)
+  subscriptionGracePeriodDays Int?      @default(7)
+  subscriptionAutoRenew       Boolean?  @default(true)
+  timezone                    String?   @default("America/Bogota")
+  currency                    String?   @default("COP")
+  dateFormat                  String?   @default("DD/MM/YYYY")
+  timeFormat                  String?   @default("24h")
+  language                    String?   @default("es")
+  invoicePrefix               String?   @default("FV")
+  invoiceNumberFormat         String?   @default("000000")
+  quotationPrefix             String?   @default("COT")
+  quotationNumberFormat       String?   @default("000000")
+  purchaseOrderPrefix         String?   @default("OC")
+  purchaseOrderNumberFormat   String?   @default("000000")
+  customSettings              String?
+  createdAt                   DateTime  @default(now())
+  updatedAt                   DateTime  @updatedAt
+  onboardingCompleted         Boolean?  @default(false)
+  onboardingUserName          String?
+  onboardingCompanyName       String?
+  mercadoPagoAccessToken      String?
+  mercadoPagoPublicKey        String?
+  mercadoPagoEnabled          Boolean?  @default(false)
+  mercadoPagoWebhookUrl       String?
+  metaBusinessId              String?
+  metaAccessToken             String?
+  whatsappPhoneNumberId       String?
+  instagramAccountId          String?
+  enableRestaurantMode        Boolean?  @default(false)
   alegraEmail                 String?
   alegraToken                 String?
-  // Suscripciones
-  subscriptionTrialDays       Int?     @default(14) // Días de prueba
-  subscriptionGracePeriodDays Int?     @default(7) // Días de gracia después de expiración
-  subscriptionAutoRenew       Boolean? @default(true)
-  // Configuraciones Generales
-  timezone                    String?  @default("America/Bogota")
-  currency                    String?  @default("COP")
-  dateFormat                  String?  @default("DD/MM/YYYY")
-  timeFormat                  String?  @default("24h") // "12h" | "24h"
-  language                    String?  @default("es")
-  invoicePrefix               String?  @default("FV")
-  invoiceNumberFormat         String?  @default("000000")
-  quotationPrefix             String?  @default("COT")
-  quotationNumberFormat       String?  @default("000000")
-  purchaseOrderPrefix         String?  @default("OC")
-  purchaseOrderNumberFormat   String?  @default("000000")
-  // Configuraciones adicionales (JSON para flexibilidad)
-  customSettings              String? // JSON string con configuraciones personalizadas
-  // Onboarding
-  onboardingCompleted         Boolean? @default(false)
-  onboardingUserName          String? // Nombre del usuario recopilado en onboarding
-  onboardingCompanyName       String? // Nombre de la empresa recopilado en onboarding
-  // Restaurant Mode
-  enableRestaurantMode        Boolean? @default(false)
-
-  // Mercado Pago
-  mercadoPagoAccessToken String? // Access Token de Mercado Pago
-  mercadoPagoPublicKey   String? // Public Key de Mercado Pago
-  mercadoPagoEnabled     Boolean? @default(false) // Habilitar pagos con Mercado Pago
-  mercadoPagoWebhookUrl  String? // URL del webhook configurado en MP
-
-  // Meta (WhatsApp / Instagram)
-  metaBusinessId        String? // ID del negocio en Meta
-  metaAccessToken       String? // Token de acceso permanente (System User)
-  whatsappPhoneNumberId String? // ID del número de teléfono de WhatsApp
-  instagramAccountId    String? // ID de la cuenta de Instagram vinculada
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  softwareId                  String?
+  softwarePin                 String?
+  technicalKey                String?
+  tenant                      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@index([tenantId])
 }
@@ -979,16 +1003,15 @@ model TenantSettings {
 model ChatMessage {
   id         String   @id @default(cuid())
   leadId     String
-  direction  String // "INBOUND" | "OUTBOUND"
-  channel    String // "WHATSAPP" | "INSTAGRAM"
-  type       String   @default("text") // "text", "image", "document", etc.
-  content    String // Texto del mensaje
-  mediaUrl   String? // URL si es imagen/doc
-  externalId String?  @unique // ID del mensaje en Meta (wamid...)
-  status     String   @default("SENT") // "SENT", "DELIVERED", "READ", "FAILED"
+  direction  String
+  channel    String
+  type       String   @default("text")
+  content    String
+  mediaUrl   String?
+  externalId String?  @unique
+  status     String   @default("SENT")
   createdAt  DateTime @default(now())
-
-  lead Lead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  lead       Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
 
   @@index([leadId])
   @@index([externalId])
@@ -1000,9 +1023,9 @@ model ElectronicInvoiceProviderConfig {
   provider             String    @default("ALEGRA")
   alegraEmail          String
   alegraTokenEncrypted String
-  status               String    @default("disconnected") // disconnected, connected, invalid
+  status               String    @default("disconnected")
   lastCheckedAt        DateTime?
-  companyInfo          Json? // Resumen de la empresa (nombre/id)
+  companyInfo          Json?
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
 
@@ -1014,16 +1037,13 @@ model ElectronicInvoiceTransmission {
   tenantId         String
   invoiceId        String
   provider         String    @default("ALEGRA")
-  status           String    @default("QUEUED") // NOT_CONFIGURED, QUEUED, SENT_TO_ALEGRA, ALEGRA_ACCEPTED, ALEGRA_REJECTED, ERROR
+  status           String    @default("QUEUED")
   attemptCount     Int       @default(0)
   lastAttemptAt    DateTime?
   alegraInvoiceId  String?
   lastErrorMessage String?
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
-
-  invoice Invoice                  @relation(fields: [invoiceId], references: [id])
-  events  ElectronicInvoiceEvent[]
 
   @@unique([tenantId, invoiceId])
   @@index([tenantId, status])
@@ -1034,22 +1054,19 @@ model ElectronicInvoiceEvent {
   id               String   @id @default(cuid())
   tenantId         String
   transmissionId   String
-  eventType        String // QUEUED, REQUEST_SENT, RESPONSE_OK, RESPONSE_ERR, RETRY, FINAL
+  eventType        String
   payloadSanitized Json?
   createdAt        DateTime @default(now())
-
-  transmission ElectronicInvoiceTransmission @relation(fields: [transmissionId], references: [id])
 
   @@index([transmissionId, createdAt])
 }
 
 model Unit {
-  id        String   @id @default(cuid())
-  name      String
-  symbol    String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
+  id              String           @id @default(cuid())
+  name            String
+  symbol          String
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
   recipeItems     RecipeItem[]
   conversionsFrom UnitConversion[] @relation("FromUnit")
   conversionsTo   UnitConversion[] @relation("ToUnit")
@@ -1062,23 +1079,19 @@ model UnitConversion {
   multiplier Float
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
-
-  fromUnit Unit @relation("FromUnit", fields: [fromUnitId], references: [id], onDelete: Cascade)
-  toUnit   Unit @relation("ToUnit", fields: [toUnitId], references: [id], onDelete: Cascade)
-
-  @@unique([fromUnitId, toUnitId])
+  fromUnit   Unit     @relation("FromUnit", fields: [fromUnitId], references: [id], onDelete: Cascade)
+  toUnit     Unit     @relation("ToUnit", fields: [toUnitId], references: [id], onDelete: Cascade)
 }
 
 model Recipe {
-  id        String   @id @default(cuid())
-  productId String   @unique
-  yield     Float    @default(1)
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  product Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
-  items   RecipeItem[]
+  id        String       @id @default(cuid())
+  productId String       @unique
+  yield     Float        @default(1)
+  active    Boolean      @default(true)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  product   Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
+  items     RecipeItem[]
 }
 
 model RecipeItem {
@@ -1089,34 +1102,29 @@ model RecipeItem {
   unitId       String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
-
-  recipe     Recipe  @relation(fields: [recipeId], references: [id], onDelete: Cascade)
-  ingredient Product @relation("Ingredient", fields: [ingredientId], references: [id])
-  unit       Unit?   @relation(fields: [unitId], references: [id])
+  ingredient   Product  @relation("Ingredient", fields: [ingredientId], references: [id])
+  recipe       Recipe   @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  unit         Unit?    @relation(fields: [unitId], references: [id])
 
   @@index([recipeId])
   @@index([ingredientId])
+  @@index([recipeId], map: "ri_ rid_idx")
+  @@index([recipeId], map: "ri_recipe_idx")
 }
 
-// ============================================
-// CRM MODELS
-// ============================================
-
 model Campaign {
-  id            String        @id @default(cuid())
-  name          String
-  type          String // EMAIL, SMS, SOCIAL_MEDIA, EVENT
-  status        String        @default("DRAFT") // DRAFT, ACTIVE, PAUSED, COMPLETED
-  startDate     DateTime?
-  endDate       DateTime?
-  budget        Float?
-  spent         Float?        @default(0)
-  description   String?
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
-  createdById   String?
-  opportunities Opportunity[]
-  createdBy     User?         @relation("CampaignCreatedBy", fields: [createdById], references: [id])
+  id          String    @id @default(cuid())
+  name        String
+  type        String
+  status      String    @default("DRAFT")
+  startDate   DateTime?
+  endDate     DateTime?
+  budget      Float?
+  spent       Float?    @default(0)
+  description String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  createdById String?
 }
 
 model Opportunity {
@@ -1125,8 +1133,8 @@ model Opportunity {
   campaignId        String?
   title             String
   value             Float
-  stage             String    @default("LEAD") // LEAD, QUALIFIED, PROPOSAL, NEGOTIATION, CLOSED_WON, CLOSED_LOST
-  probability       Int       @default(0) // 0-100
+  stage             String    @default("LEAD")
+  probability       Int       @default(0)
   expectedCloseDate DateTime?
   closedDate        DateTime?
   notes             String?
@@ -1134,11 +1142,6 @@ model Opportunity {
   updatedAt         DateTime  @updatedAt
   createdById       String?
   assignedToId      String?
-  customer          Customer  @relation(fields: [customerId], references: [id])
-  campaign          Campaign? @relation(fields: [campaignId], references: [id])
-  createdBy         User?     @relation("OpportunityCreatedBy", fields: [createdById], references: [id])
-  assignedTo        User?     @relation("OpportunityAssignedTo", fields: [assignedToId], references: [id])
-  quotes            Quote[]
 
   @@index([customerId])
   @@index([campaignId])
@@ -1147,24 +1150,20 @@ model Opportunity {
 }
 
 model Quote {
-  id            String       @id @default(cuid())
-  quoteNumber   String       @unique
+  id            String    @id @default(cuid())
+  quoteNumber   String    @unique
   customerId    String
   opportunityId String?
-  status        String       @default("DRAFT") // DRAFT, SENT, ACCEPTED, REJECTED, EXPIRED
+  status        String    @default("DRAFT")
   validUntil    DateTime?
-  subtotal      Float        @default(0)
-  discount      Float        @default(0)
-  tax           Float        @default(0)
-  total         Float        @default(0)
+  subtotal      Float     @default(0)
+  discount      Float     @default(0)
+  tax           Float     @default(0)
+  total         Float     @default(0)
   notes         String?
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
   createdById   String?
-  customer      Customer     @relation(fields: [customerId], references: [id])
-  opportunity   Opportunity? @relation(fields: [opportunityId], references: [id])
-  createdBy     User?        @relation("QuoteCreatedBy", fields: [createdById], references: [id])
-  items         QuoteItem[]
 
   @@index([customerId])
   @@index([opportunityId])
@@ -1172,183 +1171,128 @@ model Quote {
 }
 
 model QuoteItem {
-  id          String   @id @default(cuid())
+  id          String  @id @default(cuid())
   quoteId     String
   productId   String?
   description String
   quantity    Float
   unitPrice   Float
-  discount    Float    @default(0)
-  taxRate     Float    @default(0)
+  discount    Float   @default(0)
+  taxRate     Float   @default(0)
   subtotal    Float
-  quote       Quote    @relation(fields: [quoteId], references: [id], onDelete: Cascade)
-  product     Product? @relation(fields: [productId], references: [id])
 
   @@index([quoteId])
   @@index([productId])
 }
 
-// ============================================
-// PAYROLL MODELS
-// ============================================
-
 model Employee {
-  id         String   @id @default(cuid())
-  userId     String?  @unique // Optional link to system user
-  firstName  String
-  lastName   String
-  documentId String   @unique
-  email      String?
-  phone      String?
-  address    String?
-  hireDate   DateTime
-  baseSalary Float
-  status     String   @default("ACTIVE") // ACTIVE, INACTIVE, TERMINATED
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-
+  id           String        @id @default(cuid())
+  userId       String?       @unique
+  firstName    String
+  lastName     String
+  documentId   String        @unique
+  email        String?
+  phone        String?
+  address      String?
+  hireDate     DateTime
+  baseSalary   Float
+  status       String        @default("ACTIVE")
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
   payrollItems PayrollItem[]
 }
 
 model PayrollRun {
-  id          String    @id @default(cuid())
+  id          String        @id @default(cuid())
   startDate   DateTime
   endDate     DateTime
   paymentDate DateTime?
-  status      String    @default("DRAFT") // DRAFT, APPROVED, PAID
-  total       Float     @default(0)
+  status      String        @default("DRAFT")
+  total       Float         @default(0)
   notes       String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-
-  items PayrollItem[]
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  items       PayrollItem[]
 }
 
 model PayrollItem {
-  id           String   @id @default(cuid())
+  id           String     @id @default(cuid())
   payrollRunId String
   employeeId   String
-  type         String // SALARY, BONUS, COMMISSION, DEDUCTION
+  type         String
   description  String?
   amount       Float
-  createdAt    DateTime @default(now())
-
-  payrollRun PayrollRun @relation(fields: [payrollRunId], references: [id], onDelete: Cascade)
-  employee   Employee   @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  createdAt    DateTime   @default(now())
+  employee     Employee   @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  payrollRun   PayrollRun @relation(fields: [payrollRunId], references: [id], onDelete: Cascade)
 
   @@index([payrollRunId])
   @@index([employeeId])
 }
 
-// --- ACCOUNTING MODULE ---
-
 model AccountingAccount {
-  id          String              @id @default(cuid())
-  tenantId    String
-  code        String // PUC Code (e.g. 110505)
-  name        String
-  description String?
-  type        String // ASSET, LIABILITY, EQUITY, INCOME, EXPENSE, COST_SALES, COST_PRODUCTION, MEMORANDUM_DEBIT, MEMORANDUM_CREDIT
-  level       Int                 @default(1)
-  parentId    String?
-  parent      AccountingAccount?  @relation("AccountHierarchy", fields: [parentId], references: [id], onDelete: Restrict)
-  children    AccountingAccount[] @relation("AccountHierarchy")
-
-  // Tags for automation: CASH, BANK, VAT_GENERATED, VAT_DEDUCTIBLE, RETENTION_SOURCE, RETENTION_IVA, RETENTION_ICA
-  tags String[] @default([])
-
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relations
+  id           String             @id @default(cuid())
+  code         String
+  name         String
+  type         String
+  active       Boolean            @default(true)
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+  description  String?
+  level        Int                @default(1)
+  parentId     String?
+  tags         String[]           @default([])
+  tenantId     String
   journalLines JournalEntryLine[]
-  tenant       Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-
-  // Config relations (as reference account for different purposes)
-  configAsCash               AccountingConfig[] @relation("CashAccount")
-  configAsBank               AccountingConfig[] @relation("BankAccount")
-  configAsAccountsReceivable AccountingConfig[] @relation("AccountsReceivable")
-  configAsAccountsPayable    AccountingConfig[] @relation("AccountsPayable")
-  configAsInventory          AccountingConfig[] @relation("InventoryAccount")
-  configAsSalesRevenue       AccountingConfig[] @relation("SalesRevenue")
-  configAsVATGenerated       AccountingConfig[] @relation("VATGenerated")
-  configAsVATDeductible      AccountingConfig[] @relation("VATDeductible")
-  configAsCostOfSales        AccountingConfig[] @relation("CostOfSales")
 
   @@unique([tenantId, code])
   @@index([tenantId, type])
 }
 
 model JournalEntry {
-  id          String   @id @default(cuid())
-  tenantId    String
-  number      String // Consecutivo único por tenant/año?
-  date        DateTime
-  period      String // YYYY-MM para facilitar cierres
-  type        String // INCOME, EXPENSE, JOURNAL, ADJUSTMENT, OPENING, CLOSING
-  description String
-  status      String   @default("DRAFT") // DRAFT, APPROVED, ANNULLED
-
-  // Origen
-  reference   String? // Referencia externa (Fac #123)
-  sourceDocId String? // ID Documento interno (InvoiceId, etc)
-  sourceType  String? // INVOICE, BILL, PAYMENT, etc.
-
-  // Totales (Denormalized for performance)
-  totalDebit  Float @default(0)
-  totalCredit Float @default(0)
-
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  id           String             @id @default(cuid())
+  date         DateTime
+  description  String
+  reference    String?
+  status       String             @default("DRAFT")
   createdById  String?
-  updatedById  String?
-  approvedById String?
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
   approvedAt   DateTime?
+  approvedById String?
+  number       String
+  period       String
+  sourceDocId  String?
+  sourceType   String?
+  tenantId     String
+  totalCredit  Float              @default(0)
+  totalDebit   Float              @default(0)
+  type         String
+  updatedById  String?
+  createdBy    User?              @relation("CreatedJournalEntries", fields: [createdById], references: [id])
+  lines        JournalEntryLine[]
 
-  // Relations
-  lines     JournalEntryLine[]
-  tenant    Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  createdBy User?              @relation("CreatedJournalEntries", fields: [createdById], references: [id])
-
-  @@unique([tenantId, number]) // Ensure unique numbering
+  @@unique([tenantId, number])
   @@index([tenantId, period])
   @@index([tenantId, date])
   @@index([tenantId, status])
 }
 
 model JournalEntryLine {
-  id             String  @id @default(cuid())
+  id             String            @id @default(cuid())
   journalEntryId String
   accountId      String
-  description    String? // Detalle de línea
-
-  debit  Float @default(0)
-  credit Float @default(0)
-
-  // Tercero (Beneficiario/Cliente/Proveedor)
-  thirdPartyId String? // Puede ser Customer, Supplier, Employee (User) - Simplicidad: String Ref o relacion polimórfica (Prisma no soporta poli real)
-  // En este sistema tenemos Customer y Supplier separados. 
-  // Opcion simple: Guardar ID y Name del tercero denormalizado o relacionar a un modelo "Entity" unificado si existiera.
-  // Por ahora usaremos un campo de texto para ID/Nombre o relacion opcional si es cliente/proveedor.
-  // RELACION: Vamos a probar relacionar con Customer y Supplier opcionalmente. 
-  // Si no es ninguno (ej. empleado u otro), se guarda en texto o se crea un modelo ThirdParty unificado.
-  // DADO EL REQUISITO "SIMPLE": Usaremos campos especificos.
-
-  thirdPartyName String? // Nombre snapshot
-  thirdPartyNit  String? // NIT/CC snapshot
-
-  // Opcional: Relations directas para integridad
-  customerId String?
-  customer   Customer? @relation(fields: [customerId], references: [id])
-  supplierId String?
-  supplier   Supplier? @relation(fields: [supplierId], references: [id])
-
-  createdAt DateTime @default(now())
-
-  // Relations
-  journalEntry JournalEntry      @relation(fields: [journalEntryId], references: [id], onDelete: Cascade)
-  account      AccountingAccount @relation(fields: [accountId], references: [id], onDelete: Restrict)
+  description    String?
+  debit          Float             @default(0)
+  credit         Float             @default(0)
+  createdAt      DateTime          @default(now())
+  customerId     String?
+  supplierId     String?
+  thirdPartyId   String?
+  thirdPartyName String?
+  thirdPartyNit  String?
+  account        AccountingAccount @relation(fields: [accountId], references: [id])
+  journalEntry   JournalEntry      @relation(fields: [journalEntryId], references: [id], onDelete: Cascade)
 
   @@index([journalEntryId])
   @@index([accountId])
@@ -1363,61 +1307,44 @@ model AccountingPeriod {
   closedAt   DateTime?
   closedById String?
 
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-
   @@unique([tenantId, year, month])
 }
 
 model AccountingAuditLog {
   id         String   @id @default(cuid())
   tenantId   String
-  entityType String // JOURNAL_ENTRY, PERIOD, ACCOUNT
+  entityType String
   entityId   String
-  action     String // CREATED, APPROVED, ANNULLED, PERIOD_CLOSED, PERIOD_REOPENED
+  action     String
   userId     String
-  changes    String? // JSON snapshot of changes
+  changes    String?
   createdAt  DateTime @default(now())
-
-  user User @relation("AccountingAuditLogs", fields: [userId], references: [id])
 
   @@index([tenantId, entityType, entityId])
   @@index([tenantId, createdAt])
 }
 
 model AccountingConfig {
-  id       String @id @default(cuid())
-  tenantId String @unique
+  id                   String   @id @default(cuid())
+  tenantId             String   @unique
+  cashAccountId        String?
+  bankAccountId        String?
+  accountsReceivableId String?
+  accountsPayableId    String?
+  inventoryAccountId   String?
+  salesRevenueId       String?
+  vatGeneratedId       String?
+  vatDeductibleId      String?
+  costOfSalesId        String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+}
 
-  // Cuentas de Balance
-  cashAccountId        String? // Caja General (110505)
-  bankAccountId        String? // Bancos (1110)
-  accountsReceivableId String? // Clientes (1305)
-  accountsPayableId    String? // Proveedores (2205)
-  inventoryAccountId   String? // Inventarios (1435)
+model ProductTaxes {
+  A String
+  B String
 
-  // Cuentas de Ingresos
-  salesRevenueId String? // Ingresos por Ventas (4135)
-
-  // Cuentas de IVA
-  vatGeneratedId  String? // IVA Generado (2408)
-  vatDeductibleId String? // IVA Descontable (240805)
-
-  // Cuentas de Costos
-  costOfSalesId String? // Costo de Ventas (6135)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-
-  // Optional relations for referential integrity
-  cashAccount        AccountingAccount? @relation("CashAccount", fields: [cashAccountId], references: [id])
-  bankAccount        AccountingAccount? @relation("BankAccount", fields: [bankAccountId], references: [id])
-  accountsReceivable AccountingAccount? @relation("AccountsReceivable", fields: [accountsReceivableId], references: [id])
-  accountsPayable    AccountingAccount? @relation("AccountsPayable", fields: [accountsPayableId], references: [id])
-  inventoryAccount   AccountingAccount? @relation("InventoryAccount", fields: [inventoryAccountId], references: [id])
-  salesRevenue       AccountingAccount? @relation("SalesRevenue", fields: [salesRevenueId], references: [id])
-  vatGenerated       AccountingAccount? @relation("VATGenerated", fields: [vatGeneratedId], references: [id])
-  vatDeductible      AccountingAccount? @relation("VATDeductible", fields: [vatDeductibleId], references: [id])
-  costOfSales        AccountingAccount? @relation("CostOfSales", fields: [costOfSalesId], references: [id])
+  @@unique([A, B], map: "_ProductTaxes_AB_unique")
+  @@index([B], map: "_ProductTaxes_B_index")
+  @@map("_ProductTaxes")
 }

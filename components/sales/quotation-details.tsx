@@ -8,7 +8,7 @@ import { formatCurrency, formatDate } from '@/lib/utils'
 import { useToast } from '@/components/ui/toast'
 import { LoadingOverlay } from '@/components/ui/loading-overlay'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
-import { FileText, Phone, MapPin, CheckCircle } from 'lucide-react'
+import { FileText, Phone, MapPin, CheckCircle, Send } from 'lucide-react'
 import { Mail } from 'iconoir-react'
 
 export function QuotationDetails({ quotation }: { quotation: any }) {
@@ -119,210 +119,213 @@ export function QuotationDetails({ quotation }: { quotation: any }) {
     <>
       {sending && <LoadingOverlay message="Enviando cotización..." />}
       <div className="space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-start">
-        <div>
-          <h2 className="text-2xl font-bold">{quotation.number}</h2>
-          <div className="mt-2">
-            <span className={`px-3 py-1 text-sm rounded ${getStatusColor(quotation.status)}`}>
-              {getStatusLabel(quotation.status)}
-            </span>
+        {/* Header */}
+        <div className="flex justify-between items-start">
+          <div>
+            <h2 className="text-2xl font-bold">{quotation.number}</h2>
+            <div className="mt-2">
+              <span className={`px-3 py-1 text-sm rounded ${getStatusColor(quotation.status)}`}>
+                {getStatusLabel(quotation.status)}
+              </span>
+            </div>
           </div>
-        </div>
-        <div className="flex gap-2">
-          {quotation.status === 'DRAFT' && (
-            <Button
-              variant="outline"
-              onClick={() => openSendConfirm('send')}
-              disabled={sendMutation.isPending}
-            >
-              <Mail className="h-4 w-4 mr-2" />
-              {sendMutation.isPending ? 'Enviando...' : 'Enviar por email'}
-            </Button>
-          )}
-          {(quotation.status === 'SENT' || quotation.status === 'ACCEPTED') && (
-            <>
+          <div className="flex gap-2">
+            {quotation.status === 'DRAFT' && (
               <Button
                 variant="outline"
-                onClick={() => openSendConfirm('resend')}
+                onClick={() => openSendConfirm('send')}
                 disabled={sendMutation.isPending}
               >
                 <Mail className="h-4 w-4 mr-2" />
-                {sendMutation.isPending ? 'Reenviando...' : 'Reenviar por email'}
+                {sendMutation.isPending ? 'Enviando...' : 'Enviar por email'}
               </Button>
-              {quotation.status === 'SENT' && (
+            )}
+            {(quotation.status === 'SENT' || quotation.status === 'ACCEPTED') && (
+              <>
                 <Button
-                  onClick={() => {
-                    if (confirm('¿Convertir esta cotización en factura pagada?')) {
-                      convertMutation.mutate()
-                    }
-                  }}
+                  variant="outline"
+                  onClick={() => openSendConfirm('resend')}
+                  disabled={sendMutation.isPending}
                 >
-                  <CheckCircle className="h-4 w-4 mr-2" />
-                  Convertir a factura
+                  <Mail className="h-4 w-4 mr-2" />
+                  {sendMutation.isPending ? 'Reenviando...' : 'Reenviar por email'}
                 </Button>
-              )}
-            </>
-          )}
+                {quotation.status === 'SENT' && (
+                  <Button
+                    onClick={() => {
+                      if (confirm('¿Convertir esta cotización en factura pagada?')) {
+                        convertMutation.mutate()
+                      }
+                    }}
+                  >
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                    Convertir a factura
+                  </Button>
+                )}
+              </>
+            )}
+          </div>
         </div>
-      </div>
 
-      <Dialog open={confirmSendOpen} onOpenChange={setConfirmSendOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{confirmMode === 'resend' ? 'Reenviar cotización' : 'Enviar cotización'}</DialogTitle>
-            <DialogDescription>
-              {quotation?.customer?.email
-                ? `Se enviará la cotización ${quotation.number} al correo ${quotation.customer.email}.`
-                : 'El cliente no tiene un correo electrónico configurado.'}
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setConfirmSendOpen(false)}>
-              Cancelar
-            </Button>
-            <Button onClick={handleConfirmSend} disabled={sendMutation.isPending}>
-              {sendMutation.isPending ? 'Enviando...' : 'Confirmar envío'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        <Dialog open={confirmSendOpen} onOpenChange={setConfirmSendOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Send className="h-5 w-5" />
+                {confirmMode === 'resend' ? 'Reenviar cotización' : 'Enviar cotización'}
+              </DialogTitle>
+              <DialogDescription>
+                {quotation?.customer?.email
+                  ? `Se enviará la cotización ${quotation.number} al correo ${quotation.customer.email}.`
+                  : 'El cliente no tiene un correo electrónico configurado.'}
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button variant="ghost" onClick={() => setConfirmSendOpen(false)}>
+                Cancelar
+              </Button>
+              <Button onClick={handleConfirmSend} disabled={sendMutation.isPending}>
+                {sendMutation.isPending ? 'Enviando...' : 'Confirmar envío'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
-      {/* Customer Info */}
-      <div className="grid grid-cols-2 gap-6">
-        <div>
-          <h3 className="font-semibold mb-3">Cliente</h3>
-          {quotation.customer ? (
+        {/* Customer Info */}
+        <div className="grid grid-cols-2 gap-6">
+          <div>
+            <h3 className="font-semibold mb-3">Cliente</h3>
+            {quotation.customer ? (
+              <div className="space-y-2 text-sm">
+                <div className="font-medium">{quotation.customer.name || 'Sin nombre'}</div>
+                {quotation.customer.taxId && (
+                  <div className="flex items-center gap-2">
+                    <FileText className="h-4 w-4 text-gray-400" />
+                    <span>NIT: {quotation.customer.taxId}</span>
+                  </div>
+                )}
+                {quotation.customer.email && (
+                  <div className="flex items-center gap-2">
+                    <Mail className="h-4 w-4 text-gray-400" />
+                    <span>{quotation.customer.email}</span>
+                  </div>
+                )}
+                {quotation.customer.phone && (
+                  <div className="flex items-center gap-2">
+                    <Phone className="h-4 w-4 text-gray-400" />
+                    <span>{quotation.customer.phone}</span>
+                  </div>
+                )}
+                {quotation.customer.address && (
+                  <div className="flex items-center gap-2">
+                    <MapPin className="h-4 w-4 text-gray-400" />
+                    <span>{quotation.customer.address}</span>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="text-sm text-gray-500">Cliente no disponible</div>
+            )}
+          </div>
+          <div>
+            <h3 className="font-semibold mb-3">Información</h3>
             <div className="space-y-2 text-sm">
-              <div className="font-medium">{quotation.customer.name || 'Sin nombre'}</div>
-              {quotation.customer.taxId && (
-                <div className="flex items-center gap-2">
-                  <FileText className="h-4 w-4 text-gray-400" />
-                  <span>NIT: {quotation.customer.taxId}</span>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Fecha:</span>
+                <span>{formatDate(quotation.createdAt)}</span>
+              </div>
+              {quotation.validUntil && (
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Válida Hasta:</span>
+                  <span>{formatDate(quotation.validUntil)}</span>
                 </div>
               )}
-              {quotation.customer.email && (
-                <div className="flex items-center gap-2">
-                  <Mail className="h-4 w-4 text-gray-400" />
-                  <span>{quotation.customer.email}</span>
-                </div>
-              )}
-              {quotation.customer.phone && (
-                <div className="flex items-center gap-2">
-                  <Phone className="h-4 w-4 text-gray-400" />
-                  <span>{quotation.customer.phone}</span>
-                </div>
-              )}
-              {quotation.customer.address && (
-                <div className="flex items-center gap-2">
-                  <MapPin className="h-4 w-4 text-gray-400" />
-                  <span>{quotation.customer.address}</span>
+              {quotation.lead && (
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Oportunidad:</span>
+                  <span>{quotation.lead.name}</span>
                 </div>
               )}
             </div>
-          ) : (
-            <div className="text-sm text-gray-500">Cliente no disponible</div>
-          )}
-        </div>
-        <div>
-          <h3 className="font-semibold mb-3">Información</h3>
-          <div className="space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span className="text-gray-600">Fecha:</span>
-              <span>{formatDate(quotation.createdAt)}</span>
-            </div>
-            {quotation.validUntil && (
-              <div className="flex justify-between">
-                <span className="text-gray-600">Válida Hasta:</span>
-                <span>{formatDate(quotation.validUntil)}</span>
-              </div>
-            )}
-            {quotation.lead && (
-              <div className="flex justify-between">
-                <span className="text-gray-600">Oportunidad:</span>
-                <span>{quotation.lead.name}</span>
-              </div>
-            )}
           </div>
         </div>
-      </div>
 
-      {/* Items */}
-      <div>
-        <h3 className="font-semibold mb-3">Productos</h3>
-        <div className="border rounded-lg">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Producto</TableHead>
-                <TableHead>Cantidad</TableHead>
-                <TableHead>Precio Unit.</TableHead>
-                <TableHead>Descuento</TableHead>
-                <TableHead>IVA</TableHead>
-                <TableHead>Subtotal</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {quotationItems.length === 0 ? (
+        {/* Items */}
+        <div>
+          <h3 className="font-semibold mb-3">Productos</h3>
+          <div className="border rounded-lg">
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-gray-500 py-8">
-                    No hay productos en esta cotización
-                  </TableCell>
+                  <TableHead>Producto</TableHead>
+                  <TableHead>Cantidad</TableHead>
+                  <TableHead>Precio Unit.</TableHead>
+                  <TableHead>Descuento</TableHead>
+                  <TableHead>IVA</TableHead>
+                  <TableHead>Subtotal</TableHead>
                 </TableRow>
-              ) : (
-                quotationItems.map((item: any) => (
-                  <TableRow key={item.id}>
-                    <TableCell>
-                      <div>
-                        <div className="font-medium">{item.product?.name || 'Producto sin nombre'}</div>
-                        {item.product?.sku && (
-                          <div className="text-sm text-gray-500">{item.product.sku}</div>
-                        )}
-                      </div>
+              </TableHeader>
+              <TableBody>
+                {quotationItems.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center text-gray-500 py-8">
+                      No hay productos en esta cotización
                     </TableCell>
-                    <TableCell>{item.quantity || 0}</TableCell>
-                    <TableCell>{formatCurrency(item.unitPrice || 0)}</TableCell>
-                    <TableCell>{item.discount || 0}%</TableCell>
-                    <TableCell>{item.taxRate || 0}%</TableCell>
-                    <TableCell>{formatCurrency(item.subtotal || 0)}</TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+                ) : (
+                  quotationItems.map((item: any) => (
+                    <TableRow key={item.id}>
+                      <TableCell>
+                        <div>
+                          <div className="font-medium">{item.product?.name || 'Producto sin nombre'}</div>
+                          {item.product?.sku && (
+                            <div className="text-sm text-gray-500">{item.product.sku}</div>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>{item.quantity || 0}</TableCell>
+                      <TableCell>{formatCurrency(item.unitPrice || 0)}</TableCell>
+                      <TableCell>{item.discount || 0}%</TableCell>
+                      <TableCell>{item.taxRate || 0}%</TableCell>
+                      <TableCell>{formatCurrency(item.subtotal || 0)}</TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </div>
+
+        {/* Totals */}
+        <div className="flex justify-end">
+          <div className="w-64 space-y-2 text-sm">
+            <div className="flex justify-between">
+              <span className="text-gray-600">Subtotal:</span>
+              <span>{formatCurrency((quotation.subtotal || 0) + (quotation.discount || 0))}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Descuento:</span>
+              <span>{formatCurrency(quotation.discount || 0)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">IVA:</span>
+              <span>{formatCurrency(quotation.tax || 0)}</span>
+            </div>
+            <div className="flex justify-between border-t pt-2 font-bold text-lg">
+              <span>Total:</span>
+              <span>{formatCurrency(quotation.total || 0)}</span>
+            </div>
+          </div>
+        </div>
+
+        {quotation.notes && (
+          <div>
+            <h3 className="font-semibold mb-2">Notas</h3>
+            <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded">{quotation.notes}</p>
+          </div>
+        )}
+
       </div>
-
-      {/* Totals */}
-      <div className="flex justify-end">
-        <div className="w-64 space-y-2 text-sm">
-          <div className="flex justify-between">
-            <span className="text-gray-600">Subtotal:</span>
-            <span>{formatCurrency((quotation.subtotal || 0) + (quotation.discount || 0))}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-gray-600">Descuento:</span>
-            <span>{formatCurrency(quotation.discount || 0)}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-gray-600">IVA:</span>
-            <span>{formatCurrency(quotation.tax || 0)}</span>
-          </div>
-          <div className="flex justify-between border-t pt-2 font-bold text-lg">
-            <span>Total:</span>
-            <span>{formatCurrency(quotation.total || 0)}</span>
-          </div>
-        </div>
-      </div>
-
-      {quotation.notes && (
-        <div>
-          <h3 className="font-semibold mb-2">Notas</h3>
-          <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded">{quotation.notes}</p>
-        </div>
-      )}
-
-    </div>
     </>
   )
 }

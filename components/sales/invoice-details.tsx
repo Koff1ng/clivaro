@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { useToast } from '@/components/ui/toast'
-import { FileText, Mail, Phone, MapPin, QrCode, Download, CheckCircle, XCircle, Clock, Printer, Ban, MoreVertical, FileDown, Receipt, Usb, Network } from 'lucide-react'
+import { FileText, Mail, Phone, MapPin, QrCode, Download, CheckCircle, XCircle, Clock, Printer, Ban, MoreVertical, FileDown, Receipt, Usb, Network, Eye, PackageX, DollarSign, AlertTriangle } from 'lucide-react'
 import { InvoicePrint } from './invoice-print'
 import { InvoicePrintLetter } from './invoice-print-letter'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -679,7 +679,10 @@ export function InvoiceDetails({ invoice }: { invoice: any }) {
         <Dialog open={showTicketPreview} onOpenChange={setShowTicketPreview}>
           <DialogContent className="w-auto sm:max-w-fit max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Vista previa (ticket)</DialogTitle>
+              <DialogTitle className="flex items-center gap-2">
+                <Eye className="h-5 w-5" />
+                Vista previa (ticket)
+              </DialogTitle>
             </DialogHeader>
             <div className="flex justify-center">
               <div className="bg-white p-2 rounded border">
@@ -693,7 +696,10 @@ export function InvoiceDetails({ invoice }: { invoice: any }) {
         <Dialog open={showVoidDialog} onOpenChange={setShowVoidDialog}>
           <DialogContent className="w-auto sm:max-w-fit">
             <DialogHeader>
-              <DialogTitle>Anular / Devolver</DialogTitle>
+              <DialogTitle className="flex items-center gap-2 text-red-600">
+                <AlertTriangle className="h-5 w-5" />
+                Anular / Devolver
+              </DialogTitle>
             </DialogHeader>
             <div className="space-y-3">
               {blockedByDian ? (
@@ -744,7 +750,10 @@ export function InvoiceDetails({ invoice }: { invoice: any }) {
         <Dialog open={showPartialReturn} onOpenChange={setShowPartialReturn}>
           <DialogContent className="w-auto sm:max-w-fit">
             <DialogHeader>
-              <DialogTitle>Devolución parcial</DialogTitle>
+              <DialogTitle className="flex items-center gap-2">
+                <PackageX className="h-5 w-5" />
+                Devolución parcial
+              </DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
               {blockedByDian && (
@@ -1184,7 +1193,10 @@ export function InvoiceDetails({ invoice }: { invoice: any }) {
         <Dialog open={showAbonoDialog} onOpenChange={setShowAbonoDialog}>
           <DialogContent className="w-auto sm:max-w-md">
             <DialogHeader>
-              <DialogTitle>Registrar Abono / Pago</DialogTitle>
+              <DialogTitle className="flex items-center gap-2">
+                <DollarSign className="h-5 w-5" />
+                Registrar Abono / Pago
+              </DialogTitle>
             </DialogHeader>
             <div className="space-y-4 pt-4">
               <div className="bg-gray-50 p-3 rounded-lg flex justify-between items-center">

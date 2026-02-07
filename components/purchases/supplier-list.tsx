@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { SupplierForm } from './supplier-form'
 import { SupplierDetails } from './supplier-details'
 import { formatCurrency } from '@/lib/utils'
-import { Search, Plus, Edit, Trash2, Eye, Mail, Phone, Loader2 } from 'lucide-react'
+import { Search, Plus, Edit, Trash2, Eye, Mail, Phone, Loader2, Building2, FileText } from 'lucide-react'
 import { useToast } from '@/components/ui/toast'
 
 async function fetchSuppliers(page: number, search: string) {
@@ -236,7 +236,8 @@ export function SupplierList() {
       <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
         <DialogContent className="w-auto sm:max-w-fit max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <Building2 className="h-5 w-5" />
               {selectedSupplier ? 'Editar Proveedor' : 'Nuevo Proveedor'}
             </DialogTitle>
           </DialogHeader>
@@ -254,7 +255,10 @@ export function SupplierList() {
         <Dialog open={!!viewSupplier} onOpenChange={() => setViewSupplier(null)}>
           <DialogContent className="w-auto sm:max-w-fit max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Detalles del Proveedor</DialogTitle>
+              <DialogTitle className="flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                Detalles del Proveedor
+              </DialogTitle>
             </DialogHeader>
             <SupplierDetails supplierData={viewSupplier} />
           </DialogContent>

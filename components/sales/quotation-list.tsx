@@ -12,7 +12,7 @@ import { useDebounce } from '@/lib/hooks/use-debounce'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { useToast } from '@/components/ui/toast'
 import { LoadingOverlay } from '@/components/ui/loading-overlay'
-import { Search, Plus, Edit, Trash2, Eye, FileText, X, Loader2, Filter } from 'lucide-react'
+import { Search, Plus, Edit, Trash2, Eye, FileText, X, Loader2, Filter, ClipboardEdit } from 'lucide-react'
 import { Mail } from 'iconoir-react'
 import {
   DropdownMenu,
@@ -507,7 +507,8 @@ export function QuotationList() {
         <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
           <DialogContent className="w-auto sm:max-w-fit max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>
+              <DialogTitle className="flex items-center gap-2">
+                <ClipboardEdit className="h-5 w-5" />
                 {selectedQuotation ? 'Editar Cotización' : 'Nueva Cotización'}
               </DialogTitle>
             </DialogHeader>
@@ -526,7 +527,10 @@ export function QuotationList() {
           <Dialog open={!!viewQuotation} onOpenChange={() => setViewQuotation(null)}>
             <DialogContent className="w-auto sm:max-w-fit max-h-[90vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle>Detalles de la Cotización</DialogTitle>
+                <DialogTitle className="flex items-center gap-2">
+                  <FileText className="h-5 w-5" />
+                  Detalles de la Cotización
+                </DialogTitle>
               </DialogHeader>
               <QuotationDetails quotation={viewQuotation} />
             </DialogContent>

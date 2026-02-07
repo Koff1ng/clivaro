@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, Pencil, Trash2, Search, Loader2 } from 'lucide-react'
+import { Plus, Pencil, Trash2, Search, Loader2, FileText } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -233,7 +233,10 @@ export function TaxesPage() {
             <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if (!open) resetForm(); }}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>{editingTax ? 'Editar Impuesto' : 'Crear Nuevo Impuesto'}</DialogTitle>
+                        <DialogTitle className="flex items-center gap-2">
+                            <FileText className="h-5 w-5" />
+                            {editingTax ? 'Editar Impuesto' : 'Crear Nuevo Impuesto'}
+                        </DialogTitle>
                         <DialogDescription>
                             Define las reglas del impuesto. Recuerda que las retenciones se restan automáticamente.
                         </DialogDescription>

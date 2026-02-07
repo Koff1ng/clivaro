@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch'
 // import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs' // Removed for vertical layout
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
-import { Settings as SettingsIcon, Loader2, Plus, Trash2, Printer, MapPin, Hash, Building2, Receipt, FileText, ShoppingCart, Search, Network, Edit, Warehouse } from 'lucide-react'
+import { Settings as SettingsIcon, Loader2, Plus, Trash2, Printer, MapPin, Hash, Building2, Receipt, FileText, ShoppingCart, Search, Network, Edit, Warehouse, Settings } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useToast } from '@/components/ui/toast'
 import { TicketEditor, TicketDesignSettings } from './ticket-editor'
@@ -712,7 +712,10 @@ export function GeneralConfig({ settings, onSave, isLoading }: GeneralConfigProp
       <Dialog open={showScanDialog} onOpenChange={setShowScanDialog}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Dispositivos Encontrados</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <Printer className="h-5 w-5" />
+              Dispositivos Encontrados
+            </DialogTitle>
             <DialogDescription>
               Se encontraron los siguientes dispositivos escuchando en el puerto 9100.
             </DialogDescription>
@@ -751,7 +754,10 @@ export function GeneralConfig({ settings, onSave, isLoading }: GeneralConfigProp
       <Dialog open={showTicketEditor} onOpenChange={setShowTicketEditor}>
         <DialogContent className="max-w-6xl h-[90vh] overflow-hidden">
           <DialogHeader>
-            <DialogTitle>Configurar Plantilla de Impresión</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <Settings className="h-5 w-5" />
+              Configurar Plantilla de Impresión
+            </DialogTitle>
             <DialogDescription>
               Personaliza el diseño de tus tirillas de impresión. Los cambios se verán reflejados en tiempo real.
             </DialogDescription>
@@ -788,7 +794,10 @@ export function GeneralConfig({ settings, onSave, isLoading }: GeneralConfigProp
       <Dialog open={showWarehouseDialog} onOpenChange={setShowWarehouseDialog}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Crear Nuevo Almacén</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <Warehouse className="h-5 w-5" />
+              Crear Nuevo Almacén
+            </DialogTitle>
             <DialogDescription>
               Define un nuevo punto de almacenamiento para tu inventario.
             </DialogDescription>

@@ -477,7 +477,10 @@ export function InvoiceList() {
         <Dialog open={!!viewInvoice} onOpenChange={() => setViewInvoice(null)}>
           <DialogContent className="w-auto sm:max-w-fit max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Detalles de la Factura</DialogTitle>
+              <DialogTitle className="flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                Detalles de la Factura
+              </DialogTitle>
             </DialogHeader>
             <InvoiceDetails invoice={viewInvoice} />
           </DialogContent>

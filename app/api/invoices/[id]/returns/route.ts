@@ -5,6 +5,7 @@ import { PERMISSIONS } from '@/lib/permissions'
 import { getPrismaForRequest } from '@/lib/get-tenant-prisma'
 import { logger } from '@/lib/logger'
 import { logActivity } from '@/lib/activity'
+import { createCreditNoteWithAccounting } from '@/lib/credit-note-service'
 
 const createReturnSchema = z.object({
   reason: z.string().min(3),
@@ -50,7 +51,12 @@ export async function POST(
     const invoice = await prisma.invoice.findUnique({
       where: { id: invoiceId },
       include: {
-        items: true,
+        items: {
+          include: {
+            product: { select: { name: true } }
+          }
+        },
+        customer: true
       },
     })
 
@@ -242,6 +248,68 @@ export async function POST(
         })
       }
 
+      // Generate Credit Note for electronic invoices
+      let creditNote: any = null
+      if (invoice.electronicStatus === 'SENT' || invoice.electronicStatus === 'ACCEPTED') {
+        try {
+          // Determine if it's total or partial return
+          const isTotal = returnItemsToCreate.length === invoice.items.length &&
+            returnItemsToCreate.every(ri => {
+              const invItem = invoice.items.find((ii: any) => ii.id === ri.invoiceItemId)
+              return invItem && Math.abs(ri.quantity - invItem.quantity) < 0.0001
+            })
+
+          const type = isTotal ? 'TOTAL' : 'PARTIAL'
+          const referenceCode = isTotal ? '20' : '22'
+
+          // Get current period for code 22
+          const now = new Date()
+          const affectedPeriod = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+
+          // Map return items to credit note items
+          const creditNoteItems = returnItemsToCreate.map(ri => {
+            const invItem = invoice.items.find((ii: any) => ii.id === ri.invoiceItemId)
+            return {
+              invoiceItemId: ri.invoiceItemId,
+              productId: ri.productId,
+              variantId: ri.variantId,
+              description: invItem?.preparationNotes || `${invItem?.product?.name || 'Producto'}`,
+              quantity: ri.quantity,
+              unitPrice: invItem?.unitPrice || 0,
+              discount: invItem?.discount || 0,
+              taxRate: invItem?.taxRate || 0
+            }
+          })
+
+          // Get tenantId from session since invoice doesn't have it directly
+          const tenantId = (session.user as any).tenantId || ''
+
+          creditNote = await createCreditNoteWithAccounting(
+            tx,
+            tenantId,
+            userId,
+            {
+              invoiceId: invoice.id,
+              returnId: createdReturn.id,
+              type,
+              referenceCode,
+              reason: data.reason,
+              affectedPeriod: referenceCode === '22' ? affectedPeriod : undefined,
+              items: creditNoteItems
+            },
+            {
+              reverseInventory: true,
+              warehouseId: data.warehouseId
+            }
+          )
+
+          // Note: creditNote relation will be automatically set via returnId in CreditNote
+        } catch (err: any) {
+          logger.error('Failed to create credit note for return', err, { invoiceId: invoice.id })
+          // Don't fail the whole return if credit note fails
+        }
+      }
+
       // Anotar en la factura (sin tocar totales por ahora)
       const stamp = new Date().toISOString()
       const refundLabel = refundLines?.length
@@ -255,7 +323,7 @@ export async function POST(
         data: { notes, updatedById: userId },
       })
 
-      return { return: createdReturn, returnTotal }
+      return { return: createdReturn, returnTotal, creditNote }
     })
 
     // Audit Log
