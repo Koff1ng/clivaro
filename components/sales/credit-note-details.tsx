@@ -11,7 +11,6 @@ import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { toast } from 'sonner'
 
 interface CreditNoteDetailsProps {
     creditNoteId: string
@@ -35,12 +34,13 @@ export function CreditNoteDetails({ creditNoteId }: CreditNoteDetailsProps) {
                 const data = await response.json()
                 setCreditNote(data)
             } else {
-                toast.error('No se pudo cargar la nota crédito')
+                console.error('No se pudo cargar la nota crédito')
+                alert('No se pudo cargar la nota crédito')
                 router.push('/credit-notes')
             }
         } catch (error) {
             console.error('Error loading credit note:', error)
-            toast.error('Error al cargar la nota crédito')
+            alert('Error al cargar la nota crédito')
         } finally {
             setLoading(false)
         }
@@ -56,15 +56,15 @@ export function CreditNoteDetails({ creditNoteId }: CreditNoteDetailsProps) {
             })
 
             if (response.ok) {
-                toast.success('Transmisión iniciada correctamente')
+                alert('Transmisión iniciada correctamente')
                 await loadCreditNote()
             } else {
                 const error = await response.json()
-                toast.error(error.error || 'Error al transmitir')
+                alert(error.error || 'Error al transmitir')
             }
         } catch (error) {
             console.error('Error transmitting:', error)
-            toast.error('Error al transmitir la nota crédito')
+            alert('Error al transmitir la nota crédito')
         } finally {
             setTransmitting(false)
         }
