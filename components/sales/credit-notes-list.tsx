@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
@@ -89,10 +90,6 @@ export function CreditNotesList() {
 
     return (
         <div className="space-y-4">
-            <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-bold">Notas Crédito Electrónicas</h2>
-            </div>
-
             {/* Filters */}
             <Card>
                 <CardContent className="pt-6">
@@ -140,74 +137,79 @@ export function CreditNotesList() {
                     </CardContent>
                 </Card>
             ) : (
-                <div className="grid gap-4">
-                    {filteredNotes.map((note) => (
-                        <Card key={note.id} className="hover:shadow-md transition-shadow">
-                            <CardContent className="p-6">
-                                <div className="flex items-start justify-between">
-                                    <div className="flex-1">
-                                        <div className="flex items-center gap-3 mb-2">
-                                            <h3 className="font-semibold text-lg">{note.number}</h3>
-                                            <Badge className={statusColors[note.electronicStatus || 'PENDING']}>
-                                                {statusLabels[note.electronicStatus || 'PENDING']}
-                                            </Badge>
-                                            {note.type === 'TOTAL' && (
-                                                <Badge variant="outline">Total</Badge>
-                                            )}
-                                            {note.type === 'PARTIAL' && (
-                                                <Badge variant="outline">Parcial</Badge>
-                                            )}
+                <div className="border rounded-2xl bg-card/80 backdrop-blur-sm shadow-sm overflow-hidden">
+                    <Table>
+                        <TableHeader className="bg-gray-50 dark:bg-gray-800/50">
+                            <TableRow>
+                                <TableHead className="py-3 px-4 font-semibold text-sm">Número</TableHead>
+                                <TableHead className="py-3 px-4 font-semibold text-sm">Factura</TableHead>
+                                <TableHead className="py-3 px-4 font-semibold text-sm">Cliente</TableHead>
+                                <TableHead className="py-3 px-4 font-semibold text-sm">Fecha</TableHead>
+                                <TableHead className="py-3 px-4 font-semibold text-sm">Estado</TableHead>
+                                <TableHead className="py-3 px-4 font-semibold text-sm">Motivo</TableHead>
+                                <TableHead className="py-3 px-4 font-semibold text-sm text-right">Total</TableHead>
+                                <TableHead className="py-3 px-4 font-semibold text-sm text-right">Acciones</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {filteredNotes.map((note) => (
+                                <TableRow key={note.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 border-b transition-colors">
+                                    <TableCell className="py-3 px-4 font-medium text-sm">
+                                        <div className="flex items-center gap-2">
+                                            <FileText className="h-4 w-4 text-muted-foreground" />
+                                            {note.number}
                                         </div>
-
-                                        <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
-                                            <div>
-                                                <span className="text-muted-foreground">Factura: </span>
-                                                <Link href={`/invoices/${note.invoiceId}`} className="text-blue-600 hover:underline">
-                                                    {note.invoice.number}
-                                                </Link>
-                                            </div>
-                                            <div>
-                                                <span className="text-muted-foreground">Cliente: </span>
-                                                <span className="font-medium">{note.invoice.customer.name}</span>
-                                            </div>
-                                            <div>
-                                                <span className="text-muted-foreground">Fecha: </span>
-                                                <span>{format(new Date(note.createdAt), 'PPP', { locale: es })}</span>
-                                            </div>
-                                            <div>
-                                                <span className="text-muted-foreground">Items: </span>
-                                                <span>{note._count.items}</span>
-                                            </div>
-                                            <div className="col-span-2">
-                                                <span className="text-muted-foreground">Motivo: </span>
-                                                <span className="text-sm">{note.reason}</span>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="text-right ml-6">
-                                        <div className="text-2xl font-bold text-destructive">
-                                            -{formatCurrency(note.total)}
-                                        </div>
-                                        <div className="mt-4 flex gap-2">
+                                    </TableCell>
+                                    <TableCell className="py-3 px-4 text-sm">
+                                        <Link href={`/invoices/${note.invoiceId}`} className="text-blue-600 hover:text-blue-800 font-medium hover:underline">
+                                            {note.invoice.number}
+                                        </Link>
+                                    </TableCell>
+                                    <TableCell className="py-3 px-4 text-sm font-medium text-gray-700 dark:text-gray-300">
+                                        {note.invoice.customer.name}
+                                    </TableCell>
+                                    <TableCell className="py-3 px-4 text-sm text-gray-600 dark:text-gray-400">
+                                        {format(new Date(note.createdAt), 'dd MMM yyyy', { locale: es })}
+                                    </TableCell>
+                                    <TableCell className="py-3 px-4">
+                                        <Badge className={`${statusColors[note.electronicStatus || 'PENDING']} hover:${statusColors[note.electronicStatus || 'PENDING']} text-white rounded-full px-2.5 py-0.5 text-xs font-medium`}>
+                                            {statusLabels[note.electronicStatus || 'PENDING']}
+                                        </Badge>
+                                    </TableCell>
+                                    <TableCell className="py-3 px-4 text-sm text-gray-500 max-w-[200px] truncate" title={note.reason}>
+                                        {note.reason}
+                                    </TableCell>
+                                    <TableCell className="py-3 px-4 text-right font-bold text-red-600 text-sm">
+                                        -{formatCurrency(note.total)}
+                                    </TableCell>
+                                    <TableCell className="py-3 px-4 text-right">
+                                        <div className="flex justify-end gap-1">
                                             <Link href={`/credit-notes/${note.id}`}>
-                                                <Button size="sm" variant="outline">
-                                                    <FileText className="h-4 w-4 mr-1" />
-                                                    Ver
+                                                <Button
+                                                    size="sm"
+                                                    variant="ghost"
+                                                    className="h-8 w-8 p-0 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full"
+                                                    title="Ver detalles"
+                                                >
+                                                    <FileText className="h-4 w-4 text-gray-500" />
                                                 </Button>
                                             </Link>
                                             {note.electronicStatus === 'PENDING' && (
-                                                <Button size="sm" variant="default">
-                                                    <Send className="h-4 w-4 mr-1" />
-                                                    Transmitir
+                                                <Button
+                                                    size="sm"
+                                                    variant="ghost"
+                                                    className="h-8 w-8 p-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-full"
+                                                    title="Transmitir a la DIAN"
+                                                >
+                                                    <Send className="h-4 w-4" />
                                                 </Button>
                                             )}
                                         </div>
-                                    </div>
-                                </div>
-                            </CardContent>
-                        </Card>
-                    ))}
+                                    </TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
                 </div>
             )}
         </div>

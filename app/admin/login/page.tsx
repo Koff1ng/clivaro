@@ -70,28 +70,34 @@ export default function AdminLoginPage() {
   return (
     <div className="w-full h-screen grid lg:grid-cols-2 overflow-hidden">
       {/* Left Panel - Brand & Visuals */}
-      <div className="hidden lg:flex relative flex-col justify-between p-12 bg-slate-950 text-white overflow-hidden">
+      <div className="hidden lg:flex relative flex-col justify-between pt-4 px-12 pb-12 bg-slate-950 text-white overflow-hidden">
         {/* Abstract Background Effects */}
         <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
           <div className="absolute top-[-20%] right-[-10%] w-[600px] h-[600px] bg-indigo-600/20 rounded-full blur-3xl" />
           <div className="absolute bottom-[-20%] left-[-10%] w-[500px] h-[500px] bg-purple-600/20 rounded-full blur-3xl" />
         </div>
 
-        {/* Header content */}
-        <div className="relative z-10 flex items-center justify-between">
-          <Logo size="lg" className="w-fit" />
-          <div className="px-3 py-1 rounded-full bg-slate-800/50 border border-slate-700 text-xs font-medium text-slate-300 flex items-center gap-2">
-            <Shield className="w-3 h-3" />
-            Acceso Administrativo
+        <div>
+          {/* Brand Header & Headline Grouped */}
+          <div className="relative z-10 flex flex-col gap-0">
+            <div className="flex items-center justify-between w-full mb-2">
+              <Logo
+                size="lg"
+                className="w-72 md:w-80 lg:w-96 h-auto -mb-10 ml-19"
+              />
+              <div className="px-3 py-1 rounded-full bg-slate-800/50 border border-slate-700 text-xs font-medium text-slate-300 flex items-center gap-2 h-fit">
+                <Shield className="w-3 h-3" />
+                Acceso Administrativo
+              </div>
+            </div>
+            <div className="max-w-lg -mt-10">
+              <h2 className="text-5xl font-bold tracking-tight mb-6 leading-tight">
+                Panel de Control Centralizado.
+              </h2>
+            </div>
           </div>
-        </div>
 
-        {/* Feature/Testimonial Content */}
-        <div className="relative z-10 max-w-lg">
-          <h2 className="text-4xl font-bold tracking-tight mb-6 leading-tight">
-            Panel de Control Centralizado.
-          </h2>
-          <div className="space-y-4">
+          <div className="relative z-10 space-y-4">
             <div className="flex items-center gap-3 text-slate-300">
               <CheckCircle2 className="w-5 h-5 text-indigo-500" />
               <span>Gestión global de inquilinos y suscripciones</span>
@@ -142,7 +148,7 @@ export default function AdminLoginPage() {
 
             <div className="space-y-2.5">
               <Label htmlFor="username" className="text-gray-700 dark:text-gray-300 font-medium">
-                Usuario o Email
+                Usuario o Correo Electrónico
               </Label>
               <div className="relative group">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400 group-focus-within:text-indigo-600 transition-colors">
@@ -151,7 +157,7 @@ export default function AdminLoginPage() {
                 <Input
                   id="username"
                   type="text"
-                  placeholder="admin@clivaro.com"
+                  placeholder="usuario o correo@clivaro.com"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   required
@@ -216,5 +222,3 @@ export default function AdminLoginPage() {
     </div>
   )
 }
-
-

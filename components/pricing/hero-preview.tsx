@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Check } from 'lucide-react'
 import { SoftwarePreview } from './software-preview'
+import { Logo } from '@/components/ui/logo'
 
 interface HeroPreviewProps {
   onContactClick: () => void
@@ -148,10 +149,7 @@ export function HeroPreview({ onContactClick, onViewPreview }: HeroPreviewProps)
                     {/* Sidebar */}
                     <div className="w-48 bg-slate-50 dark:bg-slate-900/50 border-r border-slate-200 dark:border-slate-800 flex flex-col">
                       <div className="p-4 border-b border-slate-200 dark:border-slate-800">
-                        <div className="flex items-center gap-2">
-                          <div className="h-6 w-6 rounded bg-blue-600 flex items-center justify-center text-white font-bold text-xs">C</div>
-                          <div className="text-sm font-bold text-slate-900 dark:text-white">Clivaro</div>
-                        </div>
+                        <Logo size="sm" className="h-8" />
                       </div>
                       <nav className="flex-1 p-3 space-y-1">
                         {['Dashboard', 'Productos', 'Inventario', 'Clientes', 'Oportunidades', 'Cotizaciones', 'Facturas', 'Punto de Venta'].map((item, i) => (

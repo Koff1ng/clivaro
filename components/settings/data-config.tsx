@@ -35,6 +35,7 @@ export function DataConfig({ settings, onSave, isLoading }: DataConfigProps) {
         { id: 'sales', label: 'Ventas y Facturas' },
         { id: 'suppliers', label: 'Proveedores' },
         { id: 'movements', label: 'Movimientos de Inventario' },
+        { id: 'settings', label: 'Configuración General' },
     ]
 
     const toggleEntity = (id: string) => {
@@ -275,6 +276,8 @@ export function DataConfig({ settings, onSave, isLoading }: DataConfigProps) {
                                         <SelectContent>
                                             <SelectItem value="clients">Clientes</SelectItem>
                                             <SelectItem value="products">Productos</SelectItem>
+                                            <SelectItem value="sales">Ventas</SelectItem>
+                                            <SelectItem value="settings">Configuración</SelectItem>
                                         </SelectContent>
                                     </Select>
                                 </div>

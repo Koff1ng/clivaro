@@ -1,5 +1,0 @@
---- START VERIFICATION ---
-Target Database: file:C:/Users/Jumez/OneDrive/Escritorio/Programacion/Ferreteria/prisma/dev.db
-Leads found: 0
-No leads found! Seeding failed?
---- END VERIFICATION ---

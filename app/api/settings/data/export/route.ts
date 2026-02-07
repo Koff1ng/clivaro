@@ -132,13 +132,13 @@ export async function POST(req: Request) {
         if (entities.includes('sales')) {
             const sales = await tenantPrisma.invoice.findMany({
                 include: {
-                    customer: { select: { name: true } },
+                    customer: { select: { name: true, taxId: true, email: true } },
                     items: {
                         include: { product: { select: { name: true, sku: true } } }
                     }
                 },
                 orderBy: { createdAt: 'desc' },
-                take: 1000 // Limit for safety
+                take: 5000 // Increased limit
             })
 
             // Flat items for Excel export
@@ -146,11 +146,13 @@ export async function POST(req: Request) {
                 sale.items.map((item: any) => ({
                     invoiceNumber: sale.number,
                     date: sale.issuedAt,
-                    customer: sale.customer?.name,
+                    customerName: sale.customer?.name,
+                    customerTaxId: sale.customer?.taxId,
+                    customerEmail: sale.customer?.email,
                     total: sale.total,
                     status: sale.status,
                     sku: item.product?.sku,
-                    product: item.product?.name,
+                    productName: item.product?.name,
                     quantity: item.quantity,
                     price: item.unitPrice,
                     subtotal: item.subtotal
@@ -162,6 +164,24 @@ export async function POST(req: Request) {
             } else {
                 const ws = XLSX.utils.json_to_sheet(flatSales)
                 XLSX.utils.book_append_sheet(wb, ws, "Ventas_Items")
+            }
+        }
+
+        // SETTINGS
+        if (entities.includes('settings')) {
+            const settings = await prisma.tenantSettings.findUnique({
+                where: { tenantId }
+            })
+
+            if (settings) {
+                if (format === 'json') {
+                    jsonResult['settings'] = [settings] // Array for consistency
+                } else {
+                    // Remove internal fields
+                    const { id, tenantId: tId, ...safeSettings } = settings as any
+                    const ws = XLSX.utils.json_to_sheet([safeSettings])
+                    XLSX.utils.book_append_sheet(wb, ws, "Configuracion")
+                }
             }
         }
 

@@ -1,6 +1,0 @@
---- START USER/TENANT DEBUG ---
-CWD: C:\Users\Jumez\OneDrive\Escritorio\Programacion\Ferreteria
-DATABASE_URL: file:./dev.db
-Tenants found: 0
-Users found: 0
---- END DEBUG ---

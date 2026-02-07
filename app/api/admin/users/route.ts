@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requirePermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
-import { getPrismaForRequest } from '@/lib/get-tenant-prisma'
+import { withTenantTx, getTenantIdFromSession } from '@/lib/tenancy'
 import { z } from 'zod'
 import bcrypt from 'bcryptjs'
 
@@ -24,48 +24,54 @@ const updateUserSchema = z.object({
 
 export async function GET(request: Request) {
   const session = await requirePermission(request as any, PERMISSIONS.MANAGE_USERS)
-  
+
   if (session instanceof NextResponse) {
     return session
   }
 
+  const tenantId = getTenantIdFromSession(session)
+
   try {
-    const db = await getPrismaForRequest(request, session)
     const { searchParams } = new URL(request.url)
     const search = searchParams.get('search') || ''
     const includeInactive = searchParams.get('includeInactive') === 'true'
 
-    const users = await db.user.findMany({
-      where: {
-        ...(includeInactive ? {} : { active: true }),
-        ...(search ? {
-          OR: [
-            { name: { contains: search } },
-            { username: { contains: search } },
-            { email: { contains: search } },
-          ],
-        } : {}),
-      },
-      select: {
-        id: true,
-        username: true,
-        name: true,
-        email: true,
-        active: true,
-        createdAt: true,
-        userRoles: {
-          include: {
-            role: {
-              select: {
-                id: true,
-                name: true,
-                description: true,
+    const users = await withTenantTx(tenantId, async (tx) => {
+      return await tx.user.findMany({
+        where: {
+          ...(includeInactive ? {} : { active: true }),
+          // Extra safety: Never return global SuperAdmins in tenant context
+          // In a proper tenant isolation, they wouldn't even exist in this schema.
+          isSuperAdmin: false,
+          ...(search ? {
+            OR: [
+              { name: { contains: search } },
+              { username: { contains: search } },
+              { email: { contains: search } },
+            ],
+          } : {}),
+        },
+        select: {
+          id: true,
+          username: true,
+          name: true,
+          email: true,
+          active: true,
+          createdAt: true,
+          userRoles: {
+            include: {
+              role: {
+                select: {
+                  id: true,
+                  name: true,
+                  description: true,
+                },
               },
             },
           },
         },
-      },
-      orderBy: { name: 'asc' },
+        orderBy: { name: 'asc' },
+      })
     })
 
     return NextResponse.json({ users })
@@ -80,86 +86,90 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   const session = await requirePermission(request as any, PERMISSIONS.MANAGE_USERS)
-  
+
   if (session instanceof NextResponse) {
     return session
   }
 
+  const tenantId = getTenantIdFromSession(session)
+
   try {
-    const db = await getPrismaForRequest(request, session)
     const body = await request.json()
     const data = createUserSchema.parse(body)
 
-    // Check if username already exists
-    const existingUser = await db.user.findUnique({
-      where: { username: data.username },
-    })
-
-    if (existingUser) {
-      return NextResponse.json(
-        { error: 'El nombre de usuario ya está en uso' },
-        { status: 400 }
-      )
-    }
-
-    // Check if email is provided and already exists
-    if (data.email && data.email.trim() !== '') {
-      const existingEmail = await db.user.findUnique({
-        where: { email: data.email },
+    const result = await withTenantTx(tenantId, async (tx) => {
+      // Check if username already exists
+      const existingUser = await tx.user.findUnique({
+        where: { username: data.username },
       })
 
-      if (existingEmail) {
-        return NextResponse.json(
-          { error: 'El email ya está en uso' },
-          { status: 400 }
-        )
+      if (existingUser) {
+        throw new Error('El nombre de usuario ya está en uso')
       }
-    }
 
-    // Hash password
-    const hashedPassword = await bcrypt.hash(data.password, 10)
+      // Check if email is provided and already exists
+      if (data.email && data.email.trim() !== '') {
+        const existingEmail = await tx.user.findUnique({
+          where: { email: data.email },
+        })
 
-    // Create user with roles
-    const user = await db.user.create({
-      data: {
-        username: data.username,
-        email: data.email && data.email.trim() !== '' ? data.email : null,
-        password: hashedPassword,
-        name: data.name,
-        active: data.active,
-        createdById: (session.user as any).id,
-        userRoles: {
-          create: data.roleIds.map(roleId => ({
-            roleId,
-          })),
+        if (existingEmail) {
+          throw new Error('El email ya está en uso')
+        }
+      }
+
+      // Hash password
+      const hashedPassword = await bcrypt.hash(data.password, 10)
+
+      // Create user with roles
+      const user = await tx.user.create({
+        data: {
+          username: data.username,
+          email: data.email && data.email.trim() !== '' ? data.email : null,
+          password: hashedPassword,
+          name: data.name,
+          active: data.active,
+          createdById: (session.user as any).id,
+          userRoles: {
+            create: data.roleIds.map(roleId => ({
+              roleId,
+            })),
+          },
         },
-      },
-      include: {
-        userRoles: {
-          include: {
-            role: {
-              select: {
-                id: true,
-                name: true,
-                description: true,
+        include: {
+          userRoles: {
+            include: {
+              role: {
+                select: {
+                  id: true,
+                  name: true,
+                  description: true,
+                },
               },
             },
           },
         },
-      },
+      })
+
+      return user
     })
 
     // Remove password from response
-    const { password, ...userWithoutPassword } = user
+    const { password, ...userWithoutPassword } = result as any
 
     return NextResponse.json(userWithoutPassword, { status: 201 })
-  } catch (error) {
+  } catch (error: any) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: 'Validation error', details: error.errors },
         { status: 400 }
       )
     }
+
+    if (error.message === 'El nombre de usuario ya está en uso' || error.message === 'El email ya está en uso') {
+      return NextResponse.json({ error: error.message }, { status: 400 })
+    }
+
     console.error('Error creating user:', error)
     return NextResponse.json(
       { error: 'Failed to create user' },

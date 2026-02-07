@@ -68,12 +68,176 @@ async function main() {
             await tenantPrisma.$executeRawUnsafe(`ALTER TABLE "Invoice" ADD COLUMN IF NOT EXISTS "electronicSentAt" TIMESTAMP(3);`)
             await tenantPrisma.$executeRawUnsafe(`ALTER TABLE "Invoice" ADD COLUMN IF NOT EXISTS "electronicResponse" TEXT;`)
             await tenantPrisma.$executeRawUnsafe(`ALTER TABLE "Invoice" ADD COLUMN IF NOT EXISTS "resolutionNumber" TEXT;`)
+            await tenantPrisma.$executeRawUnsafe(`ALTER TABLE "Invoice" ADD COLUMN IF NOT EXISTS "alegraInvoiceId" TEXT;`)
 
             // Unique index for cufe
             await tenantPrisma.$executeRawUnsafe(`
                 DO $$ BEGIN
                     IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'Invoice_cufe_key') THEN
                         CREATE UNIQUE INDEX "Invoice_cufe_key" ON "Invoice"("cufe") WHERE "cufe" IS NOT NULL;
+                    END IF;
+                END $$;
+            `)
+
+            // 3.2 CreditNote Tables
+            console.log('  - Creando tablas de Notas Crédito...')
+            await tenantPrisma.$executeRawUnsafe(`
+                CREATE TABLE IF NOT EXISTS "CreditNote" (
+                    "id" TEXT NOT NULL,
+                    "number" TEXT NOT NULL,
+                    "prefix" TEXT,
+                    "consecutive" TEXT,
+                    "invoiceId" TEXT NOT NULL,
+                    "returnId" TEXT,
+                    "type" TEXT NOT NULL,
+                    "referenceCode" TEXT NOT NULL,
+                    "affectedPeriod" TEXT,
+                    "subtotal" DOUBLE PRECISION NOT NULL DEFAULT 0,
+                    "discount" DOUBLE PRECISION NOT NULL DEFAULT 0,
+                    "tax" DOUBLE PRECISION NOT NULL DEFAULT 0,
+                    "total" DOUBLE PRECISION NOT NULL DEFAULT 0,
+                    "cufe" TEXT,
+                    "qrCode" TEXT,
+                    "electronicStatus" TEXT,
+                    "electronicSentAt" TIMESTAMP(3),
+                    "electronicResponse" TEXT,
+                    "resolutionNumber" TEXT,
+                    "reason" TEXT NOT NULL,
+                    "notes" TEXT,
+                    "status" TEXT NOT NULL DEFAULT 'PENDING',
+                    "issuedAt" TIMESTAMP(3),
+                    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    "updatedAt" TIMESTAMP(3) NOT NULL,
+                    "createdById" TEXT,
+                    "alegraId" TEXT,
+                    CONSTRAINT "CreditNote_pkey" PRIMARY KEY ("id")
+                );
+            `)
+
+            await tenantPrisma.$executeRawUnsafe(`
+                CREATE TABLE IF NOT EXISTS "CreditNoteItem" (
+                    "id" TEXT NOT NULL,
+                    "creditNoteId" TEXT NOT NULL,
+                    "invoiceItemId" TEXT,
+                    "productId" TEXT NOT NULL,
+                    "variantId" TEXT,
+                    "description" TEXT NOT NULL,
+                    "quantity" DOUBLE PRECISION NOT NULL,
+                    "unitPrice" DOUBLE PRECISION NOT NULL,
+                    "discount" DOUBLE PRECISION NOT NULL DEFAULT 0,
+                    "taxRate" DOUBLE PRECISION NOT NULL DEFAULT 0,
+                    "subtotal" DOUBLE PRECISION NOT NULL,
+                    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    CONSTRAINT "CreditNoteItem_pkey" PRIMARY KEY ("id")
+                );
+            `)
+
+            await tenantPrisma.$executeRawUnsafe(`
+                CREATE TABLE IF NOT EXISTS "CreditNoteLineTax" (
+                    "id" TEXT NOT NULL,
+                    "creditNoteItemId" TEXT NOT NULL,
+                    "taxRateId" TEXT,
+                    "baseAmount" DOUBLE PRECISION NOT NULL,
+                    "taxAmount" DOUBLE PRECISION NOT NULL,
+                    "taxPercentage" DOUBLE PRECISION NOT NULL,
+                    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    CONSTRAINT "CreditNoteLineTax_pkey" PRIMARY KEY ("id")
+                );
+            `)
+
+            await tenantPrisma.$executeRawUnsafe(`
+                CREATE TABLE IF NOT EXISTS "CreditNoteTaxSummary" (
+                    "id" TEXT NOT NULL,
+                    "creditNoteId" TEXT NOT NULL,
+                    "taxRateId" TEXT NOT NULL,
+                    "taxableAmount" DOUBLE PRECISION NOT NULL,
+                    "taxAmount" DOUBLE PRECISION NOT NULL,
+                    "taxPercentage" DOUBLE PRECISION NOT NULL,
+                    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    CONSTRAINT "CreditNoteTaxSummary_pkey" PRIMARY KEY ("id")
+                );
+            `)
+
+            await tenantPrisma.$executeRawUnsafe(`
+                CREATE TABLE IF NOT EXISTS "CreditNoteTransmission" (
+                    "id" TEXT NOT NULL,
+                    "creditNoteId" TEXT NOT NULL,
+                    "provider" TEXT NOT NULL,
+                    "externalId" TEXT,
+                    "status" TEXT NOT NULL DEFAULT 'PENDING',
+                    "xmlGenerated" BOOLEAN NOT NULL DEFAULT false,
+                    "xmlContent" TEXT,
+                    "transmittedAt" TIMESTAMP(3),
+                    "responseData" TEXT,
+                    "errorMessage" TEXT,
+                    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    "updatedAt" TIMESTAMP(3) NOT NULL,
+                    CONSTRAINT "CreditNoteTransmission_pkey" PRIMARY KEY ("id")
+                );
+            `)
+
+            await tenantPrisma.$executeRawUnsafe(`
+                CREATE TABLE IF NOT EXISTS "CreditNoteEvent" (
+                    "id" TEXT NOT NULL,
+                    "transmissionId" TEXT NOT NULL,
+                    "event" TEXT NOT NULL,
+                    "message" TEXT,
+                    "data" TEXT,
+                    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    CONSTRAINT "CreditNoteEvent_pkey" PRIMARY KEY ("id")
+                );
+            `)
+
+            // Índices y FKs para Notas Crédito
+            await tenantPrisma.$executeRawUnsafe(`
+                DO $$ BEGIN
+                    -- CreditNote indices
+                    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'CreditNote_number_key') THEN
+                        CREATE UNIQUE INDEX "CreditNote_number_key" ON "CreditNote"("number");
+                    END IF;
+                    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'CreditNote_returnId_key') THEN
+                        CREATE UNIQUE INDEX "CreditNote_returnId_key" ON "CreditNote"("returnId");
+                    END IF;
+                    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'CreditNote_cufe_key') THEN
+                        CREATE UNIQUE INDEX "CreditNote_cufe_key" ON "CreditNote"("cufe");
+                    END IF;
+
+                    -- CreditNote FKs
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = 'CreditNote_invoiceId_fkey') THEN
+                        ALTER TABLE "CreditNote" ADD CONSTRAINT "CreditNote_invoiceId_fkey" FOREIGN KEY ("invoiceId") REFERENCES "Invoice"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+                    END IF;
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = 'CreditNote_returnId_fkey') THEN
+                        ALTER TABLE "CreditNote" ADD CONSTRAINT "CreditNote_returnId_fkey" FOREIGN KEY ("returnId") REFERENCES "Return"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+                    END IF;
+
+                    -- CreditNoteItem FKs
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = 'CreditNoteItem_creditNoteId_fkey') THEN
+                        ALTER TABLE "CreditNoteItem" ADD CONSTRAINT "CreditNoteItem_creditNoteId_fkey" FOREIGN KEY ("creditNoteId") REFERENCES "CreditNote"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+                    END IF;
+                    
+                    -- CreditNoteLineTax FKs
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = 'CreditNoteLineTax_creditNoteItemId_fkey') THEN
+                        ALTER TABLE "CreditNoteLineTax" ADD CONSTRAINT "CreditNoteLineTax_creditNoteItemId_fkey" FOREIGN KEY ("creditNoteItemId") REFERENCES "CreditNoteItem"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+                    END IF;
+
+                    -- CreditNoteTaxSummary FKs
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = 'CreditNoteTaxSummary_creditNoteId_fkey') THEN
+                        ALTER TABLE "CreditNoteTaxSummary" ADD CONSTRAINT "CreditNoteTaxSummary_creditNoteId_fkey" FOREIGN KEY ("creditNoteId") REFERENCES "CreditNote"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+                    END IF;
+
+                    -- CreditNoteTransmission FKs
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = 'CreditNoteTransmission_creditNoteId_fkey') THEN
+                        ALTER TABLE "CreditNoteTransmission" ADD CONSTRAINT "CreditNoteTransmission_creditNoteId_fkey" FOREIGN KEY ("creditNoteId") REFERENCES "CreditNote"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+                    END IF;
+                    
+                    -- CreditNoteEvent FKs
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = 'CreditNoteEvent_transmissionId_fkey') THEN
+                        ALTER TABLE "CreditNoteEvent" ADD CONSTRAINT "CreditNoteEvent_transmissionId_fkey" FOREIGN KEY ("transmissionId") REFERENCES "CreditNoteTransmission"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+                    END IF;
+
+                    -- Unique index para CreditNoteTransmission
+                    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'CreditNoteTransmission_creditNoteId_key') THEN
+                        CREATE UNIQUE INDEX "CreditNoteTransmission_creditNoteId_key" ON "CreditNoteTransmission"("creditNoteId");
                     END IF;
                 END $$;
             `)

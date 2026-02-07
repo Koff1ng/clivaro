@@ -266,7 +266,7 @@ export function PricingClient() {
 
       {/* Pricing Cards */}
       <ScrollReveal delay={100}>
-        <div id="pricing" className="mx-auto max-w-7xl px-6 py-12 lg:px-8">
+        <div id="pricing" className="mx-auto max-w-6xl px-6 py-12 lg:px-8">
           <div className="grid grid-cols-1 gap-8 lg:gap-6 lg:grid-cols-3">
             {plans.map((plan, index) => {
               const Icon = plan.icon
@@ -303,7 +303,7 @@ export function PricingClient() {
                         </div>
                       )}
 
-                      <CardHeader className="pb-8 pt-8">
+                      <CardHeader className="pb-8 pt-8 flex flex-col items-center text-center">
                         {/* Icon with enhanced gradient */}
                         <div className={`inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br ${plan.color} mb-6 shadow-lg relative overflow-hidden group-hover:scale-110 transition-transform duration-300`}>
                           <div className="absolute inset-0 bg-white/20 group-hover:bg-white/30 transition-colors"></div>
@@ -315,13 +315,13 @@ export function PricingClient() {
                           {plan.name}
                         </CardTitle>
 
-                        <CardDescription className="mt-3 text-base leading-relaxed text-gray-600 dark:text-gray-400">
+                        <CardDescription className="mt-3 text-base leading-relaxed text-gray-600 dark:text-gray-400 max-w-xs mx-auto">
                           {plan.description}
                         </CardDescription>
 
                         {/* Price section with enhanced styling */}
-                        <div className="mt-10 relative">
-                          <div className="flex items-baseline gap-2">
+                        <div className="mt-10 relative w-full flex flex-col items-center">
+                          <div className="flex items-baseline justify-center gap-2">
                             <span className={`text-5xl lg:text-6xl font-black tracking-tight bg-gradient-to-br ${plan.color} bg-clip-text text-transparent`}>
                               {formatPrice(displayPrice)}
                             </span>

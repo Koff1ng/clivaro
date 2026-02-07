@@ -26,7 +26,7 @@ interface TaxSelectorProps {
     disabled?: boolean
 }
 
-export function TaxSelector({ selectedTaxes, onTaxesChange, disabled }: TaxSelectorProps) {
+export function TaxSelector({ selectedTaxes = [], onTaxesChange, disabled }: TaxSelectorProps) {
     const [availableTaxes, setAvailableTaxes] = useState<TaxRate[]>([])
     const [isLoading, setIsLoading] = useState(false)
     const [open, setOpen] = useState(false)

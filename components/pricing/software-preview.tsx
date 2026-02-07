@@ -4,13 +4,13 @@ import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { 
-  LayoutDashboard, 
-  Package, 
+import {
+  LayoutDashboard,
+  Package,
   Warehouse,
-  Users, 
-  FileText, 
-  ShoppingCart, 
+  Users,
+  FileText,
+  ShoppingCart,
   Wallet,
   TrendingUp,
   AlertTriangle,
@@ -35,17 +35,17 @@ import {
 import { Logo } from '@/components/ui/logo'
 import { cn } from '@/lib/utils'
 
-type Section = 
-  | 'dashboard' 
-  | 'products' 
-  | 'inventory' 
-  | 'customers' 
-  | 'quotes' 
-  | 'invoices' 
-  | 'pos' 
-  | 'cash' 
-  | 'suppliers' 
-  | 'purchases' 
+type Section =
+  | 'dashboard'
+  | 'products'
+  | 'inventory'
+  | 'customers'
+  | 'quotes'
+  | 'invoices'
+  | 'pos'
+  | 'cash'
+  | 'suppliers'
+  | 'purchases'
   | 'receipts'
   | 'leads'
   | 'campaigns'
@@ -120,7 +120,7 @@ export function SoftwarePreview() {
             <div className="w-64 bg-gray-50 dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 flex flex-col">
               {/* Logo */}
               <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-                <Logo size="sm" showByline={false} />
+                <Logo size="md" showByline={false} />
               </div>
 
               {/* Navigation */}

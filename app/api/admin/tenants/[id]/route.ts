@@ -197,8 +197,8 @@ export async function DELETE(
     // Delete the PostgreSQL schema if using Postgres
     const isPostgres = tenant.databaseUrl?.startsWith('postgresql://') || tenant.databaseUrl?.startsWith('postgres://')
 
-    if (isPostgres && tenant.slug) {
-      const schemaName = `tenant_${tenant.slug.toLowerCase().replace(/[^a-z0-9_]/g, '_')}`
+    if (isPostgres) {
+      const schemaName = `tenant_${id}`
 
       // Use DIRECT_DATABASE_URL for DDL operations
       const directUrl = process.env.DIRECT_DATABASE_URL || process.env.DATABASE_URL

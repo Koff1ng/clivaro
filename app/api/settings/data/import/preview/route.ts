@@ -54,6 +54,8 @@ export async function POST(req: Request) {
         const requiredFields: Record<string, string[]> = {
             'clients': ['name'],
             'products': ['name', 'price'],
+            'sales': ['invoiceNumber', 'productName'],
+            'settings': [],
         }
 
         // Fields that strongly suggest user is importing the WRONG type

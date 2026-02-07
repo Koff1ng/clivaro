@@ -59,21 +59,29 @@ const menuGroups: MenuGroup[] = [
     ]
   },
   {
-    title: 'Comercial',
-    key: 'comercial',
+    title: 'Marketing',
+    key: 'marketing',
     items: [
       { href: '/crm/customers', label: 'Clientes', icon: Group, permission: ['manage_crm', 'manage_sales'], planFeature: 'manageSales' },
       { href: '/crm/leads', label: 'Oportunidades', icon: KanbanBoard, permission: 'manage_crm', planFeature: 'leads' },
       { href: '/marketing/campaigns', label: 'Campañas', icon: Mail, permission: 'manage_crm', planFeature: 'marketing' },
-      { href: '/sales/quotes', label: 'Cotizaciones', icon: PasteClipboard, permission: 'manage_sales', planFeature: 'quotations' },
-      { href: '/sales/orders', label: 'Órdenes', icon: PasteClipboard, permission: 'manage_sales', planFeature: 'manageSales' },
-      { href: '/sales/invoices', label: 'Facturas', icon: Page, permission: 'manage_sales', planFeature: 'invoices' },
-      { href: '/dashboard/electronic-invoicing', label: 'Fact. Electrónica', icon: ShieldCheck, permission: 'manage_sales', planFeature: 'invoices' },
-      { href: '/pos', label: 'Punta de Venta', icon: CartIcon, permission: 'manage_sales', planFeature: 'pos' },
     ]
   },
   {
-    title: 'Inventario & Compras',
+    title: 'POS',
+    key: 'pos',
+    items: [
+      { href: '/pos', label: 'Punta de Venta', icon: CartIcon, permission: 'manage_sales', planFeature: 'pos' },
+      { href: '/cash/shifts', label: 'Caja', icon: WalletIcon, permission: ['manage_cash', 'manage_sales'], planFeature: 'manageCash' },
+      { href: '/sales/quotes', label: 'Cotizaciones', icon: PasteClipboard, permission: 'manage_sales', planFeature: 'quotations' },
+      { href: '/sales/orders', label: 'Órdenes', icon: PasteClipboard, permission: 'manage_sales', planFeature: 'manageSales' },
+      { href: '/sales/invoices', label: 'Facturas', icon: Page, permission: 'manage_sales', planFeature: 'invoices' },
+      { href: '/credit-notes', label: 'Notas Crédito', icon: PasteClipboard, permission: 'manage_sales', planFeature: 'invoices' },
+      { href: '/dashboard/electronic-invoicing', label: 'Fact. Electrónica', icon: ShieldCheck, permission: 'manage_sales', planFeature: 'invoices' },
+    ]
+  },
+  {
+    title: 'Inventario',
     key: 'inventory',
     items: [
       { href: '/products', label: 'Items', icon: Box, permission: 'manage_products', planFeature: 'manageProducts' },
@@ -81,13 +89,6 @@ const menuGroups: MenuGroup[] = [
       { href: '/purchases/suppliers', label: 'Proveedores', icon: Shop, permission: 'manage_purchases', planFeature: 'managePurchases' },
       { href: '/purchases/orders', label: 'Órdenes Compra', icon: Bag, permission: 'manage_purchases', planFeature: 'managePurchases' },
       { href: '/purchases/receipts', label: 'Recepciones', icon: Truck, permission: 'manage_purchases', planFeature: 'managePurchases' },
-    ]
-  },
-  {
-    title: 'Tesoreria',
-    key: 'treasury',
-    items: [
-      { href: '/cash/shifts', label: 'Caja', icon: WalletIcon, permission: ['manage_cash', 'manage_sales'], planFeature: 'manageCash' },
     ]
   },
   {
@@ -130,6 +131,19 @@ export function Sidebar() {
   const isSuperAdmin = (session?.user as any)?.isSuperAdmin || false
   const { hasFeature: hasPlanFeature, isNewFeature, newFeatures, isLoading, planName } = useTenantPlan()
   const [visitedFeatures, setVisitedFeatures] = useState<Record<string, number>>({})
+
+  // Persist scroll position
+  useEffect(() => {
+    const nav = document.getElementById('sidebar-nav')
+    if (nav) {
+      const savedScroll = sessionStorage.getItem('sidebar-scroll')
+      if (savedScroll) nav.scrollTop = parseInt(savedScroll)
+    }
+  }, [pathname])
+
+  const handleScroll = (e: React.UIEvent<HTMLElement>) => {
+    sessionStorage.setItem('sidebar-scroll', e.currentTarget.scrollTop.toString())
+  }
 
   // State for collapsible groups. Default all open or specific logic.
   // Using a map for open/closed state. Default to true (open).
@@ -244,39 +258,45 @@ export function Sidebar() {
 
       <aside
         className={cn(
-          'fixed md:static top-0 left-0 z-50 h-screen flex flex-col border-r border-slate-800 bg-[#0F172A] text-slate-100 transition-all duration-300 ease-in-out',
+          'fixed md:static top-0 left-0 z-50 h-screen flex flex-col border-r border-slate-800 bg-[#0F172A] text-slate-100 transition-all duration-300 ease-in-out overflow-hidden',
           isOpen ? 'w-64 translate-x-0' : 'w-0 -translate-x-full md:translate-x-0 md:w-16'
         )}
       >
         {isOpen && (
           <div className={cn(
-            'flex items-center justify-center border-b border-slate-800 px-1 transition-opacity duration-300 opacity-100'
-          )} style={{ height: '100px' }}>
-            <Link href="/dashboard" prefetch className="w-full flex justify-center py-2">
+            'flex items-center justify-center border-b border-slate-800 px-1 transition-opacity duration-300 opacity-100 h-14 sm:h-16'
+          )}>
+            <Link href="/dashboard" prefetch scroll={false} className="w-full flex justify-center items-center h-full">
               <div
                 style={{
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   width: '100%',
-                  maxHeight: '64px',
+                  maxHeight: '100%',
                   overflow: 'hidden',
                 }}
               >
-                <div style={{ transform: 'scale(1.1)' }}>
-                  <div className="text-white">
-                    <Logo size="md" showByline={false} />
-                  </div>
+                <div className="text-white w-full">
+                  <Logo
+                    size="lg"
+                    showByline={false}
+                    className="!w-48 md:!w-64 !h-auto !justify-start -ml-2 mt-4"
+                  />
                 </div>
               </div>
             </Link>
           </div>
         )}
 
-        <nav className={cn(
-          'flex-1 transition-opacity duration-300',
-          isOpen ? 'opacity-100 overflow-y-auto' : 'opacity-0 md:opacity-100 md:overflow-visible'
-        )}>
+        <nav
+          id="sidebar-nav"
+          onScroll={handleScroll}
+          className={cn(
+            'flex-1 transition-opacity duration-300 overflow-y-auto overflow-x-hidden custom-scrollbar',
+            isOpen ? 'opacity-100' : 'opacity-0 md:opacity-100',
+            !isOpen && 'scrollbar-hide'
+          )}>
           <div className={cn('flex flex-col gap-1', isOpen ? 'p-3' : 'p-1')}>
 
             {menuGroups.map((group, groupIndex) => {
@@ -312,6 +332,7 @@ export function Sidebar() {
                           key={item.href}
                           href={item.href}
                           prefetch
+                          scroll={false}
                           onClick={() => {
                             if (item.planFeature && shouldShowNewBadge(item.planFeature)) {
                               handleFeatureClick(item.planFeature)
@@ -357,6 +378,7 @@ export function Sidebar() {
                 <Link
                   href="/admin/tenants"
                   prefetch
+                  scroll={false}
                   className={cn(
                     'flex items-center gap-3 rounded-lg text-sm font-medium transition-colors relative group',
                     pathname?.startsWith('/admin/tenants')

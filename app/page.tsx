@@ -56,24 +56,25 @@ export default function HomePage() {
   return (
     <div className="w-full h-screen grid lg:grid-cols-2 overflow-hidden">
       {/* Left Panel - Brand & Visuals */}
-      <div className="hidden lg:flex relative flex-col justify-between p-12 bg-slate-950 text-white overflow-hidden">
+      <div className="hidden lg:flex relative flex-col justify-between pt-4 px-12 pb-12 bg-slate-950 text-white overflow-hidden">
         {/* Abstract Background Effects */}
         <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
           <div className="absolute top-[-20%] right-[-10%] w-[600px] h-[600px] bg-blue-600/20 rounded-full blur-3xl" />
           <div className="absolute bottom-[-20%] left-[-10%] w-[500px] h-[500px] bg-indigo-600/20 rounded-full blur-3xl" />
         </div>
 
-        {/* Header content */}
-        <div className="relative z-10">
-          <Logo size="lg" className="w-fit" />
-        </div>
+        <div>
+          {/* Brand Header & Headline Grouped */}
+          <div className="relative z-5 flex flex-col gap-0">
+            <Logo size="lg" className="w-80 h-auto -ml-4 -mb-18" /> {/*TAMAÑO DEL LOGO*/}
+            <div className="max-w-lg -mt-10">
+              <h2 className="text-5xl font-bold tracking-tight mb-6 leading-tight">
+                La plataforma definitiva para escalar tu negocio.
+              </h2>
+            </div>
+          </div>
 
-        {/* Feature/Testimonial Content */}
-        <div className="relative z-10 max-w-lg">
-          <h2 className="text-4xl font-bold tracking-tight mb-6 leading-tight">
-            La plataforma definitiva para escalar tu negocio.
-          </h2>
-          <div className="space-y-4">
+          <div className="relative z-10 space-y-4">
             <div className="flex items-center gap-3 text-slate-300">
               <CheckCircle2 className="w-5 h-5 text-blue-500" />
               <span>Gestión integral de inventario y ventas</span>
@@ -109,10 +110,10 @@ export default function HomePage() {
 
           <div className="text-center lg:text-left space-y-2">
             <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
-              Acceso a su Empresa
+              Bienvenido a Clivaro
             </h1>
             <p className="text-gray-500 dark:text-gray-400">
-              Ingrese el identificador único de su organización
+              Ingrese el identificador de su empresa para continuar
             </p>
           </div>
 
@@ -124,8 +125,8 @@ export default function HomePage() {
               </div>
             )}
 
-            <div className="space-y-2.5">
-              <Label htmlFor="tenantSlug" className="text-gray-700 dark:text-gray-300 font-medium">
+            <div className="space-y-2">
+              <Label htmlFor="tenant" className="text-gray-700 dark:text-gray-300 font-medium">
                 Identificador de Empresa
               </Label>
               <div className="relative group">
@@ -133,17 +134,20 @@ export default function HomePage() {
                   <Building2 className="w-5 h-5" />
                 </div>
                 <Input
-                  id="tenantSlug"
+                  id="tenant"
                   type="text"
-                  placeholder="ej: mi-empresa"
+                  placeholder="ejemplo-empresa"
                   value={tenantSlug}
-                  onChange={(e) => setTenantSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
+                  onChange={(e) => setTenantSlug(e.target.value.toLowerCase())}
                   required
                   disabled={loading}
-                  className="pl-10 h-12 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 focus:border-blue-500 focus:ring-blue-500/20 transition-all text-base"
+                  className="pl-10 h-12 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 focus:border-blue-500 focus:ring-blue-500/20 transition-all text-lg"
                   autoComplete="organization"
                 />
               </div>
+              <p className="text-xs text-gray-400 mt-1.5 px-1">
+                Suele ser el nombre de su negocio en minúsculas y sin espacios.
+              </p>
             </div>
 
             <Button
@@ -165,25 +169,13 @@ export default function HomePage() {
             </Button>
           </form>
 
-          <div className="pt-6 border-t border-gray-100 dark:border-gray-800 text-center">
-            <div className="mb-4">
-              <Link
-                href="/pricing"
-                className="text-blue-600 hover:text-blue-700 font-medium hover:underline inline-flex items-center gap-1"
-              >
-                Ver Planes y Precios <ArrowRight className="w-4 h-4" />
+          <div className="pt-8 text-center">
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              ¿No tienes una cuenta?{' '}
+              <Link href="/pricing" className="text-blue-600 hover:text-blue-700 font-semibold hover:underline transition-all">
+                Prueba Clivaro Gratis
               </Link>
-            </div>
-            <p className="text-sm text-gray-500">
-              ¿No tiene una cuenta? <Link href="/pricing" className="text-gray-900 dark:text-gray-200 font-medium hover:underline">Contáctenos</Link>
             </p>
-          </div>
-
-          <div className="mt-8 text-center text-xs text-slate-400 lg:hidden flex items-center justify-center gap-4">
-            <span>© 2026 Clivaro by <Link href="/pricing" className="hover:text-blue-500 transition-colors">Clientum Studio</Link>.</span>
-            <Link href="/admin/login" className="opacity-50 hover:opacity-100 transition-opacity" title="Administración">
-              <Lock className="w-3 h-3" />
-            </Link>
           </div>
         </div>
       </div>

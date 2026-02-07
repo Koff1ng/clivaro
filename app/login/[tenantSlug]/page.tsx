@@ -2,68 +2,43 @@
 
 import { useState, useEffect } from 'react'
 import { signIn } from 'next-auth/react'
-import { useRouter, useParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Lock, Mail, AlertCircle, Loader2, Building2, CheckCircle2, ArrowRight } from 'lucide-react'
+import { Lock, Mail, AlertCircle, Loader2, ArrowRight, CheckCircle2, Building2 } from 'lucide-react'
 import { Logo } from '@/components/ui/logo'
 import { LoadingScreen } from '@/components/ui/loading-screen'
 import Link from 'next/link'
 
-export default function TenantLoginPage() {
+export default function TenantLoginPage({ params }: { params: { tenantSlug: string } }) {
   const router = useRouter()
-  const params = useParams()
-  const tenantSlug = params?.tenantSlug as string
-
-  const [username, setUsername] = useState('')
+  const [identifier, setIdentifier] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const [tenantName, setTenantName] = useState<string | null>(null)
+  const [tenantName, setTenantName] = useState('')
   const [verifying, setVerifying] = useState(true)
 
   useEffect(() => {
-    // Verificar que el tenant existe
-    const verifyTenant = async () => {
+    async function verifyTenant() {
       try {
-        const response = await fetch(`/api/tenants/verify?slug=${encodeURIComponent(tenantSlug)}`)
-
-        if (!response.ok) {
-          setError('Empresa no encontrada. Verifique el identificador.')
-          setVerifying(false)
-          return
+        const response = await fetch(`/api/tenants/verify?slug=${params.tenantSlug}`)
+        if (response.ok) {
+          const data = await response.json()
+          setTenantName(data.tenant.name)
+        } else {
+          router.push('/')
         }
-
-        const { tenant, dbMode } = await response.json()
-
-        if (!tenant.active) {
-          setError('Su cuenta está inactiva. Contacte al administrador.')
-          setVerifying(false)
-          return
-        }
-
-        if (dbMode === 'legacy_sqlite') {
-          setError('Esta empresa aún no está configurada en producción. Contacte al administrador para migrarla.')
-          setVerifying(false)
-          return
-        }
-
-        setTenantName(tenant.name)
-        setVerifying(false)
       } catch (err) {
-        setError('Error al verificar la empresa. Por favor, intente nuevamente.')
+        console.error('Error verifying tenant:', err)
+        router.push('/')
+      } finally {
         setVerifying(false)
       }
     }
-
-    if (tenantSlug) {
-      verifyTenant()
-    } else {
-      setError('Identificador de empresa no válido')
-      setVerifying(false)
-    }
-  }, [tenantSlug])
+    verifyTenant()
+  }, [params.tenantSlug, router])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -72,20 +47,33 @@ export default function TenantLoginPage() {
 
     try {
       const result = await signIn('credentials', {
-        username,
+        username: identifier,
         password,
-        tenantSlug, // Pasar el tenant slug al provider
+        tenantSlug: params.tenantSlug,
         redirect: false,
         callbackUrl: '/dashboard',
       })
 
       if (result?.error) {
-        // Show actionable error from CredentialsProvider when available
-        const msg = typeof result.error === 'string' ? result.error : 'Credenciales inválidas.'
-        setError(msg)
+        const errorMessage = result.error
+        let displayMessage = 'Credenciales inválidas. Verifique su correo y contraseña.'
+
+        if (errorMessage.includes('USER_INACTIVE')) {
+          displayMessage = 'Su cuenta está inactiva. Contacte al administrador.'
+        } else if (errorMessage.includes('INVALID_CREDENTIALS')) {
+          displayMessage = 'Usuario o contraseña incorrectos.'
+        } else if (errorMessage.includes('TENANT_DB_ERROR')) {
+          displayMessage = 'Error de conexión con la base de datos. Intente nuevamente.'
+        } else if (errorMessage.includes('TENANT_NOT_READY')) {
+          displayMessage = 'El sistema aún no está completamente configurado.'
+        } else if (errorMessage) {
+          displayMessage = errorMessage.replace(/^(INVALID_CREDENTIALS|USER_INACTIVE|TENANT_DB_ERROR|TENANT_NOT_READY):\s*/i, '')
+        }
+
+        setError(displayMessage)
         setLoading(false)
       } else if (result?.ok) {
-        // Wait a bit to ensure session is fully established
+        // Redirigir manualmente después del login exitoso
         await new Promise(resolve => setTimeout(resolve, 300))
         window.location.href = '/dashboard'
       } else {
@@ -106,28 +94,34 @@ export default function TenantLoginPage() {
   return (
     <div className="w-full h-screen grid lg:grid-cols-2 overflow-hidden">
       {/* Left Panel - Brand & Visuals */}
-      <div className="hidden lg:flex relative flex-col justify-between p-12 bg-slate-950 text-white overflow-hidden">
+      <div className="hidden lg:flex relative flex-col justify-between pt-4 px-12 pb-12 bg-slate-950 text-white overflow-hidden">
         {/* Abstract Background Effects */}
         <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
           <div className="absolute top-[-20%] right-[-10%] w-[600px] h-[600px] bg-cyan-600/20 rounded-full blur-3xl" />
           <div className="absolute bottom-[-20%] left-[-10%] w-[500px] h-[500px] bg-blue-600/20 rounded-full blur-3xl" />
         </div>
 
-        {/* Header content */}
-        <div className="relative z-10 flex items-center justify-between">
-          <Logo size="lg" className="w-fit" />
-          <div className="px-3 py-1 rounded-full bg-slate-800/50 border border-slate-700 text-xs font-medium text-slate-300 flex items-center gap-2">
-            <Building2 className="w-3 h-3" />
-            {tenantName || 'Acceso Corporativo'}
+        <div>
+          {/* Brand Header & Headline Grouped */}
+          <div className="relative z-10 flex flex-col gap-0 mb-12">
+            <div className="flex items-center justify-between w-full mb-2">
+              <Logo
+                size="lg"
+                className="w-72 md:w-80 lg:w-96 h-auto -mb-10 ml-19"
+              />
+              <div className="px-3 py-1 rounded-full bg-slate-800/50 border border-slate-700 text-xs font-medium text-slate-300 flex items-center gap-2 h-fit">
+                <Building2 className="w-3 h-3" />
+                {tenantName || 'Acceso Corporativo'}
+              </div>
+            </div>
+            <div className="max-w-lg -mt-10">
+              <h2 className="text-5xl font-bold tracking-tight mb-6 leading-tight">
+                Bienvenido a {tenantName || 'tu espacio de trabajo'}.
+              </h2>
+            </div>
           </div>
-        </div>
 
-        {/* Feature/Testimonial Content */}
-        <div className="relative z-10 max-w-lg">
-          <h2 className="text-4xl font-bold tracking-tight mb-6 leading-tight">
-            Bienvenido a {tenantName || 'tu espacio de trabajo'}.
-          </h2>
-          <div className="space-y-4">
+          <div className="relative z-10 space-y-4">
             <div className="flex items-center gap-3 text-slate-300">
               <CheckCircle2 className="w-5 h-5 text-cyan-500" />
               <span>Acceso seguro y encriptado</span>
@@ -163,7 +157,7 @@ export default function TenantLoginPage() {
               Iniciar Sesión
             </h1>
             <p className="text-gray-500 dark:text-gray-400">
-              Ingrese sus credenciales de colaborador
+              Acceda a su cuenta corporativa
             </p>
           </div>
 
@@ -176,19 +170,19 @@ export default function TenantLoginPage() {
             )}
 
             <div className="space-y-2.5">
-              <Label htmlFor="username" className="text-gray-700 dark:text-gray-300 font-medium">
-                Usuario o Email
+              <Label htmlFor="identifier" className="text-gray-700 dark:text-gray-300 font-medium">
+                Usuario o Correo Electrónico
               </Label>
               <div className="relative group">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400 group-focus-within:text-blue-600 transition-colors">
                   <Mail className="w-5 h-5" />
                 </div>
                 <Input
-                  id="username"
+                  id="identifier"
                   type="text"
-                  placeholder="usuario"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="usuario o nombre@empresa.com"
+                  value={identifier}
+                  onChange={(e) => setIdentifier(e.target.value)}
                   required
                   disabled={loading}
                   className="pl-10 h-12 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 focus:border-blue-500 focus:ring-blue-500/20 transition-all text-base"
@@ -198,9 +192,14 @@ export default function TenantLoginPage() {
             </div>
 
             <div className="space-y-2.5">
-              <Label htmlFor="password" className="text-gray-700 dark:text-gray-300 font-medium">
-                Contraseña
-              </Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="password" className="text-gray-700 dark:text-gray-300 font-medium">
+                  Contraseña
+                </Label>
+                <Link href="#" className="text-sm text-blue-600 hover:text-blue-700 font-medium hover:underline transition-colors">
+                  ¿Olvidó su contraseña?
+                </Link>
+              </div>
               <div className="relative group">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400 group-focus-within:text-blue-600 transition-colors">
                   <Lock className="w-5 h-5" />
@@ -221,7 +220,7 @@ export default function TenantLoginPage() {
 
             <Button
               type="submit"
-              className="w-full h-12 bg-gray-900 hover:bg-black text-white font-semibold text-lg shadow-lg hover:shadow-gray-900/25 transition-all duration-200 dark:bg-blue-600 dark:hover:bg-blue-700"
+              className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-lg shadow-lg hover:shadow-blue-500/25 transition-all duration-200"
               disabled={loading}
             >
               {loading ? (
@@ -231,7 +230,7 @@ export default function TenantLoginPage() {
                 </>
               ) : (
                 <>
-                  Iniciar Sesión
+                  Entrar al Sistema
                   <ArrowRight className="w-5 h-5 ml-2" />
                 </>
               )}
@@ -243,7 +242,7 @@ export default function TenantLoginPage() {
               href="/"
               className="text-sm text-gray-500 hover:text-blue-600 font-medium hover:underline inline-flex items-center gap-1 transition-colors"
             >
-              ← Cambiar empresa
+              ← Cambiar de empresa
             </Link>
           </div>
         </div>
@@ -251,5 +250,3 @@ export default function TenantLoginPage() {
     </div>
   )
 }
-
-

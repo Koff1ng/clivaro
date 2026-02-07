@@ -1147,6 +1147,21 @@ export function POSScreen() {
     toast('Notas guardadas', 'success')
   }, [preparationNotesItem, preparationNotesInput, updateCartItemNotes, toast])
 
+  const updateAllItemsTaxes = useCallback((taxes: any[]) => {
+    setCart((prev) => prev.map((item) => {
+      // Recalculate subtotal with new taxes
+      const totalTaxRate = taxes.reduce((sum, t) => {
+        if (t.type && (t.type.startsWith('RETE') || t.type === 'RETENTION')) {
+          return sum - t.rate
+        }
+        return sum + t.rate
+      }, 0)
+      const subtotal = item.quantity * item.unitPrice * (1 - (item.discount || 0) / 100) * (1 + totalTaxRate / 100)
+      return { ...item, appliedTaxes: taxes, taxRate: totalTaxRate, subtotal }
+    }))
+    toast('Impuestos aplicados a todos los items', 'success')
+  }, [toast])
+
   const calculateTotals = () => {
     const subtotal = cart.reduce((sum, item) => {
       const itemSubtotal = item.quantity * item.unitPrice * (1 - (item.discount || 0) / 100)
@@ -1821,7 +1836,14 @@ export function POSScreen() {
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-sm text-gray-600">Impuestos</span>
-                <span className="text-sm font-medium">{formatCurrency(totals.tax)}</span>
+                <div className="flex items-center gap-2">
+                  <TaxSelector
+                    selectedTaxes={cart.length > 0 ? cart[0].appliedTaxes || [] : []}
+                    onTaxesChange={updateAllItemsTaxes}
+                    disabled={cart.length === 0}
+                  />
+                  <span className="text-sm font-medium min-w-[60px] text-right">{formatCurrency(totals.tax)}</span>
+                </div>
               </div>
               {totals.retention > 0 && (
                 <div className="flex justify-between items-center text-orange-600">

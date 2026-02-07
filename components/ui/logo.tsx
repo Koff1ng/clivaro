@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react'
 import Image from 'next/image'
+import { cn } from '@/lib/utils'
 
 interface LogoProps {
   className?: string
@@ -13,25 +14,32 @@ interface LogoProps {
 export function Logo({ className = '', showText = true, size = 'md', showByline = false }: LogoProps) {
   const [imgError, setImgError] = useState(false)
 
-  // Map size prop to dimensions suitable for the PNG (aspect ratio approx 3.33)
+  // Map size prop to dimensions suitable for the new logo (Optimized Brand Prominence)
   const dimensions = {
-    sm: { width: 120, height: 36 },
-    md: { width: 160, height: 48 },
-    lg: { width: 220, height: 66 },
-    xl: { width: 280, height: 84 },
+    sm: { width: 140, height: 48 },
+    md: { width: 220, height: 80 },
+    lg: { width: 1000, height: 320 }, // Optimized for clarity
+    xl: { width: 1400, height: 450 },
   }
 
   const { width, height } = dimensions[size]
 
   return (
-    <div className={`flex items-center justify-center ${className}`}>
+    <div className={cn(
+      "flex items-center",
+      size === 'sm' && !className.includes('h-') && "h-12",
+      size === 'md' && !className.includes('h-') && "h-16",
+      size === 'lg' && !className.includes('h-') && "h-40",
+      size === 'xl' && !className.includes('h-') && "h-56",
+      className
+    )}>
       {!imgError ? (
         <Image
-          src="/clivaro-logo-final.png"
+          src="/LOGO FINAL.svg"
           alt="Clivaro"
           width={width}
           height={height}
-          className="object-contain dark:brightness-200 dark:contrast-50"
+          className="object-contain max-h-full w-auto"
           priority
           unoptimized
           onError={() => setImgError(true)}
@@ -57,16 +65,12 @@ export function LogoIcon({ className = '', size = 'md' }: { className?: string; 
   return (
     <div className={`${sizeClasses[size]} ${className} flex-shrink-0 relative overflow-hidden flex items-center justify-center`}>
       {!imgError ? (
-        // Trying to center the "C" icon from the full logo using object-position
-        // The logo is roughly: [Icon] [Text]
-        // Icon takes up left ~25%
         <Image
-          src="/clivaro-logo-final.png"
+          src="/clivaro-logo-new.png"
           alt="Clivaro"
-          width={iconSize * 4} // Load larger to crop
-          height={iconSize}
-          className="object-cover object-left dark:brightness-200 dark:contrast-50"
-          style={{ objectPosition: 'left center' }}
+          width={iconSize * 2} // Slightly larger to allow some focus on the "C"
+          height={iconSize * 2}
+          className="object-contain max-h-full w-auto"
           priority
           unoptimized
           onError={() => setImgError(true)}

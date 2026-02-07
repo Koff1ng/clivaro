@@ -1,6 +1,0 @@
---- START MASTER DB DEBUG ---
-🔍 Starting debug leads fetch from MASTER DB...
-🔄 Attempting to fetch leads from prisma (Master DB)...
-✅ Successfully fetched 0 leads from MASTER DB
-No leads found in master DB.
---- END MASTER DB DEBUG ---

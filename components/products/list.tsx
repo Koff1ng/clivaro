@@ -168,24 +168,24 @@ export function ProductsList() {
           <span className="text-muted-foreground">Cargando items...</span>
         </div>
       ) : (
-        <div className="border rounded-lg">
+        <div className="border rounded-2xl bg-card/80 backdrop-blur-sm shadow-sm overflow-hidden">
           <Table>
-            <TableHeader>
+            <TableHeader className="bg-gray-50 dark:bg-gray-800/50">
               <TableRow>
-                <TableHead>SKU</TableHead>
-                <TableHead>Nombre</TableHead>
-                <TableHead>Tipo</TableHead>
-                <TableHead>Categoría</TableHead>
-                <TableHead>Unidad</TableHead>
-                <TableHead>Costo</TableHead>
-                <TableHead>Precio</TableHead>
-                <TableHead>Acciones</TableHead>
+                <TableHead className="py-3 px-4 font-semibold text-sm">SKU</TableHead>
+                <TableHead className="py-3 px-4 font-semibold text-sm">Nombre</TableHead>
+                <TableHead className="py-3 px-4 font-semibold text-sm">Tipo</TableHead>
+                <TableHead className="py-3 px-4 font-semibold text-sm">Categoría</TableHead>
+                <TableHead className="py-3 px-4 font-semibold text-sm">Unidad</TableHead>
+                <TableHead className="py-3 px-4 font-semibold text-sm">Costo</TableHead>
+                <TableHead className="py-3 px-4 font-semibold text-sm">Precio</TableHead>
+                <TableHead className="py-3 px-4 font-semibold text-sm w-[100px]">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {products.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center text-gray-500">
+                  <TableCell colSpan={8} className="text-center text-gray-500 py-8">
                     No hay items registrados
                   </TableCell>
                 </TableRow>
@@ -234,32 +234,35 @@ export function ProductsList() {
 
 // Memoized row component to prevent unnecessary re-renders
 const ProductRow = React.memo(({ product, onEdit }: { product: any; onEdit: (product: any) => void }) => (
-  <TableRow>
-    <TableCell>{product.sku}</TableCell>
-    <TableCell className="font-medium">
-      <div>{product.name}</div>
+  <TableRow className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 border-b transition-colors">
+    <TableCell className="py-3 px-4 text-sm font-medium text-gray-900 dark:text-gray-100">{product.sku}</TableCell>
+    <TableCell className="py-3 px-4">
+      <div className="font-medium text-sm text-gray-900 dark:text-gray-100">{product.name}</div>
       {product.enableRecipeConsumption && (
         <div className="flex gap-1 mt-1">
-          <span className="text-[10px] bg-blue-100 text-blue-700 px-1 rounded font-bold uppercase">Con Receta</span>
+          <span className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">
+            Con Receta
+          </span>
         </div>
       )}
     </TableCell>
-    <TableCell>
-      <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-700">
+    <TableCell className="py-3 px-4">
+      <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300 border border-gray-200 dark:border-gray-700">
         {product.productType || 'RETAIL'}
       </span>
     </TableCell>
-    <TableCell>{product.category || '-'}</TableCell>
-    <TableCell>{product.unitOfMeasure}</TableCell>
-    <TableCell>{formatCurrency(product.cost)}</TableCell>
-    <TableCell>{formatCurrency(product.price)}</TableCell>
-    <TableCell>
+    <TableCell className="py-3 px-4 text-sm text-gray-600 dark:text-gray-400">{product.category || '-'}</TableCell>
+    <TableCell className="py-3 px-4 text-sm text-gray-600 dark:text-gray-400">{product.unitOfMeasure}</TableCell>
+    <TableCell className="py-3 px-4 text-sm font-medium text-gray-900 dark:text-gray-100">{formatCurrency(product.cost)}</TableCell>
+    <TableCell className="py-3 px-4 text-sm font-bold text-green-700 dark:text-green-400">{formatCurrency(product.price)}</TableCell>
+    <TableCell className="py-3 px-4">
       <Button
         variant="ghost"
         size="sm"
         onClick={() => onEdit(product)}
+        className="h-8 w-8 p-0 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full"
       >
-        <Edit className="h-4 w-4" />
+        <Edit className="h-4 w-4 text-gray-500" />
       </Button>
     </TableCell>
   </TableRow>

@@ -1,5 +1,8 @@
 'use client'
 
+
+import { MainLayout } from '@/components/layout/main-layout'
+import { PageHeader } from '@/components/ui/page-header'
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus, Calendar, DollarSign } from 'lucide-react'
@@ -88,96 +91,101 @@ export default function PayrollRunsPage() {
     }
 
     return (
-        <div className="space-y-6">
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Cortes de Nómina</h1>
-                    <p className="text-muted-foreground">Genera y consulta periodos de pago.</p>
-                </div>
-                <Dialog open={isOpen} onOpenChange={setIsOpen}>
-                    <DialogTrigger asChild>
-                        <Button><Plus className="mr-2 h-4 w-4" /> Generar Nómina</Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                        <DialogHeader>
-                            <DialogTitle>Generar Nómina</DialogTitle>
-                            <DialogDescription>
-                                Calcula automáticamente el pago para empleados activos.
-                            </DialogDescription>
-                        </DialogHeader>
-                        <form onSubmit={handleSubmit} className="space-y-4">
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <Label>Fecha Inicio</Label>
-                                    <Input type="date" value={formData.startDate} onChange={e => setFormData({ ...formData, startDate: e.target.value })} required />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label>Fecha Fin</Label>
-                                    <Input type="date" value={formData.endDate} onChange={e => setFormData({ ...formData, endDate: e.target.value })} required />
-                                </div>
-                            </div>
-                            <div className="space-y-2">
-                                <Label>Notas</Label>
-                                <Input value={formData.notes} onChange={e => setFormData({ ...formData, notes: e.target.value })} placeholder="Ej. Quincena 1 Enero" />
-                            </div>
-                            <DialogFooter>
-                                <Button type="submit" disabled={createMutation.isPending}>
-                                    {createMutation.isPending ? 'Generando...' : 'Generar'}
-                                </Button>
-                            </DialogFooter>
-                        </form>
-                    </DialogContent>
-                </Dialog>
-            </div>
-
-            <div className="border rounded-lg">
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead>Periodo</TableHead>
-                            <TableHead>Fecha Pago</TableHead>
-                            <TableHead>Empleados</TableHead>
-                            <TableHead>Estado</TableHead>
-                            <TableHead className="text-right">Total</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {isLoading ? (
-                            <TableRow>
-                                <TableCell colSpan={5} className="text-center py-8">Cargando...</TableCell>
-                            </TableRow>
-                        ) : runs?.length === 0 ? (
-                            <TableRow>
-                                <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">No hay registros de nómina</TableCell>
-                            </TableRow>
-                        ) : (
-                            runs?.map((run: any) => (
-                                <TableRow key={run.id}>
-                                    <TableCell className="font-medium">
-                                        {format(new Date(run.startDate), 'dd MMM')} - {format(new Date(run.endDate), 'dd MMM yyyy')}
-                                    </TableCell>
-                                    <TableCell>
-                                        {run.paymentDate ? format(new Date(run.paymentDate), 'dd/MM/yyyy') : '-'}
-                                    </TableCell>
-                                    <TableCell>
-                                        <div className="flex items-center gap-1">
-                                            <User className="h-4 w-4 text-muted-foreground" />
-                                            {run._count?.items || 0}
+        <MainLayout>
+            <div className="space-y-6">
+                <PageHeader
+                    title="Cortes de Nómina"
+                    description="Genera y consulta periodos de pago."
+                    icon={<Calendar className="h-5 w-5" />}
+                    actions={
+                        <Dialog open={isOpen} onOpenChange={setIsOpen}>
+                            <DialogTrigger asChild>
+                                <Button><Plus className="mr-2 h-4 w-4" /> Generar Nómina</Button>
+                            </DialogTrigger>
+                            <DialogContent>
+                                <DialogHeader>
+                                    <DialogTitle>Generar Nómina</DialogTitle>
+                                    <DialogDescription>
+                                        Calcula automáticamente el pago para empleados activos.
+                                    </DialogDescription>
+                                </DialogHeader>
+                                <form onSubmit={handleSubmit} className="space-y-4">
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <Label>Fecha Inicio</Label>
+                                            <Input type="date" value={formData.startDate} onChange={e => setFormData({ ...formData, startDate: e.target.value })} required />
                                         </div>
-                                    </TableCell>
-                                    <TableCell>
-                                        <Badge variant={run.status === 'PAID' ? 'default' : 'secondary'}>{run.status}</Badge>
-                                    </TableCell>
-                                    <TableCell className="text-right font-mono font-medium">
-                                        {formatCurrency(run.total)}
-                                    </TableCell>
+                                        <div className="space-y-2">
+                                            <Label>Fecha Fin</Label>
+                                            <Input type="date" value={formData.endDate} onChange={e => setFormData({ ...formData, endDate: e.target.value })} required />
+                                        </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>Notas</Label>
+                                        <Input value={formData.notes} onChange={e => setFormData({ ...formData, notes: e.target.value })} placeholder="Ej. Quincena 1 Enero" />
+                                    </div>
+                                    <DialogFooter>
+                                        <Button type="submit" disabled={createMutation.isPending}>
+                                            {createMutation.isPending ? 'Generando...' : 'Generar'}
+                                        </Button>
+                                    </DialogFooter>
+                                </form>
+                            </DialogContent>
+                        </Dialog>
+                    }
+                />
+
+                <div className="border rounded-2xl bg-card/80 backdrop-blur-sm shadow-sm overflow-hidden">
+                    <Table>
+                        <TableHeader className="bg-gray-50 dark:bg-gray-800/50">
+                            <TableRow>
+                                <TableHead className="py-3 px-4 font-semibold text-sm">Periodo</TableHead>
+                                <TableHead className="py-3 px-4 font-semibold text-sm">Fecha Pago</TableHead>
+                                <TableHead className="py-3 px-4 font-semibold text-sm">Empleados</TableHead>
+                                <TableHead className="py-3 px-4 font-semibold text-sm">Estado</TableHead>
+                                <TableHead className="py-3 px-4 font-semibold text-sm text-right">Total</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {isLoading ? (
+                                <TableRow>
+                                    <TableCell colSpan={5} className="text-center py-8">Cargando...</TableCell>
                                 </TableRow>
-                            ))
-                        )}
-                    </TableBody>
-                </Table>
+                            ) : runs?.length === 0 ? (
+                                <TableRow>
+                                    <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">No hay registros de nómina</TableCell>
+                                </TableRow>
+                            ) : (
+                                runs?.map((run: any) => (
+                                    <TableRow key={run.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 border-b transition-colors">
+                                        <TableCell className="py-3 px-4 font-medium text-sm">
+                                            {format(new Date(run.startDate), 'dd MMM')} - {format(new Date(run.endDate), 'dd MMM yyyy')}
+                                        </TableCell>
+                                        <TableCell className="py-3 px-4 text-sm text-gray-600 dark:text-gray-400">
+                                            {run.paymentDate ? format(new Date(run.paymentDate), 'dd/MM/yyyy') : '-'}
+                                        </TableCell>
+                                        <TableCell className="py-3 px-4 text-sm">
+                                            <div className="flex items-center gap-1">
+                                                <User className="h-4 w-4 text-muted-foreground" />
+                                                {run._count?.items || 0}
+                                            </div>
+                                        </TableCell>
+                                        <TableCell className="py-3 px-4">
+                                            <Badge variant={run.status === 'PAID' ? 'default' : 'secondary'} className="rounded-full px-2.5 py-0.5 text-xs font-medium">
+                                                {run.status === 'PAID' ? 'Pagada' : run.status}
+                                            </Badge>
+                                        </TableCell>
+                                        <TableCell className="py-3 px-4 text-right font-mono font-medium text-sm">
+                                            {formatCurrency(run.total)}
+                                        </TableCell>
+                                    </TableRow>
+                                ))
+                            )}
+                        </TableBody>
+                    </Table>
+                </div>
             </div>
-        </div>
+        </MainLayout>
     )
 }
 

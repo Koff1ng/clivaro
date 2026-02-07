@@ -118,37 +118,37 @@ export function SupplierList() {
           <span className="text-muted-foreground">Cargando proveedores...</span>
         </div>
       ) : (
-        <div className="border rounded-lg">
+        <div className="border rounded-2xl bg-card/80 backdrop-blur-sm shadow-sm overflow-hidden">
           <Table>
-            <TableHeader>
+            <TableHeader className="bg-gray-50 dark:bg-gray-800/50">
               <TableRow>
-                <TableHead>Nombre</TableHead>
-                <TableHead>Contacto</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Teléfono</TableHead>
-                <TableHead>Estado</TableHead>
-                <TableHead>Acciones</TableHead>
+                <TableHead className="py-3 px-4 font-semibold text-sm">Nombre</TableHead>
+                <TableHead className="py-3 px-4 font-semibold text-sm">Contacto</TableHead>
+                <TableHead className="py-3 px-4 font-semibold text-sm">Email</TableHead>
+                <TableHead className="py-3 px-4 font-semibold text-sm">Teléfono</TableHead>
+                <TableHead className="py-3 px-4 font-semibold text-sm">Estado</TableHead>
+                <TableHead className="py-3 px-4 font-semibold text-sm w-[120px]">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {suppliers.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-gray-500">
+                  <TableCell colSpan={6} className="text-center text-gray-500 py-8">
                     No hay proveedores
                   </TableCell>
                 </TableRow>
               ) : (
                 suppliers.map((supplier: any) => (
-                  <TableRow key={supplier.id}>
-                    <TableCell className="font-medium">{supplier.name}</TableCell>
-                    <TableCell>
+                  <TableRow key={supplier.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 border-b transition-colors">
+                    <TableCell className="py-3 px-4 font-medium">{supplier.name}</TableCell>
+                    <TableCell className="py-3 px-4">
                       {supplier.taxId && (
-                        <div className="text-sm text-gray-600">NIT: {supplier.taxId}</div>
+                        <div className="text-sm text-gray-600 dark:text-gray-400">NIT: {supplier.taxId}</div>
                       )}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="py-3 px-4">
                       {supplier.email ? (
-                        <div className="flex items-center gap-1 text-sm">
+                        <div className="flex items-center gap-1 text-sm text-gray-600 dark:text-gray-300">
                           <Mail className="h-3 w-3" />
                           {supplier.email}
                         </div>
@@ -156,9 +156,9 @@ export function SupplierList() {
                         <span className="text-gray-400">-</span>
                       )}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="py-3 px-4">
                       {supplier.phone ? (
-                        <div className="flex items-center gap-1 text-sm">
+                        <div className="flex items-center gap-1 text-sm text-gray-600 dark:text-gray-300">
                           <Phone className="h-3 w-3" />
                           {supplier.phone}
                         </div>
@@ -166,38 +166,41 @@ export function SupplierList() {
                         <span className="text-gray-400">-</span>
                       )}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="py-3 px-4">
                       {supplier.active ? (
-                        <span className="px-2 py-1 text-xs bg-green-100 text-green-800 rounded">Activo</span>
+                        <span className="px-2 py-0.5 text-xs bg-green-100 text-green-800 rounded-full border border-green-200">Activo</span>
                       ) : (
-                        <span className="px-2 py-1 text-xs bg-gray-100 text-gray-800 rounded">Inactivo</span>
+                        <span className="px-2 py-0.5 text-xs bg-gray-100 text-gray-800 rounded-full border border-gray-200">Inactivo</span>
                       )}
                     </TableCell>
-                    <TableCell>
-                      <div className="flex gap-2">
+                    <TableCell className="py-3 px-4">
+                      <div className="flex gap-1">
                         <Button
                           variant="ghost"
                           size="sm"
                           onClick={() => handleView(supplier)}
+                          className="h-8 w-8 p-0 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full"
                           title="Ver detalles"
                         >
-                          <Eye className="h-4 w-4" />
+                          <Eye className="h-4 w-4 text-gray-500" />
                         </Button>
                         <Button
                           variant="ghost"
                           size="sm"
                           onClick={() => handleEdit(supplier)}
+                          className="h-8 w-8 p-0 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full"
                           title="Editar"
                         >
-                          <Edit className="h-4 w-4" />
+                          <Edit className="h-4 w-4 text-gray-500" />
                         </Button>
                         <Button
                           variant="ghost"
                           size="sm"
                           onClick={() => handleDelete(supplier)}
+                          className="h-8 w-8 p-0 hover:bg-red-50 text-red-500 rounded-full"
                           title="Desactivar"
                         >
-                          <Trash2 className="h-4 w-4 text-red-500" />
+                          <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
                     </TableCell>

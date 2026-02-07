@@ -140,6 +140,149 @@ export async function POST(req: Request) {
                     results.errors.push(`Error on ${row['name']}: ${e.message}`)
                 }
             }
+        } else if (entityType === 'settings') {
+            const row = data[0]
+            if (row) {
+                try {
+                    // Remove system fields to prevent conflicts
+                    const { id, tenantId: tId, createdAt, updatedAt, ...settingsData } = row
+
+                    await prisma.tenantSettings.upsert({
+                        where: { tenantId },
+                        update: settingsData,
+                        create: {
+                            tenantId,
+                            ...settingsData
+                        }
+                    })
+                    results.success = 1
+                } catch (e: any) {
+                    results.failed = 1
+                    results.errors.push(`Error updating settings: ${e.message}`)
+                }
+            }
+        } else if (entityType === 'sales') {
+            // Group deeply by invoiceNumber
+            const invoicesMap = new Map<string, any[]>()
+            for (const row of data) {
+                const num = String(row['invoiceNumber'])
+                if (!invoicesMap.has(num)) invoicesMap.set(num, [])
+                invoicesMap.get(num).push(row)
+            }
+
+            for (const [number, rows] of invoicesMap.entries()) {
+                try {
+                    const firstRow = rows[0]
+                    if (!firstRow) continue
+
+                    // Basic Invoice Data
+                    const issueDate = firstRow['date'] ? new Date(firstRow['date']) : new Date()
+                    const status = firstRow['status'] || 'PAID'
+                    const total = parseFloat(firstRow['total'] || 0)
+
+                    // Find Customer
+                    let customerId = null
+                    // Try by TaxID
+                    if (firstRow['customerTaxId']) {
+                        const c = await tenantPrisma.customer.findFirst({ where: { taxId: String(firstRow['customerTaxId']) } })
+                        if (c) customerId = c.id
+                    }
+                    // Try by Name if not found
+                    if (!customerId && firstRow['customerName'] || firstRow['customer']) {
+                        const name = String(firstRow['customerName'] || firstRow['customer'])
+                        const c = await tenantPrisma.customer.findFirst({ where: { name } })
+                        if (c) customerId = c.id
+                        else {
+                            // Create minimal customer
+                            const newC = await tenantPrisma.customer.create({
+                                data: {
+                                    name,
+                                    taxId: firstRow['customerTaxId'] ? String(firstRow['customerTaxId']) : null,
+                                    email: firstRow['customerEmail'] ? String(firstRow['customerEmail']) : null,
+                                }
+                            })
+                            customerId = newC.id
+                        }
+                    }
+
+                    if (!customerId) {
+                        results.failed++
+                        results.errors.push(`Skipped Invoice ${number}: No customer found/created`)
+                        continue
+                    }
+
+                    // Check if invoice exists
+                    const existingInv = await tenantPrisma.invoice.findUnique({ where: { number: String(number) } })
+                    if (existingInv) {
+                        // Skip if exists
+                        // results.errors.push(`Skipped Invoice ${number}: Already exists`) 
+                        // Silent skip is better for bulk restores usually, but let's count as failed/warn
+                        results.failed++
+                        continue
+                    }
+
+                    // Create Invoice
+                    await tenantPrisma.invoice.create({
+                        data: {
+                            number: String(number),
+                            customerId,
+                            issuedAt: issueDate,
+                            status: status,
+                            total: total,
+                            subtotal: total, // Simplified
+                            tax: 0, // Simplified
+                            items: {
+                                create: await Promise.all(rows.map(async (row: any) => {
+                                    // Find Product
+                                    let productId = null
+                                    if (row['sku']) {
+                                        const p = await tenantPrisma.product.findUnique({ where: { sku: String(row['sku']) } })
+                                        if (p) productId = p.id
+                                    }
+                                    // If no product found by SKU, try name
+                                    if (!productId && (row['productName'] || row['product'])) {
+                                        const pName = String(row['productName'] || row['product'])
+                                        const p = await tenantPrisma.product.findFirst({ where: { name: pName } })
+                                        if (p) productId = p.id
+                                    }
+
+                                    // If still no product, we optionally create a dummy or skip item. 
+                                    // For restore, assuming products imported first. If not found, create a placeholder?
+                                    // Let's create a "Generic" product if missing to preserve the record
+                                    if (!productId) {
+                                        // Check if "Genérico Importado" exists
+                                        let generic = await tenantPrisma.product.findFirst({ where: { sku: 'GEN-IMPORT' } })
+                                        if (!generic) {
+                                            generic = await tenantPrisma.product.create({
+                                                data: {
+                                                    name: 'Producto Importado Genérico',
+                                                    sku: 'GEN-IMPORT',
+                                                    price: 0,
+                                                    productType: 'SERVICE'
+                                                }
+                                            })
+                                        }
+                                        productId = generic.id
+                                    }
+
+                                    return {
+                                        productId,
+                                        quantity: parseFloat(row['quantity'] || 1),
+                                        unitPrice: parseFloat(row['price'] || 0),
+                                        subtotal: parseFloat(row['subtotal'] || row['price'] || 0),
+                                        taxRate: 0,
+                                        unitCost: 0
+                                    }
+                                }))
+                            }
+                        }
+                    })
+                    results.success++
+                } catch (e: any) {
+                    results.failed++
+                    results.errors.push(`Error creating Invoice ${number}: ${e.message}`)
+                }
+            }
         }
 
         return NextResponse.json(results)

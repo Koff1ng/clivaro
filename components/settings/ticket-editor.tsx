@@ -17,6 +17,7 @@ import {
     RotateCcw
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { Logo } from '@/components/ui/logo'
 
 export interface TicketDesignSettings {
     templateStyle: 'classic' | 'modern' | 'minimal'
@@ -461,7 +462,9 @@ export function TicketEditor({ settings: initialSettings, companyInfo, onChange,
                             settings.headerAlignment === 'right' && 'text-right'
                         )}>
                             {settings.showLogo && (
-                                <div className="text-2xl font-bold mb-2">🏪</div>
+                                <div className="mb-2 flex justify-center">
+                                    <Logo size="sm" showByline={false} className="h-12 w-auto" />
+                                </div>
                             )}
                             <div className={cn(
                                 "font-bold uppercase",

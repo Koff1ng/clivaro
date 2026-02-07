@@ -66,33 +66,16 @@ export function ScrollNavbar({ onContactClick }: ScrollNavbarProps) {
 
   return (
     <header
-      className={`fixed top-0 left-0 right-0 z-50 w-full border-b border-gray-200/50 dark:border-gray-800/50 bg-white/95 backdrop-blur-md supports-[backdrop-filter]:bg-white/80 dark:bg-gray-900/95 dark:supports-[backdrop-filter]:bg-gray-900/80 shadow-sm transition-transform duration-300 ${
-        shouldShow ? 'translate-y-0' : '-translate-y-full'
-      }`}
+      className={`fixed top-0 left-0 right-0 z-50 w-full border-b border-gray-200/50 dark:border-gray-800/50 bg-white/95 backdrop-blur-md supports-[backdrop-filter]:bg-white/80 dark:bg-gray-900/95 dark:supports-[backdrop-filter]:bg-gray-900/80 shadow-sm transition-transform duration-300 ${shouldShow ? 'translate-y-0' : '-translate-y-full'
+        }`}
     >
-      <div className="container mx-auto px-6 py-2 flex items-center justify-between h-16">
-        <Link href="/login" className="flex items-center hover:opacity-80 transition-opacity h-full flex-shrink-0">
-          <div className="flex items-center" style={{ 
-            height: '100%',
-            maxHeight: '64px',
-            overflow: 'visible'
-          }}>
-            <div style={{ 
-              height: '100%',
-              display: 'flex',
-              alignItems: 'center',
-              transform: 'scale(1.1)',
-              transformOrigin: 'left center',
-              marginLeft: '-4px',
-              padding: 0,
-              marginTop: 0,
-              marginBottom: 0
-            }}>
-              <Logo size="md" showByline={false} />
-            </div>
+      <div className="container mx-auto px-4 md:px-6 flex items-center justify-between h-16">
+        <Link href="/marketing" className="flex items-center hover:opacity-80 transition-opacity">
+          <div className="flex items-center h-full">
+            <Logo size="lg" showByline={false} className="!w-48 md:!w-64 !h-auto !justify-start -ml-2 mt-4 " />
           </div>
         </Link>
-        
+
         {/* Desktop Navigation - Centered */}
         <nav className="hidden md:flex items-center gap-8 absolute left-1/2 transform -translate-x-1/2">
           {navItems.map((item) => (

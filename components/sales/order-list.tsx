@@ -170,21 +170,22 @@ export function OrderList() {
                                             key={order.id}
                                             className={`${isDeleting ? 'opacity-50' : ''} hover:bg-gray-50 dark:hover:bg-gray-800/50 border-b transition-colors`}
                                         >
-                                            <TableCell className="font-medium">{order.number}</TableCell>
-                                            <TableCell>{formatDate(order.createdAt)}</TableCell>
-                                            <TableCell>{order.customer?.name || 'Cliente General'}</TableCell>
-                                            <TableCell>{getStatusBadge(order.status)}</TableCell>
-                                            <TableCell className="text-center">{order._count?.items || 0}</TableCell>
-                                            <TableCell className="text-right font-bold">{formatCurrency(order.total)}</TableCell>
-                                            <TableCell className="text-right">
-                                                <div className="flex justify-end gap-2">
+                                            <TableCell className="py-3 px-4 font-medium text-sm">{order.number}</TableCell>
+                                            <TableCell className="py-3 px-4 text-sm text-gray-600 dark:text-gray-400">{formatDate(order.createdAt)}</TableCell>
+                                            <TableCell className="py-3 px-4 text-sm font-medium">{order.customer?.name || 'Cliente General'}</TableCell>
+                                            <TableCell className="py-3 px-4">{getStatusBadge(order.status)}</TableCell>
+                                            <TableCell className="py-3 px-4 text-center text-sm">{order._count?.items || 0}</TableCell>
+                                            <TableCell className="py-3 px-4 text-right font-bold text-sm">{formatCurrency(order.total)}</TableCell>
+                                            <TableCell className="py-3 px-4 text-right">
+                                                <div className="flex justify-end gap-1">
                                                     <Button
                                                         variant="ghost"
                                                         size="sm"
                                                         title="Ver detalles"
                                                         onClick={() => handleView(order)}
+                                                        className="h-8 w-8 p-0 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full"
                                                     >
-                                                        <Eye className="h-4 w-4" />
+                                                        <Eye className="h-4 w-4 text-gray-500" />
                                                     </Button>
 
                                                     {order.status === 'OPEN' && (
@@ -194,7 +195,7 @@ export function OrderList() {
                                                             onClick={() => handleDelete(order)}
                                                             title="Eliminar orden"
                                                             disabled={deleteOrderMutation.isPending}
-                                                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                                            className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-full"
                                                         >
                                                             <Trash2 className="h-4 w-4" />
                                                         </Button>
