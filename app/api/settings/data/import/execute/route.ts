@@ -167,7 +167,7 @@ export async function POST(req: Request) {
             for (const row of data) {
                 const num = String(row['invoiceNumber'])
                 if (!invoicesMap.has(num)) invoicesMap.set(num, [])
-                invoicesMap.get(num).push(row)
+                invoicesMap.get(num)!.push(row)
             }
 
             for (const [number, rows] of invoicesMap.entries()) {
