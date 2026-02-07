@@ -96,7 +96,8 @@ export function ThirdPartySelect({ value, onChange, disabled }: ThirdPartySelect
                             </div>
                         ) : (
                             filtered.map((tp) => (
-                                <div
+                                <button
+                                    type="button"
                                     key={tp.id}
                                     onClick={() => {
                                         onChange(tp.id, tp.name, tp.type)
@@ -104,7 +105,7 @@ export function ThirdPartySelect({ value, onChange, disabled }: ThirdPartySelect
                                         setSearch('')
                                     }}
                                     className={cn(
-                                        "w-full text-left px-2 py-1.5 rounded-sm text-xs transition-colors hover:bg-slate-100 flex items-center justify-between cursor-pointer",
+                                        "w-full text-left px-2 py-1.5 rounded-sm text-xs transition-colors hover:bg-slate-100 flex items-center justify-between",
                                         value === tp.id && "bg-slate-50 font-medium"
                                     )}
                                 >
@@ -118,7 +119,7 @@ export function ThirdPartySelect({ value, onChange, disabled }: ThirdPartySelect
                                         </span>
                                     </div>
                                     {value === tp.id && <Check className="h-3 w-3 shrink-0 text-blue-600" />}
-                                </div>
+                                </button>
                             ))
                         )}
                     </div>

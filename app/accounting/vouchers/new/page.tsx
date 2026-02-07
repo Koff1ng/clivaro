@@ -48,7 +48,7 @@ export default function NewVoucherPage() {
     }
 
     const updateLine = (id: number, field: string, value: any) => {
-        setLines(lines.map(l => {
+        setLines(prev => prev.map(l => {
             if (l.id === id) {
                 const newLine = { ...l, [field]: value }
                 // Special case for account selection: cache the requiresThirdParty flag
