@@ -61,9 +61,10 @@ export async function createJournalEntry(tenantId: string, userId: string, data:
                         description: l.description || data.description,
                         debit: l.debit || 0,
                         credit: l.credit || 0,
-                        accountingThirdPartyId: l.accountingThirdPartyId, // Map the new ID
-                        thirdPartyId: l.thirdPartyId,
+                        accountingThirdPartyId: l.accountingThirdPartyId,
+                        customerId: l.thirdPartyId, // Map to customerId relation
                         supplierId: l.supplierId,
+                        thirdPartyId: l.thirdPartyId || l.supplierId || l.accountingThirdPartyId, // Keep legacy field for compatibility
                         thirdPartyName: l.thirdPartyName,
                         thirdPartyNit: l.thirdPartyNit
                     }))

@@ -29,7 +29,7 @@ export default function NewVoucherPage() {
 
     // Lines
     const [lines, setLines] = useState<any[]>([
-        { id: 1, accountId: '', description: '', debit: 0, credit: 0, thirdPartyId: '', thirdPartyName: '', requiresThirdParty: false }
+        { id: 1, accountId: '', description: '', debit: 0, credit: 0, thirdPartyId: '', thirdPartyName: '', thirdPartyType: '', requiresThirdParty: false }
     ])
 
     useEffect(() => {
@@ -39,7 +39,7 @@ export default function NewVoucherPage() {
     }, [])
 
     const addLine = () => {
-        setLines([...lines, { id: Date.now(), accountId: '', description: '', debit: 0, credit: 0, thirdPartyId: '', thirdPartyName: '', requiresThirdParty: false }])
+        setLines([...lines, { id: Date.now(), accountId: '', description: '', debit: 0, credit: 0, thirdPartyId: '', thirdPartyName: '', thirdPartyType: '', requiresThirdParty: false }])
     }
 
     const removeLine = (id: number) => {
@@ -95,8 +95,10 @@ export default function NewVoucherPage() {
                         description: l.description,
                         debit: Number(l.debit),
                         credit: Number(l.credit),
-                        accountingThirdPartyId: l.thirdPartyId, // Use the ID
-                        thirdPartyName: l.thirdPartyName // Keep name for legacy/reference
+                        accountingThirdPartyId: l.thirdPartyType !== 'CUSTOMER' && l.thirdPartyType !== 'SUPPLIER' ? l.thirdPartyId : undefined,
+                        thirdPartyId: l.thirdPartyType === 'CUSTOMER' ? l.thirdPartyId : undefined,
+                        supplierId: l.thirdPartyType === 'SUPPLIER' ? l.thirdPartyId : undefined,
+                        thirdPartyName: l.thirdPartyName
                     }))
                 }),
                 headers: { 'Content-Type': 'application/json' }
@@ -203,9 +205,10 @@ export default function NewVoucherPage() {
                                         <TableCell>
                                             <ThirdPartySelect
                                                 value={row.thirdPartyId}
-                                                onChange={(id, name) => {
+                                                onChange={(id, name, type) => {
                                                     updateLine(row.id, 'thirdPartyId', id)
                                                     updateLine(row.id, 'thirdPartyName', name)
+                                                    updateLine(row.id, 'thirdPartyType', type)
                                                 }}
                                                 disabled={!row.accountId}
                                             />
