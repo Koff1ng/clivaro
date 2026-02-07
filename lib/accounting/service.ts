@@ -49,7 +49,7 @@ export async function initializePUC(tenantId: string) {
                 code: acc.code,
                 name: acc.name,
                 type: acc.type,
-                nature: (acc as any).nature || 'DEBIT',
+                nature: acc.nature || 'DEBIT',
                 level: acc.code.length === 1 ? 1 : acc.code.length === 2 ? 2 : acc.code.length === 4 ? 3 : 4,
                 parentId,
                 tags: acc.tags || []

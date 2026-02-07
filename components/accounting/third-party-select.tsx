@@ -1,22 +1,15 @@
 
 'use client'
 
-import { useState, useEffect } from 'react'
-import {
-    Command,
-    CommandEmpty,
-    CommandGroup,
-    CommandInput,
-    CommandItem,
-    CommandList,
-} from "@/components/ui/command"
+import { useState, useEffect, useMemo } from 'react'
 import {
     Popover,
     PopoverContent,
     PopoverTrigger,
 } from "@/components/ui/popover"
 import { Button } from "@/components/ui/button"
-import { Check, ChevronsUpDown, User, Building, Landmark } from "lucide-react"
+import { Input } from "@/components/ui/input"
+import { Check, ChevronsUpDown, User, Building, Landmark, Search } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 interface ThirdPartySelectProps {
@@ -29,6 +22,7 @@ export function ThirdPartySelect({ value, onChange, disabled }: ThirdPartySelect
     const [open, setOpen] = useState(false)
     const [thirdParties, setThirdParties] = useState<any[]>([])
     const [loading, setLoading] = useState(false)
+    const [search, setSearch] = useState('')
 
     useEffect(() => {
         setLoading(true)
@@ -39,6 +33,15 @@ export function ThirdPartySelect({ value, onChange, disabled }: ThirdPartySelect
     }, [])
 
     const selected = thirdParties.find((tp) => tp.id === value)
+
+    const filtered = useMemo(() => {
+        if (!search) return thirdParties.slice(0, 50)
+        const s = search.toLowerCase()
+        return thirdParties.filter(tp =>
+            tp.name.toLowerCase().includes(s) ||
+            (tp.taxId && tp.taxId.includes(s))
+        ).slice(0, 50)
+    }, [thirdParties, search])
 
     const getIcon = (type: string) => {
         switch (type) {
@@ -72,42 +75,54 @@ export function ThirdPartySelect({ value, onChange, disabled }: ThirdPartySelect
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-[300px] p-0">
-                <Command>
-                    <CommandInput placeholder="Buscar tercero por nombre o NIT..." />
-                    <CommandList>
-                        <CommandEmpty>No se encontró el tercero.</CommandEmpty>
-                        <CommandGroup>
-                            {thirdParties.map((tp) => (
-                                <CommandItem
+            <PopoverContent className="w-[300px] p-0" align="start">
+                <div className="flex flex-col">
+                    <div className="p-2 border-b">
+                        <div className="relative">
+                            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                            <Input
+                                placeholder="Buscar tercero..."
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                                className="pl-8 h-9 text-xs"
+                                autoFocus
+                            />
+                        </div>
+                    </div>
+                    <div className="max-h-[300px] overflow-y-auto p-1">
+                        {filtered.length === 0 ? (
+                            <div className="p-4 text-center text-xs text-muted-foreground">
+                                No se encontraron resultados.
+                            </div>
+                        ) : (
+                            filtered.map((tp) => (
+                                <button
                                     key={tp.id}
-                                    value={tp.name + " " + (tp.taxId || "")}
-                                    onSelect={() => {
+                                    onClick={() => {
                                         onChange(tp.id, tp.name)
                                         setOpen(false)
+                                        setSearch('')
                                     }}
-                                    className="text-xs"
+                                    className={cn(
+                                        "w-full text-left px-2 py-1.5 rounded-sm text-xs transition-colors hover:bg-slate-100 flex items-center justify-between",
+                                        value === tp.id && "bg-slate-50 font-medium"
+                                    )}
                                 >
-                                    <Check
-                                        className={cn(
-                                            "mr-2 h-4 w-4",
-                                            value === tp.id ? "opacity-100" : "opacity-0"
-                                        )}
-                                    />
-                                    <div className="flex flex-col">
-                                        <div className="flex items-center">
+                                    <div className="flex flex-col truncate mr-2">
+                                        <div className="flex items-center truncate">
                                             {getIcon(tp.type)}
-                                            {tp.name}
+                                            <span className="truncate">{tp.name}</span>
                                         </div>
                                         <span className="text-[10px] text-muted-foreground ml-5">
                                             {tp.taxId ? `${tp.idType}: ${tp.taxId}` : "Sin ID"}
                                         </span>
                                     </div>
-                                </CommandItem>
-                            ))}
-                        </CommandGroup>
-                    </CommandList>
-                </Command>
+                                    {value === tp.id && <Check className="h-3 w-3 shrink-0 text-blue-600" />}
+                                </button>
+                            ))
+                        )}
+                    </div>
+                </div>
             </PopoverContent>
         </Popover>
     )

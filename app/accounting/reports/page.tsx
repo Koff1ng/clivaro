@@ -1,3 +1,7 @@
+'use client'
+
+import { MainLayout } from '@/components/layout/main-layout'
+import { PageHeader } from '@/components/ui/page-header'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { FileText, Book, TrendingUp, Users, ClipboardList } from 'lucide-react'
 import Link from 'next/link'

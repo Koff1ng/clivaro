@@ -21,28 +21,28 @@ export async function GET(request: Request) {
             where: { active: true },
             select: { id: true, name: true, taxId: true }
         }),
-        (prisma as any).accountingThirdParty.findMany({
+        prisma.accountingThirdParty.findMany({
             where: { tenantId, active: true }
         })
     ])
 
     // Unified format
     const unified = [
-        ...customers.map((c: any) => ({
+        ...customers.map((c) => ({
             id: c.id,
             name: c.name,
             taxId: c.taxId,
             type: 'CUSTOMER',
             idType: c.idType || 'CC'
         })),
-        ...suppliers.map((s: any) => ({
+        ...suppliers.map((s) => ({
             id: s.id,
             name: s.name,
             taxId: s.taxId,
             type: 'SUPPLIER',
             idType: 'NIT' // Default for suppliers
         })),
-        ...others.map((o: any) => ({
+        ...others.map((o) => ({
             id: o.id,
             name: o.name,
             taxId: o.documentNumber,
@@ -61,7 +61,7 @@ export async function POST(request: Request) {
     const tenantId = getTenantIdFromSession(session)
     const body = await request.json()
 
-    const result = await (prisma as any).accountingThirdParty.create({
+    const result = await prisma.accountingThirdParty.create({
         data: {
             tenantId,
             name: body.name,
