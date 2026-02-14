@@ -56,7 +56,7 @@ export async function PATCH(request: Request) {
             exogenousFormat: data.exogenousFormat,
             exogenousConcept: data.exogenousConcept,
             active: data.active
-        }
+        } as any
     })
 
     return NextResponse.json(result)

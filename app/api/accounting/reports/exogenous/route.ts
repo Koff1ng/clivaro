@@ -28,7 +28,7 @@ export async function GET(request: Request) {
                 account: {
                     exogenousFormat: { not: null }
                 }
-            },
+            } as any,
             include: {
                 account: {
                     select: {
@@ -36,7 +36,7 @@ export async function GET(request: Request) {
                         name: true,
                         exogenousFormat: true,
                         exogenousConcept: true
-                    }
+                    } as any
                 },
                 accountingThirdParty: {
                     select: {
