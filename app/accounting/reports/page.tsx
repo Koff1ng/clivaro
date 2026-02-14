@@ -32,7 +32,8 @@ export default function ReportsPage() {
             icon: <ClipboardList className="h-6 w-6 text-purple-600" />,
             reports: [
                 { name: 'Auxiliar por Cuenta', path: '/accounting/reports/aux-account', description: 'Movimientos detallados de una cuenta.' },
-                { name: 'Auxiliar por Tercero', path: '/accounting/reports/aux-third-party', description: 'Movimientos asociados a un NIT.' }
+                { name: 'Auxiliar por Tercero', path: '/accounting/reports/aux-third-party', description: 'Movimientos asociados a un NIT.' },
+                { name: 'Información Exógena', path: '/accounting/reports/exogenous', description: 'Reporte para DIAN por Formato y Concepto.' }
             ]
         }
     ]

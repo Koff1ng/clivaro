@@ -1412,6 +1412,8 @@ model AccountingAccount {
   requiresCostCenter  Boolean   @default(false)
   
   active      Boolean   @default(true)
+  exogenousFormat  String?
+  exogenousConcept String?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   

@@ -53,6 +53,8 @@ export async function PATCH(request: Request) {
             nature: data.nature,
             requiresThirdParty: data.requiresThirdParty,
             requiresCostCenter: data.requiresCostCenter,
+            exogenousFormat: data.exogenousFormat,
+            exogenousConcept: data.exogenousConcept,
             active: data.active
         }
     })

@@ -154,6 +154,7 @@ export default function AccountsPage() {
                                         <TableHead className="w-[80px]">Tercero</TableHead>
                                         <TableHead className="w-[80px]">C.Costo</TableHead>
                                         <TableHead className="w-[100px]">Nivel</TableHead>
+                                        <TableHead className="w-[100px]">Exógena (F/C)</TableHead>
                                         <TableHead className="w-[50px]"></TableHead>
                                     </TableRow>
                                 </TableHeader>
@@ -176,6 +177,9 @@ export default function AccountsPage() {
                                                 <TableCell className="text-center">{acc.requiresThirdParty ? '✅' : '-'}</TableCell>
                                                 <TableCell className="text-center">{acc.requiresCostCenter ? '✅' : '-'}</TableCell>
                                                 <TableCell>{acc.level}</TableCell>
+                                                <TableCell className="text-xs text-muted-foreground">
+                                                    {acc.exogenousFormat || acc.exogenousConcept ? `${acc.exogenousFormat || '-'}/${acc.exogenousConcept || '-'}` : '-'}
+                                                </TableCell>
                                                 <TableCell>
                                                     <Button variant="ghost" size="sm" onClick={() => handleEdit(acc)}>
                                                         <Edit2 className="h-4 w-4" />
@@ -245,6 +249,25 @@ export default function AccountsPage() {
                                         onCheckedChange={checked => setCurrentAccount({ ...currentAccount, active: !!checked })}
                                     />
                                     <Label htmlFor="active">Cuenta Activa</Label>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4 pb-2 border-t pt-4">
+                                    <div className="space-y-2">
+                                        <Label className="text-xs font-bold text-blue-600">Formato Exógena</Label>
+                                        <Input
+                                            placeholder="Ej: 1001"
+                                            value={currentAccount.exogenousFormat || ''}
+                                            onChange={e => setCurrentAccount({ ...currentAccount, exogenousFormat: e.target.value })}
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label className="text-xs font-bold text-blue-600">Concepto Exógena</Label>
+                                        <Input
+                                            placeholder="Ej: 5001"
+                                            value={currentAccount.exogenousConcept || ''}
+                                            onChange={e => setCurrentAccount({ ...currentAccount, exogenousConcept: e.target.value })}
+                                        />
+                                    </div>
                                 </div>
                             </div>
                         )}
