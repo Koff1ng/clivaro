@@ -1,7 +1,8 @@
 
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { useReactToPrint } from 'react-to-print'
 import { MainLayout } from '@/components/layout/main-layout'
 import { PageHeader } from '@/components/ui/page-header'
 import { Card, CardContent } from '@/components/ui/card'
@@ -35,9 +36,11 @@ export default function LedgerReportPage() {
         }
     }
 
-    const handlePrint = () => {
-        window.print()
-    }
+    const contentRef = useRef<HTMLDivElement>(null)
+    const handlePrint = useReactToPrint({
+        contentRef,
+        documentTitle: 'Libro Mayor y Balance',
+    })
 
     useEffect(() => {
         fetchLedger()
@@ -45,7 +48,7 @@ export default function LedgerReportPage() {
 
     return (
         <MainLayout>
-            <div className="space-y-6">
+            <div className="space-y-6" ref={contentRef}>
                 <div className="flex justify-between items-center">
                     <PageHeader title="Libro Mayor y Balance" description="Resumen de saldos acumulados por cuenta contable." />
                     <div className="flex gap-2 print:hidden">

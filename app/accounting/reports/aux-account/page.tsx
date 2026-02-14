@@ -1,7 +1,8 @@
 
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { useReactToPrint } from 'react-to-print'
 import { MainLayout } from '@/components/layout/main-layout'
 import { PageHeader } from '@/components/ui/page-header'
 import { Card, CardContent } from '@/components/ui/card'
@@ -59,13 +60,15 @@ export default function AuxAccountReportPage() {
         }
     }
 
-    const handlePrint = () => {
-        window.print()
-    }
+    const contentRef = useRef<HTMLDivElement>(null)
+    const handlePrint = useReactToPrint({
+        contentRef,
+        documentTitle: 'Auxiliar por Cuenta',
+    })
 
     return (
         <MainLayout>
-            <div className="space-y-6">
+            <div className="space-y-6" ref={contentRef}>
                 <div className="flex justify-between items-center">
                     <PageHeader title="Auxiliar por Cuenta" description="Movimientos detallados y saldos de una cuenta específica." />
                     <div className="flex gap-2 print:hidden">

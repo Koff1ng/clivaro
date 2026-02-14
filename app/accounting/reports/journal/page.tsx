@@ -1,7 +1,8 @@
 
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { useReactToPrint } from 'react-to-print'
 import { MainLayout } from '@/components/layout/main-layout'
 import { PageHeader } from '@/components/ui/page-header'
 import { Card, CardContent } from '@/components/ui/card'
@@ -37,9 +38,11 @@ export default function JournalReportPage() {
         }
     }
 
-    const handlePrint = () => {
-        window.print()
-    }
+    const contentRef = useRef<HTMLDivElement>(null)
+    const handlePrint = useReactToPrint({
+        contentRef,
+        documentTitle: 'Libro Diario',
+    })
 
     useEffect(() => {
         fetchLines()
@@ -47,7 +50,7 @@ export default function JournalReportPage() {
 
     return (
         <MainLayout>
-            <div className="space-y-6">
+            <div className="space-y-6" ref={contentRef}>
                 <div className="flex justify-between items-center">
                     <PageHeader title="Libro Diario" description="Detalle cronológico de todos los registros contables." />
                     <div className="flex gap-2 print:hidden">

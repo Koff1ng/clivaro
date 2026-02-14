@@ -1,7 +1,8 @@
 
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { useReactToPrint } from 'react-to-print'
 import { MainLayout } from '@/components/layout/main-layout'
 import { PageHeader } from '@/components/ui/page-header'
 import { Card, CardContent } from '@/components/ui/card'
@@ -32,9 +33,11 @@ export default function ProfitLossReportPage() {
         }
     }
 
-    const handlePrint = () => {
-        window.print()
-    }
+    const contentRef = useRef<HTMLDivElement>(null)
+    const handlePrint = useReactToPrint({
+        contentRef,
+        documentTitle: 'Estado de Resultados',
+    })
 
     useEffect(() => {
         fetchReport()
@@ -48,7 +51,7 @@ export default function ProfitLossReportPage() {
 
     return (
         <MainLayout>
-            <div className="space-y-6">
+            <div className="space-y-6" ref={contentRef}>
                 <div className="flex justify-between items-center">
                     <PageHeader title="Estado de Resultados" description="Informe de ingresos, gastos y utilidad del periodo." />
                     <div className="flex gap-2 print:hidden">

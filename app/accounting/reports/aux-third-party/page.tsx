@@ -1,7 +1,8 @@
 
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { useReactToPrint } from 'react-to-print'
 import { MainLayout } from '@/components/layout/main-layout'
 import { PageHeader } from '@/components/ui/page-header'
 import { Card, CardContent } from '@/components/ui/card'
@@ -44,13 +45,15 @@ export default function AuxThirdPartyReportPage() {
     const totalDebits = movements.reduce((sum, m) => sum + m.debit, 0)
     const totalCredits = movements.reduce((sum, m) => sum + m.credit, 0)
 
-    const handlePrint = () => {
-        window.print()
-    }
+    const contentRef = useRef<HTMLDivElement>(null)
+    const handlePrint = useReactToPrint({
+        contentRef,
+        documentTitle: 'Auxiliar por Tercero',
+    })
 
     return (
         <MainLayout>
-            <div className="space-y-6">
+            <div className="space-y-6" ref={contentRef}>
                 <div className="flex justify-between items-center">
                     <PageHeader title="Auxiliar por Tercero" description="Detalle de movimientos contables asociados a un NIT específico." />
                     <div className="flex gap-2 print:hidden">
