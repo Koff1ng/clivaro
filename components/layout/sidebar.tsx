@@ -98,7 +98,7 @@ const menuGroups: MenuGroup[] = [
       { href: '/accounting/accounts', label: 'Catálogo de cuentas', icon: Page, permission: 'manage_accounting', planFeature: 'manageAccounting' },
       { href: '/accounting/vouchers', label: 'Comprobante contable', icon: PasteClipboard, permission: 'manage_accounting', planFeature: 'manageAccounting' },
       { href: '/accounting/reports', label: 'Centro de Reportes', icon: StatsUpSquare, permission: 'manage_accounting', planFeature: 'manageAccounting' },
-      { href: '/accounting/tax-info', label: 'Información exógena', icon: ShieldCheck, permission: 'manage_accounting', planFeature: 'manageAccounting' },
+      { href: '/accounting/reports/exogenous', label: 'Información exógena', icon: ShieldCheck, permission: 'manage_accounting', planFeature: 'manageAccounting' },
       { href: '/accounting/fiscal-conciliator', label: 'Conciliador fiscal', icon: Calculator, permission: 'manage_accounting', planFeature: 'manageAccounting' },
       { href: '/accounting/addons', label: 'Complementos contables', icon: Box, permission: 'manage_accounting', planFeature: 'manageAccounting' },
     ]
