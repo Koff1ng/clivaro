@@ -387,31 +387,97 @@
 
 /* Utilidades de impresión */
 @media print {
-  .print\\:hidden {
+
+  html,
+  body {
+    height: auto !important;
+    overflow: visible !important;
+    background-color: white !important;
+  }
+
+  /* Reset layout containers that cause content cut-off */
+  .flex.h-screen {
+    height: auto !important;
+    display: block !important;
+  }
+
+  .overflow-hidden,
+  .overflow-y-auto,
+  .overflow-x-auto {
+    overflow: visible !important;
+    height: auto !important;
+    max-height: none !important;
+  }
+
+  main,
+  .container {
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    display: block !important;
+  }
+
+  /* Hide elements */
+  .print\:hidden {
     display: none !important;
   }
 
-  .print\\:block {
-    display: block !important;
+  /* Style cards for print - Remove shadows and borders for a cleaner look */
+  .rounded-xl,
+  .rounded-lg,
+  .card,
+  [class*="Card"] {
+    border: none !important;
+    box-shadow: none !important;
+    background-color: transparent !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+
+  /* Table adjustments */
+  table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+  }
+
+  /* Page setup */
+  @page {
+    margin: 1cm;
+    size: auto;
+  }
+
+  /* Force light theme for printing */
+  :root,
+  .dark {
+    --background: 0 0% 100% !important;
+    --foreground: 222.2 84% 4.9% !important;
+    --border: 214.3 31.8% 91.4% !important;
   }
 }
+
 /* Scrollbar Utilities */
 @layer utilities {
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
   }
+
   .scrollbar-hide {
-    -ms-overflow-style: none; /* IE and Edge */
-    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none;
+    /* IE and Edge */
+    scrollbar-width: none;
+    /* Firefox */
   }
 
   .custom-scrollbar::-webkit-scrollbar {
     width: 6px;
   }
+
   .custom-scrollbar::-webkit-scrollbar-thumb {
     background: #475569;
     border-radius: 10px;
   }
+
   .custom-scrollbar::-webkit-scrollbar-track {
     background: transparent;
   }
