@@ -37,6 +37,10 @@ export default function JournalReportPage() {
         }
     }
 
+    const handlePrint = () => {
+        window.print()
+    }
+
     useEffect(() => {
         fetchLines()
     }, [])
@@ -46,8 +50,8 @@ export default function JournalReportPage() {
             <div className="space-y-6">
                 <div className="flex justify-between items-center">
                     <PageHeader title="Libro Diario" description="Detalle cronológico de todos los registros contables." />
-                    <div className="flex gap-2">
-                        <Button variant="outline" size="sm">
+                    <div className="flex gap-2 print:hidden">
+                        <Button variant="outline" size="sm" onClick={handlePrint}>
                             <Printer className="h-4 w-4 mr-2" />
                             Imprimir
                         </Button>
@@ -60,7 +64,7 @@ export default function JournalReportPage() {
 
                 <Card>
                     <CardContent className="pt-6 space-y-4">
-                        <div className="flex flex-wrap gap-4 items-end bg-slate-50 p-4 rounded-lg border">
+                        <div className="flex flex-wrap gap-4 items-end bg-slate-50 p-4 rounded-lg border print:hidden">
                             <div className="space-y-1">
                                 <span className="text-xs font-bold text-slate-500 uppercase">Desde</span>
                                 <Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="h-9 w-40" />

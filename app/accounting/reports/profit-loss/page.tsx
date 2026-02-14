@@ -32,6 +32,10 @@ export default function ProfitLossReportPage() {
         }
     }
 
+    const handlePrint = () => {
+        window.print()
+    }
+
     useEffect(() => {
         fetchReport()
     }, [])
@@ -47,15 +51,15 @@ export default function ProfitLossReportPage() {
             <div className="space-y-6">
                 <div className="flex justify-between items-center">
                     <PageHeader title="Estado de Resultados" description="Informe de ingresos, gastos y utilidad del periodo." />
-                    <div className="flex gap-2">
-                        <Button variant="outline" size="sm"><Printer className="h-4 w-4 mr-2" />Imprimir</Button>
+                    <div className="flex gap-2 print:hidden">
+                        <Button variant="outline" size="sm" onClick={handlePrint}><Printer className="h-4 w-4 mr-2" />Imprimir</Button>
                         <Button variant="outline" size="sm"><Download className="h-4 w-4 mr-2" />Exportar</Button>
                     </div>
                 </div>
 
                 <Card>
                     <CardContent className="pt-6 space-y-4">
-                        <div className="flex flex-wrap gap-4 items-end bg-slate-50 p-4 rounded-lg border">
+                        <div className="flex flex-wrap gap-4 items-end bg-slate-50 p-4 rounded-lg border print:hidden">
                             <div className="space-y-1">
                                 <span className="text-xs font-bold text-slate-500 uppercase">Periodo Desde</span>
                                 <Input type="date" value={start} onChange={e => setStart(e.target.value)} className="h-9 w-40" />

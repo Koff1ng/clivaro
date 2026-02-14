@@ -152,7 +152,7 @@ export function Header() {
   }
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-slate-800 bg-[#0F172A] text-slate-100 backdrop-blur supports-[backdrop-filter]:bg-[#0F172A]/95">
+    <header className="sticky top-0 z-40 w-full border-b border-slate-800 bg-[#0F172A] text-slate-100 backdrop-blur supports-[backdrop-filter]:bg-[#0F172A]/95 print:hidden">
       <div className="flex h-14 sm:h-16 items-center justify-between px-3 sm:px-4 md:px-6">
         {/* Left side: Menu */}
         <div className="flex items-center gap-2 sm:gap-4">

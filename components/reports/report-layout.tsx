@@ -49,7 +49,7 @@ export function ReportLayout({
                 </div>
 
                 {/* Action Buttons */}
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 print:hidden">
                     {actions}
                     {onPrint && (
                         <Button variant="outline" size="sm" onClick={onPrint}>

@@ -44,20 +44,24 @@ export default function AuxThirdPartyReportPage() {
     const totalDebits = movements.reduce((sum, m) => sum + m.debit, 0)
     const totalCredits = movements.reduce((sum, m) => sum + m.credit, 0)
 
+    const handlePrint = () => {
+        window.print()
+    }
+
     return (
         <MainLayout>
             <div className="space-y-6">
                 <div className="flex justify-between items-center">
                     <PageHeader title="Auxiliar por Tercero" description="Detalle de movimientos contables asociados a un NIT específico." />
-                    <div className="flex gap-2">
-                        <Button variant="outline" size="sm"><Printer className="h-4 w-4 mr-2" />Imprimir</Button>
+                    <div className="flex gap-2 print:hidden">
+                        <Button variant="outline" size="sm" onClick={handlePrint}><Printer className="h-4 w-4 mr-2" />Imprimir</Button>
                         <Button variant="outline" size="sm"><Download className="h-4 w-4 mr-2" />Exportar</Button>
                     </div>
                 </div>
 
                 <Card>
                     <CardContent className="pt-6 space-y-4">
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end bg-slate-50 p-4 rounded-lg border">
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end bg-slate-50 p-4 rounded-lg border print:hidden">
                             <div className="md:col-span-1 space-y-1">
                                 <span className="text-xs font-bold text-slate-500 uppercase">Seleccionar Tercero</span>
                                 <ThirdPartySelect
