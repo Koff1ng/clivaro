@@ -1008,6 +1008,7 @@ model Tenant {
   journalEntries     JournalEntry[]
   accountingPeriods  AccountingPeriod[]
   accountingConfig   AccountingConfig?
+  bankReconciliations BankReconciliation[]
 }
 
 model Plan {
@@ -1417,6 +1418,8 @@ model AccountingAccount {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   
+  bankReconciliations BankReconciliation[]
+
   // Relations
   journalLines JournalEntryLine[]
   tenant       Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
@@ -1507,6 +1510,7 @@ model JournalEntryLine {
   journalEntry   JournalEntry @relation(fields: [journalEntryId], references: [id], onDelete: Cascade)
   account        AccountingAccount @relation(fields: [accountId], references: [id], onDelete: Restrict)
   accountingThirdParty   AccountingThirdParty? @relation("AccountingThirdPartyLines", fields: [accountingThirdPartyId], references: [id])
+  bankStatementEntry     BankStatementEntry?
 
   @@index([journalEntryId])
   @@index([accountId])
@@ -1592,4 +1596,47 @@ model AccountingConfig {
   vatGenerated          AccountingAccount? @relation("VATGenerated", fields: [vatGeneratedId], references: [id])
   vatDeductible         AccountingAccount? @relation("VATDeductible", fields: [vatDeductibleId], references: [id])
   costOfSales           AccountingAccount? @relation("CostOfSales", fields: [costOfSalesId], references: [id])
+}
+
+model BankReconciliation {
+  id              String      @id @default(cuid())
+  tenantId        String
+  accountId       String      // The bank account ID
+  period          String      // YYYY-MM
+  status          String      @default("OPEN") // OPEN, CLOSED
+  
+  balanceBank     Float       @default(0)
+  balanceBooks    Float       @default(0)
+  difference      Float       @default(0)
+  
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  
+  account         AccountingAccount @relation(fields: [accountId], references: [id])
+  tenant          Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  entries         BankStatementEntry[]
+
+  @@unique([tenantId, accountId, period])
+  @@index([tenantId, accountId])
+}
+
+model BankStatementEntry {
+  id                String    @id @default(cuid())
+  reconciliationId  String
+  date              DateTime
+  description       String
+  reference         String?
+  debit             Float     @default(0)
+  credit            Float     @default(0)
+  amount            Float     // Net amount
+  status            String    @default("PENDING") // PENDING, MATCHED, DISCREPANCY
+  
+  journalEntryLineId String?   @unique
+  journalEntryLine   JournalEntryLine? @relation(fields: [journalEntryLineId], references: [id])
+  
+  reconciliation     BankReconciliation @relation(fields: [reconciliationId], references: [id], onDelete: Cascade)
+  
+  createdAt         DateTime  @default(now())
+  
+  @@index([reconciliationId])
 }
