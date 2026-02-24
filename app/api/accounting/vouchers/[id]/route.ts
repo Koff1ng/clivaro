@@ -2,7 +2,7 @@
 import { NextResponse } from 'next/server'
 import { requirePermission } from '@/lib/api-middleware'
 import { getTenantIdFromSession } from '@/lib/tenancy'
-import { getJournalEntry, approveJournalEntry } from '@/lib/accounting/journal-service'
+import { getJournalEntry, approveJournalEntry, annulJournalEntry } from '@/lib/accounting/journal-service'
 
 export async function GET(
     request: Request,
@@ -32,6 +32,10 @@ export async function PATCH(
     try {
         if (body.action === 'approve') {
             const entry = await approveJournalEntry(tenantId, params.id, userId)
+            return NextResponse.json(entry)
+        }
+        if (body.action === 'annul') {
+            const entry = await annulJournalEntry(tenantId, params.id, userId)
             return NextResponse.json(entry)
         }
         return NextResponse.json({ error: 'Invalid action' }, { status: 400 })

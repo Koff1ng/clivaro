@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useToast } from '@/components/ui/toast'
 import { formatCurrency } from '@/lib/utils'
 import { useParams, useRouter } from 'next/navigation'
-import { CheckCircle, Printer, ArrowLeft, Trash2 } from 'lucide-react'
+import { CheckCircle, Printer, ArrowLeft, Trash2, XCircle } from 'lucide-react'
 
 export default function VoucherDetailPage() {
     const params = useParams()
@@ -19,6 +19,7 @@ export default function VoucherDetailPage() {
     const [voucher, setVoucher] = useState<any>(null)
     const [loading, setLoading] = useState(true)
     const [approving, setApproving] = useState(false)
+    const [annulling, setAnnulling] = useState(false)
 
     useEffect(() => {
         if (params.id) {
@@ -57,6 +58,31 @@ export default function VoucherDetailPage() {
         }
     }
 
+    const handleAnnul = async () => {
+        if (!confirm('¿Estás seguro de anular este comprobante? Esta acción no se puede deshacer.')) return
+        setAnnulling(true)
+        try {
+            const res = await fetch(`/api/accounting/vouchers/${params.id}`, {
+                method: 'PATCH',
+                body: JSON.stringify({ action: 'annul' }),
+                headers: { 'Content-Type': 'application/json' }
+            })
+
+            if (!res.ok) {
+                const errorData = await res.json().catch(() => ({ error: 'Error inesperado del servidor' }))
+                throw new Error(errorData.error || 'Error al anular')
+            }
+
+            toast('Comprobante anulado', 'success')
+            const updated = await res.json()
+            setVoucher(updated)
+        } catch (e: any) {
+            toast(e.message, 'error')
+        } finally {
+            setAnnulling(false)
+        }
+    }
+
     if (loading) return <MainLayout><div className="p-8 text-center uppercase font-bold text-slate-400">Cargando comprobante...</div></MainLayout>
     if (!voucher) return <MainLayout><div className="p-8 text-center text-red-500">Comprobante no encontrado</div></MainLayout>
 
@@ -79,11 +105,28 @@ export default function VoucherDetailPage() {
                             <Printer className="h-4 w-4 mr-2" />
                             Imprimir
                         </Button>
-                        {voucher.status === 'DRAFT' && (
-                            <Button onClick={handleApprove} disabled={approving}>
-                                <CheckCircle className="h-4 w-4 mr-2" />
-                                {approving ? 'Aprobando...' : 'Contabilizar Ahora'}
+                        {voucher.status !== 'ANNULLED' && (
+                            <Button variant="destructive" size="sm" onClick={handleAnnul} disabled={annulling}>
+                                <XCircle className="h-4 w-4 mr-2" />
+                                {annulling ? 'Anulando...' : 'Anular'}
                             </Button>
+                        )}
+                        {voucher.status === 'DRAFT' && (
+                            <div className="flex items-center gap-2">
+                                {Math.abs(voucher.totalDebit - voucher.totalCredit) > 0.01 && (
+                                    <span className="text-[10px] text-red-500 font-bold uppercase animate-pulse">
+                                        Descuadrado: {formatCurrency(voucher.totalDebit - voucher.totalCredit)}
+                                    </span>
+                                )}
+                                <Button
+                                    onClick={handleApprove}
+                                    disabled={approving || Math.abs(voucher.totalDebit - voucher.totalCredit) > 0.01}
+                                    variant={Math.abs(voucher.totalDebit - voucher.totalCredit) > 0.01 ? "outline" : "default"}
+                                >
+                                    <CheckCircle className="h-4 w-4 mr-2" />
+                                    {approving ? 'Aprobando...' : 'Contabilizar Ahora'}
+                                </Button>
+                            </div>
                         )}
                     </div>
                 </div>

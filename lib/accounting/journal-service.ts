@@ -26,7 +26,13 @@ export async function createJournalEntry(tenantId: string, userId: string, data:
     // Basic validation
     let totalDebit = 0
     let totalCredit = 0
+
+    if (!data.lines || data.lines.length === 0) {
+        throw new Error('El comprobante debe tener al menos una línea')
+    }
+
     data.lines.forEach(l => {
+        if (!l.accountId) throw new Error('Todas las líneas deben tener una cuenta contable asociada')
         totalDebit += l.debit || 0
         totalCredit += l.credit || 0
     })
@@ -119,6 +125,34 @@ export async function approveJournalEntry(tenantId: string, entryId: string, use
     await logAction(tenantId, 'JOURNAL_ENTRY', updated.id, 'APPROVED', userId, {
         number: updated.number,
         description: updated.description
+    })
+
+    return updated
+}
+
+export async function annulJournalEntry(tenantId: string, entryId: string, userId: string) {
+    const entry = await prisma.journalEntry.findUnique({
+        where: { id: entryId }
+    })
+
+    if (!entry || entry.tenantId !== tenantId) throw new Error('Entry not found')
+    if (entry.status === 'ANNULLED') throw new Error('Entry is already annulled')
+
+    // Validate period is not closed before annulling
+    await validatePeriodNotClosed(tenantId, entry.date)
+
+    const updated = await prisma.journalEntry.update({
+        where: { id: entryId },
+        data: {
+            status: 'ANNULLED'
+            // We keep the original lines so there's a record, 
+            // but in reports we filter out ANNULLED entries.
+        }
+    })
+
+    await logAction(tenantId, 'JOURNAL_ENTRY', updated.id, 'ANNULLED', userId, {
+        number: updated.number,
+        reason: 'User annulled the entry'
     })
 
     return updated
