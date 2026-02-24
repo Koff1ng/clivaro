@@ -64,6 +64,10 @@ export async function PATCH(
             return NextResponse.json({ error: 'Período no encontrado' }, { status: 404 });
         }
 
+        if (existing.status === 'PAID') {
+            return NextResponse.json({ error: 'No se puede modificar una nómina que ya ha sido pagada y contabilizada.' }, { status: 400 });
+        }
+
         // Only allow updating status and basic info for now.
         // Payslip items are edited separately (or implicitly update period totals)
         const updateData: any = {};

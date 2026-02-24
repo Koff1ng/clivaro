@@ -8,11 +8,11 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 vi.mock('../lib/db', () => ({
   prisma: {
     stockLevel: {
-      findUnique: jest.fn(),
-      update: jest.fn(),
+      findUnique: vi.fn(),
+      update: vi.fn(),
     },
     stockMovement: {
-      create: jest.fn(),
+      create: vi.fn(),
     },
   },
 }))

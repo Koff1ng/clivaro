@@ -53,11 +53,15 @@ export async function PATCH(
 
         const existingPayslip = await prisma.payslip.findFirst({
             where: { id: params.id, tenantId },
-            include: { items: true },
+            include: { items: true, payrollPeriod: true },
         });
 
         if (!existingPayslip) {
             return NextResponse.json({ error: 'Recibo no encontrado' }, { status: 404 });
+        }
+
+        if (existingPayslip.payrollPeriod.status !== 'DRAFT') {
+            return NextResponse.json({ error: 'Solo se pueden modificar recibos de nóminas en estado Borrador.' }, { status: 400 });
         }
 
         // Typical operation: add or update an item
