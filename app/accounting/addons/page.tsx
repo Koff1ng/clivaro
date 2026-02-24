@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { MainLayout } from '@/components/layout/main-layout'
 import { PageHeader } from '@/components/ui/page-header'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -45,18 +46,40 @@ const ADDON_CARDS = [
 
 export default function AddonsPage() {
     const { toast } = useToast()
+    const router = useRouter()
     const [selectedAddon, setSelectedAddon] = useState<string | null>(null)
     const [loading, setLoading] = useState(false)
     const [period, setPeriod] = useState(`${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`)
     const [year, setYear] = useState(new Date().getFullYear().toString())
 
     const handleExecute = async () => {
+        if (!selectedAddon) return
         setLoading(true)
-        // Simulate API call for generating the accounting addon draft
-        await new Promise(resolve => setTimeout(resolve, 1500))
-        setLoading(false)
-        toast('Comprobante borrador generado con éxito. Revisa el módulo de comprobantes.', 'success')
-        setSelectedAddon(null)
+        try {
+            const res = await fetch('/api/accounting/addons/generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    type: selectedAddon,
+                    period,
+                    year
+                })
+            })
+
+            if (!res.ok) {
+                const err = await res.json()
+                throw new Error(err.error || 'Error al generar el comprobante')
+            }
+
+            const data = await res.json()
+            toast('Comprobante borrador generado con éxito', 'success')
+            setSelectedAddon(null)
+            router.push(`/accounting/vouchers/${data.id}`)
+        } catch (e: any) {
+            toast(e.message, 'error')
+        } finally {
+            setLoading(false)
+        }
     }
 
     return (
