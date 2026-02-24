@@ -17,7 +17,9 @@ import {
     ArrowRightLeft,
     Check,
     X,
-    FileImage
+    FileImage,
+    Pencil,
+    Save
 } from 'lucide-react'
 import { formatCurrency, cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
@@ -34,10 +36,14 @@ export default function FiscalConciliatorPage() {
     const [loading, setLoading] = useState(false)
     const [reconciliation, setReconciliation] = useState<any>(null)
     const [bookEntries, setBookEntries] = useState<any[]>([])
+    const [ledgerBalance, setLedgerBalance] = useState<number>(0)
 
-    // Upload state
     const [uploading, setUploading] = useState(false)
     const fileInputRef = useRef<HTMLInputElement>(null)
+
+    const [editingEntryId, setEditingEntryId] = useState<string | null>(null)
+    const [editDescription, setEditDescription] = useState<string>('')
+    const [editAmount, setEditAmount] = useState<string>('')
 
     const fetchAccounts = async () => {
         try {
@@ -62,9 +68,11 @@ export default function FiscalConciliatorPage() {
                 if (data) {
                     setReconciliation(data.reconciliation)
                     setBookEntries(data.bookEntries)
+                    setLedgerBalance(data.ledgerBalance || 0)
                 } else {
                     setReconciliation(null)
                     setBookEntries([])
+                    setLedgerBalance(0)
                 }
             }
         } catch (e) {
@@ -141,6 +149,29 @@ export default function FiscalConciliatorPage() {
             }
         } catch (e) {
             toast('Error al desvincular el registro', 'error')
+        }
+    }
+
+    const handleUpdateEntry = async () => {
+        if (!editingEntryId) return
+        try {
+            const res = await fetch('/api/accounting/reconciliation', {
+                method: 'PATCH',
+                body: JSON.stringify({
+                    action: 'update_entry',
+                    entryId: editingEntryId,
+                    description: editDescription,
+                    amount: parseFloat(editAmount)
+                }),
+                headers: { 'Content-Type': 'application/json' }
+            })
+            if (res.ok) {
+                toast('Registro actualizado', 'success')
+                setEditingEntryId(null)
+                fetchReconciliation()
+            }
+        } catch (e) {
+            toast('Error al actualizar el registro', 'error')
         }
     }
 
@@ -248,9 +279,9 @@ export default function FiscalConciliatorPage() {
                                         <span className="font-mono font-bold">{formatCurrency(reconciliation.entries.reduce((acc: number, e: any) => acc + e.amount, 0))}</span>
                                     </div>
                                     <div className="flex justify-between text-sm">
-                                        <span className="text-slate-500">Libros:</span>
+                                        <span className="text-slate-500">Libros (Saldo):</span>
                                         <span className="font-mono font-bold text-blue-600">
-                                            {formatCurrency(reconciliation.entries.filter((e: any) => e.status === 'MATCHED').reduce((acc: number, e: any) => acc + e.amount, 0))}
+                                            {formatCurrency(ledgerBalance)}
                                         </span>
                                     </div>
                                     <div className="flex justify-between pt-2 border-t font-bold text-lg">
@@ -294,28 +325,83 @@ export default function FiscalConciliatorPage() {
                                                     <TableRow key={entry.id} className={cn("group transition-colors", entry.status === 'MATCHED' ? "bg-green-50/50" : "hover:bg-slate-50")}>
                                                         <TableCell className="text-[11px] py-3">{new Date(entry.date).toLocaleDateString()}</TableCell>
                                                         <TableCell className="py-3">
-                                                            <div className="text-[11px] font-semibold text-slate-700">{entry.description}</div>
-                                                            <div className="text-[9px] text-slate-400 font-mono italic">{entry.reference || "S/REF"}</div>
+                                                            {editingEntryId === entry.id ? (
+                                                                <Input
+                                                                    value={editDescription}
+                                                                    onChange={e => setEditDescription(e.target.value)}
+                                                                    className="h-7 text-[11px]"
+                                                                />
+                                                            ) : (
+                                                                <>
+                                                                    <div className="text-[11px] font-semibold text-slate-700">{entry.description}</div>
+                                                                    <div className="text-[9px] text-slate-400 font-mono italic">{entry.reference || "S/REF"}</div>
+                                                                </>
+                                                            )}
                                                         </TableCell>
                                                         <TableCell className={cn("text-right font-mono text-[11px] font-bold py-3", entry.amount < 0 ? "text-red-600" : "text-green-600")}>
-                                                            {formatCurrency(entry.amount)}
+                                                            {editingEntryId === entry.id ? (
+                                                                <Input
+                                                                    type="number"
+                                                                    value={editAmount}
+                                                                    onChange={e => setEditAmount(e.target.value)}
+                                                                    className="h-7 text-[11px] text-right"
+                                                                />
+                                                            ) : (
+                                                                formatCurrency(entry.amount)
+                                                            )}
                                                         </TableCell>
                                                         <TableCell className="p-2">
-                                                            {entry.status === 'MATCHED' ? (
-                                                                <Button
-                                                                    variant="ghost"
-                                                                    size="icon"
-                                                                    className="h-6 w-6 rounded-full hover:bg-red-100 hover:text-red-600"
-                                                                    onClick={() => handleUnmatch(entry.id)}
-                                                                    disabled={reconciliation.status === 'CLOSED'}
-                                                                >
-                                                                    <X className="h-3 w-3" />
-                                                                </Button>
-                                                            ) : (
-                                                                <div className="flex h-6 w-6 items-center justify-center">
-                                                                    <div className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" />
-                                                                </div>
-                                                            )}
+                                                            <div className="flex items-center gap-1">
+                                                                {editingEntryId === entry.id ? (
+                                                                    <div className="flex gap-1">
+                                                                        <Button
+                                                                            variant="ghost"
+                                                                            size="icon"
+                                                                            className="h-6 w-6 text-green-600"
+                                                                            onClick={handleUpdateEntry}
+                                                                        >
+                                                                            <Save className="h-3 w-3" />
+                                                                        </Button>
+                                                                        <Button
+                                                                            variant="ghost"
+                                                                            size="icon"
+                                                                            className="h-6 w-6 text-red-600"
+                                                                            onClick={() => setEditingEntryId(null)}
+                                                                        >
+                                                                            <X className="h-3 w-3" />
+                                                                        </Button>
+                                                                    </div>
+                                                                ) : entry.status === 'MATCHED' ? (
+                                                                    <Button
+                                                                        variant="ghost"
+                                                                        size="icon"
+                                                                        className="h-6 w-6 rounded-full hover:bg-red-100 hover:text-red-600"
+                                                                        onClick={() => handleUnmatch(entry.id)}
+                                                                        disabled={reconciliation.status === 'CLOSED'}
+                                                                    >
+                                                                        <X className="h-3 w-3" />
+                                                                    </Button>
+                                                                ) : (
+                                                                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                        <Button
+                                                                            variant="ghost"
+                                                                            size="icon"
+                                                                            className="h-6 w-6 text-blue-600 hover:bg-blue-50"
+                                                                            onClick={() => {
+                                                                                setEditingEntryId(entry.id)
+                                                                                setEditDescription(entry.description)
+                                                                                setEditAmount(entry.amount.toString())
+                                                                            }}
+                                                                            disabled={reconciliation.status === 'CLOSED'}
+                                                                        >
+                                                                            <Pencil className="h-3 w-3" />
+                                                                        </Button>
+                                                                        <div className="flex h-6 w-6 items-center justify-center">
+                                                                            <div className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" />
+                                                                        </div>
+                                                                    </div>
+                                                                )}
+                                                            </div>
                                                         </TableCell>
                                                     </TableRow>
                                                 ))}

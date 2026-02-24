@@ -49,7 +49,7 @@ model User {
   approvedPhysicalInventories PhysicalInventory[] @relation("PhysicalInventoryApprovedBy")
   marketingCampaignsCreated MarketingCampaign[] @relation("MarketingCampaignCreatedBy")
   accountingAuditLogs AccountingAuditLog[] @relation("AccountingAuditLogs")
-  creditNotesCreated CreditNote[] @relation("CreditNoteCreatedBy")
+  creditNotesCreated  CreditNote[] @relation("CreditNoteCreatedBy")
 }
 
 model Session {
@@ -1009,6 +1009,11 @@ model Tenant {
   accountingPeriods  AccountingPeriod[]
   accountingConfig   AccountingConfig?
   bankReconciliations BankReconciliation[]
+  
+  // Payroll Relations
+  employees           Employee[]
+  payrollPeriods      PayrollPeriod[]
+  payslips            Payslip[]
 }
 
 model Plan {
@@ -1341,51 +1346,102 @@ model QuoteItem {
 // ============================================
 
 model Employee {
-  id             String        @id @default(cuid())
-  userId         String?       @unique // Optional link to system user
-  firstName      String
-  lastName       String
-  documentId     String        @unique
-  email          String?
-  phone          String?
-  address        String?
-  hireDate       DateTime
-  baseSalary     Float
-  status         String        @default("ACTIVE") // ACTIVE, INACTIVE, TERMINATED
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
+  id              String    @id @default(cuid())
+  tenantId        String
+  documentType    String    @default("CC")
+  documentNumber  String
+  firstName       String
+  lastName        String
+  email           String?
+  phone           String?
+  address         String?
   
-  payrollItems   PayrollItem[]
+  jobTitle        String
+  department      String?
+  hireDate        DateTime
+  terminationDate DateTime?
+  isActive        Boolean   @default(true)
+  
+  baseSalary      Float
+  salaryType      String    @default("FIJO") // FIJO, VARIABLE, INTEGRAL
+  
+  bankName        String?
+  bankAccountType String?   // AHORROS, CORRIENTE
+  bankAccountNumber String?
+  
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  tenant          Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  payslips        Payslip[]
+
+  @@unique([tenantId, documentNumber])
+  @@index([tenantId, isActive])
 }
 
-model PayrollRun {
-  id          String        @id @default(cuid())
-  startDate   DateTime
-  endDate     DateTime
-  paymentDate DateTime?
-  status      String        @default("DRAFT") // DRAFT, APPROVED, PAID
-  total       Float         @default(0)
-  notes       String?
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+model PayrollPeriod {
+  id              String    @id @default(cuid())
+  tenantId        String
+  periodName      String    // e.g., "Febrero 2026", "Quincena 1 Enero 2026"
+  startDate       DateTime
+  endDate         DateTime
+  status          String    @default("DRAFT") // DRAFT, APPROVED, PAID
   
-  items       PayrollItem[]
+  totalEarnings   Float     @default(0)
+  totalDeductions Float     @default(0)
+  netPay          Float     @default(0)
+  
+  paidAt          DateTime?
+  journalEntryId  String?   @unique // Link to Accounting
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  tenant          Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  payslips        Payslip[]
+  journalEntry    JournalEntry? @relation("PayrollJournal", fields: [journalEntryId], references: [id])
+
+  @@index([tenantId, startDate, endDate])
 }
 
-model PayrollItem {
-  id           String     @id @default(cuid())
-  payrollRunId String
-  employeeId   String
-  type         String     // SALARY, BONUS, COMMISSION, DEDUCTION
-  description  String?
-  amount       Float
-  createdAt    DateTime   @default(now())
+model Payslip {
+  id                String    @id @default(cuid())
+  tenantId          String
+  payrollPeriodId   String
+  employeeId        String
   
-  payrollRun   PayrollRun @relation(fields: [payrollRunId], references: [id], onDelete: Cascade)
-  employee     Employee   @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  baseSalary        Float     // Snapshot of salary at the time
+  totalEarnings     Float     @default(0)
+  totalDeductions   Float     @default(0)
+  netPay            Float     @default(0)
+  
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
-  @@index([payrollRunId])
-  @@index([employeeId])
+  tenant            Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  payrollPeriod     PayrollPeriod @relation(fields: [payrollPeriodId], references: [id], onDelete: Cascade)
+  employee          Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  items             PayslipItem[]
+
+  @@unique([payrollPeriodId, employeeId])
+  @@index([tenantId, employeeId])
+}
+
+model PayslipItem {
+  id              String    @id @default(cuid())
+  payslipId       String
+  
+  type            String    // EARNING (Devengo) or DEDUCTION (Deducción)
+  concept         String    // e.g., "Salario Básico", "Horas Extras", "Salud", "Pensión"
+  amount          Float
+  isAutomatic     Boolean   @default(false) // True if calculated by system rules
+  description     String?
+  
+  createdAt       DateTime  @default(now())
+
+  payslip         Payslip   @relation(fields: [payslipId], references: [id], onDelete: Cascade)
+
+  @@index([payslipId])
 }
 
 
@@ -1469,6 +1525,7 @@ model JournalEntry {
   lines         JournalEntryLine[]
   tenant        Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   createdBy     User?     @relation("CreatedJournalEntries", fields: [createdById], references: [id])
+  payrollPeriod PayrollPeriod? @relation("PayrollJournal")
   
   @@unique([tenantId, number]) // Ensure unique numbering
   @@index([tenantId, period])

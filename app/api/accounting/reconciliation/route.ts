@@ -19,6 +19,12 @@ export async function GET(request: Request) {
     }
 
     try {
+        // Verify account ownership
+        const account = await prisma.accountingAccount.findFirst({
+            where: { id: accountId, tenantId }
+        })
+        if (!account) return NextResponse.json({ error: 'Account not found' }, { status: 404 })
+
         const reconciliation = await prisma.bankReconciliation.findUnique({
             where: {
                 tenantId_accountId_period: { tenantId, accountId, period }
@@ -58,9 +64,28 @@ export async function GET(request: Request) {
             }
         })
 
+        // Calculate Ledger Balance (Accumulated up to 'end')
+        const balanceResult = await prisma.journalEntryLine.aggregate({
+            where: {
+                accountId,
+                journalEntry: {
+                    tenantId,
+                    date: { lte: end },
+                    status: 'APPROVED'
+                }
+            },
+            _sum: {
+                debit: true,
+                credit: true
+            }
+        })
+
+        const ledgerBalance = (balanceResult._sum.debit || 0) - (balanceResult._sum.credit || 0)
+
         return NextResponse.json({
             reconciliation,
-            bookEntries
+            bookEntries,
+            ledgerBalance
         })
     } catch (e: any) {
         console.error(e)
@@ -83,6 +108,12 @@ export async function POST(request: Request) {
     }
 
     try {
+        // Verify account ownership
+        const account = await prisma.accountingAccount.findFirst({
+            where: { id: accountId, tenantId }
+        })
+        if (!account) return NextResponse.json({ error: 'Account not found' }, { status: 404 })
+
         let reconciliation = await prisma.bankReconciliation.findUnique({
             where: { tenantId_accountId_period: { tenantId, accountId, period } }
         })
@@ -135,28 +166,77 @@ export async function PATCH(request: Request) {
     const { action, ...data } = body
 
     try {
-        if (action === 'match') {
-            const { bankEntryId, journalLineId } = data
-            await prisma.bankStatementEntry.update({
-                where: { id: bankEntryId },
-                data: { journalEntryLineId: journalLineId, status: 'MATCHED' }
+        if (action === 'match' || action === 'unmatch') {
+            const { bankEntryId } = data
+
+            // SECURITY: Verify ownership and status
+            const entry = await prisma.bankStatementEntry.findFirst({
+                where: { id: bankEntryId, reconciliation: { tenantId } },
+                include: { reconciliation: true }
             })
+
+            if (!entry) return NextResponse.json({ error: 'Entry not found' }, { status: 404 })
+            if (entry.reconciliation.status === 'CLOSED') {
+                return NextResponse.json({ error: 'Reconciliation is closed' }, { status: 400 })
+            }
+
+            if (action === 'match') {
+                const { journalLineId } = data
+                // Verify journal line ownership
+                const line = await prisma.journalEntryLine.findFirst({
+                    where: { id: journalLineId, journalEntry: { tenantId } }
+                })
+                if (!line) return NextResponse.json({ error: 'Journal line not found' }, { status: 404 })
+
+                await prisma.bankStatementEntry.update({
+                    where: { id: bankEntryId },
+                    data: { journalEntryLineId: journalLineId, status: 'MATCHED' }
+                })
+            } else {
+                await prisma.bankStatementEntry.update({
+                    where: { id: bankEntryId },
+                    data: { journalEntryLineId: null, status: 'PENDING' }
+                })
+            }
             return NextResponse.json({ success: true })
         }
 
-        if (action === 'unmatch') {
-            const { bankEntryId } = data
+        if (action === 'update_entry') {
+            const { entryId, description, amount } = data
+
+            // SECURITY: Verify ownership and status
+            const entry = await prisma.bankStatementEntry.findFirst({
+                where: { id: entryId, reconciliation: { tenantId } },
+                include: { reconciliation: true }
+            })
+
+            if (!entry) return NextResponse.json({ error: 'Entry not found' }, { status: 404 })
+            if (entry.reconciliation.status === 'CLOSED') {
+                return NextResponse.json({ error: 'Reconciliation is closed' }, { status: 400 })
+            }
+
             await prisma.bankStatementEntry.update({
-                where: { id: bankEntryId },
-                data: { journalEntryLineId: null, status: 'PENDING' }
+                where: { id: entryId },
+                data: {
+                    description,
+                    amount,
+                    debit: amount > 0 ? amount : 0,
+                    credit: amount < 0 ? Math.abs(amount) : 0
+                }
             })
             return NextResponse.json({ success: true })
         }
 
         if (action === 'close') {
             const { id, balanceBank, balanceBooks } = data
+            // Verify ownership
+            const recon = await prisma.bankReconciliation.findFirst({
+                where: { id, tenantId }
+            })
+            if (!recon) return NextResponse.json({ error: 'Reconciliation not found' }, { status: 404 })
+
             await prisma.bankReconciliation.update({
-                where: { id, tenantId },
+                where: { id },
                 data: {
                     status: 'CLOSED',
                     balanceBank,

@@ -70,7 +70,11 @@ export default function NewVoucherPage() {
 
     const handleSave = async (status: 'DRAFT' | 'APPROVED' = 'DRAFT') => {
         if (!description) return toast('Descripción requerida', 'error')
-        if (Math.abs(difference) > 0.01) return toast('El comprobante no está balanceado', 'error')
+
+        // Only block if APPROVED
+        if (status === 'APPROVED' && Math.abs(difference) > 0.01) {
+            return toast('El comprobante debe estar balanceado para contabilizar', 'error')
+        }
 
         // Validate lines
         for (const l of lines) {
@@ -250,7 +254,7 @@ export default function NewVoucherPage() {
                                 Agregar Línea
                             </Button>
                             <div className="flex gap-2">
-                                <Button variant="secondary" onClick={() => handleSave('DRAFT')} disabled={loading || Math.abs(difference) > 0.01}>
+                                <Button variant="secondary" onClick={() => handleSave('DRAFT')} disabled={loading}>
                                     <Save className="h-4 w-4 mr-2" />
                                     Guardar Borrador
                                 </Button>
