@@ -107,8 +107,8 @@ const menuGroups: MenuGroup[] = [
     title: 'Recursos Humanos',
     key: 'hr',
     items: [
-      { href: '/payroll/employees', label: 'Empleados', icon: Group, permission: 'manage_users', planFeature: 'managePayroll' },
-      { href: '/payroll/runs', label: 'Nómina', icon: WalletIcon, permission: 'manage_users', planFeature: 'managePayroll' },
+      { href: '/hr/employees', label: 'Empleados', icon: Group, permission: 'manage_users', planFeature: 'managePayroll' },
+      { href: '/hr/payroll', label: 'Nómina', icon: WalletIcon, permission: 'manage_users', planFeature: 'managePayroll' },
     ]
   },
   {
