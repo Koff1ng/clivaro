@@ -81,6 +81,12 @@ export async function PUT(
                 bankName: data.bankName,
                 bankAccountType: data.bankAccountType,
                 bankAccountNumber: data.bankAccountNumber,
+                // DIAN Fields
+                healthEntity: data.healthEntity,
+                pensionEntity: data.pensionEntity,
+                arlEntity: data.arlEntity,
+                compensationBox: data.compensationBox,
+                paymentMethod: data.paymentMethod,
             },
         });
 

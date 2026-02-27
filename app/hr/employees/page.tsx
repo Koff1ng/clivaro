@@ -42,6 +42,11 @@ const initialEmployee = {
     bankName: '',
     bankAccountType: 'AHORROS',
     bankAccountNumber: '',
+    healthEntity: '',
+    pensionEntity: '',
+    arlEntity: '',
+    compensationBox: '',
+    paymentMethod: 'TRANSFERENCIA',
     isActive: true,
 }
 
@@ -409,6 +414,57 @@ export default function EmployeesPage() {
                                     value={currentEmployee.bankAccountNumber || ''}
                                     onChange={(e) => setCurrentEmployee({ ...currentEmployee, bankAccountNumber: e.target.value })}
                                 />
+                            </div>
+
+                            <div className="col-span-2 space-y-2 mt-4">
+                                <h4 className="font-semibold text-sm border-b pb-1">Seguridad Social y Parafiscales (DIAN)</h4>
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label>Entidad de Salud (EPS)</Label>
+                                <Input
+                                    value={currentEmployee.healthEntity || ''}
+                                    onChange={(e) => setCurrentEmployee({ ...currentEmployee, healthEntity: e.target.value })}
+                                    placeholder="Ej: Salud Total S.A."
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Fondo de Pensión</Label>
+                                <Input
+                                    value={currentEmployee.pensionEntity || ''}
+                                    onChange={(e) => setCurrentEmployee({ ...currentEmployee, pensionEntity: e.target.value })}
+                                    placeholder="Ej: Porvenir"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Administradora Riesgos Laborales (ARL)</Label>
+                                <Input
+                                    value={currentEmployee.arlEntity || ''}
+                                    onChange={(e) => setCurrentEmployee({ ...currentEmployee, arlEntity: e.target.value })}
+                                    placeholder="Ej: ARL Sura"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Caja de Compensación</Label>
+                                <Input
+                                    value={currentEmployee.compensationBox || ''}
+                                    onChange={(e) => setCurrentEmployee({ ...currentEmployee, compensationBox: e.target.value })}
+                                    placeholder="Ej: Comfenalco"
+                                />
+                            </div>
+                            <div className="col-span-2 space-y-2">
+                                <Label>Método de Pago DIAN</Label>
+                                <Select
+                                    value={currentEmployee.paymentMethod || 'TRANSFERENCIA'}
+                                    onValueChange={(val) => setCurrentEmployee({ ...currentEmployee, paymentMethod: val })}
+                                >
+                                    <SelectTrigger><SelectValue placeholder="Método Pago" /></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="TRANSFERENCIA">Transferencia Débito Bancaria</SelectItem>
+                                        <SelectItem value="EFECTIVO">Efectivo</SelectItem>
+                                        <SelectItem value="CHEQUE">Cheque</SelectItem>
+                                    </SelectContent>
+                                </Select>
                             </div>
 
                         </div>
