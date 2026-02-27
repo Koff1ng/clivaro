@@ -1342,6 +1342,7 @@ model QuoteItem {
 // ============================================
 
 model Employee {
+model Employee {
   id                String   @id @default(cuid())
   tenantId          String
   documentType      String
@@ -1359,6 +1360,14 @@ model Employee {
   bankName          String?
   bankAccountType   String?
   bankAccountNumber String?
+
+  // DIAN Electronic Payroll Fields
+  healthEntity      String?
+  pensionEntity     String?
+  arlEntity         String?
+  compensationBox   String?
+  paymentMethod     String?
+
   isActive          Boolean  @default(true)
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
@@ -1397,6 +1406,15 @@ model Payslip {
   tenantId        String
   payrollPeriodId String
   employeeId      String
+
+  // DIAN Electronic Payroll Fields
+  documentNumber  String? // Ej. "NEA-2395"
+  cune            String?
+  statusDIAN      String   @default("PENDING") // PENDING, SENT, ACCEPTED, REJECTED
+  dianResponse    Json?
+  signedAt        DateTime?
+  notes           String?
+
   baseSalary      Float
   totalEarnings   Float    @default(0)
   totalDeductions Float    @default(0)
@@ -1418,6 +1436,9 @@ model PayslipItem {
   payslipId   String
   type        String // EARNING, DEDUCTION
   concept     String
+  code        String? // DIAN code
+  units       Float?  // 30 days, 15 hours
+  unitType    String? // DIAS, HORAS
   amount      Float // Stores net amount (+ for earning, - for deduction)
   isAutomatic Boolean  @default(false)
   createdAt   DateTime @default(now())
