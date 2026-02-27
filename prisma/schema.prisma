@@ -1346,100 +1346,88 @@ model QuoteItem {
 // ============================================
 
 model Employee {
-  id              String    @id @default(cuid())
-  tenantId        String
-  documentType    String    @default("CC")
-  documentNumber  String
-  firstName       String
-  lastName        String
-  email           String?
-  phone           String?
-  address         String?
-  
-  jobTitle        String
-  department      String?
-  hireDate        DateTime
-  terminationDate DateTime?
-  isActive        Boolean   @default(true)
-  
-  baseSalary      Float
-  salaryType      String    @default("FIJO") // FIJO, VARIABLE, INTEGRAL
-  
-  bankName        String?
-  bankAccountType String?   // AHORROS, CORRIENTE
+  id                String          @id @default(cuid())
+  tenantId          String
+  documentType      String
+  documentNumber    String
+  firstName         String
+  lastName          String
+  email             String?
+  phone             String?
+  address           String?
+  jobTitle          String?
+  department        String?
+  hireDate          DateTime
+  baseSalary        Float
+  salaryType        String          @default("FIJO")
+  bankName          String?
+  bankAccountType   String?
   bankAccountNumber String?
-  
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  isActive          Boolean         @default(true)
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
 
-  tenant          Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  payslips        Payslip[]
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  payslips Payslip[]
 
   @@unique([tenantId, documentNumber])
-  @@index([tenantId, isActive])
+  @@index([tenantId])
 }
 
 model PayrollPeriod {
-  id              String    @id @default(cuid())
+  id              String   @id @default(cuid())
   tenantId        String
-  periodName      String    // e.g., "Febrero 2026", "Quincena 1 Enero 2026"
+  periodName      String
   startDate       DateTime
   endDate         DateTime
-  status          String    @default("DRAFT") // DRAFT, APPROVED, PAID
-  
-  totalEarnings   Float     @default(0)
-  totalDeductions Float     @default(0)
-  netPay          Float     @default(0)
-  
+  status          String   @default("DRAFT") // DRAFT, APPROVED, PAID
+  totalEarnings   Float    @default(0)
+  totalDeductions Float    @default(0)
+  netPay          Float    @default(0)
   paidAt          DateTime?
-  journalEntryId  String?   @unique // Link to Accounting
+  journalEntryId  String?  @unique // Link to Accounting
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  payslips     Payslip[]
+  journalEntry JournalEntry? @relation("PayrollJournal", fields: [journalEntryId], references: [id])
 
-  tenant          Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  payslips        Payslip[]
-  journalEntry    JournalEntry? @relation("PayrollJournal", fields: [journalEntryId], references: [id])
-
-  @@index([tenantId, startDate, endDate])
+  @@index([tenantId])
 }
 
 model Payslip {
-  id                String    @id @default(cuid())
-  tenantId          String
-  payrollPeriodId   String
-  employeeId        String
-  
-  baseSalary        Float     // Snapshot of salary at the time
-  totalEarnings     Float     @default(0)
-  totalDeductions   Float     @default(0)
-  netPay            Float     @default(0)
-  
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
+  id              String   @id @default(cuid())
+  tenantId        String
+  payrollPeriodId String
+  employeeId      String
+  baseSalary      Float
+  totalEarnings   Float    @default(0)
+  totalDeductions Float    @default(0)
+  netPay          Float    @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
-  tenant            Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  payrollPeriod     PayrollPeriod @relation(fields: [payrollPeriodId], references: [id], onDelete: Cascade)
-  employee          Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  items             PayslipItem[]
+  tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  payrollPeriod PayrollPeriod @relation(fields: [payrollPeriodId], references: [id], onDelete: Cascade)
+  employee      Employee      @relation(fields: [employeeId], references: [id], onDelete: Restrict)
+  items         PayslipItem[]
 
   @@unique([payrollPeriodId, employeeId])
-  @@index([tenantId, employeeId])
+  @@index([tenantId])
 }
 
 model PayslipItem {
-  id              String    @id @default(cuid())
-  payslipId       String
-  
-  type            String    // EARNING (Devengo) or DEDUCTION (Deducción)
-  concept         String    // e.g., "Salario Básico", "Horas Extras", "Salud", "Pensión"
-  amount          Float
-  isAutomatic     Boolean   @default(false) // True if calculated by system rules
-  description     String?
-  
-  createdAt       DateTime  @default(now())
+  id          String   @id @default(cuid())
+  payslipId   String
+  type        String   // EARNING, DEDUCTION
+  concept     String
+  amount      Float    // Stores net amount (+ for earning, - for deduction)
+  isAutomatic Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
-  payslip         Payslip   @relation(fields: [payslipId], references: [id], onDelete: Cascade)
+  payslip Payslip @relation(fields: [payslipId], references: [id], onDelete: Cascade)
 
   @@index([payslipId])
 }

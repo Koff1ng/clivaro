@@ -6,6 +6,9 @@ import { getTenantIdFromSession } from '@/lib/tenancy';
 export async function GET(req: Request) {
     try {
         const session = await requirePermission(req, 'payroll:view'); // Assumes proper permission handling
+        if (session instanceof NextResponse) {
+            return session;
+        }
         const tenantId = await getTenantIdFromSession(session);
 
         if (!tenantId) {
@@ -48,6 +51,9 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
     try {
         const session = await requirePermission(req, 'payroll:manage');
+        if (session instanceof NextResponse) {
+            return session;
+        }
         const tenantId = await getTenantIdFromSession(session);
 
         if (!tenantId) {

@@ -9,6 +9,7 @@ export async function GET(
 ) {
     try {
         const session = await requirePermission(req, 'payroll:view');
+        if (session instanceof NextResponse) { return session; }
         const tenantId = await getTenantIdFromSession(session);
 
         if (!tenantId) {
@@ -42,6 +43,7 @@ export async function PUT(
 ) {
     try {
         const session = await requirePermission(req, 'payroll:manage');
+        if (session instanceof NextResponse) { return session; }
         const tenantId = await getTenantIdFromSession(session);
 
         if (!tenantId) {
