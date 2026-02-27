@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { requirePermission } from '@/lib/api-middleware';
+import { PERMISSIONS } from '@/lib/permissions';
 import { getTenantIdFromSession } from '@/lib/tenancy';
 
 export async function GET(
@@ -8,7 +9,7 @@ export async function GET(
     { params }: { params: { id: string } }
 ) {
     try {
-        const session = await requirePermission(req, 'payroll:view');
+        const session = await requirePermission(req, PERMISSIONS.MANAGE_USERS);
         if (session instanceof NextResponse) { return session; }
         const tenantId = await getTenantIdFromSession(session);
 
@@ -43,7 +44,7 @@ export async function PATCH(
     { params }: { params: { id: string } }
 ) {
     try {
-        const session = await requirePermission(req, 'payroll:manage');
+        const session = await requirePermission(req, PERMISSIONS.MANAGE_USERS);
         if (session instanceof NextResponse) { return session; }
         const tenantId = await getTenantIdFromSession(session);
 
