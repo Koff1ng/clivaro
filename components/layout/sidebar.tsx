@@ -338,23 +338,26 @@ export function Sidebar() {
                             }
                           }}
                           className={cn(
-                            'flex items-center gap-3 rounded-lg text-sm font-medium transition-colors relative group',
+                            'flex rounded-lg font-medium transition-all duration-200 relative group',
+                            isOpen ? 'flex-row items-center gap-3 text-sm px-3 py-2 ml-1' : 'flex-col items-center justify-center gap-1.5 px-1 py-2',
                             isActive
                               ? 'bg-[#0EA5E9] text-white shadow-lg shadow-cyan-500/20'
                               : 'text-slate-400 hover:bg-slate-800 hover:text-white',
-                            isOpen ? 'px-3 py-2 ml-1' : 'px-2 py-2 md:justify-center'
                           )}
                           title={!isOpen ? item.label : undefined}
                         >
-                          <AppIcon icon={Icon} className="w-5 h-5 flex-shrink-0" />
+                          <AppIcon icon={Icon} className={cn("flex-shrink-0 transition-all", isOpen ? "w-5 h-5" : "w-6 h-6")} />
                           <span className={cn(
-                            'transition-opacity duration-300 whitespace-nowrap flex items-center gap-1.5',
-                            isOpen ? 'opacity-100' : 'opacity-0 md:hidden'
+                            'transition-all duration-200 flex items-center justify-center gap-1.5',
+                            isOpen ? 'whitespace-nowrap' : 'text-[10.5px] font-normal leading-none w-full truncate px-0.5 text-center'
                           )}>
                             {item.label}
                             {item.planFeature && shouldShowNewBadge(item.planFeature) && (
-                              <span className="px-1 py-0.5 text-[9px] font-bold text-white bg-green-500 rounded-full animate-pulse">
-                                NUEVO
+                              <span className={cn(
+                                "font-bold text-white bg-green-500 rounded-full animate-pulse",
+                                isOpen ? "px-1 py-0.5 text-[9px]" : "absolute top-1 right-1 w-2.5 h-2.5"
+                              )}>
+                                {isOpen ? 'NUEVO' : ''}
                               </span>
                             )}
                           </span>
@@ -379,18 +382,18 @@ export function Sidebar() {
                   prefetch
                   scroll={false}
                   className={cn(
-                    'flex items-center gap-3 rounded-lg text-sm font-medium transition-colors relative group',
+                    'flex rounded-lg font-medium transition-colors relative group',
+                    isOpen ? 'flex-row items-center gap-3 text-sm px-3 py-2 ml-1' : 'flex-col items-center justify-center gap-1.5 px-1 py-2',
                     pathname?.startsWith('/admin/tenants')
                       ? 'bg-[#0EA5E9]/20 text-[#0EA5E9]'
-                      : 'text-slate-500 hover:bg-slate-800 hover:text-slate-300',
-                    isOpen ? 'px-3 py-2 ml-1' : 'px-2 py-2 md:justify-center'
+                      : 'text-slate-500 hover:bg-slate-800 hover:text-slate-300'
                   )}
                   title={!isOpen ? 'Tenants' : undefined}
                 >
-                  <ShieldCheck className="w-5 h-5 flex-shrink-0" />
+                  <ShieldCheck className={cn("flex-shrink-0 transition-all", isOpen ? "w-5 h-5" : "w-6 h-6")} />
                   <span className={cn(
-                    'transition-opacity duration-300 whitespace-nowrap',
-                    isOpen ? 'opacity-100' : 'opacity-0 md:hidden'
+                    'transition-all duration-300',
+                    isOpen ? 'text-sm whitespace-nowrap' : 'text-[10px] font-normal leading-none w-full truncate px-0.5 text-center'
                   )}>
                     Tenants
                   </span>
@@ -413,17 +416,17 @@ export function Sidebar() {
           <button
             onClick={() => signOut({ callbackUrl: '/login' })}
             className={cn(
-              'flex w-full items-center gap-3 rounded-lg text-sm font-medium text-slate-400 hover:bg-slate-800 hover:text-white transition-colors relative group',
-              isOpen ? 'px-3 py-2' : 'px-2 py-2 md:justify-center'
+              'flex w-full rounded-lg font-medium text-slate-400 hover:bg-slate-800 hover:text-white transition-colors relative group',
+              isOpen ? 'flex-row items-center gap-3 text-sm px-3 py-2' : 'flex-col items-center justify-center gap-1 px-1 py-1.5'
             )}
             title={!isOpen ? 'Cerrar Sesión' : undefined}
           >
-            <LogOutIcon className="h-5 w-5 flex-shrink-0" />
+            <LogOutIcon className={cn("flex-shrink-0 transition-all", isOpen ? "w-5 h-5" : "w-6 h-6")} />
             <span className={cn(
-              'transition-opacity duration-300 whitespace-nowrap',
-              isOpen ? 'opacity-100' : 'opacity-0 md:hidden'
+              'transition-all duration-300',
+              isOpen ? 'text-sm whitespace-nowrap' : 'text-[10px] font-normal leading-none w-full truncate px-0.5 text-center'
             )}>
-              Cerrar Sesión
+              Salir
             </span>
           </button>
         </div>
