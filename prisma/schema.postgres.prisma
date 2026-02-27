@@ -1342,7 +1342,6 @@ model QuoteItem {
 // ============================================
 
 model Employee {
-model Employee {
   id                String   @id @default(cuid())
   tenantId          String
   documentType      String
