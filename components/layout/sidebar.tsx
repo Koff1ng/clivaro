@@ -258,7 +258,7 @@ export function Sidebar() {
       <aside
         className={cn(
           'fixed md:static top-0 left-0 z-50 h-screen flex flex-col border-r border-slate-800 bg-[#0F172A] text-slate-100 transition-all duration-300 ease-in-out overflow-hidden print:hidden',
-          isOpen ? 'w-64 translate-x-0' : 'w-0 -translate-x-full md:translate-x-0 md:w-16'
+          isOpen ? 'w-64 translate-x-0' : 'w-0 -translate-x-full md:translate-x-0 md:w-[72px]'
         )}
       >
         {isOpen && (
@@ -346,21 +346,21 @@ export function Sidebar() {
                           )}
                           title={!isOpen ? item.label : undefined}
                         >
-                          <AppIcon icon={Icon} className={cn("flex-shrink-0 transition-all", isOpen ? "w-5 h-5" : "w-6 h-6")} />
+                          <AppIcon icon={Icon} className={cn("flex-shrink-0 transition-all", isOpen ? "w-5 h-5" : "w-[22px] h-[22px] mb-0.5")} />
                           <span className={cn(
-                            'transition-all duration-200 flex items-center justify-center gap-1.5',
-                            isOpen ? 'whitespace-nowrap' : 'text-[10px] font-medium leading-[1.15] w-full whitespace-normal text-center break-words px-0.5 drop-shadow-sm'
+                            'transition-all duration-200',
+                            isOpen ? 'flex items-center gap-1.5 whitespace-nowrap' : 'text-[10px] font-medium tracking-tight w-full truncate text-center px-0.5 opacity-90 block'
                           )}>
                             {item.label}
-                            {item.planFeature && shouldShowNewBadge(item.planFeature) && (
-                              <span className={cn(
-                                "font-bold text-white bg-green-500 rounded-full animate-pulse",
-                                isOpen ? "px-1 py-0.5 text-[9px]" : "absolute top-1 right-1 w-2.5 h-2.5"
-                              )}>
-                                {isOpen ? 'NUEVO' : ''}
+                            {item.planFeature && shouldShowNewBadge(item.planFeature) && isOpen && (
+                              <span className="font-bold text-white bg-green-500 rounded-full animate-pulse px-1 py-0.5 text-[9px]">
+                                NUEVO
                               </span>
                             )}
                           </span>
+                          {item.planFeature && shouldShowNewBadge(item.planFeature) && !isOpen && (
+                            <span className="absolute top-1.5 right-1.5 w-2 h-2 font-bold text-white bg-green-500 rounded-full animate-pulse" />
+                          )}
                           {!isOpen && (
                             <span className="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50 hidden md:block">
                               {item.label}
@@ -390,10 +390,10 @@ export function Sidebar() {
                   )}
                   title={!isOpen ? 'Tenants' : undefined}
                 >
-                  <ShieldCheck className={cn("flex-shrink-0 transition-all", isOpen ? "w-5 h-5" : "w-6 h-6")} />
+                  <ShieldCheck className={cn("flex-shrink-0 transition-all", isOpen ? "w-5 h-5" : "w-[22px] h-[22px] mb-0.5")} />
                   <span className={cn(
                     'transition-all duration-300',
-                    isOpen ? 'text-sm whitespace-nowrap' : 'text-[10px] font-medium leading-[1.15] w-full whitespace-normal text-center break-words px-0.5 drop-shadow-sm'
+                    isOpen ? 'text-sm whitespace-nowrap' : 'text-[10px] font-medium tracking-tight w-full truncate text-center px-0.5 opacity-90 block'
                   )}>
                     Tenants
                   </span>
@@ -421,10 +421,10 @@ export function Sidebar() {
             )}
             title={!isOpen ? 'Cerrar Sesión' : undefined}
           >
-            <LogOutIcon className={cn("flex-shrink-0 transition-all", isOpen ? "w-5 h-5" : "w-6 h-6")} />
+            <LogOutIcon className={cn("flex-shrink-0 transition-all", isOpen ? "w-5 h-5" : "w-[22px] h-[22px] mb-0.5")} />
             <span className={cn(
               'transition-all duration-300',
-              isOpen ? 'text-sm whitespace-nowrap' : 'text-[10px] font-medium leading-[1.15] w-full whitespace-normal text-center break-words px-0.5 drop-shadow-sm'
+              isOpen ? 'text-sm whitespace-nowrap' : 'text-[10px] font-medium tracking-tight w-full truncate text-center px-0.5 opacity-90 block'
             )}>
               Salir
             </span>
