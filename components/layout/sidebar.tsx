@@ -339,7 +339,7 @@ export function Sidebar() {
                           }}
                           className={cn(
                             'flex rounded-lg font-medium transition-all duration-200 relative group',
-                            isOpen ? 'flex-row items-center gap-3 text-sm px-3 py-2 ml-1' : 'flex-col items-center justify-center gap-1.5 px-1 py-2',
+                            isOpen ? 'flex-row items-center gap-3 text-sm px-3 py-2 ml-1' : 'flex-col items-center justify-center gap-1 px-1 py-2',
                             isActive
                               ? 'bg-[#0EA5E9] text-white shadow-lg shadow-cyan-500/20'
                               : 'text-slate-400 hover:bg-slate-800 hover:text-white',
@@ -349,7 +349,7 @@ export function Sidebar() {
                           <AppIcon icon={Icon} className={cn("flex-shrink-0 transition-all", isOpen ? "w-5 h-5" : "w-6 h-6")} />
                           <span className={cn(
                             'transition-all duration-200 flex items-center justify-center gap-1.5',
-                            isOpen ? 'whitespace-nowrap' : 'text-[10.5px] font-normal leading-none w-full truncate px-0.5 text-center'
+                            isOpen ? 'whitespace-nowrap' : 'text-[10px] font-medium leading-[1.15] w-full whitespace-normal text-center break-words px-0.5 drop-shadow-sm'
                           )}>
                             {item.label}
                             {item.planFeature && shouldShowNewBadge(item.planFeature) && (
@@ -383,7 +383,7 @@ export function Sidebar() {
                   scroll={false}
                   className={cn(
                     'flex rounded-lg font-medium transition-colors relative group',
-                    isOpen ? 'flex-row items-center gap-3 text-sm px-3 py-2 ml-1' : 'flex-col items-center justify-center gap-1.5 px-1 py-2',
+                    isOpen ? 'flex-row items-center gap-3 text-sm px-3 py-2 ml-1' : 'flex-col items-center justify-center gap-1 px-1 py-2',
                     pathname?.startsWith('/admin/tenants')
                       ? 'bg-[#0EA5E9]/20 text-[#0EA5E9]'
                       : 'text-slate-500 hover:bg-slate-800 hover:text-slate-300'
@@ -393,7 +393,7 @@ export function Sidebar() {
                   <ShieldCheck className={cn("flex-shrink-0 transition-all", isOpen ? "w-5 h-5" : "w-6 h-6")} />
                   <span className={cn(
                     'transition-all duration-300',
-                    isOpen ? 'text-sm whitespace-nowrap' : 'text-[10px] font-normal leading-none w-full truncate px-0.5 text-center'
+                    isOpen ? 'text-sm whitespace-nowrap' : 'text-[10px] font-medium leading-[1.15] w-full whitespace-normal text-center break-words px-0.5 drop-shadow-sm'
                   )}>
                     Tenants
                   </span>
@@ -424,7 +424,7 @@ export function Sidebar() {
             <LogOutIcon className={cn("flex-shrink-0 transition-all", isOpen ? "w-5 h-5" : "w-6 h-6")} />
             <span className={cn(
               'transition-all duration-300',
-              isOpen ? 'text-sm whitespace-nowrap' : 'text-[10px] font-normal leading-none w-full truncate px-0.5 text-center'
+              isOpen ? 'text-sm whitespace-nowrap' : 'text-[10px] font-medium leading-[1.15] w-full whitespace-normal text-center break-words px-0.5 drop-shadow-sm'
             )}>
               Salir
             </span>
