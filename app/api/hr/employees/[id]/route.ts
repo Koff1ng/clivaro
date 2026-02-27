@@ -72,7 +72,6 @@ export async function PUT(
                 jobTitle: data.jobTitle,
                 department: data.department,
                 hireDate: data.hireDate ? new Date(data.hireDate) : undefined,
-                terminationDate: data.terminationDate ? new Date(data.terminationDate) : null,
                 isActive: data.isActive,
                 baseSalary: data.baseSalary ? parseFloat(data.baseSalary) : undefined,
                 salaryType: data.salaryType,
