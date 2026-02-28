@@ -21,7 +21,7 @@ export async function initializePUC(tenantId: string) {
     // 6-digit parent is 4-digit.
 
     const sorted = [...PUC_TEMPLATE].sort((a, b) => a.code.length - b.code.length)
-    const created = []
+    const codeToIdMap = new Map<string, string>()
 
     for (const acc of sorted) {
         let parentId = null
@@ -34,16 +34,23 @@ export async function initializePUC(tenantId: string) {
             else if (acc.code.length > 6) parentCode = acc.code.substring(0, 6) // generic rule
 
             if (parentCode) {
-                // Find parent in recently created or DB
-                // Optimization: Cache map of code -> id
-                const parent = await prisma.accountingAccount.findUnique({
-                    where: { tenantId_code: { tenantId, code: parentCode } }
-                })
-                if (parent) parentId = parent.id
+                // Find parent in the memory map first
+                if (codeToIdMap.has(parentCode)) {
+                    parentId = codeToIdMap.get(parentCode)!
+                } else {
+                    // Fallback to DB (should rarely happen if sorted correctly)
+                    const parent = await prisma.accountingAccount.findFirst({
+                        where: { tenantId, code: parentCode }
+                    })
+                    if (parent) {
+                        parentId = parent.id
+                        codeToIdMap.set(parentCode, parent.id)
+                    }
+                }
             }
         }
 
-        await prisma.accountingAccount.create({
+        const createdAcc = await prisma.accountingAccount.create({
             data: {
                 tenantId,
                 code: acc.code,
@@ -55,6 +62,8 @@ export async function initializePUC(tenantId: string) {
                 tags: acc.tags || []
             }
         })
+
+        codeToIdMap.set(acc.code, createdAcc.id)
     }
 
     return { initialized: true, count: sorted.length }

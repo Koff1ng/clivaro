@@ -38,6 +38,19 @@ export default function AccountsPage() {
     const [currentAccount, setCurrentAccount] = useState<any>(null)
     const [editLoading, setEditLoading] = useState(false)
 
+    // Creation State
+    const [isCreating, setIsCreating] = useState(false)
+    const [newAccount, setNewAccount] = useState({
+        code: '',
+        name: '',
+        type: 'ASSET',
+        nature: 'DEBIT',
+        level: 1,
+        requiresThirdParty: false,
+        requiresCostCenter: false
+    })
+    const [createLoading, setCreateLoading] = useState(false)
+
     const handleEdit = (account: any) => {
         setCurrentAccount({ ...account })
         setIsEditing(true)
@@ -62,6 +75,36 @@ export default function AccountsPage() {
             toast('Error de conexión', 'error')
         } finally {
             setEditLoading(false)
+        }
+    }
+
+    const handleCreate = async () => {
+        if (!newAccount.code || !newAccount.name) {
+            toast('Código y Nombre son obligatorios', 'error')
+            return
+        }
+        setCreateLoading(true)
+        try {
+            const res = await fetch('/api/accounting/accounts', {
+                method: 'POST',
+                body: JSON.stringify({ action: 'create_single', data: newAccount }),
+                headers: { 'Content-Type': 'application/json' }
+            })
+            if (res.ok) {
+                toast('Cuenta creada correctamente', 'success')
+                setIsCreating(false)
+                setNewAccount({
+                    code: '', name: '', type: 'ASSET', nature: 'DEBIT', level: 1, requiresThirdParty: false, requiresCostCenter: false
+                })
+                fetchAccounts()
+            } else {
+                const data = await res.json()
+                toast(data.error || 'Error creando cuenta', 'error')
+            }
+        } catch (e) {
+            toast('Error de conexión', 'error')
+        } finally {
+            setCreateLoading(false)
         }
     }
 
@@ -131,7 +174,7 @@ export default function AccountsPage() {
                     </Card>
                 ) : (
                     <div className="space-y-4">
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 justify-between items-center">
                             <div className="relative flex-1 max-w-sm">
                                 <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                                 <Input
@@ -141,6 +184,9 @@ export default function AccountsPage() {
                                     onChange={e => setSearch(e.target.value)}
                                 />
                             </div>
+                            <Button onClick={() => setIsCreating(true)}>
+                                <Plus className="mr-2 h-4 w-4" /> Nueva Cuenta Manual
+                            </Button>
                         </div>
 
                         <div className="rounded-md border bg-white">
@@ -276,6 +322,92 @@ export default function AccountsPage() {
                             <Button onClick={handleSave} disabled={editLoading}>
                                 {editLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                 Guardar Cambios
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+
+                <Dialog open={isCreating} onOpenChange={setIsCreating}>
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>Nueva Cuenta Manual</DialogTitle>
+                        </DialogHeader>
+                        <div className="space-y-4 py-4">
+                            <div className="space-y-2">
+                                <Label>Código</Label>
+                                <Input
+                                    placeholder="Ej: 11050501"
+                                    value={newAccount.code}
+                                    onChange={e => setNewAccount({ ...newAccount, code: e.target.value, level: e.target.value.length === 1 ? 1 : e.target.value.length === 2 ? 2 : e.target.value.length === 4 ? 3 : 4 })}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Nombre de la Cuenta</Label>
+                                <Input
+                                    placeholder="Ej: Caja Menor Administrativa"
+                                    value={newAccount.name}
+                                    onChange={e => setNewAccount({ ...newAccount, name: e.target.value })}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Clasificación NIIF (Tipo)</Label>
+                                <Select
+                                    value={newAccount.type}
+                                    onValueChange={val => setNewAccount({ ...newAccount, type: val })}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Seleccionar tipo de cuenta" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="ASSET">ACTIVO (1)</SelectItem>
+                                        <SelectItem value="LIABILITY">PASIVO (2)</SelectItem>
+                                        <SelectItem value="EQUITY">PATRIMONIO (3)</SelectItem>
+                                        <SelectItem value="INCOME">INGRESOS (4)</SelectItem>
+                                        <SelectItem value="EXPENSE">GASTOS (5)</SelectItem>
+                                        <SelectItem value="COST_SALES">COSTO DE VENTAS (6)</SelectItem>
+                                        <SelectItem value="COST_PRODUCTION">COSTO PRODUCCIÓN (7)</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Naturaleza Contable</Label>
+                                <Select
+                                    value={newAccount.nature}
+                                    onValueChange={val => setNewAccount({ ...newAccount, nature: val })}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Seleccionar naturaleza" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="DEBIT">DÉBITO</SelectItem>
+                                        <SelectItem value="CREDIT">CRÉDITO</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="flex items-center space-x-2 pt-2">
+                                <Checkbox
+                                    id="newRequiresThirdParty"
+                                    checked={newAccount.requiresThirdParty}
+                                    onCheckedChange={checked => setNewAccount({ ...newAccount, requiresThirdParty: !!checked })}
+                                />
+                                <Label htmlFor="newRequiresThirdParty">Exigir código Tercero al asentar pagos</Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                                <Checkbox
+                                    id="newRequiresCostCenter"
+                                    checked={newAccount.requiresCostCenter}
+                                    onCheckedChange={checked => setNewAccount({ ...newAccount, requiresCostCenter: !!checked })}
+                                />
+                                <Label htmlFor="newRequiresCostCenter">Exigir Centro de Costo de Departamento</Label>
+                            </div>
+                        </div>
+                        <DialogFooter>
+                            <Button variant="outline" onClick={() => setIsCreating(false)} disabled={createLoading}>
+                                Cancelar
+                            </Button>
+                            <Button onClick={handleCreate} disabled={createLoading}>
+                                {createLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                Crear Cuenta
                             </Button>
                         </DialogFooter>
                     </DialogContent>

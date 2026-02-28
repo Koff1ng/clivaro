@@ -30,8 +30,54 @@ export async function POST(request: Request) {
     }
 
     // Action: Create Single
-    // ... Minimal implementation for manual creation if needed later.
-    // For now, focus on initializing.
+    if (body.action === 'create_single') {
+        const { code, name, type, nature, requiresThirdParty, requiresCostCenter, level } = body.data
+
+        // Verificar si la cuenta ya existe
+        const existing = await prisma.accountingAccount.findFirst({
+            where: { tenantId, code }
+        })
+
+        if (existing) {
+            return NextResponse.json({ error: 'Ya existe una cuenta con este código' }, { status: 400 })
+        }
+
+        // Buscar el padre, normalmente si level > 1, es el código menos su último dígito (o par de dígitos dependiendo del nivel)
+        let parentId = null
+        let parentCode = ''
+
+        if (code.length > 1) {
+            if (code.length === 2) parentCode = code.substring(0, 1)
+            else if (code.length === 4) parentCode = code.substring(0, 2)
+            else if (code.length === 6) parentCode = code.substring(0, 4)
+            else if (code.length > 6) parentCode = code.substring(0, 6)
+
+            if (parentCode) {
+                const parent = await prisma.accountingAccount.findFirst({
+                    where: { tenantId, code: parentCode }
+                })
+                if (parent) {
+                    parentId = parent.id
+                }
+            }
+        }
+
+        const newAccount = await prisma.accountingAccount.create({
+            data: {
+                tenantId,
+                code,
+                name,
+                type,
+                nature: nature || 'DEBIT',
+                level: level || (code.length === 1 ? 1 : code.length === 2 ? 2 : code.length === 4 ? 3 : 4),
+                requiresThirdParty: requiresThirdParty || false,
+                requiresCostCenter: requiresCostCenter || false,
+                parentId
+            }
+        })
+
+        return NextResponse.json(newAccount)
+    }
 
     return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
 }
