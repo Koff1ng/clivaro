@@ -82,7 +82,18 @@ async function initializePostgresTenant(databaseUrl: string, tenantId: string, t
       throw new Error(`No se encontró el archivo SQL en ${sqlPath}`)
     }
 
-    const sql = fs.readFileSync(sqlPath, 'utf8')
+    // Read as buffer to detect encoding (handles UTF-16LE from Windows editors, UTF-8 BOM, or plain UTF-8)
+    const sqlBuf = fs.readFileSync(sqlPath)
+    let sql: string
+    if (sqlBuf[0] === 0xFF && sqlBuf[1] === 0xFE) {
+      // UTF-16LE with BOM
+      sql = sqlBuf.slice(2).toString('utf16le')
+    } else if (sqlBuf[0] === 0xEF && sqlBuf[1] === 0xBB && sqlBuf[2] === 0xBF) {
+      // UTF-8 with BOM: strip it
+      sql = sqlBuf.slice(3).toString('utf8')
+    } else {
+      sql = sqlBuf.toString('utf8')
+    }
 
     const client = new Client({
       connectionString: tenantSchemaUrl,
