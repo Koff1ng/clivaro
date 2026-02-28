@@ -7,11 +7,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
-import { 
-  Plus, 
-  Search, 
-  Building2, 
-  Calendar, 
+import {
+  Plus,
+  Search,
+  Building2,
+  Calendar,
   DollarSign,
   Database,
   Edit,
@@ -20,7 +20,8 @@ import {
   CheckCircle,
   XCircle,
   AlertCircle,
-  Loader2
+  Loader2,
+  RefreshCw
 } from 'lucide-react'
 import { useToast } from '@/components/ui/toast'
 import { TenantForm } from './tenant-form'
@@ -70,6 +71,22 @@ export function TenantsClient() {
     }
   })
 
+  const reinitMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`/api/admin/tenants/${id}/reinit`, { method: 'POST' })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.details || data.error || 'Error al re-inicializar')
+      return data
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['admin-tenants'] })
+      toast(`Schema re-inicializado. Credenciales admin: ${data.credentials?.adminUsername} / ${data.credentials?.adminPassword}`, 'success')
+    },
+    onError: (error: Error) => {
+      toast(error.message || 'Error al re-inicializar schema', 'error')
+    }
+  })
+
   const tenantsList = useMemo(() => {
     return Array.isArray(tenants) ? tenants : []
   }, [tenants])
@@ -84,10 +101,10 @@ export function TenantsClient() {
 
   const getStatusBadge = (subscription: any) => {
     if (!subscription) return <Badge variant="secondary">Sin suscripción</Badge>
-    
+
     const now = new Date()
     const endDate = subscription.endDate ? new Date(subscription.endDate) : null
-    
+
     if (subscription.status === 'cancelled') {
       return <Badge variant="destructive">Cancelada</Badge>
     }
@@ -208,81 +225,98 @@ export function TenantsClient() {
           <span className="text-muted-foreground">Cargando tenants...</span>
         </div>
       ) : (
-      <div className="grid gap-4">
-        {filteredTenants.map((tenant: any) => {
-          const activeSubscription = tenant.subscriptions?.find((s: any) => s.status === 'active')
-          const plan = plans?.find((p: any) => p.id === activeSubscription?.planId)
-          
-          return (
-            <Card key={tenant.id} className="hover:shadow-lg transition-shadow">
-              <CardContent className="p-6">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <Building2 className="h-5 w-5 text-blue-600" />
-                      <h3 className="text-xl font-semibold">{tenant.name}</h3>
-                      {tenant.active ? (
-                        <Badge className="bg-green-600">Activo</Badge>
-                      ) : (
-                        <Badge variant="destructive">Inactivo</Badge>
-                      )}
-                      {getStatusBadge(activeSubscription)}
-                    </div>
-                    
-                    <div className="grid grid-cols-2 gap-4 mt-4 text-sm">
-                      <div>
-                        <span className="text-gray-500 dark:text-gray-400">Slug:</span>
-                        <span className="ml-2 font-mono">{tenant.slug}</span>
-                      </div>
-                      {tenant.email && (
-                        <div>
-                          <span className="text-gray-500 dark:text-gray-400">Email:</span>
-                          <span className="ml-2">{tenant.email}</span>
-                        </div>
-                      )}
-                      {plan && (
-                        <div>
-                          <span className="text-gray-500 dark:text-gray-400">Plan:</span>
-                          <span className="ml-2 font-semibold">{plan.name}</span>
-                        </div>
-                      )}
-                      {activeSubscription && (
-                        <div>
-                          <span className="text-gray-500 dark:text-gray-400">Vence:</span>
-                          <span className="ml-2">
-                            {activeSubscription.endDate 
-                              ? formatDate(activeSubscription.endDate)
-                              : 'Sin fecha'}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
+        <div className="grid gap-4">
+          {filteredTenants.map((tenant: any) => {
+            const activeSubscription = tenant.subscriptions?.find((s: any) => s.status === 'active')
+            const plan = plans?.find((p: any) => p.id === activeSubscription?.planId)
 
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setSelectedTenant(tenant.id)}
-                    >
-                      <Eye className="h-4 w-4 mr-2" />
-                      Ver Detalles
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => deleteMutation.mutate(tenant.id)}
-                      disabled={deleteMutation.isPending}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+            return (
+              <Card key={tenant.id} className="hover:shadow-lg transition-shadow">
+                <CardContent className="p-6">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        <Building2 className="h-5 w-5 text-blue-600" />
+                        <h3 className="text-xl font-semibold">{tenant.name}</h3>
+                        {tenant.active ? (
+                          <Badge className="bg-green-600">Activo</Badge>
+                        ) : (
+                          <Badge variant="destructive">Inactivo</Badge>
+                        )}
+                        {getStatusBadge(activeSubscription)}
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4 mt-4 text-sm">
+                        <div>
+                          <span className="text-gray-500 dark:text-gray-400">Slug:</span>
+                          <span className="ml-2 font-mono">{tenant.slug}</span>
+                        </div>
+                        {tenant.email && (
+                          <div>
+                            <span className="text-gray-500 dark:text-gray-400">Email:</span>
+                            <span className="ml-2">{tenant.email}</span>
+                          </div>
+                        )}
+                        {plan && (
+                          <div>
+                            <span className="text-gray-500 dark:text-gray-400">Plan:</span>
+                            <span className="ml-2 font-semibold">{plan.name}</span>
+                          </div>
+                        )}
+                        {activeSubscription && (
+                          <div>
+                            <span className="text-gray-500 dark:text-gray-400">Vence:</span>
+                            <span className="ml-2">
+                              {activeSubscription.endDate
+                                ? formatDate(activeSubscription.endDate)
+                                : 'Sin fecha'}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setSelectedTenant(tenant.id)}
+                      >
+                        <Eye className="h-4 w-4 mr-2" />
+                        Ver Detalles
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          if (confirm(`¿Re-inicializar schema del tenant "${tenant.name}"? Esto creará las tablas faltantes (no borra datos existentes).`)) {
+                            reinitMutation.mutate(tenant.id)
+                          }
+                        }}
+                        disabled={reinitMutation.isPending}
+                        title="Re-inicializar schema (reparar tablas faltantes)"
+                      >
+                        {reinitMutation.isPending ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <RefreshCw className="h-4 w-4" />
+                        )}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => deleteMutation.mutate(tenant.id)}
+                        disabled={deleteMutation.isPending}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          )
-        })}
-      </div>
+                </CardContent>
+              </Card>
+            )
+          })}
+        </div>
       )}
 
       {filteredTenants.length === 0 && !isLoading && (
