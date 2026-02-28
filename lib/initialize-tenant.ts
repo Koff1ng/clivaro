@@ -1,15 +1,12 @@
 import { PrismaClient } from '@prisma/client'
 import bcrypt from 'bcryptjs'
-import * as fs from 'fs'
-import * as path from 'path'
 import { Client } from 'pg'
+import { TENANT_SQL_STATEMENTS } from './tenant-sql-statements'
 
 /**
  * Derives the standardized schema name from a tenant ID.
- * Standard: tenant_[CUID]
  */
 function getTenantSchemaName(tenantId: string): string {
-  // Use the tenant ID (CUID) for the schema name to ensure uniqueness and stability
   return `tenant_${tenantId}`
 }
 
@@ -36,6 +33,8 @@ function stripSchemaParam(databaseUrl: string): string {
 
 /**
  * Initializes a PostgreSQL tenant database.
+ * Uses embedded SQL statements (no file I/O, no child_process) for full
+ * compatibility with serverless environments like Vercel Lambda.
  */
 async function initializePostgresTenant(databaseUrl: string, tenantId: string, tenantName: string) {
   const baseUrl = stripSchemaParam(databaseUrl)
@@ -52,107 +51,96 @@ async function initializePostgresTenant(databaseUrl: string, tenantId: string, t
   console.log(`[TENANT INIT] Schema: ${schemaName}`)
   console.log('='.repeat(60))
 
-  // Step 1: Create schema 
-  const adminPrisma = new PrismaClient({
-    datasources: { db: { url: directUrlForSchema } },
-  })
-
+  // Step 1: Create schema using a plain pg Client (no schema param yet)
+  const baseClient = new Client({ connectionString: directUrlForSchema })
   try {
-    console.log(`[STEP 1/4] Ejecutando: CREATE SCHEMA IF NOT EXISTS "${schemaName}"`)
-    await adminPrisma.$executeRawUnsafe(`CREATE SCHEMA IF NOT EXISTS "${schemaName}"`)
+    await baseClient.connect()
+    console.log(`[STEP 1/4] CREATE SCHEMA IF NOT EXISTS "${schemaName}"`)
+    await baseClient.query(`CREATE SCHEMA IF NOT EXISTS "${schemaName}"`)
+    console.log('[STEP 1/4] ✓ Schema creado')
   } catch (schemaError: any) {
     throw new Error(`Error creando schema "${schemaName}": ${schemaError?.message || schemaError}`)
   } finally {
-    await adminPrisma.$disconnect()
+    await baseClient.end()
   }
 
-  // Step 2: Connect to tenant schema for DDL
+  // Step 2: Connect to the tenant schema and execute all CREATE TABLE / INDEX / FK statements
+  console.log(`[STEP 2/4] Creando tablas en schema "${schemaName}" (${TENANT_SQL_STATEMENTS.length} statements)...`)
   const tenantSchemaUrl = withSchemaParam(directUrlForSchema, schemaName)
+  const ddlClient = new Client({ connectionString: tenantSchemaUrl })
+
+  try {
+    await ddlClient.connect()
+    // Set search_path so all unqualified names resolve to the tenant schema
+    await ddlClient.query(`SET search_path TO "${schemaName}"`)
+
+    let executed = 0
+    let skipped = 0
+    for (const stmt of TENANT_SQL_STATEMENTS) {
+      try {
+        await ddlClient.query(stmt)
+        executed++
+      } catch (stmtErr: any) {
+        const msg: string = stmtErr?.message || ''
+        // Ignore "already exists" errors — makes the init idempotent
+        if (msg.includes('already exists') || msg.includes('duplicate')) {
+          skipped++
+        } else {
+          throw new Error(`Error en statement: ${msg}\nStatement: ${stmt.substring(0, 200)}`)
+        }
+      }
+    }
+    console.log(`[STEP 2/4] ✓ ${executed} statements ejecutados, ${skipped} ignorados (ya existían)`)
+  } finally {
+    await ddlClient.end()
+  }
+
+  // Step 3: Seed initial data (admin user, warehouse) via PrismaClient
+  console.log('[STEP 3/4] Creando datos iniciales (admin, roles, almacén)...')
+
   const tenantPrisma = new PrismaClient({
     datasources: { db: { url: tenantSchemaUrl } },
   })
-
-  // Step 3: Use prisma db push to create the schema tables (avoids SQL file encoding issues)
-  console.log('[STEP 3/4] Ejecutando prisma db push para crear tablas del tenant...')
-
-  try {
-    const { execSync } = require('child_process')
-
-    const schemaPath = path.join(process.cwd(), 'prisma', 'schema.prisma')
-    // Use local prisma binary instead of npx to avoid npm resolution in serverless environments
-    const prismaBin = path.join(process.cwd(), 'node_modules', '.bin', 'prisma')
-
-    execSync(`"${prismaBin}" db push --schema="${schemaPath}" --accept-data-loss --skip-generate`, {
-      env: {
-        ...process.env,
-        DATABASE_URL: tenantSchemaUrl,
-        DIRECT_URL: tenantSchemaUrl,
-        // Vercel Lambda: /tmp is the only writable dir - npm needs HOME for cache
-        HOME: process.env.HOME || '/tmp',
-        npm_config_cache: '/tmp/.npm',
-      },
-      stdio: 'pipe',
-      timeout: 120000,
-    })
-
-    console.log('[STEP 3/4] ✓ Tablas creadas exitosamente via prisma db push')
-  } catch (sqlError: any) {
-    const errorMsg = sqlError?.stdout?.toString() || sqlError?.stderr?.toString() || sqlError?.message || String(sqlError)
-    throw new Error(`Error de inicialización SQL: ${errorMsg}`)
-  }
-
-  // Step 4: Create default admin user and essential data
-  console.log('[STEP 4/4] Creando datos iniciales (admin, roles, almacén)...')
 
   try {
     const adminUsername = 'admin'
     const defaultPassword = 'Admin123!'
     const hashedPassword = await bcrypt.hash(defaultPassword, 10)
 
-    // Essential Data Seeding
-    // 1. Permissions & Roles (Simplified for Init, matches seed scripts)
-    // 2. Warehouse
-    const warehouse = await tenantPrisma.warehouse.create({
+    // Warehouse
+    await tenantPrisma.warehouse.create({
       data: {
-        name: `Almacén Principal`,
+        name: 'Almacén Principal',
         address: 'Sede Principal',
         active: true,
-      }
+      },
     })
 
-    // 3. Admin User
+    // Admin user
     const user = await tenantPrisma.user.create({
       data: {
         username: adminUsername,
         password: hashedPassword,
         name: 'Administrador',
         active: true,
-        isSuperAdmin: false, // MANDATORY: Isolated tenants don't have super admins
-      }
+        isSuperAdmin: false,
+      },
     })
 
-    // 4. Role Assignment
-    // Find the ADMIN role created by the SQL script
-    const adminRole = await tenantPrisma.role.findFirst({
-      where: { name: 'ADMIN' }
-    })
-
+    // Find ADMIN role created by the SQL statements
+    const adminRole = await tenantPrisma.role.findFirst({ where: { name: 'ADMIN' } })
     if (adminRole) {
       await tenantPrisma.userRole.create({
-        data: {
-          userId: user.id,
-          roleId: adminRole.id
-        }
+        data: { userId: user.id, roleId: adminRole.id },
       })
-      console.log(`[STEP 4/4] ✓ Rol ADMIN asignado a usuario ${adminUsername}`)
+      console.log('[STEP 3/4] ✓ Rol ADMIN asignado')
     } else {
-      console.warn(`[STEP 4/4] ⚠ No se encontró el rol ADMIN para asignar al usuario`)
+      console.warn('[STEP 3/4] ⚠ No se encontró rol ADMIN')
     }
 
-    return {
-      adminUsername,
-      adminPassword: defaultPassword,
-    }
+    console.log('[STEP 3/4] ✓ Datos iniciales creados')
+
+    return { adminUsername, adminPassword: defaultPassword }
   } catch (dataError: any) {
     throw new Error(`Error creando datos iniciales: ${dataError?.message || dataError}`)
   } finally {
@@ -161,7 +149,7 @@ async function initializePostgresTenant(databaseUrl: string, tenantId: string, t
 }
 
 /**
- * Main entry point for tenant database initialization
+ * Main entry point for tenant database initialization.
  */
 export async function initializeTenantDatabase(
   databaseUrl: string,
@@ -169,14 +157,13 @@ export async function initializeTenantDatabase(
   tenantSlug: string,
   tenantId?: string
 ) {
-  // Use tenantId as primary identifier for schema naming
   const identifier = tenantId || tenantSlug
-
-  const isPostgres = databaseUrl.startsWith('postgresql://') || databaseUrl.startsWith('postgres://')
+  const isPostgres =
+    databaseUrl.startsWith('postgresql://') || databaseUrl.startsWith('postgres://')
 
   if (isPostgres) {
     return await initializePostgresTenant(databaseUrl, identifier, tenantName)
   } else {
-    throw new Error('SQLite initialization is deprecated in this project environment.')
+    throw new Error('SQLite initialization is not supported in this environment.')
   }
 }
