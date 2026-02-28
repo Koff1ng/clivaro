@@ -1,68 +1,43 @@
 import { NextResponse } from 'next/server'
 import { requireAnyPermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
-import { getPrismaForRequest } from '@/lib/get-tenant-prisma'
+import { withTenantTx } from '@/lib/tenancy'
 import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
-
-// Función helper para ejecutar consultas con retry y manejo de errores de conexión
-async function executeWithRetry<T>(
-  fn: () => Promise<T>,
-  maxRetries = 5,
-  delay = 2000
-): Promise<T> {
-  let lastError: any
-  for (let attempt = 0; attempt < maxRetries; attempt++) {
-    try {
-      return await fn()
-    } catch (error: any) {
-      lastError = error
-      const errorMessage = error?.message || String(error)
-      
-      // Si es error de límite de conexiones, esperar y reintentar
-      if (errorMessage.includes('MaxClientsInSessionMode') || errorMessage.includes('max clients reached')) {
-        if (attempt < maxRetries - 1) {
-          const backoffDelay = Math.min(delay * Math.pow(2, attempt), 15000) // Backoff exponencial, max 15s
-          logger.warn(`[Product Categories] Límite de conexiones alcanzado, reintentando en ${backoffDelay}ms (intento ${attempt + 1}/${maxRetries})`)
-          await new Promise(resolve => setTimeout(resolve, backoffDelay))
-          continue
-        }
-      }
-      
-      // Si no es error de conexión, lanzar inmediatamente
-      throw error
-    }
-  }
-  throw lastError
-}
 
 export async function GET(request: Request) {
   const session = await requireAnyPermission(request as any, [PERMISSIONS.VIEW_REPORTS, PERMISSIONS.MANAGE_INVENTORY, PERMISSIONS.MANAGE_SALES])
   if (session instanceof NextResponse) return session
 
-  const prisma = await getPrismaForRequest(request, session)
+  const tenantId = (session.user as any).tenantId
+  const isSuperAdmin = (session.user as any).isSuperAdmin
+
+  if (isSuperAdmin || !tenantId) {
+    return NextResponse.json({ categories: [] })
+  }
 
   try {
-    // Minimal reads: compute total stock by product category (productId stock only)
-    const products = await executeWithRetry(() => prisma.product.findMany({
-      where: { active: true },
-      select: { id: true, category: true },
-    }))
-
-    const stockLevels = await executeWithRetry(() => prisma.stockLevel.findMany({
-      where: { productId: { not: null } },
-      select: { productId: true, quantity: true },
-    }))
+    const data = await withTenantTx(tenantId, async (tx: any) => {
+      const products = await tx.product.findMany({
+        where: { active: true },
+        select: { id: true, category: true },
+      })
+      const stockLevels = await tx.stockLevel.findMany({
+        where: { productId: { not: null } },
+        select: { productId: true, quantity: true },
+      })
+      return { products, stockLevels }
+    })
 
     const stockByProduct = new Map<string, number>()
-    for (const sl of stockLevels) {
+    for (const sl of (data as any).stockLevels) {
       const pid = sl.productId as string
       stockByProduct.set(pid, (stockByProduct.get(pid) || 0) + Number(sl.quantity || 0))
     }
 
     const categoryStock: Record<string, number> = {}
-    for (const p of products) {
+    for (const p of (data as any).products) {
       const category = p.category || 'Sin categoría'
       const totalStock = stockByProduct.get(p.id) || 0
       categoryStock[category] = (categoryStock[category] || 0) + totalStock
@@ -75,22 +50,13 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ categories: result }, { status: 200 })
   } catch (error: any) {
-    logger.error('Error dashboard product-categories', error, { 
-      endpoint: '/api/dashboard/product-categories', 
+    logger.error('Error dashboard product-categories', error, {
+      endpoint: '/api/dashboard/product-categories',
       method: 'GET',
-      errorMessage: error?.message,
-      errorCode: error?.code,
-      errorName: error?.name,
     })
     return NextResponse.json(
-      { 
-        error: 'Failed to fetch product categories', 
-        details: error?.message || String(error),
-        code: error?.code || 'UNKNOWN_ERROR',
-      },
+      { error: 'Failed to fetch product categories', details: error?.message || String(error) },
       { status: 500 }
     )
   }
 }
-
-

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requireAnyPermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
-import { getPrismaForRequest } from '@/lib/get-tenant-prisma'
+import { withTenantTx } from '@/lib/tenancy'
 import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
@@ -19,18 +19,15 @@ async function executeWithRetry<T>(
     } catch (error: any) {
       lastError = error
       const errorMessage = error?.message || String(error)
-      
-      // Si es error de límite de conexiones, esperar y reintentar
+
       if (errorMessage.includes('MaxClientsInSessionMode') || errorMessage.includes('max clients reached')) {
         if (attempt < maxRetries - 1) {
-          const backoffDelay = Math.min(delay * Math.pow(2, attempt), 15000) // Backoff exponencial, max 15s
+          const backoffDelay = Math.min(delay * Math.pow(2, attempt), 15000)
           logger.warn(`[Last 30 Days] Límite de conexiones alcanzado, reintentando en ${backoffDelay}ms (intento ${attempt + 1}/${maxRetries})`)
           await new Promise(resolve => setTimeout(resolve, backoffDelay))
           continue
         }
       }
-      
-      // Si no es error de conexión, lanzar inmediatamente
       throw error
     }
   }
@@ -39,39 +36,44 @@ async function executeWithRetry<T>(
 
 export async function GET(request: Request) {
   const session = await requireAnyPermission(request as any, [PERMISSIONS.VIEW_REPORTS, PERMISSIONS.MANAGE_SALES])
-  
+
   if (session instanceof NextResponse) {
     return session
   }
 
-  const prisma = await getPrismaForRequest(request, session)
+  const tenantId = (session.user as any).tenantId
+  const isSuperAdmin = (session.user as any).isSuperAdmin
+
+  // Super admins have no tenant data
+  if (isSuperAdmin || !tenantId) {
+    const emptyDays = Array.from({ length: 30 }, (_, i) => {
+      const date = new Date()
+      date.setDate(date.getDate() - (29 - i))
+      return { day: date.toLocaleDateString('es-ES', { day: '2-digit', month: 'short' }), sales: 0 }
+    })
+    return NextResponse.json(emptyDays)
+  }
 
   try {
     const thirtyDaysAgo = new Date()
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
 
-    // Obtener ventas de los últimos 30 días agrupadas por día (con retry logic)
-    const invoices = await executeWithRetry(() => prisma.invoice.findMany({
-      where: {
-        createdAt: {
-          gte: thirtyDaysAgo,
+    const invoices = await withTenantTx(tenantId, async (tx: any) => {
+      return tx.invoice.findMany({
+        where: {
+          createdAt: { gte: thirtyDaysAgo },
+          status: { in: ['PAGADA', 'PAID', 'EN_COBRANZA', 'PARCIAL', 'PARTIAL'] },
         },
-        status: {
-          in: ['PAGADA', 'PAID', 'EN_COBRANZA', 'PARCIAL', 'PARTIAL'], // Compatibilidad con estados antiguos y nuevos
-        },
-      },
-      select: {
-        total: true,
-        createdAt: true,
-      },
-    }))
+        select: { total: true, createdAt: true },
+      })
+    })
 
     // Agrupar por día
     const salesByDay: Record<string, number> = {}
-    invoices.forEach(invoice => {
-      const dateKey = invoice.createdAt.toISOString().split('T')[0]
-      salesByDay[dateKey] = (salesByDay[dateKey] || 0) + invoice.total
-    })
+      ; (invoices as any[]).forEach((invoice: any) => {
+        const dateKey = invoice.createdAt.toISOString().split('T')[0]
+        salesByDay[dateKey] = (salesByDay[dateKey] || 0) + invoice.total
+      })
 
     // Generar array para los últimos 30 días
     const days = []
@@ -87,16 +89,16 @@ export async function GET(request: Request) {
 
     return NextResponse.json(days)
   } catch (error: any) {
-    logger.error('Error fetching last 30 days', error, { 
-      endpoint: '/api/dashboard/last-30-days', 
+    logger.error('Error fetching last 30 days', error, {
+      endpoint: '/api/dashboard/last-30-days',
       method: 'GET',
       errorMessage: error?.message,
       errorCode: error?.code,
       errorName: error?.name,
     })
     return NextResponse.json(
-      { 
-        error: 'Failed to fetch last 30 days data', 
+      {
+        error: 'Failed to fetch last 30 days data',
         details: error?.message || String(error),
         code: error?.code || 'UNKNOWN_ERROR',
       },
