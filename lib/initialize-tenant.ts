@@ -107,18 +107,22 @@ async function initializePostgresTenant(databaseUrl: string, tenantId: string, t
     const defaultPassword = 'Admin123!'
     const hashedPassword = await bcrypt.hash(defaultPassword, 10)
 
-    // Warehouse
-    await tenantPrisma.warehouse.create({
-      data: {
+    // Warehouse — upsert so reinit doesn't fail if it already exists
+    await tenantPrisma.warehouse.upsert({
+      where: { name: 'Almacén Principal' },
+      update: {},
+      create: {
         name: 'Almacén Principal',
         address: 'Sede Principal',
         active: true,
       },
     })
 
-    // Admin user
-    const user = await tenantPrisma.user.create({
-      data: {
+    // Admin user — upsert so reinit doesn't create duplicates
+    const user = await tenantPrisma.user.upsert({
+      where: { username: adminUsername },
+      update: {}, // keep existing password if already set
+      create: {
         username: adminUsername,
         password: hashedPassword,
         name: 'Administrador',
@@ -130,9 +134,15 @@ async function initializePostgresTenant(databaseUrl: string, tenantId: string, t
     // Find ADMIN role created by the SQL statements
     const adminRole = await tenantPrisma.role.findFirst({ where: { name: 'ADMIN' } })
     if (adminRole) {
-      await tenantPrisma.userRole.create({
-        data: { userId: user.id, roleId: adminRole.id },
+      // Only assign role if not already assigned
+      const existingAssignment = await tenantPrisma.userRole.findFirst({
+        where: { userId: user.id, roleId: adminRole.id },
       })
+      if (!existingAssignment) {
+        await tenantPrisma.userRole.create({
+          data: { userId: user.id, roleId: adminRole.id },
+        })
+      }
       console.log('[STEP 3/4] ✓ Rol ADMIN asignado')
     } else {
       console.warn('[STEP 3/4] ⚠ No se encontró rol ADMIN')
