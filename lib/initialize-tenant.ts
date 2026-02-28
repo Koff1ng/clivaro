@@ -79,15 +79,20 @@ async function initializePostgresTenant(databaseUrl: string, tenantId: string, t
     const { execSync } = require('child_process')
 
     const schemaPath = path.join(process.cwd(), 'prisma', 'schema.prisma')
+    // Use local prisma binary instead of npx to avoid npm resolution in serverless environments
+    const prismaBin = path.join(process.cwd(), 'node_modules', '.bin', 'prisma')
 
-    execSync(`npx prisma db push --schema="${schemaPath}" --accept-data-loss --skip-generate`, {
+    execSync(`"${prismaBin}" db push --schema="${schemaPath}" --accept-data-loss --skip-generate`, {
       env: {
         ...process.env,
         DATABASE_URL: tenantSchemaUrl,
         DIRECT_URL: tenantSchemaUrl,
+        // Vercel Lambda: /tmp is the only writable dir - npm needs HOME for cache
+        HOME: process.env.HOME || '/tmp',
+        npm_config_cache: '/tmp/.npm',
       },
       stdio: 'pipe',
-      timeout: 120000, // 2 min timeout
+      timeout: 120000,
     })
 
     console.log('[STEP 3/4] ✓ Tablas creadas exitosamente via prisma db push')
