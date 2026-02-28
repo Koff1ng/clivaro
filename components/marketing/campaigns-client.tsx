@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { formatDate, formatDateTime } from '@/lib/utils'
+import { PageHeader } from '@/components/ui/page-header'
 import CampaignForm from '@/components/marketing/campaign-form'
 import CampaignDetails from '@/components/marketing/campaign-details'
 
@@ -21,7 +22,7 @@ export default function CampaignsClient() {
   const { data: campaigns, isLoading } = useQuery({
     queryKey: ['marketing-campaigns', statusFilter],
     queryFn: async () => {
-      const url = statusFilter 
+      const url = statusFilter
         ? `/api/marketing/campaigns?status=${statusFilter}`
         : '/api/marketing/campaigns'
       const res = await fetch(url)
@@ -112,16 +113,16 @@ export default function CampaignsClient() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold">Campañas de Marketing</h1>
-          <p className="text-gray-600 mt-1">Gestiona y envía campañas publicitarias a tus clientes</p>
-        </div>
-        <Button onClick={() => setShowForm(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Nueva Campaña
-        </Button>
-      </div>
+      <PageHeader
+        title="Campañas de Marketing"
+        description="Gestiona y envía campañas publicitarias a tus clientes"
+        actions={
+          <Button onClick={() => setShowForm(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Nueva Campaña
+          </Button>
+        }
+      />
 
       <div className="flex gap-2">
         <Button

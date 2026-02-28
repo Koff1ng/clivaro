@@ -52,27 +52,19 @@ export function PageHeader({
         )}
 
         <div className="min-w-0 flex flex-col gap-1">
-          <div className="flex items-center gap-3">
-            {icon && (
-              <div className="flex items-center justify-center p-2 rounded-lg bg-primary/10 text-primary ring-1 ring-primary/20">
-                {icon}
-              </div>
-            )}
-            <h1 className="text-2xl font-bold tracking-tight text-foreground truncate md:text-3xl">
-              {title}
-            </h1>
-          </div>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground truncate md:text-3xl">
+            {title}
+          </h1>
           {description && (
-            <p className="text-muted-foreground text-sm md:text-base ml-1">
+            <p className="text-muted-foreground text-sm md:text-base mt-2">
               {description}
             </p>
           )}
         </div>
-        <div className="h-px w-full border-b border-border/60 mt-2" />
       </div>
 
       {(badges || actions) && (
-        <div className="flex flex-wrap items-center gap-2 md:justify-end">
+        <div className="flex flex-wrap items-center gap-2 md:justify-end mt-4 md:mt-0">
           {badges}
           {actions}
         </div>
