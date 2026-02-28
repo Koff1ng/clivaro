@@ -82,10 +82,7 @@ async function initializePostgresTenant(databaseUrl: string, tenantId: string, t
       throw new Error(`No se encontró el archivo SQL en ${sqlPath}`)
     }
 
-    let sql = fs.readFileSync(sqlPath, 'utf8')
-
-    // Ensure the SQL runs in the correct schema
-    sql = `SET search_path TO "${schemaName}";\n\n${sql}`
+    const sql = fs.readFileSync(sqlPath, 'utf8')
 
     const client = new Client({
       connectionString: tenantSchemaUrl,
@@ -93,14 +90,33 @@ async function initializePostgresTenant(databaseUrl: string, tenantId: string, t
 
     await client.connect()
     try {
-      await client.query(sql)
-      console.log(`[STEP 3/4] ✓ SQL base ejecutado exitosamente`)
+      // Run SET search_path first separately
+      await client.query(`SET search_path TO "${schemaName}"`)
+
+      // Split the SQL script into individual statements
+      // and execute them one by one to avoid multi-statement parse errors
+      const statements = sql
+        .split(';')
+        .map((s: string) => s.trim())
+        .filter((s: string) => s.length > 0 && !s.startsWith('--'))
+
+      for (const stmt of statements) {
+        await client.query(stmt)
+      }
+      console.log(`[STEP 3/4] ✓ SQL base ejecutado exitosamente (${statements.length} statements)`)
 
       // Optional: Restaurant mode additions
       const restaurantSqlPath = path.join(process.cwd(), 'prisma', 'supabase-init-restaurant.sql')
       if (fs.existsSync(restaurantSqlPath)) {
         const rSql = fs.readFileSync(restaurantSqlPath, 'utf8')
-        await client.query(rSql)
+        await client.query(`SET search_path TO "${schemaName}"`)
+        const rStatements = rSql
+          .split(';')
+          .map((s: string) => s.trim())
+          .filter((s: string) => s.length > 0 && !s.startsWith('--'))
+        for (const stmt of rStatements) {
+          await client.query(stmt)
+        }
         console.log(`[STEP 3/4] ✓ SQL de Restaurante ejecutado`)
       }
     } finally {
