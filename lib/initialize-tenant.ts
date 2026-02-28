@@ -72,69 +72,28 @@ async function initializePostgresTenant(databaseUrl: string, tenantId: string, t
     datasources: { db: { url: tenantSchemaUrl } },
   })
 
-  // Step 3: Execute initialization SQL
-  console.log('[STEP 3/4] Ejecutando scripts SQL de inicialización...')
-  const startTime = Date.now()
+  // Step 3: Use prisma db push to create the schema tables (avoids SQL file encoding issues)
+  console.log('[STEP 3/4] Ejecutando prisma db push para crear tablas del tenant...')
 
   try {
-    const sqlPath = path.join(process.cwd(), 'prisma', 'supabase-init.sql')
-    if (!fs.existsSync(sqlPath)) {
-      throw new Error(`No se encontró el archivo SQL en ${sqlPath}`)
-    }
+    const { execSync } = require('child_process')
 
-    // Read as buffer to detect encoding (handles UTF-16LE from Windows editors, UTF-8 BOM, or plain UTF-8)
-    const sqlBuf = fs.readFileSync(sqlPath)
-    let sql: string
-    if (sqlBuf[0] === 0xFF && sqlBuf[1] === 0xFE) {
-      // UTF-16LE with BOM
-      sql = sqlBuf.slice(2).toString('utf16le')
-    } else if (sqlBuf[0] === 0xEF && sqlBuf[1] === 0xBB && sqlBuf[2] === 0xBF) {
-      // UTF-8 with BOM: strip it
-      sql = sqlBuf.slice(3).toString('utf8')
-    } else {
-      sql = sqlBuf.toString('utf8')
-    }
+    const schemaPath = path.join(process.cwd(), 'prisma', 'schema.prisma')
 
-    const client = new Client({
-      connectionString: tenantSchemaUrl,
+    execSync(`npx prisma db push --schema="${schemaPath}" --accept-data-loss --skip-generate`, {
+      env: {
+        ...process.env,
+        DATABASE_URL: tenantSchemaUrl,
+        DIRECT_URL: tenantSchemaUrl,
+      },
+      stdio: 'pipe',
+      timeout: 120000, // 2 min timeout
     })
 
-    await client.connect()
-    try {
-      // Run SET search_path first separately
-      await client.query(`SET search_path TO "${schemaName}"`)
-
-      // Split the SQL script into individual statements
-      // and execute them one by one to avoid multi-statement parse errors
-      const statements = sql
-        .split(';')
-        .map((s: string) => s.trim())
-        .filter((s: string) => s.length > 0 && !s.startsWith('--'))
-
-      for (const stmt of statements) {
-        await client.query(stmt)
-      }
-      console.log(`[STEP 3/4] ✓ SQL base ejecutado exitosamente (${statements.length} statements)`)
-
-      // Optional: Restaurant mode additions
-      const restaurantSqlPath = path.join(process.cwd(), 'prisma', 'supabase-init-restaurant.sql')
-      if (fs.existsSync(restaurantSqlPath)) {
-        const rSql = fs.readFileSync(restaurantSqlPath, 'utf8')
-        await client.query(`SET search_path TO "${schemaName}"`)
-        const rStatements = rSql
-          .split(';')
-          .map((s: string) => s.trim())
-          .filter((s: string) => s.length > 0 && !s.startsWith('--'))
-        for (const stmt of rStatements) {
-          await client.query(stmt)
-        }
-        console.log(`[STEP 3/4] ✓ SQL de Restaurante ejecutado`)
-      }
-    } finally {
-      await client.end()
-    }
+    console.log('[STEP 3/4] ✓ Tablas creadas exitosamente via prisma db push')
   } catch (sqlError: any) {
-    throw new Error(`Error de inicialización SQL: ${sqlError?.message || sqlError}`)
+    const errorMsg = sqlError?.stdout?.toString() || sqlError?.stderr?.toString() || sqlError?.message || String(sqlError)
+    throw new Error(`Error de inicialización SQL: ${errorMsg}`)
   }
 
   // Step 4: Create default admin user and essential data
