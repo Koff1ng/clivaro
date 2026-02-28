@@ -22,10 +22,11 @@ export default async function DashboardPage() {
 
   const userPermissions = (session.user as any).permissions || []
   const isSuperAdmin = (session.user as any).isSuperAdmin || false
+  const tenantId = (session.user as any).tenantId
 
-  // Allow access to dashboard if user has permissions OR is super admin
-  if (!isSuperAdmin && !userPermissions.includes('view_reports') && !userPermissions.includes('manage_sales')) {
-    // Otherwise redirect to first available page
+  // Super admins and tenant users (who have a tenantId) can always access dashboard.
+  // For global non-admin users, require at least one basic permission.
+  if (!isSuperAdmin && !tenantId && !userPermissions.includes('view_reports') && !userPermissions.includes('manage_sales')) {
     redirect('/login')
   }
 

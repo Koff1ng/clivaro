@@ -131,24 +131,43 @@ async function initializePostgresTenant(databaseUrl: string, tenantId: string, t
       },
     })
 
-    // Find ADMIN role created by the SQL statements
-    const adminRole = await tenantPrisma.role.findFirst({ where: { name: 'ADMIN' } })
-    if (adminRole) {
-      // Only assign role if not already assigned
-      const existingAssignment = await tenantPrisma.userRole.findFirst({
-        where: { userId: user.id, roleId: adminRole.id },
+    // Seed ADMIN role (upsert = idempotent)
+    const adminRole = await tenantPrisma.role.upsert({
+      where: { name: 'ADMIN' },
+      update: {},
+      create: { name: 'ADMIN', description: 'Administrador con acceso total' },
+    })
+
+    // Core permissions every tenant admin needs
+    const corePermissions = [
+      'view_reports', 'manage_sales', 'manage_products', 'manage_inventory',
+      'manage_customers', 'manage_suppliers', 'manage_purchases', 'manage_users',
+      'manage_settings', 'view_dashboard', 'manage_pos',
+    ]
+
+    for (const permName of corePermissions) {
+      const perm = await tenantPrisma.permission.upsert({
+        where: { name: permName },
+        update: {},
+        create: { name: permName, description: permName },
       })
-      if (!existingAssignment) {
-        await tenantPrisma.userRole.create({
-          data: { userId: user.id, roleId: adminRole.id },
-        })
-      }
-      console.log('[STEP 3/4] ✓ Rol ADMIN asignado')
-    } else {
-      console.warn('[STEP 3/4] ⚠ No se encontró rol ADMIN')
+      await tenantPrisma.rolePermission.upsert({
+        where: { roleId_permissionId: { roleId: adminRole.id, permissionId: perm.id } },
+        update: {},
+        create: { roleId: adminRole.id, permissionId: perm.id },
+      })
     }
 
-    console.log('[STEP 3/4] ✓ Datos iniciales creados')
+    // Assign ADMIN role to admin user (if not already)
+    const existingAssignment = await tenantPrisma.userRole.findFirst({
+      where: { userId: user.id, roleId: adminRole.id },
+    })
+    if (!existingAssignment) {
+      await tenantPrisma.userRole.create({
+        data: { userId: user.id, roleId: adminRole.id },
+      })
+    }
+    console.log('[STEP 3/4] ✓ Roles y permisos configurados')
 
     return { adminUsername, adminPassword: defaultPassword }
   } catch (dataError: any) {
