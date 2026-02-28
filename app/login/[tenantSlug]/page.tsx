@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { signIn } from 'next-auth/react'
+import { signIn, signOut } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -46,6 +46,10 @@ export default function TenantLoginPage({ params }: { params: { tenantSlug: stri
     setLoading(true)
 
     try {
+      // Force sign-out any existing session (e.g. super admin) before signing in as tenant
+      // This ensures the old JWT cookie is cleared and doesn't contaminate the tenant session
+      await signOut({ redirect: false })
+
       const result = await signIn('credentials', {
         username: identifier,
         password,
