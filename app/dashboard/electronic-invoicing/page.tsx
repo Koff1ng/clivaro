@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge'
 import { Receipt, Loader2, AlertCircle, CheckCircle2, Clock, Send } from 'lucide-react'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
+import { MainLayout } from '@/components/layout/main-layout'
 
 async function fetchTransmissions() {
     const res = await fetch('/api/electronic-invoicing/transmissions')
@@ -40,77 +41,79 @@ export default function ElectronicInvoicingMonitor() {
     }
 
     return (
-        <div className="container mx-auto py-6 space-y-6">
-            <PageHeader
-                title="Monitor de Facturación Electrónica"
-                description="Seguimiento en tiempo real de las facturas enviadas a Alegra."
-                icon={<Receipt className="h-6 w-6" />}
-                actions={
-                    <Button variant="outline" asChild>
-                        <Link href="/dashboard">
-                            Volver al panel
-                        </Link>
-                    </Button>
-                }
-            />
+        <MainLayout>
+            <div className="space-y-6">
+                <PageHeader
+                    title="Monitor de Facturación Electrónica"
+                    description="Seguimiento en tiempo real de las facturas enviadas a Alegra."
+                    icon={<Receipt className="h-6 w-6" />}
+                    actions={
+                        <Button variant="outline" asChild>
+                            <Link href="/dashboard">
+                                Volver al panel
+                            </Link>
+                        </Button>
+                    }
+                />
 
-            <div className="grid gap-4 md:grid-cols-3">
+                <div className="grid gap-4 md:grid-cols-3">
+                    <Card>
+                        <CardHeader className="pb-2">
+                            <CardTitle className="text-sm font-medium text-muted-foreground">Total Mes</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold">{data?.pagination?.total || 0}</div>
+                        </CardContent>
+                    </Card>
+                </div>
+
                 <Card>
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-muted-foreground">Total Mes</CardTitle>
+                    <CardHeader>
+                        <CardTitle>Historial de Transmisiones</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{data?.pagination?.total || 0}</div>
+                        {isLoading ? (
+                            <div className="flex justify-center p-8">
+                                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                            </div>
+                        ) : error ? (
+                            <div className="p-8 text-center text-destructive">Error al cargar los datos.</div>
+                        ) : (
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Factura</TableHead>
+                                        <TableHead>Cliente</TableHead>
+                                        <TableHead>Fecha Intento</TableHead>
+                                        <TableHead>Estado</TableHead>
+                                        <TableHead>Intentos</TableHead>
+                                        <TableHead>Alegra ID</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {data?.transmissions?.map((t: any) => (
+                                        <TableRow key={t.id}>
+                                            <TableCell className="font-medium">{t.invoice.number}</TableCell>
+                                            <TableCell>{t.invoice.customer.name}</TableCell>
+                                            <TableCell>{format(new Date(t.updatedAt), 'dd MMM, HH:mm', { locale: es })}</TableCell>
+                                            <TableCell>{getStatusBadge(t.status)}</TableCell>
+                                            <TableCell>{t.attemptCount}</TableCell>
+                                            <TableCell className="text-xs font-mono">{t.alegraInvoiceId || '-'}</TableCell>
+                                        </TableRow>
+                                    ))}
+                                    {!data?.transmissions?.length && (
+                                        <TableRow>
+                                            <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                                                No hay transmisiones registradas.
+                                            </TableCell>
+                                        </TableRow>
+                                    )}
+                                </TableBody>
+                            </Table>
+                        )}
                     </CardContent>
                 </Card>
             </div>
-
-            <Card>
-                <CardHeader>
-                    <CardTitle>Historial de Transmisiones</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    {isLoading ? (
-                        <div className="flex justify-center p-8">
-                            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                        </div>
-                    ) : error ? (
-                        <div className="p-8 text-center text-destructive">Error al cargar los datos.</div>
-                    ) : (
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Factura</TableHead>
-                                    <TableHead>Cliente</TableHead>
-                                    <TableHead>Fecha Intento</TableHead>
-                                    <TableHead>Estado</TableHead>
-                                    <TableHead>Intentos</TableHead>
-                                    <TableHead>Alegra ID</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {data?.transmissions?.map((t: any) => (
-                                    <TableRow key={t.id}>
-                                        <TableCell className="font-medium">{t.invoice.number}</TableCell>
-                                        <TableCell>{t.invoice.customer.name}</TableCell>
-                                        <TableCell>{format(new Date(t.updatedAt), 'dd MMM, HH:mm', { locale: es })}</TableCell>
-                                        <TableCell>{getStatusBadge(t.status)}</TableCell>
-                                        <TableCell>{t.attemptCount}</TableCell>
-                                        <TableCell className="text-xs font-mono">{t.alegraInvoiceId || '-'}</TableCell>
-                                    </TableRow>
-                                ))}
-                                {!data?.transmissions?.length && (
-                                    <TableRow>
-                                        <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                                            No hay transmisiones registradas.
-                                        </TableCell>
-                                    </TableRow>
-                                )}
-                            </TableBody>
-                        </Table>
-                    )}
-                </CardContent>
-            </Card>
-        </div>
+        </MainLayout>
     )
 }
