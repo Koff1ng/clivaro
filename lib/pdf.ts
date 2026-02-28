@@ -933,3 +933,378 @@ export async function generateInvoicePDF(invoice: InvoicePDFData): Promise<Buffe
   }
 }
 
+export interface PayslipPDFData {
+  company: {
+    name: string
+    nit: string
+  }
+  employee: {
+    name: string
+    documentNumber: string
+    jobTitle?: string
+    email?: string
+    bankName?: string
+    bankAccountType?: string
+    bankAccountNumber?: string
+    healthEntity?: string
+    pensionEntity?: string
+    paymentMethod?: string
+  }
+  payslip: {
+    number: string
+    cune?: string
+    periodStartDate: Date
+    periodEndDate: Date
+    settlementDate: Date
+    baseSalary: number
+    netPay: number
+  }
+  earnings: Array<{
+    concept: string
+    amount: number
+  }>
+  deductions: Array<{
+    concept: string
+    amount: number
+  }>
+  totalEarnings: number
+  totalDeductions: number
+}
+
+export async function generatePayslipPDF(data: PayslipPDFData): Promise<Buffer> {
+  // Use a fallback empty string for environment variables if not set
+  const companyName = process.env.COMPANY_NAME || data.company.name || 'Ferretería'
+  const companyNit = process.env.COMPANY_NIT || data.company.nit || ''
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+          font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+          line-height: 1.4;
+          color: #1f2937;
+          font-size: 11px;
+          padding: 20px;
+        }
+        .container {
+          width: 100%;
+          max-width: 800px;
+          margin: 0 auto;
+          background: white;
+        }
+        .header {
+          display: flex;
+          justify-content: space-between;
+          border-bottom: 2px solid #1e3a8a;
+          padding-bottom: 10px;
+          margin-bottom: 15px;
+        }
+        .header-left {
+          width: 60%;
+        }
+        .header-right {
+          width: 35%;
+          text-align: right;
+        }
+        h1 {
+          font-size: 18px;
+          color: #1e3a8a;
+          margin-bottom: 5px;
+        }
+        h2 {
+          font-size: 14px;
+          color: #374151;
+          margin-bottom: 5px;
+        }
+        .box {
+          border: 1px solid #e5e7eb;
+          border-radius: 4px;
+          padding: 10px;
+          margin-bottom: 15px;
+        }
+        .box-title {
+          font-weight: bold;
+          font-size: 12px;
+          color: #1e3a8a;
+          margin-bottom: 8px;
+          border-bottom: 1px solid #e5e7eb;
+          padding-bottom: 3px;
+        }
+        .grid-2 {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 15px;
+        }
+        .grid-3 {
+          display: grid;
+          grid-template-columns: 1fr 1fr 1fr;
+          gap: 10px;
+        }
+        .field {
+          margin-bottom: 4px;
+        }
+        .label {
+          font-weight: bold;
+          color: #6b7280;
+          font-size: 10px;
+        }
+        .value {
+          font-size: 11px;
+        }
+        table {
+          width: 100%;
+          border-collapse: collapse;
+          margin-bottom: 15px;
+        }
+        th, td {
+          border: 1px solid #e5e7eb;
+          padding: 6px 8px;
+          text-align: left;
+        }
+        th {
+          background-color: #f3f4f6;
+          color: #374151;
+          font-weight: bold;
+          font-size: 10px;
+        }
+        .text-right { text-align: right; }
+        .text-center { text-align: center; }
+        .totals-box {
+          width: 300px;
+          float: right;
+          border: 1px solid #1e3a8a;
+          border-radius: 4px;
+          overflow: hidden;
+          margin-bottom: 20px;
+        }
+        .totals-row {
+          display: flex;
+          justify-content: space-between;
+          padding: 6px 10px;
+          border-bottom: 1px solid #e5e7eb;
+        }
+        .totals-row:last-child {
+          border-bottom: none;
+          background-color: #f0fdf4;
+          font-weight: bold;
+          color: #166534;
+          font-size: 13px;
+        }
+        .totals-label {
+          font-weight: bold;
+        }
+        .clearfix::after {
+          content: "";
+          clear: both;
+          display: table;
+        }
+        .footer {
+          margin-top: 30px;
+          border-top: 1px solid #e5e7eb;
+          padding-top: 10px;
+          text-align: center;
+          font-size: 9px;
+          color: #6b7280;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <!-- Header -->
+        <div class="header">
+          <div class="header-left">
+            <h1>Documento Soporte de Pago de Nómina Electrónica</h1>
+            <div class="field"><span class="label">EMPRESA:</span> <span class="value">${companyName}</span></div>
+            <div class="field"><span class="label">NIT:</span> <span class="value">${companyNit}</span></div>
+          </div>
+          <div class="header-right">
+            <h2>Comprobante N° ${data.payslip.number}</h2>
+            ${data.payslip.cune ? `
+            <div class="field" style="margin-top: 8px;">
+              <div class="label" style="font-size: 8px;">CUNE:</div>
+              <div class="value" style="font-size: 8px; word-break: break-all;">${data.payslip.cune}</div>
+            </div>` : ''}
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <!-- Employee Info -->
+          <div class="box">
+            <div class="box-title">Información del Empleado</div>
+            <div class="field"><span class="label">Nombre:</span> <span class="value">${data.employee.name}</span></div>
+            <div class="field"><span class="label">Documento:</span> <span class="value">${data.employee.documentNumber}</span></div>
+            <div class="field"><span class="label">Cargo:</span> <span class="value">${data.employee.jobTitle || 'No registrado'}</span></div>
+            <div class="field"><span class="label">Salario Base:</span> <span class="value">${formatCurrency(data.payslip.baseSalary)}</span></div>
+          </div>
+
+          <!-- Period Details -->
+          <div class="box">
+            <div class="box-title">Detalles del Período y Pago</div>
+            <div class="field"><span class="label">Fecha Liquidación:</span> <span class="value">${formatDate(data.payslip.settlementDate)}</span></div>
+            <div class="field"><span class="label">Período Inicio:</span> <span class="value">${formatDate(data.payslip.periodStartDate)}</span></div>
+            <div class="field"><span class="label">Período Fin:</span> <span class="value">${formatDate(data.payslip.periodEndDate)}</span></div>
+            <div class="field"><span class="label">Método Pago:</span> <span class="value">${data.employee.paymentMethod || 'Efectivo'}</span></div>
+            ${data.employee.bankName ? `<div class="field"><span class="label">Banco:</span> <span class="value">${data.employee.bankName} - ${data.employee.bankAccountType || ''} ${data.employee.bankAccountNumber || ''}</span></div>` : ''}
+          </div>
+        </div>
+
+        <div class="grid-2">
+           <!-- Social Security Info -->
+           <div class="box">
+            <div class="box-title">Entidades de Seguridad Social</div>
+            <div class="field"><span class="label">Salud (EPS):</span> <span class="value">${data.employee.healthEntity || 'No registrado'}</span></div>
+            <div class="field"><span class="label">Pensión (AFP):</span> <span class="value">${data.employee.pensionEntity || 'No registrado'}</span></div>
+          </div>
+        </div>
+
+        <!-- Devengos y Deducciones -->
+        <div class="box">
+          <div class="box-title">Liquidación Detallada</div>
+          <div class="grid-2">
+            
+            <!-- Earnings Table -->
+            <div>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Concepto Devengo (+)</th>
+                    <th class="text-right">Valor</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${data.earnings.length > 0 ? data.earnings.map(e => `
+                  <tr>
+                    <td>${e.concept}</td>
+                    <td class="text-right">${formatCurrency(e.amount)}</td>
+                  </tr>
+                  `).join('') : `
+                  <tr>
+                    <td colspan="2" class="text-center" style="color:#9ca3af; font-style:italic;">No hay devengos adicionales</td>
+                  </tr>`}
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Deductions Table -->
+            <div>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Concepto Deducción (-)</th>
+                    <th class="text-right">Valor</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${data.deductions.length > 0 ? data.deductions.map(d => `
+                  <tr>
+                    <td>${d.concept}</td>
+                    <td class="text-right">${formatCurrency(d.amount)}</td>
+                  </tr>
+                  `).join('') : `
+                   <tr>
+                    <td colspan="2" class="text-center" style="color:#9ca3af; font-style:italic;">No hay deducciones</td>
+                  </tr>`}
+                </tbody>
+              </table>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Totals -->
+        <div class="clearfix">
+          <div class="totals-box">
+            <div class="totals-row">
+              <span class="totals-label">Total Devengado:</span>
+              <span>${formatCurrency(data.totalEarnings)}</span>
+            </div>
+            <div class="totals-row">
+              <span class="totals-label">Total Deducido:</span>
+              <span style="color: #dc2626;">- ${formatCurrency(data.totalDeductions)}</span>
+            </div>
+            <div class="totals-row">
+              <span class="totals-label">NETO A PAGAR:</span>
+              <span>${formatCurrency(data.payslip.netPay)}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+          <p>Este documento es la representación gráfica del Documento Soporte de Pago de Nómina Electrónica conforme al anexo técnico de la DIAN.</p>
+          <p>Generado automáticamente a través de la plataforma administrativa.</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `
+
+  let browser: Browser | null = null
+  try {
+    const isVercel = process.env.VERCEL === '1'
+    let executablePath: string | undefined
+    let chromiumArgs: string[] = []
+
+    if (isVercel) {
+      try {
+        executablePath = await chromium.executablePath()
+        chromiumArgs = chromium.args || []
+      } catch (chromiumError: any) {
+        throw new Error(`Error configurando Chromium para Vercel: ${chromiumError?.message || 'Error desconocido'}`)
+      }
+    }
+
+    const args = isVercel
+      ? [...chromiumArgs, '--hide-scrollbars', '--disable-web-security']
+      : ['--no-sandbox', '--disable-setuid-sandbox']
+
+    browser = await puppeteer.launch({
+      headless: true,
+      args,
+      executablePath,
+      timeout: 30000,
+    })
+
+    if (!browser) {
+      throw new Error('Browser no se pudo inicializar')
+    }
+
+    const page = await browser.newPage()
+
+    await Promise.race([
+      page.setContent(html, { waitUntil: 'networkidle0' }),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Timeout al cargar contenido HTML')), 20000)
+      )
+    ])
+
+    const pdf = await Promise.race([
+      page.pdf({
+        format: 'A4',
+        printBackground: true,
+        margin: {
+          top: '15mm',
+          right: '15mm',
+          bottom: '15mm',
+          left: '15mm',
+        },
+      }),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Timeout al generar PDF')), 30000)
+      )
+    ])
+
+    await browser.close()
+    return Buffer.from(pdf)
+  } catch (error: any) {
+    if (browser) {
+      await (browser as Browser).close().catch(() => { })
+    }
+    console.error('Error general en generatePayslipPDF:', error)
+    throw error
+  }
+}

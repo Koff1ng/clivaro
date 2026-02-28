@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { useToast } from '@/components/ui/toast'
-import { Loader2, ArrowLeft, CheckCircle, Plus, Trash2, Edit, CreditCard } from 'lucide-react'
+import { Loader2, ArrowLeft, CheckCircle, Plus, Trash2, Edit, CreditCard, Mail, FileText } from 'lucide-react'
 import {
     Dialog,
     DialogContent,
@@ -44,6 +44,7 @@ export default function PayrollDetailPage({ params }: { params: { id: string } }
 
     // Period Status Edit State
     const [updatingStatus, setUpdatingStatus] = useState(false)
+    const [sendingEmails, setSendingEmails] = useState(false)
 
     const fetchPeriod = async () => {
         setLoading(true)
@@ -104,6 +105,27 @@ export default function PayrollDetailPage({ params }: { params: { id: string } }
             toast('Error de conexión', 'error')
         } finally {
             setUpdatingStatus(false)
+        }
+    }
+
+    const handleSendEmails = async () => {
+        if (!confirm('¿Deseas enviar los comprobantes de nómina en formato PDF (DIAN) al correo de todos los empleados en esta nómina?')) return
+
+        setSendingEmails(true)
+        try {
+            const res = await fetch(`/api/hr/payroll/${params.id}/send-payslips`, {
+                method: 'POST'
+            })
+            const data = await res.json()
+            if (res.ok) {
+                toast(data.message || 'Soportes enviados exitosamente', 'success')
+            } else {
+                toast(data.error || 'Error al enviar soportes', 'error')
+            }
+        } catch (e) {
+            toast('Error de conexión al servidor de correo', 'error')
+        } finally {
+            setSendingEmails(false)
         }
     }
 
@@ -214,6 +236,17 @@ export default function PayrollDetailPage({ params }: { params: { id: string } }
                                     <CreditCard className="mr-2 h-4 w-4" /> Pagar Total Nómina
                                 </Button>
                             )}
+                            {period.status === 'PAID' && (
+                                <Button
+                                    variant="default"
+                                    className="bg-blue-600 hover:bg-blue-700"
+                                    onClick={handleSendEmails}
+                                    disabled={sendingEmails}
+                                >
+                                    {sendingEmails && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                    <Mail className="mr-2 h-4 w-4" /> Enviar Soportes (Email)
+                                </Button>
+                            )}
                         </div>
                     }
                 />
@@ -265,6 +298,11 @@ export default function PayrollDetailPage({ params }: { params: { id: string } }
                                         {period.status === 'DRAFT' && (
                                             <Button variant="outline" size="sm" onClick={() => handleOpenAddItem(payslip)}>
                                                 <Plus className="mr-1 h-3 w-3" /> Novedad
+                                            </Button>
+                                        )}
+                                        {period.status !== 'DRAFT' && (
+                                            <Button variant="outline" size="sm" onClick={() => window.open(`/api/hr/payslips/${payslip.id}/pdf`, '_blank')}>
+                                                <FileText className="mr-1 h-3 w-3" /> Ver Soporte (PDF)
                                             </Button>
                                         )}
                                     </div>
