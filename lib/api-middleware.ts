@@ -222,41 +222,20 @@ export async function requirePermission(
     )
   }
 
-  // Use withTenantTx for role/permission checks to ensure they are read from the correct schema
-  const userPermissions = await withTenantTx(user.tenantId, async (tx) => {
-    const userRoles = await tx.userRole.findMany({
-      where: { userId: user.id },
-      include: {
-        role: {
-          include: {
-            rolePermissions: {
-              include: {
-                permission: true,
-              },
-            },
-          },
-        },
-      },
-    })
-
-    const perms = new Set<string>()
-    userRoles.forEach(userRole => {
-      userRole.role.rolePermissions.forEach(rp => {
-        perms.add(rp.permission.name)
-      })
-    })
-    return perms
-  })
+  // Use JWT-embedded permissions (set at login time in auth.ts authorize callback).
+  // This avoids a live DB lookup on every request which can fail due to schema cache
+  // misses, connection pool exhaustion, or an empty permission set in new tenants.
+  const userPermissions: string[] = user.permissions || []
 
   const requiredPermissions = Array.isArray(permission) ? permission : [permission]
-  const hasPermission = requiredPermissions.some(perm => userPermissions.has(perm))
+  const hasPermission = requiredPermissions.some(perm => userPermissions.includes(perm))
 
   if (!hasPermission) {
     const duration = Date.now() - startTime
     logger.warn('Permission denied', {
       userId: user.id,
       requiredPermissions,
-      userPermissions: Array.from(userPermissions),
+      userPermissions,
       path,
       method: request.method,
     })
@@ -355,41 +334,18 @@ export async function requireAnyPermission(
     )
   }
 
-  // Use withTenantTx for role/permission checks
-  const userPermissions = await withTenantTx(user.tenantId, async (tx: Prisma.TransactionClient) => {
-    const userRoles = await tx.userRole.findMany({
-      where: { userId: user.id },
-      include: {
-        role: {
-          include: {
-            rolePermissions: {
-              include: {
-                permission: true,
-              },
-            },
-          },
-        },
-      },
-    })
-
-    const perms = new Set<string>()
-    userRoles.forEach((userRole: any) => {
-      userRole.role.rolePermissions.forEach((rp: any) => {
-        perms.add(rp.permission.name)
-      })
-    })
-    return perms
-  })
+  // Use JWT-embedded permissions (set at login time in auth.ts authorize callback).
+  const userPermissions: string[] = user.permissions || []
 
   // Check if user has at least one of the required permissions
-  const hasPermission = permissions.some(perm => userPermissions.has(perm))
+  const hasPermission = permissions.some(perm => userPermissions.includes(perm))
 
   if (!hasPermission) {
     const duration = Date.now() - startTime
     logger.warn('Permission denied', {
       userId: user.id,
       requiredPermissions: permissions,
-      userPermissions: Array.from(userPermissions),
+      userPermissions,
       path,
       method: request.method,
     })
