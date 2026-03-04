@@ -1,519 +1,101 @@
 import { NextResponse } from 'next/server'
 import { requireAnyPermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
-import { getPrismaForRequest } from '@/lib/get-tenant-prisma'
+import { withTenantTx } from '@/lib/tenancy'
 import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
 
-// Función helper para ejecutar consultas con retry y manejo de errores de conexión
-async function executeWithRetry<T>(
-  fn: () => Promise<T>,
-  maxRetries = 3,
-  delay = 1000
-): Promise<T> {
-  let lastError: any
-  for (let attempt = 0; attempt < maxRetries; attempt++) {
-    try {
-      return await fn()
-    } catch (error: any) {
-      lastError = error
-      const errorMessage = error?.message || String(error)
-
-      // Si es error de límite de conexiones, esperar y reintentar
-      if (errorMessage.includes('MaxClientsInSessionMode') || errorMessage.includes('max clients reached')) {
-        if (attempt < maxRetries - 1) {
-          const backoffDelay = Math.min(delay * Math.pow(2, attempt), 10000) // Backoff exponencial, max 10s
-          logger.warn(`[Activity Feed] Límite de conexiones alcanzado, reintentando en ${backoffDelay}ms (intento ${attempt + 1}/${maxRetries})`)
-          await new Promise(resolve => setTimeout(resolve, backoffDelay))
-          continue
-        }
-      }
-
-      // Si no es error de conexión, lanzar inmediatamente
-      throw error
-    }
-  }
-  throw lastError
-}
-
 export async function GET(request: Request) {
-  // Permitir acceso con VIEW_REPORTS o MANAGE_CRM
   const session = await requireAnyPermission(request as any, [PERMISSIONS.VIEW_REPORTS, PERMISSIONS.MANAGE_CRM])
+  if (session instanceof NextResponse) return session
 
-  if (session instanceof NextResponse) {
-    return session
+  const tenantId = (session.user as any).tenantId
+  const isSuperAdmin = (session.user as any).isSuperAdmin
+
+  if (isSuperAdmin || !tenantId) {
+    return NextResponse.json({ activities: [], total: 0 })
   }
-
-  // Obtener el cliente Prisma correcto (tenant o master según el usuario)
-  const prisma = await getPrismaForRequest(request, session)
 
   try {
     const { searchParams } = new URL(request.url)
-    const customerId = searchParams.get('customerId')
-    const leadId = searchParams.get('leadId')
+    const customerId = searchParams.get('customerId') || undefined
+    const leadId = searchParams.get('leadId') || undefined
     const rawLimit = parseInt(searchParams.get('limit') || '30')
     const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(rawLimit, 50) : 30
 
+    const data = await withTenantTx(tenantId, async (tx: any) => {
+      const [invoices, products, payments] = await Promise.all([
+        tx.invoice.findMany({
+          take: limit,
+          include: { customer: { select: { id: true, name: true } }, createdBy: { select: { id: true, name: true } } },
+          where: { customerId: customerId },
+          orderBy: { createdAt: 'desc' },
+        }).catch(() => []),
+        tx.product.findMany({
+          take: limit,
+          where: { active: true, id: customerId ? 'none' : undefined },
+          orderBy: { createdAt: 'desc' },
+        }).catch(() => []),
+        tx.payment.findMany({
+          take: limit,
+          select: { id: true, amount: true, method: true, createdAt: true, invoice: { select: { id: true, number: true, customer: { select: { id: true, name: true } } } } },
+          where: { invoice: { customerId: customerId } },
+          orderBy: { createdAt: 'desc' },
+        }).catch(() => []),
+      ])
+      return { invoices, products, payments }
+    })
+
     const activities: any[] = []
 
-    // Ejecutar todas las consultas en paralelo y ser tolerantes a fallos para evitar timeouts largos
-    const [
-      stockAdjustments,
-      payments,
-      cashMovements,
-      products,
-      invoices,
-      purchaseOrders,
-      goodsReceipts,
-      quotations,
-      crmActivities,
-    ] = await Promise.all([
-      executeWithRetry(
-        () =>
-          prisma.stockMovement.findMany({
-            take: limit * 2,
-            where: {
-              // Stock Movements are usually internal. Skip if filtering by Customer/Lead.
-              id: (customerId || leadId) ? 'none' : undefined,
-              OR: [
-                { reference: { startsWith: 'ADJ-' } },
-                { reason: { contains: 'Ajuste' } },
-              ],
-            },
-            include: {
-              product: { select: { id: true, name: true, sku: true } },
-              warehouse: { select: { id: true, name: true } },
-              createdBy: { select: { id: true, name: true } },
-            },
-            orderBy: { createdAt: 'desc' },
-          }),
-        2,
-        1000
-      ).catch((error) => {
-        logger.error('[Activity Feed] Error fetching stock adjustments', error)
-        return [] as any[]
-      }),
-      executeWithRetry(
-        () =>
-          prisma.payment.findMany({
-            take: limit,
-            select: {
-              id: true,
-              amount: true,
-              method: true,
-              createdAt: true,
-              invoice: {
-                select: {
-                  id: true,
-                  number: true,
-                  customer: { select: { id: true, name: true } },
-                },
-              },
-            },
-            where: {
-              invoice: {
-                customerId: customerId || undefined,
-              }
-            },
-            orderBy: { createdAt: 'desc' },
-          }),
-        2,
-        1000
-      ).catch((error) => {
-        logger.error('[Activity Feed] Error fetching payments', error)
-        return [] as any[]
-      }),
-      executeWithRetry(
-        () =>
-          prisma.cashMovement.findMany({
-            take: limit,
-            include: {
-              cashShift: { select: { id: true, status: true, openedAt: true } },
-              createdBy: { select: { id: true, name: true } },
-            },
-            orderBy: { createdAt: 'desc' },
-          }),
-        2,
-        1000
-      ).catch((error) => {
-        logger.error('[Activity Feed] Error fetching cash movements', error)
-        return [] as any[]
-      }),
-      executeWithRetry(
-        () =>
-          prisma.product.findMany({
-            take: limit,
-            where: {
-              active: true, // Products don't have customerId, but we could skip if filtering by customer?
-              // For now, if filtering by customer, maybe we don't want "New Product" events unless they were specifically for them?
-              // Actually, simplified: skip these if customerId filter is present.
-              id: customerId ? 'none' : undefined
-            },
-            orderBy: { createdAt: 'desc' },
-          }),
-        2,
-        1000
-      ).catch((error) => {
-        logger.error('[Activity Feed] Error fetching products', error)
-        return [] as any[]
-      }),
-      executeWithRetry(
-        () =>
-          prisma.invoice.findMany({
-            take: limit,
-            include: {
-              customer: { select: { id: true, name: true } },
-              createdBy: { select: { id: true, name: true } },
-            },
-            where: {
-              customerId: customerId || undefined,
-            },
-            orderBy: { createdAt: 'desc' },
-          }),
-        2,
-        1000
-      ).catch((error) => {
-        logger.error('[Activity Feed] Error fetching invoices', error)
-        return [] as any[]
-      }),
-      executeWithRetry(
-        () =>
-          prisma.purchaseOrder.findMany({
-            take: limit,
-            include: {
-              supplier: { select: { id: true, name: true } },
-            },
-            where: {
-              // POs are linked to Suppliers, not Customers. Skip if filtering by Customer.
-              id: customerId ? 'none' : undefined
-            },
-            orderBy: { createdAt: 'desc' },
-          }),
-        2,
-        1000
-      ).catch((error) => {
-        logger.error('[Activity Feed] Error fetching purchase orders', error)
-        return [] as any[]
-      }),
-      executeWithRetry(
-        () =>
-          prisma.goodsReceipt.findMany({
-            take: limit,
-            include: {
-              purchaseOrder: { select: { id: true, number: true } },
-            },
-            where: {
-              // GRs are linked to POs. Skip if filtering by Customer.
-              id: customerId ? 'none' : undefined
-            },
-            orderBy: { createdAt: 'desc' },
-          }),
-        2,
-        1000
-      ).catch((error) => {
-        logger.error('[Activity Feed] Error fetching goods receipts', error)
-        return [] as any[]
-      }),
-      executeWithRetry(
-        () =>
-          prisma.quotation.findMany({
-            take: limit,
-            include: {
-              customer: { select: { id: true, name: true } },
-            },
-            where: {
-              customerId: customerId || undefined,
-              leadId: leadId || undefined,
-            },
-            orderBy: { createdAt: 'desc' },
-          }),
-        2,
-        1000
-      ).catch((error) => {
-        logger.error('[Activity Feed] Error fetching quotations', error)
-        return [] as any[]
-      }),
-      executeWithRetry(
-        () =>
-          prisma.activity.findMany({
-            take: limit,
-            include: {
-              createdBy: {
-                select: {
-                  id: true,
-                  name: true,
-                },
-              },
-              lead: {
-                select: {
-                  id: true,
-                  name: true,
-                },
-              },
-              customer: {
-                select: {
-                  id: true,
-                  name: true,
-                },
-              },
-            },
-            where: {
-              customerId: customerId || undefined,
-              leadId: leadId || undefined,
-            },
-            orderBy: { createdAt: 'desc' },
-          }),
-        2,
-        1000
-      ).catch((error) => {
-        logger.error('[Activity Feed] Error fetching CRM activities', error)
-        return [] as any[]
-      }),
-    ])
-
-    // 1. Manual Stock Adjustments
-    stockAdjustments.forEach(m => {
-      activities.push({
-        id: `adjustment-${m.id}`,
-        type: 'STOCK_ADJUSTMENT',
-        title: `Ajuste Manual de Inventario: ${m.product?.name || 'Producto desconocido'}`,
-        description: `${m.type === 'IN' ? 'Entrada' : 'Salida'} de ${m.quantity} unidades - ${m.warehouse.name}`,
-        details: {
-          warehouse: m.warehouse.name,
-          product: m.product?.name,
-          sku: m.product?.sku,
-          quantity: m.quantity,
-          type: m.type,
-          reason: m.reason,
-        },
-        user: m.createdBy.name,
-        createdAt: m.createdAt,
-        icon: m.type === 'IN' ? 'arrow-up-circle' : 'arrow-down-circle',
-        color: m.type === 'IN' ? 'green' : 'red',
+      ; (data as any).invoices.forEach((inv: any) => {
+        activities.push({
+          id: `invoice-${inv.id}`,
+          type: 'INVOICE',
+          title: `Factura creada: ${inv.number}`,
+          description: `Cliente: ${inv.customer?.name || 'N/A'}`,
+          details: { number: inv.number, customer: inv.customer?.name, total: inv.total, status: inv.status },
+          user: inv.createdBy?.name || 'Sistema',
+          createdAt: inv.createdAt,
+          icon: 'file-text',
+          color: 'blue',
+        })
       })
-    })
 
-    // 2. Payments
-    payments.forEach(p => {
-      activities.push({
-        id: `payment-${p.id}`,
-        type: 'PAYMENT',
-        title: `Pago recibido: $${p.amount.toFixed(2)}`,
-        description: `Factura: ${p.invoice?.number || 'N/A'} - Método: ${p.method === 'CASH' ? 'Efectivo' : p.method === 'CARD' ? 'Tarjeta' : 'Transferencia'}`,
-        details: {
-          amount: p.amount,
-          method: p.method,
-          invoice: p.invoice?.number,
-          customer: p.invoice?.customer?.name,
-        },
-        user: 'Sistema',
-        createdAt: p.createdAt,
-        icon: 'dollar-sign',
-        color: 'green',
+      ; (data as any).products.forEach((p: any) => {
+        activities.push({
+          id: `product-${p.id}`,
+          type: 'PRODUCT',
+          title: `Producto nuevo: ${p.name}`,
+          description: `SKU: ${p.sku || 'N/A'} - Precio: $${Number(p.price || 0).toFixed(2)}`,
+          details: { name: p.name, sku: p.sku, price: p.price },
+          user: 'Sistema',
+          createdAt: p.createdAt,
+          icon: 'package',
+          color: 'blue',
+        })
       })
-    })
 
-    // 3. Cash Movements
-    cashMovements.forEach(cm => {
-      const shiftInfo = cm.cashShift
-        ? `Turno ${cm.cashShift.status === 'OPEN' ? 'Abierto' : 'Cerrado'} (${new Date(cm.cashShift.openedAt).toLocaleDateString()})`
-        : 'N/A'
-
-      activities.push({
-        id: `cash-movement-${cm.id}`,
-        type: 'CASH_MOVEMENT',
-        title: `Movimiento de Caja: ${cm.type === 'IN' ? 'Ingreso' : 'Salida'} de $${cm.amount.toFixed(2)}`,
-        description: `${cm.reason || 'Sin razón especificada'} - ${shiftInfo}`,
-        details: {
-          type: cm.type,
-          amount: cm.amount,
-          reason: cm.reason,
-          cashShift: shiftInfo,
-        },
-        user: cm.createdBy?.name || 'Sistema',
-        createdAt: cm.createdAt,
-        icon: cm.type === 'IN' ? 'arrow-down-circle' : 'arrow-up-circle',
-        color: cm.type === 'IN' ? 'green' : 'red',
+      ; (data as any).payments.forEach((p: any) => {
+        activities.push({
+          id: `payment-${p.id}`,
+          type: 'PAYMENT',
+          title: `Pago recibido: $${Number(p.amount || 0).toFixed(2)}`,
+          description: `Factura: ${p.invoice?.number || 'N/A'}`,
+          details: { amount: p.amount, method: p.method, customer: p.invoice?.customer?.name },
+          user: 'Sistema',
+          createdAt: p.createdAt,
+          icon: 'dollar-sign',
+          color: 'green',
+        })
       })
-    })
 
-    // 4. Products
-    products.forEach(p => {
-      activities.push({
-        id: `product-${p.id}`,
-        type: 'PRODUCT',
-        title: `Producto nuevo: ${p.name}`,
-        description: `SKU: ${p.sku || 'N/A'} - Precio: $${p.price.toFixed(2)}`,
-        details: {
-          name: p.name,
-          sku: p.sku,
-          price: p.price,
-          cost: p.cost,
-        },
-        user: 'Sistema',
-        createdAt: p.createdAt,
-        icon: 'package',
-        color: 'blue',
-      })
-    })
-
-    // 5. Invoices
-    invoices.forEach(inv => {
-      activities.push({
-        id: `invoice-${inv.id}`,
-        type: 'INVOICE',
-        title: `Factura creada: ${inv.number}`,
-        description: `Cliente: ${inv.customer?.name || 'Cliente no registrado'}`,
-        details: {
-          number: inv.number,
-          customer: inv.customer?.name,
-          total: inv.total,
-          status: inv.status,
-        },
-        user: inv.createdBy?.name || 'Sistema',
-        createdAt: inv.createdAt,
-        icon: 'file-text',
-        color: 'blue',
-      })
-    })
-
-    // 6. Purchase Orders
-    purchaseOrders.forEach(po => {
-      activities.push({
-        id: `purchase-order-${po.id}`,
-        type: 'PURCHASE_ORDER',
-        title: `Orden de Compra: ${po.number}`,
-        description: `Proveedor: ${po.supplier?.name || 'Proveedor desconocido'} - Estado: ${po.status}`,
-        details: {
-          number: po.number,
-          supplier: po.supplier?.name,
-          total: po.total,
-          status: po.status,
-        },
-        user: 'Sistema',
-        createdAt: po.createdAt,
-        icon: 'package',
-        color: 'orange',
-      })
-    })
-
-    // 7. Goods Receipts
-    goodsReceipts.forEach(gr => {
-      activities.push({
-        id: `goods-receipt-${gr.id}`,
-        type: 'GOODS_RECEIPT',
-        title: `Recepción de Mercancía: ${gr.number}`,
-        description: `Orden: ${gr.purchaseOrder?.number || 'N/A'}`,
-        details: {
-          number: gr.number,
-          purchaseOrder: gr.purchaseOrder?.number,
-        },
-        user: 'Sistema',
-        createdAt: gr.createdAt,
-        icon: 'truck',
-        color: 'purple',
-      })
-    })
-
-    // 8. Quotations
-    quotations.forEach(q => {
-      activities.push({
-        id: `quotation-${q.id}`,
-        type: 'QUOTATION',
-        title: `Cotización: ${q.number}`,
-        description: `Cliente: ${q.customer?.name || 'Cliente no registrado'} - Estado: ${q.status}`,
-        details: {
-          number: q.number,
-          customer: q.customer?.name,
-          total: q.total,
-          status: q.status,
-        },
-        user: 'Sistema',
-        createdAt: q.createdAt,
-        icon: 'file-search',
-        color: 'cyan',
-      })
-    })
-
-    // 9. CRM Activities
-    crmActivities.forEach(act => {
-      const activityTypeLabels: Record<string, string> = {
-        'CALL': 'Llamada',
-        'EMAIL': 'Email',
-        'MEETING': 'Reunión',
-        'TASK': 'Tarea',
-        'NOTE': 'Nota',
-      }
-
-      const activityIcons: Record<string, string> = {
-        'CALL': 'phone',
-        'EMAIL': 'mail',
-        'MEETING': 'calendar',
-        'TASK': 'check-square',
-        'NOTE': 'file-text',
-      }
-
-      const activityColors: Record<string, string> = {
-        'CALL': 'blue',
-        'EMAIL': 'green',
-        'MEETING': 'purple',
-        'TASK': 'orange',
-        'NOTE': 'gray',
-      }
-
-      activities.push({
-        id: `crm-activity-${act.id}`,
-        type: 'CRM_ACTIVITY',
-        title: `${activityTypeLabels[act.type] || act.type}: ${act.subject}`,
-        description: `${act.description || ''}${act.lead ? ` - Lead: ${act.lead.name}` : ''}${act.customer ? ` - Cliente: ${act.customer.name}` : ''}${act.dueDate ? ` - Vence: ${new Date(act.dueDate).toLocaleDateString()}` : ''}`,
-        details: {
-          type: act.type,
-          subject: act.subject,
-          description: act.description,
-          completed: act.completed,
-          lead: act.lead?.name,
-          customer: act.customer?.name,
-          dueDate: act.dueDate,
-        },
-        user: act.createdBy?.name || 'Sistema',
-        createdAt: act.createdAt,
-        icon: activityIcons[act.type] || 'file-text',
-        color: activityColors[act.type] || 'gray',
-        completed: act.completed,
-      })
-    })
-
-    // Sort all activities by date (most recent first)
     activities.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
 
-    logger.debug('[Activity Feed] Built feed', {
-      totalActivities: activities.length,
-      returning: Math.min(activities.length, limit),
-      sampleTypes: activities.map(a => a.type).slice(0, 10),
-    })
-
-    // Return only the requested limit
-    return NextResponse.json({
-      activities: activities.slice(0, limit),
-      total: activities.length,
-    })
+    return NextResponse.json({ activities: activities.slice(0, limit), total: activities.length })
   } catch (error: any) {
-    logger.error('Error fetching activity feed', error, {
-      endpoint: '/api/activity-feed',
-      method: 'GET',
-      errorMessage: error?.message,
-      errorCode: error?.code,
-      errorName: error?.name,
-    })
-    return NextResponse.json(
-      {
-        error: 'Failed to fetch activity feed',
-        details: error?.message || String(error),
-        code: error?.code || 'UNKNOWN_ERROR',
-      },
-      { status: 500 }
-    )
+    logger.error('Error fetching activity feed', error, { endpoint: '/api/activity-feed' })
+    return NextResponse.json({ activities: [], total: 0 })
   }
 }
-
