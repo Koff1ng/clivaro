@@ -1,5 +1,6 @@
 import { Prisma } from '@prisma/client'
 import { prisma as masterPrisma } from './db'
+import { getSchemaName } from './tenant-utils'
 
 export class TenancyError extends Error {
     constructor(message: string, public code: number = 401) {
@@ -9,11 +10,14 @@ export class TenancyError extends Error {
 }
 
 // Simple in-memory cache to avoid repeated information_schema lookups
-const schemaCache = new Set<string>()
+// Use a Map<schemaName, timestamp> so we can expire stale entries
+const schemaCache = new Map<string, number>()
+const SCHEMA_CACHE_TTL_MS = 5 * 60 * 1000 // 5 minutes
 
 /**
  * Runs a set of operations within a tenant-scoped transaction.
- * Strictly enforces schema-per-tenant isolation using search_path.
+ * Uses SET LOCAL so the search_path ONLY affects this specific transaction
+ * and is automatically reset when the transaction commits or rolls back.
  */
 export async function withTenantTx<T>(
     tenantId: string | null | undefined,
@@ -24,38 +28,49 @@ export async function withTenantTx<T>(
         throw new TenancyError('Tenant context is missing. Database access denied.', 401)
     }
 
-    // Validate tenantId format to prevent SQL injection in search_path
-    if (!/^[a-z0-9_-]+$/i.test(tenantId)) {
-        throw new TenancyError('Invalid tenant ID format.', 400)
+    // Use unified schema name derivation — always lowercase, consistent with creation
+    const schemaName = getSchemaName(tenantId)
+
+    // Validate the derived schemaName format to prevent SQL injection
+    if (!/^[a-z0-9_]+$/.test(schemaName)) {
+        throw new TenancyError(`Invalid schema name derived: ${schemaName}`, 400)
     }
 
-    const schemaName = `tenant_${tenantId.toLowerCase()}`
-
-    // Ensure schema exists (with caching)
-    if (!schemaCache.has(schemaName)) {
+    // Ensure schema exists (with TTL-based cache to avoid stale hits)
+    const cachedAt = schemaCache.get(schemaName)
+    if (!cachedAt || Date.now() - cachedAt > SCHEMA_CACHE_TTL_MS) {
         const exists = await schemaExists(tenantId)
         if (!exists) {
+            schemaCache.delete(schemaName) // Remove stale entry if any
             console.error(`CRITICAL: Schema "${schemaName}" does not exist in the database.`)
             throw new TenancyError(`Forbidden: Account is not properly initialized (${schemaName}).`, 403)
         }
-        schemaCache.add(schemaName)
+        schemaCache.set(schemaName, Date.now())
     }
+
+    // Build the search_path string — properly quoted to handle any chars
+    const path = options.allowPublicFallback
+        ? `"${schemaName}", public`
+        : `"${schemaName}"`
 
     return await masterPrisma.$transaction(
         async (tx) => {
-            // MANDATORY: Set schema context. 
-            // We use SET LOCAL so it only affects THIS transaction.
-            // By default, we do NOT include 'public' in business operations to prevent leakage.
-            const path = options.allowPublicFallback ? `"${schemaName}", public` : `"${schemaName}"`
-
+            // SET LOCAL: strictly scoped to THIS transaction only.
+            // PostgreSQL automatically resets to the connection default when
+            // the transaction ends (commit or rollback).
             try {
                 await tx.$executeRawUnsafe(`SET LOCAL search_path TO ${path};`)
             } catch (error) {
                 console.error(`Failed to set search_path to ${path}:`, error)
-                throw new TenancyError(`Forbidden: Schema context context could not be established.`, 403)
+                throw new TenancyError(`Forbidden: Schema context could not be established.`, 403)
             }
 
-            return await callback(tx)
+            try {
+                return await callback(tx)
+            } catch (callbackError) {
+                // Let the transaction naturally roll back, which resets SET LOCAL
+                throw callbackError
+            }
         },
         {
             timeout: options.timeout || 15000,
@@ -65,20 +80,20 @@ export async function withTenantTx<T>(
 }
 
 /**
- * Helper to ensure a tenant schema exists
+ * Checks if a tenant's schema exists in the database.
  */
 export async function schemaExists(tenantId: string): Promise<boolean> {
-    const schemaName = `tenant_${tenantId.toLowerCase()}`
+    const schemaName = getSchemaName(tenantId)
     const result = await masterPrisma.$queryRaw<any[]>`
-    SELECT schema_name 
-    FROM information_schema.schemata 
-    WHERE schema_name = ${schemaName}
-  `
+        SELECT schema_name 
+        FROM information_schema.schemata 
+        WHERE schema_name = ${schemaName}
+    `
     return result.length > 0
 }
 
 /**
- * Enforce that the request is running in a valid tenant context from session
+ * Enforce that the request is running in a valid tenant context from session.
  */
 export function getTenantIdFromSession(session: any): string {
     if (!session?.user?.tenantId) {

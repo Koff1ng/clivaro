@@ -2,24 +2,7 @@ import { PrismaClient } from '@prisma/client'
 import bcrypt from 'bcryptjs'
 import { Client } from 'pg'
 import { TENANT_SQL_STATEMENTS } from './tenant-sql-statements'
-
-/**
- * Derives the standardized schema name from a tenant ID.
- */
-function getTenantSchemaName(tenantId: string): string {
-  return `tenant_${tenantId}`
-}
-
-function withSchemaParam(databaseUrl: string, schema: string): string {
-  try {
-    const url = new URL(databaseUrl)
-    url.searchParams.set('schema', schema)
-    return url.toString()
-  } catch {
-    const separator = databaseUrl.includes('?') ? '&' : '?'
-    return `${databaseUrl}${separator}schema=${encodeURIComponent(schema)}`
-  }
-}
+import { getSchemaName } from './tenant-utils'
 
 function stripSchemaParam(databaseUrl: string): string {
   try {
@@ -31,6 +14,19 @@ function stripSchemaParam(databaseUrl: string): string {
   }
 }
 
+function withSchemaParam(databaseUrl: string, schema: string): string {
+  try {
+    const url = new URL(databaseUrl)
+    url.searchParams.delete('schema')
+    url.searchParams.set('schema', schema)
+    return url.toString()
+  } catch {
+    const separator = databaseUrl.includes('?') ? '&' : '?'
+    const cleaned = databaseUrl.replace(/([?&])schema=[^&]+(&|$)/, '$1').replace(/[?&]$/, '')
+    return `${cleaned}${separator}schema=${encodeURIComponent(schema)}`
+  }
+}
+
 /**
  * Initializes a PostgreSQL tenant database.
  * Uses embedded SQL statements (no file I/O, no child_process) for full
@@ -38,7 +34,9 @@ function stripSchemaParam(databaseUrl: string): string {
  */
 async function initializePostgresTenant(databaseUrl: string, tenantId: string, tenantName: string) {
   const baseUrl = stripSchemaParam(databaseUrl)
-  const schemaName = getTenantSchemaName(tenantId)
+  // CRITICAL: Use getSchemaName() — same function used at runtime by withTenantTx
+  // This ensures the schema created here exactly matches the schema queried at runtime
+  const schemaName = getSchemaName(tenantId)
 
   // Use DIRECT_DATABASE_URL for DDL operations if available (avoids PgBouncer issues)
   const directUrl = process.env.DIRECT_DATABASE_URL || baseUrl
