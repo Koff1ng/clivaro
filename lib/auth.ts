@@ -76,10 +76,13 @@ export const authOptions: NextAuthOptions = {
             }
 
           } else {
-            // 2. Global/SuperAdmin Login Strategy (Public Schema)
-            console.log(`[AUTH] No hay tenantSlug, usando BD maestra`)
+            // 2. Global/SuperAdmin Login Strategy (Public Schema ONLY)
+            // SECURITY: Only search for super admin users. This prevents tenant credentials
+            // from working on the super admin portal even if the DB search_path is contaminated.
+            console.log(`[AUTH] No hay tenantSlug, usando BD maestra (solo superAdmin)`)
             user = await prisma.user.findFirst({
               where: {
+                isSuperAdmin: true, // ← SECURITY: only super admins can log in here
                 OR: [
                   { username: credentials.username },
                   { email: credentials.username }
@@ -101,6 +104,12 @@ export const authOptions: NextAuthOptions = {
                 }
               }
             })
+
+            // Double-check: reject if somehow a non-super-admin user was returned
+            if (user && !user.isSuperAdmin) {
+              console.warn(`[AUTH] SECURITY: non-super-admin user ${credentials.username} attempted login on super admin portal`)
+              return null
+            }
           }
 
           if (!user) {
