@@ -222,6 +222,14 @@ export async function requirePermission(
     )
   }
 
+  // ADMIN role bypasses all permission checks (tenant admins have full access)
+  const userRoles: string[] = user.roles || []
+  if (userRoles.includes('ADMIN')) {
+    const duration = Date.now() - startTime
+    logger.apiResponse(request.method, path, 200, duration, { userId: user.id, adminRole: true })
+    return session
+  }
+
   // Use JWT-embedded permissions (set at login time in auth.ts authorize callback).
   // This avoids a live DB lookup on every request which can fail due to schema cache
   // misses, connection pool exhaustion, or an empty permission set in new tenants.
@@ -332,6 +340,14 @@ export async function requireAnyPermission(
       },
       { status: 403 }
     )
+  }
+
+  // ADMIN role bypasses all permission checks (tenant admins have full access)
+  const userRoles: string[] = user.roles || []
+  if (userRoles.includes('ADMIN')) {
+    const duration = Date.now() - startTime
+    logger.apiResponse(request.method, path, 200, duration, { userId: user.id, adminRole: true })
+    return session
   }
 
   // Use JWT-embedded permissions (set at login time in auth.ts authorize callback).
