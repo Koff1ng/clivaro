@@ -21,7 +21,8 @@ import {
   XCircle,
   AlertCircle,
   Loader2,
-  RefreshCw
+  RefreshCw,
+  KeyRound,
 } from 'lucide-react'
 import { useToast } from '@/components/ui/toast'
 import { TenantForm } from './tenant-form'
@@ -84,6 +85,24 @@ export function TenantsClient() {
     },
     onError: (error: Error) => {
       toast(error.message || 'Error al re-inicializar schema', 'error')
+    }
+  })
+
+  const resetCredentialsMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`/api/admin/tenants/${id}/reset-credentials`, { method: 'POST' })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.details || data.error || 'Error al resetear credenciales')
+      return data
+    },
+    onSuccess: (data) => {
+      toast(
+        `Credenciales restablecidas: ${data.credentials?.username} / ${data.credentials?.password}  →  /login/${data.credentials?.loginUrl?.split('/').pop()}`,
+        'success'
+      )
+    },
+    onError: (error: Error) => {
+      toast(error.message || 'Error al resetear credenciales', 'error')
     }
   })
 
@@ -300,6 +319,23 @@ export function TenantsClient() {
                           <Loader2 className="h-4 w-4 animate-spin" />
                         ) : (
                           <RefreshCw className="h-4 w-4" />
+                        )}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          if (confirm(`¿Resetear credenciales del tenant "${tenant.name}"?\nEsto restablecerá la contraseña del admin a Admin123! y re-asignará el rol ADMIN.`)) {
+                            resetCredentialsMutation.mutate(tenant.id)
+                          }
+                        }}
+                        disabled={resetCredentialsMutation.isPending}
+                        title="Resetear credenciales admin (admin / Admin123!)"
+                      >
+                        {resetCredentialsMutation.isPending ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <KeyRound className="h-4 w-4" />
                         )}
                       </Button>
                       <Button
