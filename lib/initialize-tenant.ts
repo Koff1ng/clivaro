@@ -105,6 +105,22 @@ async function initializePostgresTenant(databaseUrl: string, tenantId: string, t
     const defaultPassword = 'Admin123!'
     const hashedPassword = await bcrypt.hash(defaultPassword, 10)
 
+    // CRITICAL: Seed the Tenant record in the tenant schema's local Tenant table.
+    // The Employee, PayrollPeriod, etc. tables have a tenantId FK that references this
+    // local Tenant table (not the public schema's Tenant table). Without this, creating
+    // employees/payrolls fails with "Foreign key constraint violated: Employee_tenantId_fkey".
+    await tenantPrisma.tenant.upsert({
+      where: { id: tenantId },
+      update: { name: tenantName, slug: tenantId, active: true },
+      create: {
+        id: tenantId,
+        name: tenantName,
+        slug: tenantId,
+        databaseUrl: '',
+        active: true,
+      },
+    })
+
     // Warehouse — upsert so reinit doesn't fail if it already exists
     await tenantPrisma.warehouse.upsert({
       where: { name: 'Almacén Principal' },
