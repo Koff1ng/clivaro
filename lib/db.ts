@@ -28,10 +28,10 @@ function addConnectionLimit(url: string): string {
     newUrl = `${newUrl}${sep}pool_timeout=20`
   }
 
-  //if (!newUrl.toLowerCase().includes('pgbouncer=')) {
-  //  const sep = newUrl.includes('?') ? '&' : '?'
-  //  newUrl = `${newUrl}${sep}pgbouncer=true`
-  //}
+  if (!newUrl.toLowerCase().includes('pgbouncer=')) {
+    const sep = newUrl.includes('?') ? '&' : '?'
+    newUrl = `${newUrl}${sep}pgbouncer=true`
+  }
 
   return newUrl
 }

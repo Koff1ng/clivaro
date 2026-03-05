@@ -18,38 +18,25 @@ const tenantPrismaClients = new Map<string, PrismaClient>()
 
 /**
  * Builds a database URL for the given tenant schema.
- * - Prefers DIRECT_URL (bypasses PgBouncer, supports prepared statements)
- * - Falls back to DATABASE_URL with pgbouncer=true for compatibility
+ * Always uses pgbouncer=true to disable Prisma's named prepared statements.
+ * This is required in serverless (Vercel) environments where multiple instances
+ * share physical DB connections — named prepared statements cause 42P05/26000 errors.
+ * DIRECT_URL is only meant for Prisma CLI migrations, not runtime use.
  */
 function buildTenantUrl(schema: string): string {
-    const directUrl = process.env.DIRECT_URL
-    const poolerUrl = process.env.DATABASE_URL || ''
+    const baseUrl = process.env.DATABASE_URL || process.env.DIRECT_URL || ''
 
-    // Prefer the direct connection — no PgBouncer issues
-    if (directUrl && (directUrl.startsWith('postgresql://') || directUrl.startsWith('postgres://'))) {
-        const urlObj = new URL(directUrl)
-        // Remove pgbouncer flag if somehow present in DIRECT_URL
-        urlObj.searchParams.delete('pgbouncer')
-        urlObj.searchParams.set('schema', schema)
-        // Direct connections can use a small pool per-tenant
-        if (!urlObj.searchParams.has('connection_limit')) {
-            urlObj.searchParams.set('connection_limit', '3')
-        }
-        return urlObj.toString()
+    if (!baseUrl.startsWith('postgresql://') && !baseUrl.startsWith('postgres://')) {
+        return baseUrl
     }
 
-    // Fallback: pooler URL requires pgbouncer=true for Prisma compatibility
-    if (poolerUrl.startsWith('postgresql://') || poolerUrl.startsWith('postgres://')) {
-        const urlObj = new URL(poolerUrl)
-        urlObj.searchParams.set('schema', schema)
-        urlObj.searchParams.set('pgbouncer', 'true')
-        if (!urlObj.searchParams.has('connection_limit')) {
-            urlObj.searchParams.set('connection_limit', '3')
-        }
-        return urlObj.toString()
+    const urlObj = new URL(baseUrl)
+    urlObj.searchParams.set('schema', schema)
+    urlObj.searchParams.set('pgbouncer', 'true')
+    if (!urlObj.searchParams.has('connection_limit')) {
+        urlObj.searchParams.set('connection_limit', '3')
     }
-
-    return poolerUrl
+    return urlObj.toString()
 }
 
 /**
