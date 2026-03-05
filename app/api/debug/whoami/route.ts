@@ -1,89 +1,116 @@
 import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
-import { getToken } from 'next-auth/jwt'
 import { prisma } from '@/lib/db'
 import { getSchemaName } from '@/lib/tenant-utils'
 
 export const dynamic = 'force-dynamic'
 
-/**
- * GET /api/debug/whoami
- * Returns the current session/token data so we can diagnose tenant isolation issues.
- * This endpoint is intentionally verbose for debugging.
- */
 export async function GET(request: Request) {
     try {
-        // Get both session and raw token for comparison
         const session = await getServerSession(authOptions)
-        const secret = process.env.NEXTAUTH_SECRET
-        const token = await getToken({ req: request as any, secret })
+        const token = session?.user as any
+        const tenantId: string | null = token?.tenantId ?? null
 
-        // Resolve tenant info from master DB if we have a tenantId
-        let tenantInfo: any = null
-        const tenantId = (session?.user as any)?.tenantId || (token?.tenantId as string)
+        // 1. Basic session info
+        const sessionInfo = {
+            userId: token?.id,
+            name: token?.name,
+            isSuperAdmin: token?.isSuperAdmin ?? false,
+            tenantId,
+            tenantSlug: token?.tenantSlug,
+            roles: token?.roles,
+        }
 
+        // 2. Env vars (masked)
+        const directUrl = process.env.DIRECT_URL || ''
+        const databaseUrl = process.env.DATABASE_URL || ''
+        const maskUrl = (u: string) => {
+            try { const url = new URL(u); return `${url.protocol}//**:**@${url.host}${url.pathname}?${url.searchParams.toString()}` } catch { return u.slice(0, 30) + '...' }
+        }
+
+        const envInfo = {
+            DIRECT_URL_set: !!directUrl,
+            DIRECT_URL_masked: maskUrl(directUrl),
+            DATABASE_URL_set: !!databaseUrl,
+            DATABASE_URL_masked: maskUrl(databaseUrl),
+        }
+
+        // 3. Actual schema the master prisma connection uses
+        let masterCurrentSchema = 'unknown'
+        try {
+            const r = await prisma.$queryRaw<{ search_path: string }[]>`SHOW search_path`
+            masterCurrentSchema = r[0]?.search_path ?? 'unknown'
+        } catch (e: any) { masterCurrentSchema = `ERROR: ${e?.message}` }
+
+        // 4. What schema would the tenant PrismaClient use?
+        let tenantSchemaUrl = 'N/A (no tenantId)'
+        let tenantCurrentSchema = 'N/A'
         if (tenantId) {
+            const schemaName = getSchemaName(tenantId)
+            const base = process.env.DIRECT_URL || process.env.DATABASE_URL || ''
             try {
-                const tenant = await prisma.tenant.findUnique({
-                    where: { id: tenantId },
-                    select: { id: true, name: true, slug: true, active: true },
+                const url = new URL(base)
+                url.searchParams.delete('schema')
+                url.searchParams.delete('pgbouncer')
+                url.searchParams.set('schema', schemaName)
+                tenantSchemaUrl = maskUrl(url.toString())
+            } catch { tenantSchemaUrl = `parse-error, schema=${schemaName}` }
+
+            // Test search_path via withTenantTx
+            try {
+                const { withTenantTx } = await import('@/lib/tenancy')
+                const result = await withTenantTx(tenantId, async (tx: any) => {
+                    const r = await tx.$queryRaw<{ search_path: string; current_schema: string }[]>`
+            SELECT current_setting('search_path') AS search_path, current_schema() AS current_schema
+          `
+                    return r[0]
                 })
-                tenantInfo = tenant
+                tenantCurrentSchema = JSON.stringify(result)
             } catch (e: any) {
-                tenantInfo = { error: e?.message }
+                tenantCurrentSchema = `ERROR: ${e?.message}`
             }
         }
 
-        // Check what schemas actually exist in the database
-        let existingSchemas: string[] = []
-        try {
-            const schemaResult = await prisma.$queryRaw<{ schema_name: string }[]>`
-        SELECT schema_name FROM information_schema.schemata 
-        WHERE schema_name LIKE 'tenant_%'
-        ORDER BY schema_name
-      `
-            existingSchemas = schemaResult.map((r) => r.schema_name)
-        } catch (e: any) {
-            existingSchemas = [`ERROR: ${e?.message}`]
+        // 5. Tenant info from master DB
+        let tenantInfo = null
+        if (tenantId) {
+            try {
+                tenantInfo = await prisma.tenant.findUnique({ where: { id: tenantId }, select: { id: true, name: true, slug: true, active: true } })
+            } catch (e: any) { tenantInfo = { error: e?.message } }
         }
 
-        const expectedSchemaName = tenantId ? getSchemaName(tenantId) : null
+        // 6. Existing tenant schemas
+        let existingSchemas: string[] = []
+        try {
+            const r = await prisma.$queryRaw<{ schema_name: string }[]>`SELECT schema_name FROM information_schema.schemata WHERE schema_name LIKE 'tenant_%' ORDER BY schema_name`
+            existingSchemas = r.map(x => x.schema_name)
+        } catch { existingSchemas = ['ERROR'] }
+
+        // 7. Product count in the expected tenant schema
+        let productCountInTenantSchema = 'N/A'
+        if (tenantId) {
+            try {
+                const schemaName = getSchemaName(tenantId)
+                const r = await prisma.$queryRaw<{ count: bigint }[]>`
+          SELECT COUNT(*) as count FROM "${schemaName}"."Product"
+        `
+                productCountInTenantSchema = String(r[0]?.count ?? 0)
+            } catch (e: any) { productCountInTenantSchema = `ERROR: ${e?.message?.slice(0, 100)}` }
+        }
 
         return NextResponse.json({
             timestamp: new Date().toISOString(),
-            session: {
-                userId: (session?.user as any)?.id,
-                name: session?.user?.name,
-                email: session?.user?.email,
-                isSuperAdmin: (session?.user as any)?.isSuperAdmin,
-                tenantId: (session?.user as any)?.tenantId,
-                tenantSlug: (session?.user as any)?.tenantSlug,
-                roles: (session?.user as any)?.roles,
-                permissions: ((session?.user as any)?.permissions || []).slice(0, 5),
-                permissionsCount: ((session?.user as any)?.permissions || []).length,
-            },
-            token: token ? {
-                sub: token.sub,
-                isSuperAdmin: token.isSuperAdmin,
-                tenantId: token.tenantId,
-                tenantSlug: token.tenantSlug,
-                roles: token.roles,
-            } : null,
+            session: sessionInfo,
             tenantInfo,
-            schemaResolution: {
-                tenantId,
-                expectedSchemaName,
-                schemaExists: expectedSchemaName
-                    ? existingSchemas.includes(expectedSchemaName)
-                    : false,
-            },
+            envInfo,
+            masterCurrentSchema,
+            tenantCurrentSchema,
+            tenantSchemaUrl,
+            productCountInTenantSchema,
             existingTenantSchemas: existingSchemas,
         })
-    } catch (error: any) {
-        return NextResponse.json(
-            { error: 'Debug endpoint error', details: error?.message },
-            { status: 500 }
-        )
+    } catch (e: any) {
+        return NextResponse.json({ error: e?.message }, { status: 500 })
     }
 }
