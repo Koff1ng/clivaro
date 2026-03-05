@@ -1,50 +1,65 @@
-import { prisma } from './db'
-import { withTenantTx } from './tenancy'
+import { PrismaClient } from '@prisma/client'
+import { prisma as masterPrisma } from './db'
+import { getSchemaName } from './tenant-utils'
+
+// Cache one PrismaClient per tenant schema to avoid recreating on every request.
+// Each client has its own connection pool pointing to the correct tenant schema.
+const tenantPrismaCache = new Map<string, PrismaClient>()
+
+function getTenantPrismaClient(tenantId: string): PrismaClient {
+  const schemaName = getSchemaName(tenantId)
+
+  if (tenantPrismaCache.has(schemaName)) {
+    return tenantPrismaCache.get(schemaName)!
+  }
+
+  // Build a URL pointing directly to the tenant schema.
+  // Using DIRECT_URL bypasses PgBouncer so ?schema=xxx works reliably.
+  const baseUrl = process.env.DIRECT_URL || process.env.DATABASE_URL || ''
+
+  let schemaUrl: string
+  try {
+    const url = new URL(baseUrl)
+    url.searchParams.delete('schema')
+    url.searchParams.delete('pgbouncer')
+    url.searchParams.set('schema', schemaName)
+    schemaUrl = url.toString()
+  } catch {
+    const cleaned = baseUrl.replace(/([?&])schema=[^&]+(&|$)/, '$1').replace(/[?&]$/, '')
+    const sep = cleaned.includes('?') ? '&' : '?'
+    schemaUrl = `${cleaned}${sep}schema=${encodeURIComponent(schemaName)}`
+  }
+
+  console.log(`[TenantPrisma] Creating dedicated PrismaClient for schema: ${schemaName}`)
+  const client = new PrismaClient({
+    datasources: { db: { url: schemaUrl } },
+    log: [],
+  })
+
+  tenantPrismaCache.set(schemaName, client)
+  return client
+}
 
 /**
- * Returns a Prisma-like proxy object that runs every query inside withTenantTx,
- * ensuring strict schema isolation for all routes that still use this function.
- *
- * Previously this function returned the master Prisma client (no isolation).
- * Now it wraps each model call in a tenant-scoped transaction automatically.
- *
+ * Returns a Prisma client scoped to the tenant's schema.
+ * Super admins get the master DB client.
+ * 
  * @deprecated Prefer using withTenantTx(tenantId, callback) directly in new code.
  */
 export async function getPrismaForRequest(_request?: Request, session?: any): Promise<any> {
   const user = session?.user ?? (session as any)
 
-  // Super admins use master DB (public schema) — no tenant schema
   if (user?.isSuperAdmin) {
-    return prisma
+    return masterPrisma
   }
 
   const tenantId: string | null | undefined = user?.tenantId
 
   if (!tenantId) {
-    // No tenant context → return master prisma (will query public schema, likely empty)
-    console.warn('[getPrismaForRequest] No tenantId in session — returning master prisma (queries will hit public schema)')
-    return prisma
+    console.warn('[getPrismaForRequest] No tenantId in session — returning master prisma')
+    return masterPrisma
   }
 
-  // Return a Proxy that intercepts model access (e.g. prisma.product.findMany)
-  // and runs each call inside withTenantTx so the correct search_path is always set.
-  return new Proxy({} as any, {
-    get(_target, modelName: string) {
-      // Pass through non-model properties (e.g. $transaction, $queryRaw)
-      if (modelName.startsWith('$')) {
-        return (prisma as any)[modelName]
-      }
-
-      // For each model, return another proxy that intercepts method calls
-      return new Proxy({} as any, {
-        get(_modelTarget, methodName: string) {
-          return async (...args: any[]) => {
-            return withTenantTx(tenantId, async (tx: any) => {
-              return tx[modelName][methodName](...args)
-            })
-          }
-        }
-      })
-    }
-  })
+  // Return a dedicated PrismaClient for this tenant's schema
+  return getTenantPrismaClient(tenantId)
 }
