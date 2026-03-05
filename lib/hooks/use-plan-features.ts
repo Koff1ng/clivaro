@@ -70,8 +70,8 @@ export function useTenantPlan() {
       }
     },
     enabled: !!session,
-    staleTime: 5 * 60 * 1000, // 5 minutos
-    gcTime: 10 * 60 * 1000, // 10 minutos
+    staleTime: 1 * 60 * 1000, // 1 minuto (reducido para reflejar upgrades rápido)
+    gcTime: 5 * 60 * 1000, // 5 minutos
     retry: 2, // Reintentar 2 veces antes de usar el fallback
     retryDelay: 2000, // Esperar 2 segundos entre reintentos
   })
