@@ -8,7 +8,7 @@ export async function GET(
   { params }: { params: { id: string } | Promise<{ id: string }> }
 ) {
   const session = await requireAnyPermission(request as any, [PERMISSIONS.MANAGE_CASH, PERMISSIONS.MANAGE_SALES])
-  
+
   if (session instanceof NextResponse) {
     return session
   }
@@ -72,8 +72,8 @@ export async function GET(
     })
 
     // Extract all payments with invoice number
-    const payments = invoices.flatMap(invoice => 
-      invoice.payments.map(payment => ({
+    const payments = (invoices as any[]).flatMap((invoice: any) =>
+      invoice.payments.map((payment: any) => ({
         id: payment.id,
         amount: payment.amount,
         method: payment.method,
@@ -114,16 +114,16 @@ export async function GET(
       // Subtotal sin impuestos = subtotal - descuento de factura
       const invoiceSubtotal = typeof inv.subtotal === 'number' ? inv.subtotal : 0
       const invoiceDiscount = typeof inv.discount === 'number' ? inv.discount : 0
-      const subtotalWithoutTaxes = invoiceSubtotal > 0 
-        ? invoiceSubtotal - invoiceDiscount 
+      const subtotalWithoutTaxes = invoiceSubtotal > 0
+        ? invoiceSubtotal - invoiceDiscount
         : (inv.total || 0) - (inv.tax || 0) - invoiceDiscount
-      
+
       // Costo de productos vendidos en esta factura
       const invoiceCost = (inv.items || []).reduce((itemSum: number, item: any) => {
         const productCost = item.product?.cost || 0
         return itemSum + (Number(item.quantity || 0) * productCost)
       }, 0)
-      
+
       return sum + (subtotalWithoutTaxes - invoiceCost)
     }, 0)
 
