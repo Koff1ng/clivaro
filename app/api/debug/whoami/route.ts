@@ -87,14 +87,24 @@ export async function GET(request: Request) {
             existingSchemas = r.map(x => x.schema_name)
         } catch { existingSchemas = ['ERROR'] }
 
-        // 7. Product count in the expected tenant schema
+        // 7. Table count and product count in the expected tenant schema
+        let tableCount = 'N/A'
         let productCountInTenantSchema = 'N/A'
         if (tenantId) {
+            const schemaName = getSchemaName(tenantId)
+            // Use pg_tables (parameterized, always safe) to count tables in the schema
             try {
-                const schemaName = getSchemaName(tenantId)
                 const r = await prisma.$queryRaw<{ count: bigint }[]>`
-          SELECT COUNT(*) as count FROM "${schemaName}"."Product"
+          SELECT COUNT(*) as count FROM pg_tables WHERE schemaname = ${schemaName}
         `
+                tableCount = String(r[0]?.count ?? 0)
+            } catch (e: any) { tableCount = `ERROR: ${e?.message?.slice(0, 100)}` }
+
+            // Use $queryRawUnsafe to avoid parameterizing the schema name identifier
+            try {
+                const r = await prisma.$queryRawUnsafe<{ count: bigint }[]>(
+                    `SELECT COUNT(*) as count FROM "${schemaName}"."Product"`
+                )
                 productCountInTenantSchema = String(r[0]?.count ?? 0)
             } catch (e: any) { productCountInTenantSchema = `ERROR: ${e?.message?.slice(0, 100)}` }
         }
@@ -107,6 +117,7 @@ export async function GET(request: Request) {
             masterCurrentSchema,
             tenantCurrentSchema,
             tenantSchemaUrl,
+            tableCount,
             productCountInTenantSchema,
             existingTenantSchemas: existingSchemas,
         })
