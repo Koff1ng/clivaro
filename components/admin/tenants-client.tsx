@@ -23,6 +23,7 @@ import {
   Loader2,
   RefreshCw,
   KeyRound,
+  HardDrive,
 } from 'lucide-react'
 import { useToast } from '@/components/ui/toast'
 import { TenantForm } from './tenant-form'
@@ -54,6 +55,24 @@ export function TenantsClient() {
       return res.json()
     }
   })
+
+  // Fetch schema sizes for all tenants
+  const { data: schemaSizesData } = useQuery({
+    queryKey: ['admin-schema-sizes'],
+    queryFn: async () => {
+      const res = await fetch('/api/admin/tenants/schema-sizes')
+      if (!res.ok) return { sizes: [] }
+      return res.json()
+    },
+    refetchInterval: 60000, // Refresh every minute
+  })
+
+  // Build a lookup map: tenantId -> { bytes, pretty }
+  const sizesByTenant = useMemo(() => {
+    const map = new Map<string, { bytes: number; pretty: string }>()
+      ; (schemaSizesData?.sizes || []).forEach((s: any) => map.set(s.tenantId, s))
+    return map
+  }, [schemaSizesData])
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
@@ -103,6 +122,23 @@ export function TenantsClient() {
     },
     onError: (error: Error) => {
       toast(error.message || 'Error al resetear credenciales', 'error')
+    }
+  })
+
+  const resetDbMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`/api/admin/tenants/${id}/reset-db`, { method: 'POST' })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.details || data.error || 'Error al reiniciar BD')
+      return data
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['admin-tenants'] })
+      queryClient.invalidateQueries({ queryKey: ['admin-schema-sizes'] })
+      toast(`BD reiniciada a cero. Login: ${data.credentials?.username} / ${data.credentials?.password}`, 'success')
+    },
+    onError: (error: Error) => {
+      toast(error.message || 'Error al reiniciar BD', 'error')
     }
   })
 
@@ -292,6 +328,16 @@ export function TenantsClient() {
                             </span>
                           </div>
                         )}
+                        {/* Schema size indicator */}
+                        {(() => {
+                          const size = sizesByTenant.get(tenant.id)
+                          return size ? (
+                            <div className="flex items-center gap-1 mt-1">
+                              <HardDrive className="h-3 w-3 text-gray-400" />
+                              <span className="text-xs text-gray-500">{size.pretty}</span>
+                            </div>
+                          ) : null
+                        })()}
                       </div>
                     </div>
 
@@ -336,6 +382,24 @@ export function TenantsClient() {
                           <Loader2 className="h-4 w-4 animate-spin" />
                         ) : (
                           <KeyRound className="h-4 w-4" />
+                        )}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          if (confirm(`⚠️ PELIGRO: ¿Reiniciar BD del tenant "${tenant.name}"?\n\nEsto BORRARA TODOS los datos (productos, clientes, facturas, etc.) y dejara solo el usuario admin.\n\nEscribe el nombre del slug para confirmar: ${tenant.slug}`)) {
+                            resetDbMutation.mutate(tenant.id)
+                          }
+                        }}
+                        disabled={resetDbMutation.isPending}
+                        title="Reiniciar BD a cero (BORRA TODOS los datos)"
+                        className="border-red-300 text-red-600 hover:bg-red-50 dark:hover:bg-red-950"
+                      >
+                        {resetDbMutation.isPending ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Database className="h-4 w-4" />
                         )}
                       </Button>
                       <Button
