@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requirePermission } from '@/lib/api-middleware';
 import { PERMISSIONS } from '@/lib/permissions';
-import { getTenantIdFromSession, withTenantTx } from '@/lib/tenancy';
+import { getTenantIdFromSession, withTenantTx, withTenantRead } from '@/lib/tenancy';
 
 export async function GET(req: Request) {
     try {
@@ -33,8 +33,8 @@ export async function GET(req: Request) {
             whereClause.isActive = isActiveStr === 'true';
         }
 
-        const employees = await withTenantTx(tenantId, async (tx) => {
-            return tx.employee.findMany({
+        const employees = await withTenantRead(tenantId, async (db) => {
+            return db.employee.findMany({
                 where: whereClause,
                 orderBy: { firstName: 'asc' },
             })

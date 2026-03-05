@@ -16,41 +16,47 @@ const SCHEMA_CACHE_TTL_MS = 5 * 60 * 1000 // 5 minutes
 // Cache of initialized Prisma Clients per tenant schema
 const tenantPrismaClients = new Map<string, PrismaClient>()
 
-function addConnectionLimit(url: string, schema: string): string {
-    if (!url.startsWith('postgresql://') && !url.startsWith('postgres://')) {
-        return url
-    }
-    let newUrl = url
+/**
+ * Builds a database URL for the given tenant schema.
+ * - Prefers DIRECT_URL (bypasses PgBouncer, supports prepared statements)
+ * - Falls back to DATABASE_URL with pgbouncer=true for compatibility
+ */
+function buildTenantUrl(schema: string): string {
+    const directUrl = process.env.DIRECT_URL
+    const poolerUrl = process.env.DATABASE_URL || ''
 
-    if (!newUrl.includes('connection_limit=')) {
-        const sep = newUrl.includes('?') ? '&' : '?'
-        newUrl = `${newUrl}${sep}connection_limit=5`
-    }
-    if (!newUrl.includes('pool_timeout=')) {
-        const sep = newUrl.includes('?') ? '&' : '?'
-        newUrl = `${newUrl}${sep}pool_timeout=20`
-    }
-    if (!newUrl.toLowerCase().includes('pgbouncer=')) {
-        const sep = newUrl.includes('?') ? '&' : '?'
-        newUrl = `${newUrl}${sep}pgbouncer=true`
+    // Prefer the direct connection — no PgBouncer issues
+    if (directUrl && (directUrl.startsWith('postgresql://') || directUrl.startsWith('postgres://'))) {
+        const urlObj = new URL(directUrl)
+        // Remove pgbouncer flag if somehow present in DIRECT_URL
+        urlObj.searchParams.delete('pgbouncer')
+        urlObj.searchParams.set('schema', schema)
+        // Direct connections can use a small pool per-tenant
+        if (!urlObj.searchParams.has('connection_limit')) {
+            urlObj.searchParams.set('connection_limit', '3')
+        }
+        return urlObj.toString()
     }
 
-    // Replace schema or add it
-    const urlObj = new URL(newUrl)
-    urlObj.searchParams.set('schema', schema)
-    return urlObj.toString()
+    // Fallback: pooler URL requires pgbouncer=true for Prisma compatibility
+    if (poolerUrl.startsWith('postgresql://') || poolerUrl.startsWith('postgres://')) {
+        const urlObj = new URL(poolerUrl)
+        urlObj.searchParams.set('schema', schema)
+        urlObj.searchParams.set('pgbouncer', 'true')
+        if (!urlObj.searchParams.has('connection_limit')) {
+            urlObj.searchParams.set('connection_limit', '3')
+        }
+        return urlObj.toString()
+    }
+
+    return poolerUrl
 }
 
 /**
- * Runs a set of operations within a tenant-scoped transaction.
- * Uses a dynamically instantiated and cached PrismaClient specifically 
- * assigned to the tenant schema, bypassing the Prisma 5 "public" prefix issue.
+ * Returns (or creates and caches) a PrismaClient for the given tenant schema.
+ * Safe for both reads and writes.
  */
-export async function withTenantTx<T>(
-    tenantId: string | null | undefined,
-    callback: (txPrisma: Prisma.TransactionClient) => Promise<T>,
-    options: { timeout?: number; isolationLevel?: Prisma.TransactionIsolationLevel; allowPublicFallback?: boolean } = {}
-): Promise<T> {
+async function getTenantPrismaClient(tenantId: string): Promise<PrismaClient> {
     if (!tenantId) {
         throw new TenancyError('Tenant context is missing. Database access denied.', 401)
     }
@@ -61,7 +67,7 @@ export async function withTenantTx<T>(
         throw new TenancyError(`Invalid schema name derived: ${schemaName}`, 400)
     }
 
-    // Ensure schema exists dynamically
+    // Ensure schema exists dynamically (cached for 5 min)
     const cachedAt = schemaCache.get(schemaName)
     if (!cachedAt || Date.now() - cachedAt > SCHEMA_CACHE_TTL_MS) {
         const exists = await schemaExists(tenantId)
@@ -73,21 +79,34 @@ export async function withTenantTx<T>(
         schemaCache.set(schemaName, Date.now())
     }
 
-    // Get or create Prisma Client for this schema
-    // Prefer DIRECT_URL (bypasses PgBouncer) to avoid prepared-statement errors
-    // in PgBouncer transaction-mode pooling (error code 26000)
     let tenantPrisma = tenantPrismaClients.get(schemaName)
     if (!tenantPrisma) {
-        const databaseUrl = process.env.DIRECT_URL || process.env.DATABASE_URL || ''
-        const schemaUrl = addConnectionLimit(databaseUrl, schemaName)
-
+        const schemaUrl = buildTenantUrl(schemaName)
         tenantPrisma = new PrismaClient({
             datasources: { db: { url: schemaUrl } },
         })
         tenantPrismaClients.set(schemaName, tenantPrisma)
     }
 
-    // Execute the user's callback inside a transaction using the tenant-specific client
+    return tenantPrisma
+}
+
+/**
+ * Runs a set of operations within a tenant-scoped transaction.
+ * Uses a dynamically instantiated and cached PrismaClient specifically
+ * assigned to the tenant schema.
+ */
+export async function withTenantTx<T>(
+    tenantId: string | null | undefined,
+    callback: (txPrisma: Prisma.TransactionClient) => Promise<T>,
+    options: { timeout?: number; isolationLevel?: Prisma.TransactionIsolationLevel } = {}
+): Promise<T> {
+    if (!tenantId) {
+        throw new TenancyError('Tenant context is missing. Database access denied.', 401)
+    }
+
+    const tenantPrisma = await getTenantPrismaClient(tenantId)
+
     return await tenantPrisma.$transaction(
         async (tx) => {
             return await callback(tx)
@@ -97,6 +116,22 @@ export async function withTenantTx<T>(
             isolationLevel: options.isolationLevel,
         }
     )
+}
+
+/**
+ * Runs a read-only operation against the tenant schema WITHOUT a transaction.
+ * Prefer this for GET endpoints — faster and avoids transaction overhead.
+ */
+export async function withTenantRead<T>(
+    tenantId: string | null | undefined,
+    callback: (prisma: PrismaClient) => Promise<T>
+): Promise<T> {
+    if (!tenantId) {
+        throw new TenancyError('Tenant context is missing. Database access denied.', 401)
+    }
+
+    const tenantPrisma = await getTenantPrismaClient(tenantId)
+    return await callback(tenantPrisma)
 }
 
 /**

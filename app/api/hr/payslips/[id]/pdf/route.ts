@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requirePermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
-import { getTenantIdFromSession, withTenantTx } from '@/lib/tenancy'
+import { getTenantIdFromSession, withTenantRead } from '@/lib/tenancy'
 import { generatePayslipPDF } from '@/lib/pdf'
 
 export async function GET(
@@ -22,8 +22,8 @@ export async function GET(
 
     try {
         const resolvedParams = await params
-        const payslip = await withTenantTx(tenantId, async (tx) => {
-            return tx.payslip.findFirst({
+        const payslip = await withTenantRead(tenantId, async (db) => {
+            return db.payslip.findFirst({
                 where: { id: resolvedParams.id, tenantId },
                 include: { employee: true, payrollPeriod: true, items: true },
             })
@@ -33,8 +33,8 @@ export async function GET(
             return NextResponse.json({ error: 'Colilla/Recibo no encontrado' }, { status: 404 })
         }
 
-        const settings = await withTenantTx(tenantId, async (tx) => {
-            return tx.tenantSettings.findUnique({ where: { tenantId: (session.user as any).tenantId } })
+        const settings = await withTenantRead(tenantId, async (db) => {
+            return db.tenantSettings.findUnique({ where: { tenantId: (session.user as any).tenantId } })
         })
 
         let companyName = 'Empresa'

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requirePermission } from '@/lib/api-middleware';
 import { PERMISSIONS } from '@/lib/permissions';
-import { getTenantIdFromSession, withTenantTx } from '@/lib/tenancy';
+import { getTenantIdFromSession, withTenantTx, withTenantRead } from '@/lib/tenancy';
 
 export async function GET(req: Request) {
     try {
@@ -13,15 +13,11 @@ export async function GET(req: Request) {
             return NextResponse.json({ error: 'Tenant no encontrado' }, { status: 400 });
         }
 
-        const periods = await withTenantTx(tenantId, async (tx) => {
-            return tx.payrollPeriod.findMany({
+        const periods = await withTenantRead(tenantId, async (db) => {
+            return db.payrollPeriod.findMany({
                 where: { tenantId },
                 orderBy: { startDate: 'desc' },
-                include: {
-                    _count: {
-                        select: { payslips: true }
-                    }
-                }
+                include: { _count: { select: { payslips: true } } }
             })
         })
 

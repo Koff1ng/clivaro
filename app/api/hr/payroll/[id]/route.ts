@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requirePermission } from '@/lib/api-middleware';
 import { PERMISSIONS } from '@/lib/permissions';
-import { getTenantIdFromSession, withTenantTx } from '@/lib/tenancy';
+import { getTenantIdFromSession, withTenantTx, withTenantRead } from '@/lib/tenancy';
 
 export async function GET(
     req: Request,
@@ -14,16 +14,11 @@ export async function GET(
 
         if (!tenantId) return NextResponse.json({ error: 'Tenant no encontrado' }, { status: 400 });
 
-        const period = await withTenantTx(tenantId, async (tx) => {
-            return tx.payrollPeriod.findFirst({
+        const period = await withTenantRead(tenantId, async (db) => {
+            return db.payrollPeriod.findFirst({
                 where: { id: params.id, tenantId },
                 include: {
-                    payslips: {
-                        include: {
-                            employee: true,
-                            items: true,
-                        },
-                    },
+                    payslips: { include: { employee: true, items: true } },
                     journalEntry: true,
                 },
             })
