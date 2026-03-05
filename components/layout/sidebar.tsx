@@ -71,7 +71,7 @@ const menuGroups: MenuGroup[] = [
     title: 'POS',
     key: 'pos',
     items: [
-      { href: '/pos', label: 'Punta de Venta', icon: CartIcon, permission: 'manage_sales', planFeature: 'pos' },
+      { href: '/pos', label: 'Punto de Venta', icon: CartIcon, permission: 'manage_sales', planFeature: 'pos' },
       { href: '/cash/shifts', label: 'Caja', icon: WalletIcon, permission: ['manage_cash', 'manage_sales'], planFeature: 'manageCash' },
       { href: '/sales/quotes', label: 'Cotizaciones', icon: PasteClipboard, permission: 'manage_sales', planFeature: 'quotations' },
       { href: '/sales/orders', label: 'Órdenes', icon: PasteClipboard, permission: 'manage_sales', planFeature: 'manageSales' },
