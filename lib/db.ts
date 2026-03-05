@@ -11,7 +11,7 @@ function addConnectionLimit(url: string): string {
   if (!url.startsWith('postgresql://') && !url.startsWith('postgres://')) {
     return url
   }
-  
+
   // Añadir parámetros para optimizar el uso de Supabase + PgBouncer
   // - connection_limit=5 permite paralelismo sin exceder límites de Supabase
   // - pool_timeout=20 aumenta el tiempo de espera del pool
@@ -28,10 +28,10 @@ function addConnectionLimit(url: string): string {
     newUrl = `${newUrl}${sep}pool_timeout=20`
   }
 
-  if (!newUrl.toLowerCase().includes('pgbouncer=')) {
-    const sep = newUrl.includes('?') ? '&' : '?'
-    newUrl = `${newUrl}${sep}pgbouncer=true`
-  }
+  //if (!newUrl.toLowerCase().includes('pgbouncer=')) {
+  //  const sep = newUrl.includes('?') ? '&' : '?'
+  //  newUrl = `${newUrl}${sep}pgbouncer=true`
+  //}
 
   return newUrl
 }

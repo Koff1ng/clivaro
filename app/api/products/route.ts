@@ -159,6 +159,8 @@ export async function GET(request: Request) {
         executeWithRetry(() => prisma.product.count({ where })),
       ])
 
+      console.log("[DEBUG PRODUCTS API]", { where, limit, skip, rawCount: productsRaw.length, total });
+
       // Explicitly cast or handle the type safely
       const productsWithStock = productsRaw.map((p: any) => {
         let stock = 0

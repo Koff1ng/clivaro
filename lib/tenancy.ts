@@ -1,4 +1,4 @@
-import { Prisma } from '@prisma/client'
+import { Prisma, PrismaClient } from '@prisma/client'
 import { prisma as masterPrisma } from './db'
 import { getSchemaName } from './tenant-utils'
 
@@ -10,14 +10,41 @@ export class TenancyError extends Error {
 }
 
 // Simple in-memory cache to avoid repeated information_schema lookups
-// Use a Map<schemaName, timestamp> so we can expire stale entries
 const schemaCache = new Map<string, number>()
 const SCHEMA_CACHE_TTL_MS = 5 * 60 * 1000 // 5 minutes
 
+// Cache of initialized Prisma Clients per tenant schema
+const tenantPrismaClients = new Map<string, PrismaClient>()
+
+function addConnectionLimit(url: string, schema: string): string {
+    if (!url.startsWith('postgresql://') && !url.startsWith('postgres://')) {
+        return url
+    }
+    let newUrl = url
+
+    if (!newUrl.includes('connection_limit=')) {
+        const sep = newUrl.includes('?') ? '&' : '?'
+        newUrl = `${newUrl}${sep}connection_limit=5`
+    }
+    if (!newUrl.includes('pool_timeout=')) {
+        const sep = newUrl.includes('?') ? '&' : '?'
+        newUrl = `${newUrl}${sep}pool_timeout=20`
+    }
+    if (!newUrl.toLowerCase().includes('pgbouncer=')) {
+        const sep = newUrl.includes('?') ? '&' : '?'
+        newUrl = `${newUrl}${sep}pgbouncer=true`
+    }
+
+    // Replace schema or add it
+    const urlObj = new URL(newUrl)
+    urlObj.searchParams.set('schema', schema)
+    return urlObj.toString()
+}
+
 /**
  * Runs a set of operations within a tenant-scoped transaction.
- * Uses SET LOCAL so the search_path ONLY affects this specific transaction
- * and is automatically reset when the transaction commits or rolls back.
+ * Uses a dynamically instantiated and cached PrismaClient specifically 
+ * assigned to the tenant schema, bypassing the Prisma 5 "public" prefix issue.
  */
 export async function withTenantTx<T>(
     tenantId: string | null | undefined,
@@ -28,49 +55,41 @@ export async function withTenantTx<T>(
         throw new TenancyError('Tenant context is missing. Database access denied.', 401)
     }
 
-    // Use unified schema name derivation — always lowercase, consistent with creation
     const schemaName = getSchemaName(tenantId)
 
-    // Validate the derived schemaName format to prevent SQL injection
     if (!/^[a-z0-9_]+$/.test(schemaName)) {
         throw new TenancyError(`Invalid schema name derived: ${schemaName}`, 400)
     }
 
-    // Ensure schema exists (with TTL-based cache to avoid stale hits)
+    // Ensure schema exists dynamically
     const cachedAt = schemaCache.get(schemaName)
     if (!cachedAt || Date.now() - cachedAt > SCHEMA_CACHE_TTL_MS) {
         const exists = await schemaExists(tenantId)
         if (!exists) {
-            schemaCache.delete(schemaName) // Remove stale entry if any
+            schemaCache.delete(schemaName)
             console.error(`CRITICAL: Schema "${schemaName}" does not exist in the database.`)
             throw new TenancyError(`Forbidden: Account is not properly initialized (${schemaName}).`, 403)
         }
         schemaCache.set(schemaName, Date.now())
     }
 
-    // Build the search_path string — properly quoted to handle any chars
-    const path = options.allowPublicFallback
-        ? `"${schemaName}", public`
-        : `"${schemaName}"`
+    // Get or create Prisma Client for this schema
+    let tenantPrisma = tenantPrismaClients.get(schemaName)
+    if (!tenantPrisma) {
+        const databaseUrl = process.env.DATABASE_URL || process.env.DIRECT_URL || ''
+        const schemaUrl = addConnectionLimit(databaseUrl, schemaName)
 
-    return await masterPrisma.$transaction(
+        tenantPrisma = new PrismaClient({
+            datasources: { db: { url: schemaUrl } },
+            // Optional: Forward logging rules from dev env if needed
+        })
+        tenantPrismaClients.set(schemaName, tenantPrisma)
+    }
+
+    // Execute the user's callback inside a transaction using the tenant-specific client
+    return await tenantPrisma.$transaction(
         async (tx) => {
-            // SET LOCAL: strictly scoped to THIS transaction only.
-            // PostgreSQL automatically resets to the connection default when
-            // the transaction ends (commit or rollback).
-            try {
-                await tx.$executeRawUnsafe(`SET LOCAL search_path TO ${path};`)
-            } catch (error) {
-                console.error(`Failed to set search_path to ${path}:`, error)
-                throw new TenancyError(`Forbidden: Schema context could not be established.`, 403)
-            }
-
-            try {
-                return await callback(tx)
-            } catch (callbackError) {
-                // Let the transaction naturally roll back, which resets SET LOCAL
-                throw callbackError
-            }
+            return await callback(tx)
         },
         {
             timeout: options.timeout || 15000,

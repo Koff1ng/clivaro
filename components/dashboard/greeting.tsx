@@ -35,13 +35,15 @@ export function DashboardGreeting() {
     return 'Buenas noches'
   }
 
+  const companyName = onboardingData?.settings?.onboardingCompanyName
+
   return (
     <div className="mb-4 pb-4 border-b border-border/40">
       <h1 className="text-lg font-light text-foreground tracking-tight">
         {getGreeting()}, {firstName}
       </h1>
       <p className="text-sm text-muted-foreground mt-0.5 font-light">
-        Resumen general de tu operación
+        Resumen general de tu operación {companyName ? `- ${companyName}` : ''}
       </p>
     </div>
   )
