@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
 import { requirePermission } from '@/lib/api-middleware';
 import { PERMISSIONS } from '@/lib/permissions';
-import { getTenantIdFromSession } from '@/lib/tenancy';
+import { getTenantIdFromSession, withTenantTx } from '@/lib/tenancy';
 
 export async function GET(
     req: Request,
@@ -17,12 +16,12 @@ export async function GET(
             return NextResponse.json({ error: 'Tenant no encontrado' }, { status: 400 });
         }
 
-        const employee = await prisma.employee.findFirst({
-            where: { id: params.id, tenantId },
-            include: {
-                payslips: true, // You may want to limit this later
-            },
-        });
+        const employee = await withTenantTx(tenantId, async (tx) => {
+            return tx.employee.findFirst({
+                where: { id: params.id, tenantId },
+                include: { payslips: true },
+            })
+        })
 
         if (!employee) {
             return NextResponse.json({ error: 'Empleado no encontrado' }, { status: 404 });
@@ -53,42 +52,44 @@ export async function PUT(
 
         const data = await req.json();
 
-        // Verify employee exists and belongs to tenant
-        const existingEmployee = await prisma.employee.findFirst({
-            where: { id: params.id, tenantId }
-        });
+        const updatedEmployee = await withTenantTx(tenantId, async (tx) => {
+            const existingEmployee = await tx.employee.findFirst({
+                where: { id: params.id, tenantId }
+            });
 
-        if (!existingEmployee) {
+            if (!existingEmployee) return null;
+
+            return tx.employee.update({
+                where: { id: params.id },
+                data: {
+                    documentType: data.documentType,
+                    documentNumber: data.documentNumber,
+                    firstName: data.firstName,
+                    lastName: data.lastName,
+                    email: data.email,
+                    phone: data.phone,
+                    address: data.address,
+                    jobTitle: data.jobTitle,
+                    department: data.department,
+                    hireDate: data.hireDate ? new Date(data.hireDate) : undefined,
+                    isActive: data.isActive,
+                    baseSalary: data.baseSalary ? parseFloat(data.baseSalary) : undefined,
+                    salaryType: data.salaryType,
+                    bankName: data.bankName,
+                    bankAccountType: data.bankAccountType,
+                    bankAccountNumber: data.bankAccountNumber,
+                    healthEntity: data.healthEntity,
+                    pensionEntity: data.pensionEntity,
+                    arlEntity: data.arlEntity,
+                    compensationBox: data.compensationBox,
+                    paymentMethod: data.paymentMethod,
+                },
+            });
+        })
+
+        if (!updatedEmployee) {
             return NextResponse.json({ error: 'Empleado no encontrado' }, { status: 404 });
         }
-
-        const updatedEmployee = await prisma.employee.update({
-            where: { id: params.id },
-            data: {
-                documentType: data.documentType,
-                documentNumber: data.documentNumber,
-                firstName: data.firstName,
-                lastName: data.lastName,
-                email: data.email,
-                phone: data.phone,
-                address: data.address,
-                jobTitle: data.jobTitle,
-                department: data.department,
-                hireDate: data.hireDate ? new Date(data.hireDate) : undefined,
-                isActive: data.isActive,
-                baseSalary: data.baseSalary ? parseFloat(data.baseSalary) : undefined,
-                salaryType: data.salaryType,
-                bankName: data.bankName,
-                bankAccountType: data.bankAccountType,
-                bankAccountNumber: data.bankAccountNumber,
-                // DIAN Fields
-                healthEntity: data.healthEntity,
-                pensionEntity: data.pensionEntity,
-                arlEntity: data.arlEntity,
-                compensationBox: data.compensationBox,
-                paymentMethod: data.paymentMethod,
-            },
-        });
 
         return NextResponse.json(updatedEmployee);
     } catch (error: any) {
@@ -112,32 +113,35 @@ export async function DELETE(
 ) {
     try {
         const session = await requirePermission(req, PERMISSIONS.MANAGE_USERS);
+        if (session instanceof NextResponse) { return session; }
         const tenantId = await getTenantIdFromSession(session);
 
         if (!tenantId) {
             return NextResponse.json({ error: 'Tenant no encontrado' }, { status: 400 });
         }
 
-        const employee = await prisma.employee.findFirst({
-            where: { id: params.id, tenantId },
-            include: { payslips: true }
-        });
+        const result = await withTenantTx(tenantId, async (tx) => {
+            const employee = await tx.employee.findFirst({
+                where: { id: params.id, tenantId },
+                include: { payslips: true }
+            });
 
-        if (!employee) {
+            if (!employee) return { notFound: true };
+            if (employee.payslips.length > 0) return { hasPayslips: true };
+
+            await tx.employee.delete({ where: { id: params.id } });
+            return { success: true };
+        })
+
+        if ((result as any).notFound) {
             return NextResponse.json({ error: 'Empleado no encontrado' }, { status: 404 });
         }
-
-        // Prevent deletion if employee has payslips, instead encourage setting them as inactive
-        if (employee.payslips.length > 0) {
+        if ((result as any).hasPayslips) {
             return NextResponse.json(
                 { error: 'No se puede eliminar el empleado porque tiene nóminas asociadas. Se recomienda marcarlo como Inactivo.' },
                 { status: 400 }
             );
         }
-
-        await prisma.employee.delete({
-            where: { id: params.id },
-        });
 
         return NextResponse.json({ success: true });
     } catch (error: any) {

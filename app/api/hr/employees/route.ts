@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
 import { requirePermission } from '@/lib/api-middleware';
 import { PERMISSIONS } from '@/lib/permissions';
-import { getTenantIdFromSession } from '@/lib/tenancy';
+import { getTenantIdFromSession, withTenantTx } from '@/lib/tenancy';
 
 export async function GET(req: Request) {
     try {
@@ -34,10 +33,12 @@ export async function GET(req: Request) {
             whereClause.isActive = isActiveStr === 'true';
         }
 
-        const employees = await prisma.employee.findMany({
-            where: whereClause,
-            orderBy: { firstName: 'asc' },
-        });
+        const employees = await withTenantTx(tenantId, async (tx) => {
+            return tx.employee.findMany({
+                where: whereClause,
+                orderBy: { firstName: 'asc' },
+            })
+        })
 
         return NextResponse.json(employees);
     } catch (error: any) {
@@ -71,33 +72,35 @@ export async function POST(req: Request) {
             );
         }
 
-        const newEmployee = await prisma.employee.create({
-            data: {
-                tenantId,
-                documentType: data.documentType || 'CC',
-                documentNumber: data.documentNumber,
-                firstName: data.firstName,
-                lastName: data.lastName,
-                email: data.email,
-                phone: data.phone,
-                address: data.address,
-                jobTitle: data.jobTitle || 'Empleado',
-                department: data.department,
-                hireDate: new Date(data.hireDate || new Date()),
-                isActive: data.isActive !== false,
-                baseSalary: parseFloat(data.baseSalary),
-                salaryType: data.salaryType || 'FIJO',
-                bankName: data.bankName,
-                bankAccountType: data.bankAccountType,
-                bankAccountNumber: data.bankAccountNumber,
-                // DIAN Fields
-                healthEntity: data.healthEntity,
-                pensionEntity: data.pensionEntity,
-                arlEntity: data.arlEntity,
-                compensationBox: data.compensationBox,
-                paymentMethod: data.paymentMethod,
-            },
-        });
+        const newEmployee = await withTenantTx(tenantId, async (tx) => {
+            return tx.employee.create({
+                data: {
+                    tenantId,
+                    documentType: data.documentType || 'CC',
+                    documentNumber: data.documentNumber,
+                    firstName: data.firstName,
+                    lastName: data.lastName,
+                    email: data.email,
+                    phone: data.phone,
+                    address: data.address,
+                    jobTitle: data.jobTitle || 'Empleado',
+                    department: data.department,
+                    hireDate: new Date(data.hireDate || new Date()),
+                    isActive: data.isActive !== false,
+                    baseSalary: parseFloat(data.baseSalary),
+                    salaryType: data.salaryType || 'FIJO',
+                    bankName: data.bankName,
+                    bankAccountType: data.bankAccountType,
+                    bankAccountNumber: data.bankAccountNumber,
+                    // DIAN Fields
+                    healthEntity: data.healthEntity,
+                    pensionEntity: data.pensionEntity,
+                    arlEntity: data.arlEntity,
+                    compensationBox: data.compensationBox,
+                    paymentMethod: data.paymentMethod,
+                },
+            })
+        })
 
         return NextResponse.json(newEmployee, { status: 201 });
     } catch (error: any) {

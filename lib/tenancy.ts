@@ -74,14 +74,15 @@ export async function withTenantTx<T>(
     }
 
     // Get or create Prisma Client for this schema
+    // Prefer DIRECT_URL (bypasses PgBouncer) to avoid prepared-statement errors
+    // in PgBouncer transaction-mode pooling (error code 26000)
     let tenantPrisma = tenantPrismaClients.get(schemaName)
     if (!tenantPrisma) {
-        const databaseUrl = process.env.DATABASE_URL || process.env.DIRECT_URL || ''
+        const databaseUrl = process.env.DIRECT_URL || process.env.DATABASE_URL || ''
         const schemaUrl = addConnectionLimit(databaseUrl, schemaName)
 
         tenantPrisma = new PrismaClient({
             datasources: { db: { url: schemaUrl } },
-            // Optional: Forward logging rules from dev env if needed
         })
         tenantPrismaClients.set(schemaName, tenantPrisma)
     }

@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
 import { requirePermission } from '@/lib/api-middleware';
 import { PERMISSIONS } from '@/lib/permissions';
-import { getTenantIdFromSession } from '@/lib/tenancy';
+import { getTenantIdFromSession, withTenantTx } from '@/lib/tenancy';
 
 export async function GET(req: Request) {
     try {
@@ -14,15 +13,17 @@ export async function GET(req: Request) {
             return NextResponse.json({ error: 'Tenant no encontrado' }, { status: 400 });
         }
 
-        const periods = await prisma.payrollPeriod.findMany({
-            where: { tenantId },
-            orderBy: { startDate: 'desc' },
-            include: {
-                _count: {
-                    select: { payslips: true }
+        const periods = await withTenantTx(tenantId, async (tx) => {
+            return tx.payrollPeriod.findMany({
+                where: { tenantId },
+                orderBy: { startDate: 'desc' },
+                include: {
+                    _count: {
+                        select: { payslips: true }
+                    }
                 }
-            }
-        });
+            })
+        })
 
         return NextResponse.json(periods);
     } catch (error: any) {
@@ -56,8 +57,8 @@ export async function POST(req: Request) {
         const startDate = new Date(data.startDate);
         const endDate = new Date(data.endDate);
 
-        // Run within a transaction to ensure all payslips are created atomically
-        const newPeriod = await prisma.$transaction(async (tx) => {
+        // withTenantTx wraps in a transaction so this is equivalent to prisma.$transaction
+        const newPeriod = await withTenantTx(tenantId, async (tx) => {
             // 1. Create the base Payroll Period
             const period = await tx.payrollPeriod.create({
                 data: {
@@ -113,13 +114,13 @@ export async function POST(req: Request) {
                     where: { id: period.id },
                     data: {
                         totalEarnings: grandTotalEarnings,
-                        netPay: grandTotalEarnings, // deductions are 0 initially
+                        netPay: grandTotalEarnings,
                     },
                 });
             }
 
             return period;
-        });
+        }, { timeout: 30000 })
 
         return NextResponse.json(newPeriod, { status: 201 });
     } catch (error: any) {

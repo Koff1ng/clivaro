@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requirePermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
-import { prisma } from '@/lib/db'
-import { getTenantIdFromSession } from '@/lib/tenancy'
+import { getTenantIdFromSession, withTenantTx } from '@/lib/tenancy'
 import { generatePayslipPDF } from '@/lib/pdf'
 import { sendEmail } from '@/lib/email'
 
@@ -23,27 +22,23 @@ export async function POST(
 
     try {
         const resolvedParams = await params
-        const payroll = await prisma.payrollPeriod.findFirst({
-            where: { id: resolvedParams.id, tenantId },
-            include: {
-                payslips: {
-                    include: {
-                        employee: true,
-                        items: true,
+        const payroll = await withTenantTx(tenantId, async (tx) => {
+            return tx.payrollPeriod.findFirst({
+                where: { id: resolvedParams.id, tenantId },
+                include: {
+                    payslips: {
+                        include: { employee: true, items: true }
                     }
-                }
-            },
+                },
+            })
         })
 
         if (!payroll) {
-            return NextResponse.json(
-                { error: 'Nómina no encontrada' },
-                { status: 404 }
-            )
+            return NextResponse.json({ error: 'Nómina no encontrada' }, { status: 404 })
         }
 
-        const settings = await prisma.tenantSettings.findUnique({
-            where: { tenantId: (session.user as any).tenantId }
+        const settings = await withTenantTx(tenantId, async (tx) => {
+            return tx.tenantSettings.findUnique({ where: { tenantId: (session.user as any).tenantId } })
         })
 
         let companyName = 'Empresa'
