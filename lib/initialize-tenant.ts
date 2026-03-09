@@ -96,10 +96,11 @@ async function initializePostgresTenant(databaseUrl: string, tenantId: string, t
   // Step 2.5: Ensure critical schema sync for existing tables
   // This handles the case where reinit is run on an outdated schema
   console.log(`[STEP 2.5/4] Sincronizando columnas legales en "${schemaName}"...`)
+  const syncClient = new Client({ connectionString: tenantSchemaUrl })
   try {
-    await ddlClient.connect()
-    await ddlClient.query(`SET search_path TO "${schemaName}"`)
-    await ddlClient.query(`
+    await syncClient.connect()
+    await syncClient.query(`SET search_path TO "${schemaName}"`)
+    await syncClient.query(`
       ALTER TABLE "User" 
       ADD COLUMN IF NOT EXISTS "legalAccepted" BOOLEAN NOT NULL DEFAULT false,
       ADD COLUMN IF NOT EXISTS "legalAcceptedAt" TIMESTAMP(3),
@@ -110,9 +111,8 @@ async function initializePostgresTenant(databaseUrl: string, tenantId: string, t
     console.log('[STEP 2.5/4] ✓ Columnas sincronizadas')
   } catch (syncErr: any) {
     console.warn(`[TENANT INIT] Warning during schema sync: ${syncErr.message}`)
-    // Continue anyway, Prisma might still work if columns already existed
   } finally {
-    if ((ddlClient as any)._connected) await ddlClient.end()
+    await syncClient.end()
   }
 
   // Step 3: Seed initial data (admin user, warehouse) via PrismaClient
