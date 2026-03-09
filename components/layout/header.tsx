@@ -3,7 +3,7 @@
 import { useSession } from 'next-auth/react'
 import { useSidebar } from '@/lib/sidebar-context'
 import { Button } from '@/components/ui/button'
-import { Menu, Bell, User } from 'lucide-react'
+import { Menu, Bell, User, HelpCircle } from 'lucide-react'
 import { ThemeToggle } from '@/components/theme/theme-toggle'
 import {
   DropdownMenu,
@@ -43,7 +43,7 @@ async function fetchActivityFeed() {
 const LAST_READ_KEY = 'notifications_last_read'
 
 export function Header() {
-  const { isOpen, toggle } = useSidebar()
+  const { isOpen, toggle, toggleChat } = useSidebar()
   const { data: session } = useSession()
   const [lastReadTimestamp, setLastReadTimestamp] = useState<string | null>(null)
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
@@ -168,10 +168,18 @@ export function Header() {
           <GlobalSearch />
         </div>
 
-        {/* Right side: Theme Toggle, Notifications and User */}
+        {/* Right side: Help, Notifications and User */}
         <div className="flex items-center gap-1 sm:gap-2">
-          {/* Theme Toggle */}
-          <ThemeToggle />
+          {/* Help / IA Assistant Toggle */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleChat}
+            className="h-8 w-8 sm:h-9 sm:w-9 text-slate-100 hover:bg-slate-800 hover:text-white transition-all hover:scale-110 active:scale-95"
+            title="Asistente de Ayuda IA"
+          >
+            <HelpCircle className="h-4 w-4 sm:h-5 sm:w-5 text-sky-400" />
+          </Button>
 
           {/* Notifications */}
           <DropdownMenu open={isDropdownOpen} onOpenChange={handleDropdownOpenChange}>

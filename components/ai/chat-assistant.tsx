@@ -8,6 +8,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/componen
 import { Sparkles, Send, X, MessageSquare, Loader2, Bot, User, Maximize2, Minimize2 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useToast } from '@/components/ui/toast'
+import { useSidebar } from '@/lib/sidebar-context'
 import { getAssistantResponse } from './actions'
 
 interface Message {
@@ -15,12 +16,21 @@ interface Message {
     content: string
 }
 
+const QUICK_SUGGESTIONS = [
+    "Generar reporte de ventas",
+    "Ver balance general",
+    "¿Cómo crear un producto?",
+    "Ajustes de facturación",
+    "Ver inventario actual"
+]
+
 export function ChatAssistant() {
-    const [isOpen, setIsOpen] = useState(false)
+    const { isChatOpen: isOpen, setChatOpen: setIsOpen } = useSidebar()
     const [isExpanded, setIsExpanded] = useState(false)
     const [input, setInput] = useState('')
     const [messages, setMessages] = useState<Message[]>([])
     const [isLoading, setIsLoading] = useState(false)
+    const [suggestions, setSuggestions] = useState<string[]>([])
     const scrollRef = useRef<HTMLDivElement>(null)
     const { toast } = useToast()
     const router = useRouter()
@@ -30,7 +40,6 @@ export function ChatAssistant() {
     // Cargar desde sessionStorage al montar
     useEffect(() => {
         const savedMessages = sessionStorage.getItem('clivaro-chat-messages')
-        const savedIsOpen = sessionStorage.getItem('clivaro-chat-is-open')
         const savedIsExpanded = sessionStorage.getItem('clivaro-chat-is-expanded')
 
         if (savedMessages) {
@@ -39,20 +48,20 @@ export function ChatAssistant() {
             setMessages([initialMessage])
         }
 
-        if (savedIsOpen === 'true') setIsOpen(true)
         if (savedIsExpanded === 'true') setIsExpanded(true)
     }, [])
 
-    // Guardar en sessionStorage cuando cambie el estado
+    // Lógica de sugerencias en tiempo real
     useEffect(() => {
-        if (messages.length > 0) {
-            sessionStorage.setItem('clivaro-chat-messages', JSON.stringify(messages))
+        if (input.trim().length > 2) {
+            const filtered = QUICK_SUGGESTIONS.filter(s =>
+                s.toLowerCase().includes(input.toLowerCase())
+            )
+            setSuggestions(filtered)
+        } else {
+            setSuggestions([])
         }
-    }, [messages])
-
-    useEffect(() => {
-        sessionStorage.setItem('clivaro-chat-is-open', isOpen.toString())
-    }, [isOpen])
+    }, [input])
 
     useEffect(() => {
         sessionStorage.setItem('clivaro-chat-is-expanded', isExpanded.toString())
@@ -128,11 +137,18 @@ export function ChatAssistant() {
         }
     }, [messages, isOpen])
 
-    const handleSend = async () => {
-        if (!input.trim() || isLoading) return
+    const handleSuggestion = (suggestion: string) => {
+        setInput(suggestion)
+        handleSend(suggestion)
+    }
 
-        const userMsg = input.trim()
+    const handleSend = async (overrideInput?: string) => {
+        const textToSend = overrideInput || input
+        if (!textToSend.trim() || isLoading) return
+
+        const userMsg = textToSend.trim()
         setInput('')
+        setSuggestions([])
         const newMessages = [...messages, { role: 'user' as const, content: userMsg }]
         setMessages(newMessages)
         setIsLoading(true)
@@ -244,7 +260,27 @@ export function ChatAssistant() {
                                 )}
                             </CardContent>
 
-                            <CardFooter className="p-3 border-t bg-card shrink-0">
+                            <CardFooter className="p-3 border-t bg-card shrink-0 flex flex-col gap-2">
+                                <AnimatePresence>
+                                    {suggestions.length > 0 && (
+                                        <motion.div
+                                            initial={{ opacity: 0, y: 10 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            exit={{ opacity: 0, scale: 0.9 }}
+                                            className="w-full flex flex-wrap gap-1 mb-1"
+                                        >
+                                            {suggestions.map((s) => (
+                                                <button
+                                                    key={s}
+                                                    onClick={() => handleSuggestion(s)}
+                                                    className="text-[10px] bg-sky-50 dark:bg-sky-900/30 text-sky-600 dark:text-sky-400 px-2 py-1 rounded-full border border-sky-100 dark:border-sky-800 hover:bg-sky-100 dark:hover:bg-sky-800/50 transition-colors truncate max-w-[150px]"
+                                                >
+                                                    {s}
+                                                </button>
+                                            ))}
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
                                 <form
                                     onSubmit={(e) => { e.preventDefault(); handleSend(); }}
                                     className="flex gap-2 w-full"
@@ -265,22 +301,6 @@ export function ChatAssistant() {
                     </motion.div>
                 )}
             </AnimatePresence>
-
-            <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => setIsOpen(!isOpen)}
-                className="h-14 w-14 rounded-full bg-primary text-primary-foreground shadow-2xl flex items-center justify-center border-4 border-white dark:border-zinc-950 relative overflow-hidden group"
-            >
-                <div className="absolute inset-0 bg-gradient-to-tr from-primary to-primary-foreground/20 opacity-0 group-hover:opacity-100 transition-opacity" />
-                {isOpen ? <X className="h-6 w-6 relative z-10" /> : <MessageSquare className="h-6 w-6 relative z-10" />}
-                {!isOpen && (
-                    <span className="absolute -top-1 -right-1 flex h-4 w-4">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-4 w-4 bg-sky-500 border-2 border-white dark:border-zinc-950"></span>
-                    </span>
-                )}
-            </motion.button>
         </div>
     )
 }
