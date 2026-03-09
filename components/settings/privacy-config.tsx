@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { ShieldCheck, Mail, Trash2, CheckCircle2, AlertCircle, Loader2, ExternalLink } from 'lucide-react'
 import { useSession } from 'next-auth/react'
 import Link from 'next/link'
-import { useToast } from '@/components/ui/use-toast' // Changed import
+import { useToast } from '@/components/ui/toast'
 
 export function PrivacyConfig() {
     const { data: session, update } = useSession()
