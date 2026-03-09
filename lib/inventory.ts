@@ -1,16 +1,17 @@
 import { prisma } from './db'
 import type { PrismaClient } from '@prisma/client'
 
-// Esta función ahora requiere que se pase el cliente Prisma como parámetro
-// para soportar multi-tenant
-
 /**
- * Calculate moving average cost for a product
- * newCost = (oldCost * oldStock + receivedCost * receivedQty) / (oldStock + receivedQty)
- */
-/**
- * Calculate moving average cost for a product or variant
- * newCost = (oldCost * oldStock + receivedCost * receivedQty) / (oldStock + receivedQty)
+ * Calculates and updates the Weighted Average Cost (WAC) for a product or variant.
+ * Logic: newCost = (oldCost * oldStock + receivedCost * receivedQty) / (oldStock + receivedQty)
+ * 
+ * @param productId - The ID of the product.
+ * @param warehouseId - The ID of the warehouse where stock is received.
+ * @param receivedQty - Quantity being added to stock.
+ * @param receivedCost - Unit cost of the new items.
+ * @param tx - Optional Prisma transaction client.
+ * @param variantId - Optional ID if the cost is variant-specific.
+ * @returns The newly calculated average cost.
  */
 export async function updateProductCost(
   productId: string,
@@ -81,7 +82,15 @@ export async function updateProductCost(
 }
 
 /**
- * Update stock level (create or update)
+ * Updates the stock level for a product/variant in a specific warehouse/zone.
+ * Automatically creates a stock movement record if `movementDetails` are provided.
+ * 
+ * @param warehouseId - Target warehouse.
+ * @param productId - Target product.
+ * @param variantId - Target variant (optional).
+ * @param quantityChange - Amount to add (positive) or subtract (negative).
+ * @param prismaTx - Optional Prisma transaction client.
+ * @param movementDetails - Optional metadata for the stock movement record.
  */
 export async function updateStockLevel(
   warehouseId: string,
@@ -165,8 +174,15 @@ export async function updateStockLevel(
 }
 
 /**
- * Check if product has sufficient stock
- * @param client - Prisma client (tenant or master)
+ * Checks if a specific product or variant has enough available stock in a warehouse/zone.
+ * 
+ * @param warehouseId - The warehouse to check.
+ * @param productId - The product ID.
+ * @param variantId - The variant ID (optional).
+ * @param requiredQty - The quantity needed.
+ * @param client - Optional Prisma client (useful for tenant-specific checks).
+ * @param zoneId - Optional zone within the warehouse.
+ * @returns True if sufficient stock exists, false otherwise.
  */
 export async function checkStock(
   warehouseId: string,

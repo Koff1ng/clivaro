@@ -3,6 +3,10 @@ import { requirePermission } from '@/lib/api-middleware';
 import { PERMISSIONS } from '@/lib/permissions';
 import { getTenantIdFromSession, withTenantTx, withTenantRead } from '@/lib/tenancy';
 
+/**
+ * Fetches all payroll periods for the current tenant.
+ * Requires `MANAGE_USERS` permission (Human Resources context).
+ */
 export async function GET(req: Request) {
     try {
         const session = await requirePermission(req, PERMISSIONS.MANAGE_USERS);
@@ -31,6 +35,13 @@ export async function GET(req: Request) {
     }
 }
 
+/**
+ * Creates a new payroll period and automatically generates payslips for all active employees.
+ * This process includes calculating legal deductions for Colombia (Health 4% and Pension 4%).
+ * All operations are performed within a tenant-scoped transaction.
+ * 
+ * @param req - The request object containing `periodName`, `startDate`, and `endDate`.
+ */
 export async function POST(req: Request) {
     try {
         const session = await requirePermission(req, PERMISSIONS.MANAGE_USERS);

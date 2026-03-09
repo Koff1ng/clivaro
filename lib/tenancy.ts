@@ -2,6 +2,9 @@ import { Prisma, PrismaClient } from '@prisma/client'
 import { prisma as masterPrisma } from './db'
 import { getSchemaName } from './tenant-utils'
 
+/**
+ * Custom error class for tenancy-related failures (e.g., missing tenant context, invalid schema).
+ */
 export class TenancyError extends Error {
     constructor(message: string, public code: number = 401) {
         super(message)
@@ -80,9 +83,13 @@ async function getTenantPrismaClient(tenantId: string): Promise<PrismaClient> {
 }
 
 /**
- * Runs a set of operations within a tenant-scoped transaction.
- * Uses a dynamically instantiated and cached PrismaClient specifically
- * assigned to the tenant schema.
+ * Runs a set of database operations within a tenant-scoped transaction.
+ * This is the preferred way to perform writes that ensure data integrity (atomicity).
+ * 
+ * @param tenantId - The ID of the tenant.
+ * @param callback - An async function that receives a Prisma transaction client.
+ * @param options - Optional configuration for the transaction (timeout, isolation level).
+ * @returns The result of the callback.
  */
 export async function withTenantTx<T>(
     tenantId: string | null | undefined,
@@ -108,7 +115,10 @@ export async function withTenantTx<T>(
 
 /**
  * Runs a read-only operation against the tenant schema WITHOUT a transaction.
- * Prefer this for GET endpoints — faster and avoids transaction overhead.
+ * This is faster and uses fewer resources than `withTenantTx`. Use it for GET requests and non-critical reads.
+ * 
+ * @param tenantId - The ID of the tenant.
+ * @param callback - An async function that receives a Prisma client scoped to the tenant.
  */
 export async function withTenantRead<T>(
     tenantId: string | null | undefined,
@@ -123,7 +133,10 @@ export async function withTenantRead<T>(
 }
 
 /**
- * Checks if a tenant's schema exists in the database.
+ * Checks if a tenant's schema exists in the database by querying `information_schema.schemata`.
+ * 
+ * @param tenantId - The tenant ID to check.
+ * @returns True if the schema exists, false otherwise.
  */
 export async function schemaExists(tenantId: string): Promise<boolean> {
     const schemaName = getSchemaName(tenantId)
@@ -136,7 +149,11 @@ export async function schemaExists(tenantId: string): Promise<boolean> {
 }
 
 /**
- * Enforce that the request is running in a valid tenant context from session.
+ * Extracts the `tenantId` from the user session.
+ * Throws a `TenancyError` if the tenant ID is missing (unauthorized).
+ * 
+ * @param session - The session object (usually from `getServerSession`).
+ * @returns The tenant ID as a string.
  */
 export function getTenantIdFromSession(session: any): string {
     if (!session?.user?.tenantId) {

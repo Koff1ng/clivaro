@@ -1,27 +1,50 @@
-
-import { prisma } from '@/lib/db'
-import { validatePeriodNotClosed } from './period-service'
-import { logAction } from './audit-service'
-
+/**
+ * Input data required to create a new Journal Entry.
+ */
 export type JournalEntryInput = {
+    /** The transaction date */
     date: Date
+    /** Type of entry (e.g., 'SALES', 'PURCHASE', 'PAYROLL') */
     type: string
+    /** General description of the entry */
     description: string
+    /** Optional reference number (e.g., Invoice #, Receipt #) */
     reference?: string
+    /** Initial status of the entry */
     status?: 'DRAFT' | 'APPROVED'
+    /** Accounting lines (debits and credits) */
     lines: Array<{
+        /** Target account ID */
         accountId: string
+        /** Line-specific description (defaults to entry description) */
         description?: string
+        /** Debit amount (must be positive or omitted) */
         debit?: number
+        /** Credit amount (must be positive or omitted) */
         credit?: number
-        accountingThirdPartyId?: string // New field
-        thirdPartyId?: string // Legacy/Auto (Customer)
-        supplierId?: string // Legacy/Auto (Supplier)
+        /** ID of the third party in the accounting system */
+        accountingThirdPartyId?: string
+        /** Legacy/Auto ID for Customers */
+        thirdPartyId?: string
+        /** Legacy/Auto ID for Suppliers */
+        supplierId?: string
+        /** Display name for the third party */
         thirdPartyName?: string
+        /** Tax ID (NIT/RUT) for the third party */
         thirdPartyNit?: string
     }>
 }
 
+/**
+ * Creates a new journal entry in the system.
+ * This function supports atomic transactions by passing a `prismaTx` client.
+ * 
+ * @param tenantId - The unique ID of the tenant.
+ * @param userId - The ID of the user creating the entry.
+ * @param data - The entry data (lines, date, etc).
+ * @param prismaTx - Optional Prisma transaction client to ensure atomicity.
+ * @returns The created journal entry with its lines.
+ */
 export async function createJournalEntry(tenantId: string, userId: string, data: JournalEntryInput, prismaTx?: any) {
     // Basic validation
     let totalDebit = 0
@@ -98,6 +121,14 @@ export async function createJournalEntry(tenantId: string, userId: string, data:
     })
 }
 
+/**
+ * Approves a journal entry, changing its status from DRAFT back to APPROVED.
+ * This checks that the entry is balanced and that the accounting period is open.
+ * 
+ * @param tenantId - The unique ID of the tenant.
+ * @param entryId - The ID of the journal entry to approve.
+ * @param userId - The ID of the user performing the approval.
+ */
 export async function approveJournalEntry(tenantId: string, entryId: string, userId: string) {
     const entry = await prisma.journalEntry.findUnique({
         where: { id: entryId },
@@ -138,6 +169,14 @@ export async function approveJournalEntry(tenantId: string, entryId: string, use
     return updated
 }
 
+/**
+ * Annuls a journal entry. 
+ * The entry remains in the database for audit purposes but its status is changed to ANNULLED.
+ * 
+ * @param tenantId - The ID of the tenant.
+ * @param entryId - The ID of the entry to annul.
+ * @param userId - The ID of the user performing the annulment.
+ */
 export async function annulJournalEntry(tenantId: string, entryId: string, userId: string) {
     const entry = await prisma.journalEntry.findUnique({
         where: { id: entryId }
@@ -166,6 +205,12 @@ export async function annulJournalEntry(tenantId: string, entryId: string, userI
     return updated
 }
 
+/**
+ * Fetches a list of journal entries based on the provided filters.
+ * 
+ * @param tenantId - The ID of the tenant.
+ * @param filters - Optional filters for status, start date, and end date.
+ */
 export async function getJournalEntries(tenantId: string, filters?: { status?: string, start?: Date, end?: Date }) {
     const where: any = { tenantId }
     if (filters?.status && filters.status !== 'ALL') where.status = filters.status
@@ -191,6 +236,13 @@ export async function getJournalEntry(tenantId: string, id: string) {
     })
 }
 
+/**
+ * Retrieves a detailed list of journal lines (ledger view) with optional filters.
+ * Useful for building general ledger reports or account statements.
+ * 
+ * @param tenantId - The ID of the tenant.
+ * @param filters - Filters for account, third party, and date range.
+ */
 export async function getJournalLines(tenantId: string, filters?: { accountId?: string, thirdPartyId?: string, start?: Date, end?: Date }) {
     const where: any = {
         journalEntry: { tenantId }
