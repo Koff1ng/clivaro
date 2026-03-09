@@ -28,38 +28,38 @@ export function ChatAssistant() {
     const { isChatOpen: isOpen, setChatOpen: setIsOpen } = useSidebar()
     const [isExpanded, setIsExpanded] = useState(false)
     const [input, setInput] = useState('')
+    const [isFocused, setIsFocused] = useState(false)
     const [messages, setMessages] = useState<Message[]>([])
     const [isLoading, setIsLoading] = useState(false)
-    const [suggestions, setSuggestions] = useState<string[]>([])
+    const [suggestions, setSuggestions] = useState<string[]>(QUICK_SUGGESTIONS)
     const scrollRef = useRef<HTMLDivElement>(null)
     const { toast } = useToast()
     const router = useRouter()
 
-    const initialMessage = { role: 'assistant' as const, content: '¡Hola! Soy tu asistente inteligente del ERP. ¿En qué puedo ayudarte hoy?' }
+    const initialMessage = {
+        role: 'assistant' as const,
+        content: '¡Hola! Soy tu **asistente inteligente** de Clivaro. Puedo ayudarte a generar **reportes**, encontrar **módulos** o configurar tu **negocio**. ¿Sobre qué deseas consultar?'
+    }
 
     // Cargar desde sessionStorage al montar
     useEffect(() => {
         const savedMessages = sessionStorage.getItem('clivaro-chat-messages')
-        const savedIsExpanded = sessionStorage.getItem('clivaro-chat-is-expanded')
-
         if (savedMessages) {
             setMessages(JSON.parse(savedMessages))
         } else {
             setMessages([initialMessage])
         }
-
-        if (savedIsExpanded === 'true') setIsExpanded(true)
     }, [])
 
     // Lógica de sugerencias en tiempo real
     useEffect(() => {
-        if (input.trim().length > 2) {
+        if (input.trim().length > 0) {
             const filtered = QUICK_SUGGESTIONS.filter(s =>
                 s.toLowerCase().includes(input.toLowerCase())
             )
             setSuggestions(filtered)
         } else {
-            setSuggestions([])
+            setSuggestions(QUICK_SUGGESTIONS)
         }
     }, [input])
 
@@ -75,19 +75,20 @@ export function ChatAssistant() {
 
     // ─── Parsea markdown básico: **negrita**, *cursiva*, `código`, \n ───
     const parseMarkdown = (text: string): (string | JSX.Element)[] => {
+        // Mejorado para manejar bloques de texto y espaciado
         const segments = text.split(/(\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`|\n)/g)
         return segments.map((seg, i) => {
             if (/^\*\*(.+)\*\*$/.test(seg)) {
-                return <strong key={i} className="font-semibold">{seg.slice(2, -2)}</strong>
+                return <strong key={i} className="font-bold text-sky-600 dark:text-sky-400">{seg.slice(2, -2)}</strong>
             }
             if (/^\*(.+)\*$/.test(seg)) {
-                return <em key={i} className="italic">{seg.slice(1, -1)}</em>
+                return <em key={i} className="italic text-muted-foreground">{seg.slice(1, -1)}</em>
             }
             if (/^`(.+)`$/.test(seg)) {
-                return <code key={i} className="bg-muted px-1 py-0.5 rounded text-xs font-mono">{seg.slice(1, -1)}</code>
+                return <code key={i} className="bg-muted px-1.5 py-0.5 rounded text-[11px] font-mono border border-border/50">{seg.slice(1, -1)}</code>
             }
             if (seg === '\n') {
-                return <br key={i} />
+                return <div key={i} className="h-2" />
             }
             return seg
         })
@@ -171,134 +172,149 @@ export function ChatAssistant() {
     }
 
     return (
-        <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end">
+        <div className="fixed inset-0 pointer-events-none z-[100]">
             <AnimatePresence>
                 {isOpen && (
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.8, y: 20 }}
-                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.8, y: 20 }}
-                        className={`mb-4 w-[350px] sm:w-[400px] ${isExpanded ? 'h-[600px]' : 'h-[500px]'} transition-all`}
-                    >
-                        <Card className="h-full shadow-2xl border-primary/10 flex flex-col overflow-hidden">
-                            <CardHeader className="bg-primary text-primary-foreground py-3 flex flex-row items-center justify-between shrink-0">
-                                <div className="flex items-center gap-2">
-                                    <div className="bg-white/20 p-1.5 rounded-lg">
-                                        <Sparkles className="h-4 w-4" />
-                                    </div>
-                                    <CardTitle className="text-sm font-bold">Asistente Clivaro IA</CardTitle>
-                                </div>
-                                <div className="flex items-center gap-1">
-                                    <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className="h-8 w-8 text-primary-foreground hover:bg-white/10"
-                                        title="Reiniciar chat"
-                                        onClick={clearChat}
-                                    >
-                                        <Loader2 className="h-4 w-4" />
-                                    </Button>
-                                    <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className="h-8 w-8 text-primary-foreground hover:bg-white/10"
-                                        onClick={() => setIsExpanded(!isExpanded)}
-                                    >
-                                        {isExpanded ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
-                                    </Button>
-                                    <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className="h-8 w-8 text-primary-foreground hover:bg-white/10"
-                                        onClick={() => setIsOpen(false)}
-                                    >
-                                        <X className="h-4 w-4" />
-                                    </Button>
-                                </div>
-                            </CardHeader>
+                    <>
+                        {/* Backdrop */}
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={() => setIsOpen(false)}
+                            className="absolute inset-0 bg-slate-950/40 backdrop-blur-[2px] pointer-events-auto"
+                        />
 
-                            <CardContent ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-4 bg-zinc-50 dark:bg-zinc-900/50 scrollbar-thin">
-                                {messages.map((m, i) => (
-                                    <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                                        <div className={`flex gap-3 max-w-[85%] ${m.role === 'user' ? 'flex-row-reverse' : ''}`}>
-                                            <div className={`shrink-0 h-8 w-8 rounded-full flex items-center justify-center border shadow-sm ${m.role === 'user' ? 'bg-secondary' : 'bg-primary text-primary-foreground'
-                                                }`}>
-                                                {m.role === 'user' ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
-                                            </div>
-                                            <div className={`p-3 rounded-2xl text-sm leading-relaxed shadow-sm ${m.role === 'user'
-                                                ? 'bg-primary text-primary-foreground rounded-tr-none'
-                                                : 'bg-card border rounded-tl-none'
-                                                }`}>
-                                                {m.role === 'assistant' ? (
-                                                    <motion.div
-                                                        initial={{ opacity: 0, y: 5 }}
-                                                        animate={{ opacity: 1, y: 0 }}
-                                                        transition={{ duration: 0.4, ease: "easeOut" }}
-                                                    >
-                                                        {renderContent(m.content)}
-                                                    </motion.div>
-                                                ) : (
-                                                    renderContent(m.content)
-                                                )}
-                                            </div>
+                        {/* Side Drawer */}
+                        <motion.div
+                            initial={{ x: '100%', opacity: 0.5 }}
+                            animate={{ x: 0, opacity: 1 }}
+                            exit={{ x: '100%', opacity: 0.5 }}
+                            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                            className="absolute right-0 top-0 bottom-0 w-full sm:w-[500px] bg-background border-l border-border shadow-2xl flex flex-col pointer-events-auto overflow-hidden"
+                        >
+                            <Card className="h-full border-none flex flex-col rounded-none bg-transparent">
+                                <CardHeader className="bg-slate-900 text-white py-4 flex flex-row items-center justify-between shrink-0 border-b border-slate-800">
+                                    <div className="flex items-center gap-2">
+                                        <div className="bg-white/20 p-1.5 rounded-lg">
+                                            <Sparkles className="h-4 w-4" />
                                         </div>
+                                        <CardTitle className="text-sm font-bold">Asistente Clivaro IA</CardTitle>
                                     </div>
-                                ))}
-                                {isLoading && (
-                                    <div className="flex justify-start">
-                                        <div className="flex gap-3 max-w-[85%]">
-                                            <div className="shrink-0 h-8 w-8 rounded-full flex items-center justify-center bg-primary text-primary-foreground border shadow-sm">
-                                                <Bot className="h-4 w-4" />
-                                            </div>
-                                            <div className="bg-card border p-3 rounded-2xl rounded-tl-none flex items-center gap-2">
-                                                <span className="w-1.5 h-1.5 bg-muted-foreground rounded-full animate-bounce" />
-                                                <span className="w-1.5 h-1.5 bg-muted-foreground rounded-full animate-bounce delay-150" />
-                                                <span className="w-1.5 h-1.5 bg-muted-foreground rounded-full animate-bounce delay-300" />
-                                            </div>
-                                        </div>
-                                    </div>
-                                )}
-                            </CardContent>
-
-                            <CardFooter className="p-3 border-t bg-card shrink-0 flex flex-col gap-2">
-                                <AnimatePresence>
-                                    {suggestions.length > 0 && (
-                                        <motion.div
-                                            initial={{ opacity: 0, y: 10 }}
-                                            animate={{ opacity: 1, y: 0 }}
-                                            exit={{ opacity: 0, scale: 0.9 }}
-                                            className="w-full flex flex-wrap gap-1 mb-1"
+                                    <div className="flex items-center gap-1">
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-8 w-8 text-primary-foreground hover:bg-white/10"
+                                            title="Reiniciar chat"
+                                            onClick={clearChat}
                                         >
-                                            {suggestions.map((s) => (
-                                                <button
-                                                    key={s}
-                                                    onClick={() => handleSuggestion(s)}
-                                                    className="text-[10px] bg-sky-50 dark:bg-sky-900/30 text-sky-600 dark:text-sky-400 px-2 py-1 rounded-full border border-sky-100 dark:border-sky-800 hover:bg-sky-100 dark:hover:bg-sky-800/50 transition-colors truncate max-w-[150px]"
-                                                >
-                                                    {s}
-                                                </button>
-                                            ))}
-                                        </motion.div>
+                                            <Loader2 className="h-4 w-4" />
+                                        </Button>
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-8 w-8 text-primary-foreground hover:bg-white/10"
+                                            onClick={() => setIsExpanded(!isExpanded)}
+                                        >
+                                            {isExpanded ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+                                        </Button>
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-8 w-8 text-primary-foreground hover:bg-white/10"
+                                            onClick={() => setIsOpen(false)}
+                                        >
+                                            <X className="h-4 w-4" />
+                                        </Button>
+                                    </div>
+                                </CardHeader>
+
+                                <CardContent ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-4 bg-zinc-50 dark:bg-zinc-900/50 scrollbar-thin">
+                                    {messages.map((m, i) => (
+                                        <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                                            <div className={`flex gap-3 max-w-[85%] ${m.role === 'user' ? 'flex-row-reverse' : ''}`}>
+                                                <div className={`shrink-0 h-8 w-8 rounded-full flex items-center justify-center border shadow-sm ${m.role === 'user' ? 'bg-secondary' : 'bg-primary text-primary-foreground'
+                                                    }`}>
+                                                    {m.role === 'user' ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
+                                                </div>
+                                                <div className={`p-3 rounded-2xl text-sm leading-relaxed shadow-sm ${m.role === 'user'
+                                                    ? 'bg-primary text-primary-foreground rounded-tr-none'
+                                                    : 'bg-card border rounded-tl-none'
+                                                    }`}>
+                                                    {m.role === 'assistant' ? (
+                                                        <motion.div
+                                                            initial={{ opacity: 0, y: 5 }}
+                                                            animate={{ opacity: 1, y: 0 }}
+                                                            transition={{ duration: 0.4, ease: "easeOut" }}
+                                                        >
+                                                            {renderContent(m.content)}
+                                                        </motion.div>
+                                                    ) : (
+                                                        renderContent(m.content)
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                    {isLoading && (
+                                        <div className="flex justify-start">
+                                            <div className="flex gap-3 max-w-[85%]">
+                                                <div className="shrink-0 h-8 w-8 rounded-full flex items-center justify-center bg-primary text-primary-foreground border shadow-sm">
+                                                    <Bot className="h-4 w-4" />
+                                                </div>
+                                                <div className="bg-card border p-3 rounded-2xl rounded-tl-none flex items-center gap-2">
+                                                    <span className="w-1.5 h-1.5 bg-muted-foreground rounded-full animate-bounce" />
+                                                    <span className="w-1.5 h-1.5 bg-muted-foreground rounded-full animate-bounce delay-150" />
+                                                    <span className="w-1.5 h-1.5 bg-muted-foreground rounded-full animate-bounce delay-300" />
+                                                </div>
+                                            </div>
+                                        </div>
                                     )}
-                                </AnimatePresence>
-                                <form
-                                    onSubmit={(e) => { e.preventDefault(); handleSend(); }}
-                                    className="flex gap-2 w-full"
-                                >
-                                    <Input
-                                        value={input}
-                                        onChange={(e) => setInput(e.target.value)}
-                                        placeholder="Escribe una pregunta..."
-                                        className="flex-1"
-                                        autoFocus
-                                    />
-                                    <Button type="submit" size="icon" disabled={isLoading || !input.trim()}>
-                                        <Send className="h-4 w-4" />
-                                    </Button>
-                                </form>
-                            </CardFooter>
-                        </Card>
-                    </motion.div>
+                                </CardContent>
+
+                                <CardFooter className="p-4 border-t bg-card shrink-0 flex flex-col gap-3">
+                                    <AnimatePresence>
+                                        {(suggestions.length > 0 && (isFocused || input.trim().length > 0)) && (
+                                            <motion.div
+                                                initial={{ opacity: 0, y: 10 }}
+                                                animate={{ opacity: 1, y: 0 }}
+                                                exit={{ opacity: 0, scale: 0.9 }}
+                                                className="w-full flex flex-wrap gap-1.5 mb-1"
+                                            >
+                                                {suggestions.slice(0, 4).map((s) => (
+                                                    <button
+                                                        key={s}
+                                                        onClick={() => handleSuggestion(s)}
+                                                        className="text-[11px] font-medium bg-sky-50 dark:bg-sky-900/30 text-sky-700 dark:text-sky-300 px-3 py-1.5 rounded-lg border border-sky-200 dark:border-sky-800 hover:bg-sky-500 hover:text-white dark:hover:bg-sky-500 dark:hover:text-white transition-all transform active:scale-95 shadow-sm"
+                                                    >
+                                                        {s}
+                                                    </button>
+                                                ))}
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
+                                    <form
+                                        onSubmit={(e) => { e.preventDefault(); handleSend(); }}
+                                        className="flex gap-2 w-full"
+                                    >
+                                        <Input
+                                            value={input}
+                                            onChange={(e) => setInput(e.target.value)}
+                                            onFocus={() => setIsFocused(true)}
+                                            onBlur={() => setTimeout(() => setIsFocused(false), 200)}
+                                            placeholder="Pregúntale a Clivaro IA..."
+                                            className="flex-1 bg-muted/50 border-none focus-visible:ring-1 focus-visible:ring-sky-500 h-10"
+                                            autoFocus
+                                        />
+                                        <Button type="submit" size="icon" disabled={isLoading || !input.trim()} className="h-10 w-10 bg-sky-500 hover:bg-sky-600 transition-colors">
+                                            <Send className="h-4 w-4" />
+                                        </Button>
+                                    </form>
+                                </CardFooter>
+                            </Card>
+                        </motion.div>
+                    </>
                 )}
             </AnimatePresence>
         </div>

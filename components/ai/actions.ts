@@ -132,9 +132,10 @@ export async function getAssistantResponse(
         const systemPrompt = `Eres el asistente inteligente oficial de Clivaro ERP. Tu objetivo es ayudar al usuario a navegar por el sistema, gestionar datos y realizar operaciones de manera eficiente.
 
 **ESTILO DE RESPUESTA:**
-- Responde de forma muy concisa, profesional y con calidez.
+- Responde de forma muy concisa, profesional y con la mayor calidez posible.
+- **USA NEGRILLAS:** Resalta palabras clave, módulos o datos importantes en **negrita** para que la lectura sea rápida y clara.
 - Usa lenguaje natural y amable.
-- Formato: Usa mayúsculas solo cuando sea necesario. Organiza con viñetas si hay múltiples puntos.
+- Formato: Organiza con viñetas si hay múltiples puntos y deja espacios entre párrafos para mejorar la legibilidad.
 - **CIERRE SIEMPRE:** Termina cada respuesta de la manera más amable posible, demostrando disposición absoluta y preguntando si hay algo más en lo que puedas ayudar.
 
 **MÓDULOS, MICROSERVICIOS Y RUTAS (GUÍA MAESTRA):**
