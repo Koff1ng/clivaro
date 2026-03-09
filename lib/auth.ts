@@ -197,62 +197,81 @@ export const authOptions: NextAuthOptions = {
           // ── STRATEGY B: Super Admin Login (master public schema ONLY) ─────
           console.log(`[AUTH] Super admin login: user="${credentials.username}"`)
 
-          const superAdmin = await prisma.user.findFirst({
-            where: {
-              isSuperAdmin: true,
-              OR: [
-                { username: credentials.username },
-                { email: credentials.username },
-              ],
-            },
-            include: {
-              userRoles: {
-                include: {
-                  role: {
-                    include: {
-                      rolePermissions: { include: { permission: true } },
-                    },
-                  },
-                },
-              },
-            },
+          const connString = getDirectPostgresUrl()
+          const client = new Client({
+            connectionString: connString,
+            ssl: connString.includes('supabase') || connString.includes('localhost') ? false : { rejectUnauthorized: false }
           })
 
-          if (!superAdmin || !superAdmin.isSuperAdmin) {
-            console.warn(`[AUTH] Super admin not found: "${credentials.username}"`)
+          let superAdmin: any = null
+
+          try {
+            await client.connect()
+
+            // Query master public schema for super admin
+            const saResult = await client.query(
+              `SELECT id, username, email, name, password, active, "isSuperAdmin"
+               FROM public."User"
+               WHERE "isSuperAdmin" = true 
+               AND (username = $1 OR email = $1)
+               LIMIT 1`,
+              [credentials.username]
+            )
+
+            if (saResult.rows.length > 0) {
+              const user = saResult.rows[0]
+
+              // Validate password
+              const isValid = await bcrypt.compare(credentials.password, user.password)
+              if (isValid) {
+                if (!user.active) {
+                  throw new Error('USER_INACTIVE: Usuario inactivo.')
+                }
+
+                // Fetch roles and permissions
+                const rolesResult = await client.query(
+                  `SELECT r.name as role_name, p.name as perm_name
+                   FROM public."UserRole" ur
+                   JOIN public."Role" r ON r.id = ur."roleId"
+                   LEFT JOIN public."RolePermission" rp ON rp."roleId" = r.id
+                   LEFT JOIN public."Permission" p ON p.id = rp."permissionId"
+                   WHERE ur."userId" = $1`,
+                  [user.id]
+                )
+
+                const permissions = new Set<string>()
+                const roles: string[] = []
+                rolesResult.rows.forEach((r: any) => {
+                  if (r.role_name && !roles.includes(r.role_name)) roles.push(r.role_name)
+                  if (r.perm_name) permissions.add(r.perm_name)
+                })
+
+                superAdmin = {
+                  id: user.id,
+                  email: user.email || '',
+                  name: user.name,
+                  permissions: Array.from(permissions),
+                  roles,
+                  isSuperAdmin: true,
+                  tenantId: null,
+                  tenantSlug: null,
+                }
+              }
+            }
+          } catch (err: any) {
+            console.error('[AUTH] SuperAdmin SQL error:', err.message)
+            // Fallback to null (unauthorized) rather than crashing
+          } finally {
+            await client.end().catch(() => { })
+          }
+
+          if (!superAdmin) {
+            console.warn(`[AUTH] Super admin auth failed for: "${credentials.username}"`)
             return null
           }
-          if (!superAdmin.active) {
-            throw new Error('USER_INACTIVE: Usuario inactivo.')
-          }
 
-          const isValid = await bcrypt.compare(credentials.password, superAdmin.password)
-          if (!isValid) {
-            console.warn(`[AUTH] Wrong password for super admin: "${credentials.username}"`)
-            return null
-          }
-
-          const permissions = new Set<string>()
-          const roles: string[] = []
-          superAdmin.userRoles.forEach((ur: any) => {
-            roles.push(ur.role.name)
-            ur.role.rolePermissions.forEach((rp: any) => {
-              permissions.add(rp.permission.name)
-            })
-          })
-
-          console.log(`[AUTH] ✓ Super admin auth success: ${superAdmin.username}`)
-
-          return {
-            id: superAdmin.id,
-            email: superAdmin.email || '',
-            name: superAdmin.name,
-            permissions: Array.from(permissions),
-            roles,
-            isSuperAdmin: true,
-            tenantId: null,
-            tenantSlug: null,
-          }
+          console.log(`[AUTH] ✓ Super admin auth success: ${superAdmin.username || superAdmin.name}`)
+          return superAdmin
 
         } catch (error: any) {
           const msg = error?.message || ''
