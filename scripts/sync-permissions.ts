@@ -54,25 +54,67 @@ async function syncTenantPermissions(tenantId: string, tenantName: string) {
       `)
         }
 
-        // 2. Find ADMIN role
-        const roles: any[] = await prisma.$queryRawUnsafe(`SELECT id FROM "Role" WHERE name = 'ADMIN'`)
-        if (roles.length === 0) {
-            console.warn(`Role ADMIN not found for tenant ${tenantName}`)
-            return
-        }
-        const adminRoleId = roles[0].id
+        // 2. Define and Sync Roles
+        console.log('Syncing roles and role-specific permissions...')
+        const defaultRoles = [
+            {
+                name: 'ADMIN',
+                description: 'Administrador total con acceso a todos los módulos y configuraciones.',
+                permissions: ALL_PERMISSIONS,
+            },
+            {
+                name: 'CAJERO_POS',
+                description: 'Cajero de punto de venta. Puede realizar ventas, devoluciones, manejar caja y cierres de turno.',
+                permissions: ['view_dashboard', 'manage_pos', 'manage_sales', 'manage_cash', 'manage_returns', 'void_invoices', 'apply_discounts', 'manage_customers'],
+            },
+            {
+                name: 'VENDEDOR_COMERCIAL',
+                description: 'Asesor comercial. Enfocado en gestión de clientes (CRM), cotizaciones y pedidos de venta.',
+                permissions: ['view_dashboard', 'manage_sales', 'manage_customers', 'manage_crm'],
+            },
+            {
+                name: 'ALMACENISTA',
+                description: 'Gestión de almacén. Control de inventarios, recepción de mercancía y traslados.',
+                permissions: ['view_dashboard', 'manage_products', 'manage_inventory', 'manage_suppliers', 'manage_purchases'],
+            },
+            {
+                name: 'CONTADOR',
+                description: 'Gestor contable y financiero. Acceso a reportes, balances y libros contables.',
+                permissions: ['view_dashboard', 'view_reports', 'manage_accounting'],
+            },
+            {
+                name: 'RECURSOS_HUMANOS',
+                description: 'Gestión de personal y nómina. Manejo de empleados y liquidaciones.',
+                permissions: ['view_dashboard', 'manage_payroll', 'manage_users'],
+            },
+            {
+                name: 'REST_MESERO',
+                description: 'Mesero (Restaurantes). Toma de pedidos y atención en mesa.',
+                permissions: ['view_dashboard', 'manage_pos'],
+            },
+        ]
 
-        // 3. Grant all permissions to ADMIN role
-        console.log('Granting all permissions to ADMIN role...')
-        const permissions: any[] = await prisma.$queryRawUnsafe(`SELECT id, name FROM "Permission"`)
-
-        for (const perm of permissions) {
-            const rpId = `rp_${getMd5(adminRoleId + perm.id)}`
+        for (const roleDef of defaultRoles) {
+            const roleId = `role_${getMd5(roleDef.name)}`
+            // Upsert role
             await prisma.$executeRawUnsafe(`
-        INSERT INTO "RolePermission" (id, "roleId", "permissionId")
-        VALUES ('${rpId}', '${adminRoleId}', '${perm.id}')
-        ON CONFLICT ("roleId", "permissionId") DO NOTHING
-      `)
+                INSERT INTO "Role" (id, name, description, "updatedAt")
+                VALUES ('${roleId}', '${roleDef.name}', '${roleDef.description}', NOW())
+                ON CONFLICT (name) DO UPDATE SET description = EXCLUDED.description, "updatedAt" = NOW()
+            `)
+
+            // Sync permissions for this role
+            for (const permName of roleDef.permissions) {
+                // Get perm id (consistent with step 1)
+                const permId = `perm_${getMd5(permName)}`
+                const rpId = `rp_${getMd5(roleId + permId)}`
+
+                await prisma.$executeRawUnsafe(`
+                    INSERT INTO "RolePermission" (id, "roleId", "permissionId")
+                    VALUES ('${rpId}', '${roleId}', '${permId}')
+                    ON CONFLICT ("roleId", "permissionId") DO NOTHING
+                `)
+            }
         }
 
         console.log(`✓ Permissions synced for ${tenantName}`)

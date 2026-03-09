@@ -49,7 +49,7 @@ export function UserForm({ user, onSuccess }: { user?: any; onSuccess: () => voi
   })
 
   const userSchema = user ? updateUserSchema : createUserSchema
-  
+
   const { register, handleSubmit, formState: { errors }, watch, setValue } = useForm<UserFormData>({
     resolver: zodResolver(userSchema as any),
     defaultValues: {
@@ -80,13 +80,13 @@ export function UserForm({ user, onSuccess }: { user?: any; onSuccess: () => voi
     mutationFn: async (data: any) => {
       const url = user ? `/api/admin/users/${user.id}` : '/api/admin/users'
       const method = user ? 'PUT' : 'POST'
-      
+
       // Remove password if it's empty (for updates)
       const payload: any = { ...data }
       if (user && (!payload.password || payload.password === '')) {
         delete payload.password
       }
-      
+
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
@@ -194,13 +194,12 @@ export function UserForm({ user, onSuccess }: { user?: any; onSuccess: () => voi
                   onCheckedChange={() => toggleRole(role.id)}
                 />
                 <div className="flex-1">
-                  <div className="font-medium">{role.name}</div>
+                  <div className="font-semibold text-sm">{role.name.replace(/_/g, ' ')}</div>
                   {role.description && (
-                    <div className="text-sm text-gray-500">{role.description}</div>
+                    <div className="text-xs text-muted-foreground leading-relaxed mt-0.5">
+                      {role.description}
+                    </div>
                   )}
-                  <div className="text-xs text-gray-400 mt-1">
-                    Permisos: {role.rolePermissions?.map((rp: any) => rp.permission.name).join(', ') || 'Ninguno'}
-                  </div>
                 </div>
               </label>
             ))

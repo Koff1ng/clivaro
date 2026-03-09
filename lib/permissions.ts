@@ -18,6 +18,22 @@ export const PERMISSIONS = {
   MANAGE_ACCOUNTING: 'manage_accounting',
 } as const
 
+export const PERMISSION_LABELS: Record<Permission, string> = {
+  [PERMISSIONS.MANAGE_USERS]: 'Gestionar Usuarios y Roles',
+  [PERMISSIONS.MANAGE_PRODUCTS]: 'Gestionar Productos y Catálogo',
+  [PERMISSIONS.MANAGE_INVENTORY]: 'Gestionar Inventario y Stock',
+  [PERMISSIONS.MANAGE_SALES]: 'Gestionar Ventas y Facturación',
+  [PERMISSIONS.MANAGE_RETURNS]: 'Gestionar Devoluciones',
+  [PERMISSIONS.VOID_INVOICES]: 'Anular Facturas',
+  [PERMISSIONS.APPLY_DISCOUNTS]: 'Aplicar Descuentos Especiales',
+  [PERMISSIONS.MANAGE_PURCHASES]: 'Gestionar Compras y Proveedores',
+  [PERMISSIONS.MANAGE_CRM]: 'Gestionar Clientes y CRM',
+  [PERMISSIONS.VIEW_REPORTS]: 'Ver Reportes y Estadísticas',
+  [PERMISSIONS.MANAGE_CASH]: 'Gestionar Caja y Movimientos de Efectivo',
+  [PERMISSIONS.MANAGE_SETTINGS]: 'Configuración del Sistema',
+  [PERMISSIONS.MANAGE_ACCOUNTING]: 'Gestionar Contabilidad',
+}
+
 export type Permission = typeof PERMISSIONS[keyof typeof PERMISSIONS]
 
 // Role constants

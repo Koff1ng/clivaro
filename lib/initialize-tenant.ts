@@ -145,13 +145,6 @@ async function initializePostgresTenant(databaseUrl: string, tenantId: string, t
       },
     })
 
-    // Seed ADMIN role (upsert = idempotent)
-    const adminRole = await tenantPrisma.role.upsert({
-      where: { name: 'ADMIN' },
-      update: {},
-      create: { name: 'ADMIN', description: 'Administrador con acceso total' },
-    })
-
     // Core permissions every tenant admin needs (All modules)
     const corePermissions = [
       'view_reports',
@@ -174,26 +167,79 @@ async function initializePostgresTenant(databaseUrl: string, tenantId: string, t
       'apply_discounts',
     ]
 
-    for (const permName of corePermissions) {
-      const perm = await tenantPrisma.permission.upsert({
-        where: { name: permName },
-        update: {},
-        create: { name: permName, description: permName },
+    // Define all default roles with descriptions and permissions
+    const defaultRoles = [
+      {
+        name: 'ADMIN',
+        description: 'Administrador total con acceso a todos los módulos y configuraciones.',
+        permissions: corePermissions,
+      },
+      {
+        name: 'CAJERO_POS',
+        description: 'Cajero de punto de venta. Puede realizar ventas, devoluciones, manejar caja y cierres de turno.',
+        permissions: ['view_dashboard', 'manage_pos', 'manage_sales', 'manage_cash', 'manage_returns', 'void_invoices', 'apply_discounts', 'manage_customers'],
+      },
+      {
+        name: 'VENDEDOR_COMERCIAL',
+        description: 'Asesor comercial. Enfocado en gestión de clientes (CRM), cotizaciones y pedidos de venta.',
+        permissions: ['view_dashboard', 'manage_sales', 'manage_customers', 'manage_crm'],
+      },
+      {
+        name: 'ALMACENISTA',
+        description: 'Gestión de almacén. Control de inventarios, recepción de mercancía y traslados.',
+        permissions: ['view_dashboard', 'manage_products', 'manage_inventory', 'manage_suppliers', 'manage_purchases'],
+      },
+      {
+        name: 'CONTADOR',
+        description: 'Gestor contable y financiero. Acceso a reportes, balances y libros contables.',
+        permissions: ['view_dashboard', 'view_reports', 'manage_accounting'],
+      },
+      {
+        name: 'RECURSOS_HUMANOS',
+        description: 'Gestión de personal y nómina. Manejo de empleados y liquidaciones.',
+        permissions: ['view_dashboard', 'manage_payroll', 'manage_users'],
+      },
+      {
+        name: 'REST_MESERO',
+        description: 'Mesero (Restaurantes). Toma de pedidos y atención en mesa.',
+        permissions: ['view_dashboard', 'manage_pos'],
+      },
+    ]
+
+    let adminRoleId = ''
+
+    for (const roleDef of defaultRoles) {
+      const role = await tenantPrisma.role.upsert({
+        where: { name: roleDef.name },
+        update: { description: roleDef.description },
+        create: { name: roleDef.name, description: roleDef.description },
       })
-      await tenantPrisma.rolePermission.upsert({
-        where: { roleId_permissionId: { roleId: adminRole.id, permissionId: perm.id } },
-        update: {},
-        create: { roleId: adminRole.id, permissionId: perm.id },
-      })
+
+      if (roleDef.name === 'ADMIN') adminRoleId = role.id
+
+      // Sync permissions for this role
+      for (const permName of roleDef.permissions) {
+        const perm = await tenantPrisma.permission.upsert({
+          where: { name: permName },
+          update: {},
+          create: { name: permName, description: permName },
+        })
+
+        await tenantPrisma.rolePermission.upsert({
+          where: { roleId_permissionId: { roleId: role.id, permissionId: perm.id } },
+          update: {},
+          create: { roleId: role.id, permissionId: perm.id },
+        })
+      }
     }
 
     // Assign ADMIN role to admin user (if not already)
     const existingAssignment = await tenantPrisma.userRole.findFirst({
-      where: { userId: user.id, roleId: adminRole.id },
+      where: { userId: user.id, roleId: adminRoleId },
     })
-    if (!existingAssignment) {
+    if (!existingAssignment && adminRoleId) {
       await tenantPrisma.userRole.create({
-        data: { userId: user.id, roleId: adminRole.id },
+        data: { userId: user.id, roleId: adminRoleId },
       })
     }
     console.log('[STEP 3/4] ✓ Roles y permisos configurados')
