@@ -57,49 +57,62 @@ export async function getAssistantResponse(
         const query = message.toLowerCase();
 
         // Búsqueda de Productos/Inventario
-        if (query.includes("producto") || query.includes("stock") || query.includes("inventario")) {
-            const products = await prisma.product.findMany({
-                take: 5,
-                where: { active: true },
-                select: { name: true, sku: true, price: true, trackStock: true, stockLevels: { select: { quantity: true } } }
-            });
+        try {
+            if (query.includes("producto") || query.includes("stock") || query.includes("inventario")) {
+                const products = await prisma.product.findMany({
+                    take: 5,
+                    where: { active: true },
+                    select: { name: true, sku: true, price: true, trackStock: true, stockLevels: { select: { quantity: true } } }
+                });
 
-            if (products.length > 0) {
-                discoveredContext += "\nDATOS DE INVENTARIO:\n" + products.map((p: any) => {
-                    const totalStock = p.stockLevels?.reduce((acc: number, s: any) => acc + s.quantity, 0) || 0;
-                    return `- ${p.name} (SKU: ${p.sku}) | Precio: $${p.price} | Stock: ${p.trackStock ? totalStock : 'N/A'}`;
-                }).join("\n");
+                if (products.length > 0) {
+                    discoveredContext += "\nDATOS DE INVENTARIO:\n" + products.map((p: any) => {
+                        const totalStock = p.stockLevels?.reduce((acc: number, s: any) => acc + s.quantity, 0) || 0;
+                        return `- ${p.name} (SKU: ${p.sku}) | Precio: $${p.price} | Stock: ${p.trackStock ? totalStock : 'N/A'}`;
+                    }).join("\n");
+                }
             }
+        } catch (e) {
+            console.error("[RAG_INVENTORY_ERROR]", e);
         }
 
         // Búsqueda de Ventas/Facturas
-        if (query.includes("venta") || query.includes("factura") || query.includes("vendi") || query.includes("ingreso")) {
-            const lastInvoices = await prisma.invoice.findMany({
-                take: 5,
-                orderBy: { createdAt: 'desc' },
-                include: { customer: { select: { name: true } } }
-            });
+        try {
+            if (query.includes("venta") || query.includes("factura") || query.includes("vendi") || query.includes("ingreso")) {
+                const lastInvoices = await prisma.invoice.findMany({
+                    take: 5,
+                    orderBy: { createdAt: 'desc' },
+                    include: { customer: { select: { name: true } } }
+                });
 
-            if (lastInvoices.length > 0) {
-                discoveredContext += "\nFACTURAS/VENTAS RECIENTES:\n" + lastInvoices.map((inv: any) =>
-                    `- ${inv.number} | Cliente: ${inv.customer?.name} | Total: $${inv.total} | Estado: ${inv.status}`
-                ).join("\n");
+                if (lastInvoices.length > 0) {
+                    discoveredContext += "\nFACTURAS/VENTAS RECIENTES:\n" + lastInvoices.map((inv: any) =>
+                        `- ${inv.number} | Cliente: ${inv.customer?.name} | Total: $${inv.total} | Estado: ${inv.status}`
+                    ).join("\n");
+                }
             }
+        } catch (e) {
+            console.error("[RAG_SALES_ERROR]", e);
         }
 
         // Búsqueda de Reportes/Cuentas
-        if (query.includes("reporte") || query.includes("balance") || query.includes("contabilidad") || query.includes("ganancia")) {
-            const topAccounts = await prisma.account.findMany({
-                take: 10,
-                where: { type: { in: ['REVENUE', 'EXPENSE', 'ASSET', 'LIABILITY'] } },
-                select: { code: true, name: true, type: true }
-            });
+        try {
+            if (query.includes("reporte") || query.includes("balance") || query.includes("contabilidad") || query.includes("ganancia")) {
+                // Usamos accountingAccount que es el modelo correcto para el PUC
+                const topAccounts = await prisma.accountingAccount.findMany({
+                    take: 10,
+                    where: { type: { in: ['ASSET', 'LIABILITY', 'EQUITY', 'INCOME', 'EXPENSE'] } },
+                    select: { code: true, name: true, type: true }
+                });
 
-            if (topAccounts.length > 0) {
-                discoveredContext += "\nPLAN DE CUENTAS (RESUMEN):\n" + topAccounts.map((a: any) =>
-                    `- [${a.code}] ${a.name} (${a.type})`
-                ).join("\n");
+                if (topAccounts.length > 0) {
+                    discoveredContext += "\nPLAN DE CUENTAS (RESUMEN):\n" + topAccounts.map((a: any) =>
+                        `- [${a.code}] ${a.name} (${a.type})`
+                    ).join("\n");
+                }
             }
+        } catch (e) {
+            console.error("[RAG_ACCOUNTING_ERROR]", e);
         }
 
         const userRoles = (session.user as any).roles;
