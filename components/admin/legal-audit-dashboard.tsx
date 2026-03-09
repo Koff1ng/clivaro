@@ -6,14 +6,17 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
-import { Search, ShieldCheck, Download, Loader2, User, Building2, MapPin, Calendar, CheckCircle2 } from 'lucide-react'
+import { Search, ShieldCheck, Download, Loader2, User, Building2, MapPin, Calendar, CheckCircle2, AlertCircle, RefreshCcw } from 'lucide-react'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
+import { useToast } from '@/components/ui/toast'
 
 export function LegalAuditDashboard() {
     const [logs, setLogs] = useState<any[]>([])
     const [search, setSearch] = useState('')
     const [loading, setLoading] = useState(true)
+    const [syncing, setSyncing] = useState(false)
+    const { toast } = useToast()
 
     const fetchLogs = async () => {
         setLoading(true)
@@ -37,6 +40,28 @@ export function LegalAuditDashboard() {
     const handleSearch = (e: React.FormEvent) => {
         e.preventDefault()
         fetchLogs()
+    }
+
+    const handleSyncSchemas = async () => {
+        if (!confirm('¿Deseas sincronizar todos los esquemas de las empresas? Esto añadirá las columnas legales faltantes en cada base de datos.')) return
+
+        setSyncing(true)
+        try {
+            const response = await fetch('/api/admin/migrate-tenants', { method: 'POST' })
+            const data = await response.json()
+
+            if (response.ok) {
+                toast(`Sincronización completada: ${data.summary.success} empresas actualizadas.`, 'success')
+                fetchLogs()
+            } else {
+                toast(`Error en la sincronización: ${data.error}`, 'error')
+            }
+        } catch (error) {
+            console.error('Error syncing schemas:', error)
+            toast('Error al conectar con el servidor para la sincronización.', 'error')
+        } finally {
+            setSyncing(false)
+        }
     }
 
     const exportToCSV = () => {
@@ -76,15 +101,26 @@ export function LegalAuditDashboard() {
                         Registro centralizado de aceptación de términos y política de datos (Ley 1581).
                     </p>
                 </div>
-                <Button
-                    variant="outline"
-                    className="bg-white dark:bg-slate-950 border-blue-200 text-blue-600 hover:bg-blue-50"
-                    onClick={exportToCSV}
-                    disabled={logs.length === 0}
-                >
-                    <Download className="w-4 h-4 mr-2" />
-                    Exportar Auditoría (CSV)
-                </Button>
+                <div className="flex gap-2">
+                    <Button
+                        variant="outline"
+                        className="bg-white dark:bg-slate-950 border-blue-200 text-blue-600 hover:bg-blue-50"
+                        onClick={handleSyncSchemas}
+                        disabled={syncing}
+                    >
+                        {syncing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCcw className="w-4 h-4 mr-2" />}
+                        Sincronizar Esquemas
+                    </Button>
+                    <Button
+                        variant="outline"
+                        className="bg-white dark:bg-slate-950 border-blue-200 text-blue-600 hover:bg-blue-50"
+                        onClick={exportToCSV}
+                        disabled={logs.length === 0}
+                    >
+                        <Download className="w-4 h-4 mr-2" />
+                        Exportar Auditoría (CSV)
+                    </Button>
+                </div>
             </div>
 
             <Card className="border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">

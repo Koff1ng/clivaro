@@ -39,7 +39,11 @@ async function findUserInTenantSchema(
   const schemaName = getSchemaName(tenantId)
   const connString = getDirectPostgresUrl()
 
-  const client = new Client({ connectionString: connString })
+  // Use SSL if connecting to a remote DB (Supabase/Vercel)
+  const client = new Client({
+    connectionString: connString,
+    ssl: connString.includes('supabase') || connString.includes('localhost') ? false : { rejectUnauthorized: false }
+  })
 
   try {
     await client.connect()
@@ -47,35 +51,67 @@ async function findUserInTenantSchema(
     // Set the schema for this entire session/connection
     await client.query(`SET search_path TO "${schemaName}", public`)
 
-    // Query the user with their roles and permissions
-    const userResult = await client.query(
-      `SELECT id, username, email, name, password, active, "isSuperAdmin", "legalAccepted"
-       FROM "User"
-       WHERE (username = $1 OR email = $1)
-       LIMIT 1`,
-      [usernameOrEmail]
-    )
+    // Attempt to query with new legal compliance columns
+    try {
+      const userResult = await client.query(
+        `SELECT id, username, email, name, password, active, "isSuperAdmin", "legalAccepted"
+         FROM "User"
+         WHERE (username = $1 OR email = $1)
+         LIMIT 1`,
+        [usernameOrEmail]
+      )
 
-    if (userResult.rows.length === 0) return null
+      if (userResult.rows.length === 0) return null
+      const user = userResult.rows[0]
 
-    const user = userResult.rows[0]
+      // Fetch roles and permissions
+      const rolesResult = await client.query(
+        `SELECT r.name as role_name, p.name as perm_name
+         FROM "UserRole" ur
+         JOIN "Role" r ON r.id = ur."roleId"
+         LEFT JOIN "RolePermission" rp ON rp."roleId" = r.id
+         LEFT JOIN "Permission" p ON p.id = rp."permissionId"
+         WHERE ur."userId" = $1`,
+        [user.id]
+      )
 
-    // Query roles and permissions for this user
-    const rolesResult = await client.query(
-      `SELECT r.name as role_name, p.name as perm_name
-       FROM "UserRole" ur
-       JOIN "Role" r ON r.id = ur."roleId"
-       LEFT JOIN "RolePermission" rp ON rp."roleId" = r.id
-       LEFT JOIN "Permission" p ON p.id = rp."permissionId"
-       WHERE ur."userId" = $1`,
-      [user.id]
-    )
+      const roles = [...new Set(rolesResult.rows.map((r: any) => r.role_name).filter(Boolean))]
+      const permissions = [...new Set(rolesResult.rows.map((r: any) => r.perm_name).filter(Boolean))]
 
-    const roles = [...new Set(rolesResult.rows.map((r: any) => r.role_name).filter(Boolean))]
-    const permissions = [...new Set(rolesResult.rows.map((r: any) => r.perm_name).filter(Boolean))]
+      return { ...user, roles, permissions }
+    } catch (queryError: any) {
+      // If the query failed because "legalAccepted" is missing, retry without it
+      if (queryError?.message?.includes('legalAccepted')) {
+        console.warn(`[AUTH] Schema "${schemaName}" is missing legal compliance columns. Retrying without them...`)
+        const fallbackResult = await client.query(
+          `SELECT id, username, email, name, password, active, "isSuperAdmin"
+           FROM "User"
+           WHERE (username = $1 OR email = $1)
+           LIMIT 1`,
+          [usernameOrEmail]
+        )
 
-    return { ...user, roles, permissions }
+        if (fallbackResult.rows.length === 0) return null
+        const user = fallbackResult.rows[0]
 
+        // Fetch roles/perms as usual
+        const rolesResult = await client.query(
+          `SELECT r.name as role_name, p.name as perm_name
+           FROM "UserRole" ur
+           JOIN "Role" r ON r.id = ur."roleId"
+           LEFT JOIN "RolePermission" rp ON rp."roleId" = r.id
+           LEFT JOIN "Permission" p ON p.id = rp."permissionId"
+           WHERE ur."userId" = $1`,
+          [user.id]
+        )
+
+        const roles = [...new Set(rolesResult.rows.map((r: any) => r.role_name).filter(Boolean))]
+        const permissions = [...new Set(rolesResult.rows.map((r: any) => r.perm_name).filter(Boolean))]
+
+        return { ...user, roles, permissions, legalAccepted: false }
+      }
+      throw queryError // Re-throw if it's some other db error
+    }
   } finally {
     await client.end().catch(() => {/* ignore close errors */ })
   }
