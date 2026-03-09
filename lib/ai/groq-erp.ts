@@ -126,10 +126,12 @@ export class GroqERP {
     {{ACTION:Texto del Botón|/ruta/del/modulo}}
     
     Ejemplos de rutas comunes:
-    - Crear Producto: /inventory/products/new
-    - Ver Inventario: /inventory/products
-    - Nueva Factura: /sales/invoices/new
+    - Crear Item (Producto/Servicio): /products?new=item
+    - Ver Catálogo de Items: /products
     - Ver Facturas: /sales/invoices
+    - Nueva Orden de Venta: /sales/orders/new
+    - Ver Órdenes de Venta: /sales/orders
+    - Punto de Venta (POS): /pos
     - Ver Clientes: /crm/customers
     - Nuevo Cliente: /crm/customers/new
     - Ver Usuarios/Roles: /admin/users

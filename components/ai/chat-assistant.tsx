@@ -18,13 +18,50 @@ export function ChatAssistant() {
     const [isOpen, setIsOpen] = useState(false)
     const [isExpanded, setIsExpanded] = useState(false)
     const [input, setInput] = useState('')
-    const [messages, setMessages] = useState<Message[]>([
-        { role: 'assistant', content: '¡Hola! Soy tu asistente inteligente del ERP. ¿En qué puedo ayudarte hoy?' }
-    ])
+    const [messages, setMessages] = useState<Message[]>([])
     const [isLoading, setIsLoading] = useState(false)
     const scrollRef = useRef<HTMLDivElement>(null)
     const { toast } = useToast()
     const router = useRouter()
+
+    const initialMessage = { role: 'assistant' as const, content: '¡Hola! Soy tu asistente inteligente del ERP. ¿En qué puedo ayudarte hoy?' }
+
+    // Cargar desde sessionStorage al montar
+    useEffect(() => {
+        const savedMessages = sessionStorage.getItem('clivaro-chat-messages')
+        const savedIsOpen = sessionStorage.getItem('clivaro-chat-is-open')
+        const savedIsExpanded = sessionStorage.getItem('clivaro-chat-is-expanded')
+
+        if (savedMessages) {
+            setMessages(JSON.parse(savedMessages))
+        } else {
+            setMessages([initialMessage])
+        }
+
+        if (savedIsOpen === 'true') setIsOpen(true)
+        if (savedIsExpanded === 'true') setIsExpanded(true)
+    }, [])
+
+    // Guardar en sessionStorage cuando cambie el estado
+    useEffect(() => {
+        if (messages.length > 0) {
+            sessionStorage.setItem('clivaro-chat-messages', JSON.stringify(messages))
+        }
+    }, [messages])
+
+    useEffect(() => {
+        sessionStorage.setItem('clivaro-chat-is-open', isOpen.toString())
+    }, [isOpen])
+
+    useEffect(() => {
+        sessionStorage.setItem('clivaro-chat-is-expanded', isExpanded.toString())
+    }, [isExpanded])
+
+    const clearChat = () => {
+        setMessages([initialMessage])
+        sessionStorage.removeItem('clivaro-chat-messages')
+        toast('Chat reiniciado', 'info')
+    }
 
     const renderContent = (content: string) => {
         const actionRegex = /{{ACTION:([^|]+)\|([^}]+)}}/g
@@ -67,14 +104,15 @@ export function ChatAssistant() {
         if (scrollRef.current) {
             scrollRef.current.scrollTop = scrollRef.current.scrollHeight
         }
-    }, [messages])
+    }, [messages, isOpen])
 
     const handleSend = async () => {
         if (!input.trim() || isLoading) return
 
         const userMsg = input.trim()
         setInput('')
-        setMessages(prev => [...prev, { role: 'user', content: userMsg }])
+        const newMessages = [...messages, { role: 'user' as const, content: userMsg }]
+        setMessages(newMessages)
         setIsLoading(true)
 
         try {
@@ -83,7 +121,7 @@ export function ChatAssistant() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     message: userMsg,
-                    history: messages.slice(-10).map(m => ({
+                    history: newMessages.slice(-10).map(m => ({
                         role: m.role,
                         content: m.content
                     }))
@@ -96,10 +134,10 @@ export function ChatAssistant() {
             }
 
             const data = await res.json()
-            setMessages(prev => [...prev, { role: 'assistant', content: data.response }])
+            setMessages(prev => [...prev, { role: 'assistant' as const, content: data.response }])
         } catch (error: any) {
             toast(error.message || 'Error en la conexión con la IA', 'error')
-            setMessages(prev => [...prev, { role: 'assistant', content: 'Lo siento, hubo un error al procesar tu solicitud. Por favor, verifica tu conexión o la configuración de la API.' }])
+            setMessages(prev => [...prev, { role: 'assistant' as const, content: 'Lo siento, hubo un error al procesar tu solicitud. Por favor, verifica tu conexión o la configuración de la API.' }])
         } finally {
             setIsLoading(false)
         }
@@ -124,6 +162,15 @@ export function ChatAssistant() {
                                     <CardTitle className="text-sm font-bold">Asistente Clivaro IA</CardTitle>
                                 </div>
                                 <div className="flex items-center gap-1">
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-8 w-8 text-primary-foreground hover:bg-white/10"
+                                        title="Reiniciar chat"
+                                        onClick={clearChat}
+                                    >
+                                        <Loader2 className="h-4 w-4" />
+                                    </Button>
                                     <Button
                                         variant="ghost"
                                         size="icon"

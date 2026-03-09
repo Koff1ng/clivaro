@@ -10,6 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { useDebounce } from '@/lib/hooks/use-debounce'
 import { formatCurrency } from '@/lib/utils'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Plus, Search, Edit, Loader2 } from 'lucide-react'
 
 // Lazy load heavy form component
@@ -40,6 +41,16 @@ export function ProductsList() {
   const [hasRecipe, setHasRecipe] = useState('all')
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingProduct, setEditingProduct] = useState<any>(null)
+  const searchParams = useSearchParams()
+
+  // Auto-open dialog if ?new=item is in URL
+  React.useEffect(() => {
+    if (searchParams.get('new') === 'item') {
+      setIsDialogOpen(true)
+      setEditingProduct(null)
+    }
+  }, [searchParams])
+
   const queryClient = useQueryClient()
 
   // Debounce search to avoid excessive queries
