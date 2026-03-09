@@ -49,13 +49,17 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuPortal,
+  DropdownMenuSubContent,
 } from "@/components/ui/dropdown-menu"
 
 export function Sidebar() {
   const pathname = usePathname()
-  // const router = useRouter() // Unused
+  const router = useRouter()
   const { data: session } = useSession()
-  const { isOpen, toggle } = useSidebar()
+  const { isOpen, toggle, toggleChat } = useSidebar()
   const userPermissions = (session?.user as any)?.permissions || []
   const isSuperAdmin = (session?.user as any)?.isSuperAdmin || false
   const { hasFeature: hasPlanFeature, isNewFeature, newFeatures, isLoading, planName } = useTenantPlan()
@@ -106,6 +110,14 @@ export function Sidebar() {
       }
     }
   }, [])
+
+  const handleUpgradePlan = () => {
+    router.push('/settings?tab=subscription')
+  }
+
+  const handleHelp = () => {
+    toggleChat()
+  }
 
   const handleFeatureClick = (feature: string) => {
     if (!isNewFeature(feature as any)) return
@@ -304,6 +316,27 @@ export function Sidebar() {
               )
             })}
 
+            <div className="pt-2 mt-2 border-t border-slate-800">
+              {isOpen && <p className="px-3 py-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">Soporte</p>}
+              <button
+                onClick={handleHelp}
+                className={cn(
+                  'flex w-full rounded-lg font-medium transition-colors relative group text-left',
+                  isOpen ? 'flex-row items-center gap-3 text-sm px-3 py-2 ml-1' : 'flex-col items-center justify-center gap-1 px-1 py-2',
+                  'text-slate-500 hover:bg-slate-800 hover:text-slate-300'
+                )}
+                title={!isOpen ? 'Ayuda' : undefined}
+              >
+                <HelpCircle className={cn("flex-shrink-0 transition-all", isOpen ? "w-5 h-5" : "w-[22px] h-[22px] mb-0.5")} />
+                <span className={cn(
+                  'transition-all duration-300',
+                  isOpen ? 'text-sm whitespace-nowrap' : 'text-[10px] font-medium tracking-tight w-full truncate text-center px-0.5 opacity-90 block'
+                )}>
+                  Ayuda
+                </span>
+              </button>
+            </div>
+
             {isSuperAdmin && (
               <div className="pt-2 mt-2 border-t border-slate-800">
                 {isOpen && <p className="px-3 py-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">Super Admin</p>}
@@ -388,39 +421,61 @@ export function Sidebar() {
 
               <DropdownMenuSeparator className="bg-slate-800 my-2" />
 
-              <div className="space-y-1">
-                <DropdownMenuItem className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer hover:bg-slate-800 focus:bg-slate-800 focus:text-white transition-colors">
-                  <Settings className="w-4 h-4 text-slate-400" />
-                  <span className="text-sm font-medium">Ajustes</span>
-                  <span className="ml-auto text-[10px] text-slate-500 font-mono">Ctrl+,</span>
-                </DropdownMenuItem>
-
-                <DropdownMenuItem className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer hover:bg-slate-800 focus:bg-slate-800 focus:text-white transition-colors">
-                  <Globe className="w-4 h-4 text-slate-400" />
-                  <span className="text-sm font-medium">Idioma</span>
-                  <NavArrowRight className="w-3 h-3 ml-auto text-slate-600" />
-                </DropdownMenuItem>
-
-                <DropdownMenuItem className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer hover:bg-slate-800 focus:bg-slate-800 focus:text-white transition-colors">
-                  <HelpCircle className="w-4 h-4 text-slate-400" />
-                  <span className="text-sm font-medium">Ayuda</span>
-                </DropdownMenuItem>
-              </div>
-
-              <DropdownMenuSeparator className="bg-slate-800 my-2" />
 
               <div className="space-y-1">
-                <DropdownMenuItem className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer group hover:bg-sky-500/10 focus:bg-sky-500/10 transition-colors">
-                  <Sparkles className="w-4 h-4 text-sky-400 group-hover:animate-pulse" />
-                  <span className="text-sm font-semibold text-sky-400">Mejorar plan</span>
-                </DropdownMenuItem>
+                <Link href="/settings">
+                  <DropdownMenuItem className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer hover:bg-slate-800 focus:bg-slate-800 focus:text-white transition-colors">
+                    <Settings className="w-4 h-4 text-slate-400" />
+                    <span className="text-sm font-medium">Configuración</span>
+                    <span className="ml-auto text-[10px] text-slate-500 font-mono">Ctrl+,</span>
+                  </DropdownMenuItem>
+                </Link>
 
                 <DropdownMenuItem
-                  onClick={() => signOut({ callbackUrl: '/login' })}
-                  className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer text-red-400 hover:bg-red-500/10 focus:bg-red-500/10 hover:text-red-400 transition-colors"
+                  onClick={handleUpgradePlan}
+                  className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer hover:bg-slate-800 focus:bg-slate-800 focus:text-white transition-colors text-sky-400"
+                >
+                  <Sparkles className="w-4 h-4" />
+                  <span className="text-sm font-medium">Mejorar Plan</span>
+                </DropdownMenuItem>
+
+                <DropdownMenuSeparator className="bg-slate-800 my-1" />
+
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer hover:bg-slate-800 focus:bg-slate-800 focus:text-white data-[state=open]:bg-slate-800 transition-colors">
+                    <HelpCircle className="w-4 h-4 text-slate-400" />
+                    <span className="text-sm font-medium">Más información</span>
+                  </DropdownMenuSubTrigger>
+                  <DropdownMenuPortal>
+                    <DropdownMenuSubContent className="w-56 bg-[#0F172A] border-slate-800 text-slate-100 shadow-2xl rounded-xl p-1.5 ml-2">
+                      <Link href="/">
+                        <DropdownMenuItem className="flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer hover:bg-slate-800 focus:bg-slate-800 focus:text-white transition-colors">
+                          <span className="text-sm">Acerca de</span>
+                        </DropdownMenuItem>
+                      </Link>
+                      <Link href="/politica-de-privacidad">
+                        <DropdownMenuItem className="flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer hover:bg-slate-800 focus:bg-slate-800 focus:text-white transition-colors">
+                          <span className="text-sm">Políticas y términos</span>
+                        </DropdownMenuItem>
+                      </Link>
+                      <DropdownMenuItem
+                        onClick={handleHelp}
+                        className="flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer hover:bg-slate-800 focus:bg-slate-800 focus:text-white transition-colors"
+                      >
+                        <span className="text-sm">Ayuda</span>
+                      </DropdownMenuItem>
+                    </DropdownMenuSubContent>
+                  </DropdownMenuPortal>
+                </DropdownMenuSub>
+
+                <DropdownMenuSeparator className="bg-slate-800 my-1" />
+
+                <DropdownMenuItem
+                  onClick={() => signOut()}
+                  className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer hover:bg-red-500/10 focus:bg-red-500/10 text-red-400 font-medium transition-colors"
                 >
                   <LogOutIcon className="w-4 h-4" />
-                  <span className="text-sm font-semibold">Cerrar sesión</span>
+                  <span className="text-sm">Cerrar sesión</span>
                 </DropdownMenuItem>
               </div>
             </DropdownMenuContent>
