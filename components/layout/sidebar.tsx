@@ -27,12 +27,29 @@ import {
   StatsUpSquare,
   Calculator, // For Accounting/General
   Cash,
+  Settings,
+  Globe,
+  HelpCircle,
 } from 'iconoir-react'
+import { ChevronsUpDown, Sparkles } from 'lucide-react'
 import { Logo } from '@/components/ui/logo'
 import { AppIcon } from '@/components/ui/app-icon'
 import { useSidebar } from '@/lib/sidebar-context'
 import { useTenantPlan } from '@/lib/hooks/use-plan-features'
 import { menuGroups, type MenuGroup, type MenuItem } from '@/lib/navigation-data'
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+} from "@/components/ui/avatar"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 
 export function Sidebar() {
   const pathname = usePathname()
@@ -318,30 +335,96 @@ export function Sidebar() {
         </nav>
 
         <div className={cn(
-          'border-t border-slate-800 space-y-2 transition-opacity duration-300',
-          isOpen ? 'opacity-100 p-4' : 'opacity-0 md:opacity-100 p-2'
+          "border-t border-slate-800 p-2 sm:p-4 mt-auto",
+          !isOpen && "flex flex-col items-center"
         )}>
-          {isOpen && (
-            <div className="px-3 text-sm text-slate-400 truncate">
-              {session?.user?.name}
-            </div>
-          )}
-          <button
-            onClick={() => signOut({ callbackUrl: '/login' })}
-            className={cn(
-              'flex w-full rounded-lg font-medium text-slate-400 hover:bg-slate-800 hover:text-white transition-colors relative group',
-              isOpen ? 'flex-row items-center gap-3 text-sm px-3 py-2' : 'flex-col items-center justify-center gap-1 px-1 py-1.5'
-            )}
-            title={!isOpen ? 'Cerrar Sesión' : undefined}
-          >
-            <LogOutIcon className={cn("flex-shrink-0 transition-all", isOpen ? "w-5 h-5" : "w-[22px] h-[22px] mb-0.5")} />
-            <span className={cn(
-              'transition-all duration-300',
-              isOpen ? 'text-sm whitespace-nowrap' : 'text-[10px] font-medium tracking-tight w-full truncate text-center px-0.5 opacity-90 block'
-            )}>
-              Salir
-            </span>
-          </button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                className={cn(
+                  "flex items-center w-full gap-3 p-2 rounded-xl transition-all duration-200 outline-none",
+                  "hover:bg-slate-800 active:bg-slate-700 active:scale-[0.98]",
+                  !isOpen ? "justify-center px-0" : "px-2"
+                )}
+              >
+                <div className="relative flex-shrink-0">
+                  <Avatar className="h-9 w-9 border-2 border-slate-700 shadow-lg">
+                    {session?.user?.image ? (
+                      <AvatarImage src={session.user.image} alt={session.user.name || ''} />
+                    ) : null}
+                    <AvatarFallback className="bg-[#0EA5E9] text-white font-bold text-sm">
+                      {session?.user?.name?.charAt(0).toUpperCase() || 'U'}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 border-2 border-[#0F172A] rounded-full" />
+                </div>
+
+                {isOpen && (
+                  <>
+                    <div className="flex flex-col items-start min-w-0 flex-1 overflow-hidden">
+                      <span className="text-sm font-semibold text-white truncate w-full tracking-tight">
+                        {session?.user?.name?.split(' ')[0]}
+                      </span>
+                      <span className="text-[10px] sm:text-xs font-medium text-slate-400 truncate w-full uppercase tracking-widest opacity-80">
+                        {planName || 'Plan Gratuito'}
+                      </span>
+                    </div>
+                    <ChevronsUpDown className="w-4 h-4 text-slate-500 shrink-0" />
+                  </>
+                )}
+              </button>
+            </DropdownMenuTrigger>
+
+            <DropdownMenuContent
+              side={isOpen ? "right" : "right"}
+              align="end"
+              sideOffset={isOpen ? 12 : 20}
+              className="w-64 p-2 bg-[#0F172A] border-slate-800 text-slate-100 shadow-2xl rounded-2xl backdrop-blur-xl supports-[backdrop-filter]:bg-[#0F172A]/90"
+            >
+              <div className="px-3 py-3 mb-2 bg-slate-800/50 rounded-xl border border-slate-700/50">
+                <p className="text-xs font-medium text-slate-400 mb-1">CUENTA</p>
+                <p className="text-sm font-semibold truncate text-white">{session?.user?.email}</p>
+              </div>
+
+              <DropdownMenuSeparator className="bg-slate-800 my-2" />
+
+              <div className="space-y-1">
+                <DropdownMenuItem className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer hover:bg-slate-800 focus:bg-slate-800 focus:text-white transition-colors">
+                  <Settings className="w-4 h-4 text-slate-400" />
+                  <span className="text-sm font-medium">Ajustes</span>
+                  <span className="ml-auto text-[10px] text-slate-500 font-mono">Ctrl+,</span>
+                </DropdownMenuItem>
+
+                <DropdownMenuItem className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer hover:bg-slate-800 focus:bg-slate-800 focus:text-white transition-colors">
+                  <Globe className="w-4 h-4 text-slate-400" />
+                  <span className="text-sm font-medium">Idioma</span>
+                  <NavArrowRight className="w-3 h-3 ml-auto text-slate-600" />
+                </DropdownMenuItem>
+
+                <DropdownMenuItem className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer hover:bg-slate-800 focus:bg-slate-800 focus:text-white transition-colors">
+                  <HelpCircle className="w-4 h-4 text-slate-400" />
+                  <span className="text-sm font-medium">Ayuda</span>
+                </DropdownMenuItem>
+              </div>
+
+              <DropdownMenuSeparator className="bg-slate-800 my-2" />
+
+              <div className="space-y-1">
+                <DropdownMenuItem className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer group hover:bg-sky-500/10 focus:bg-sky-500/10 transition-colors">
+                  <Sparkles className="w-4 h-4 text-sky-400 group-hover:animate-pulse" />
+                  <span className="text-sm font-semibold text-sky-400">Mejorar plan</span>
+                </DropdownMenuItem>
+
+                <DropdownMenuItem
+                  onClick={() => signOut({ callbackUrl: '/login' })}
+                  className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer text-red-400 hover:bg-red-500/10 focus:bg-red-500/10 hover:text-red-400 transition-colors"
+                >
+                  <LogOutIcon className="w-4 h-4" />
+                  <span className="text-sm font-semibold">Cerrar sesión</span>
+                </DropdownMenuItem>
+              </div>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </aside>
     </>
