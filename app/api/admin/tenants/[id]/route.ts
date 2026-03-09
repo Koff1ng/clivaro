@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/api-middleware'
 import { prisma } from '@/lib/db'
 import { logger } from '@/lib/logger'
+import { getSchemaName } from '@/lib/tenant-utils'
 
 // Función helper para ejecutar consultas con retry y manejo de errores de conexión
 async function executeWithRetry<T>(
@@ -198,7 +199,7 @@ export async function DELETE(
     const isPostgres = tenant.databaseUrl?.startsWith('postgresql://') || tenant.databaseUrl?.startsWith('postgres://')
 
     if (isPostgres) {
-      const schemaName = `tenant_${id}`
+      const schemaName = getSchemaName(id)
 
       // Use DIRECT_DATABASE_URL for DDL operations
       const directUrl = process.env.DIRECT_DATABASE_URL || process.env.DATABASE_URL
@@ -222,10 +223,10 @@ export async function DELETE(
       }
     }
 
-    // Delete the tenant record from master database
-    await prisma.tenant.delete({
+    // Delete the tenant record from master database with retry
+    await executeWithRetry(() => prisma.tenant.delete({
       where: { id }
-    })
+    }))
 
     return NextResponse.json({ success: true, schemaDeleted: isPostgres })
   } catch (error: any) {

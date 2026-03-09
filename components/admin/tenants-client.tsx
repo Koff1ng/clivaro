@@ -405,10 +405,19 @@ export function TenantsClient() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => deleteMutation.mutate(tenant.id)}
+                        onClick={() => {
+                          if (confirm(`⚠️ ¿ELIMINAR TENANT "${tenant.name}"?\n\nEsta acción es IRREVERSIBLE y eliminará permanentemente la base de datos y todos los registros asociados.\n\n¿Estás seguro de que deseas continuar?`)) {
+                            deleteMutation.mutate(tenant.id)
+                          }
+                        }}
                         disabled={deleteMutation.isPending}
+                        className="text-red-600 hover:bg-red-50 dark:hover:bg-red-950"
                       >
-                        <Trash2 className="h-4 w-4" />
+                        {deleteMutation.isPending ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-4 w-4" />
+                        )}
                       </Button>
                     </div>
                   </div>
