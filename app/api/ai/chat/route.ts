@@ -14,18 +14,32 @@ export async function POST(req: Request) {
     try {
         const { message, history, context } = await req.json();
 
+        console.log("[AI_CHAT] Request received:", { message, historyLength: history?.length });
+        console.log("[AI_CHAT] Env check:", {
+            hasApiKey: !!process.env.GROQ_API_KEY,
+            hasSupaUrl: !!process.env.SUPABASE_URL,
+            hasSupaKey: !!process.env.SUPABASE_ANON_KEY
+        });
+
+        if (!process.env.GROQ_API_KEY) {
+            throw new Error("GROQ_API_KEY no encontrada en el servidor");
+        }
+
         const groq = new GroqERP(
-            process.env.GROQ_API_KEY!,
+            process.env.GROQ_API_KEY,
             prisma,
             process.env.SUPABASE_URL!,
             process.env.SUPABASE_ANON_KEY!
         );
 
+        const userRoles = (session.user as any).roles;
+        const rolesStr = Array.isArray(userRoles) ? userRoles.join(', ') : 'Ninguno';
+
         const fullContext = `
       User: ${session.user?.name}
       Email: ${session.user?.email}
       Tenant: ${(session.user as any).tenantSlug || 'Master'}
-      Roles: ${(session.user as any).roles?.join(', ') || 'None'}
+      Roles: ${rolesStr}
       ${context || ''}
     `.trim();
 

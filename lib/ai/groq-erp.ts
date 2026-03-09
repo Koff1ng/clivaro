@@ -72,27 +72,37 @@ export class GroqERP {
             throw new Error("Groq API Key no configurada.");
         }
 
-        const response = await fetch(this.apiUrl, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${this.apiKey}`,
-            },
-            body: JSON.stringify({
-                model: model ?? this.defaultModel,
-                messages,
-                temperature,
-                max_tokens: 2048,
-            }),
-        });
+        const selectedModel = model ?? this.defaultModel;
+        console.log(`[GROQ_ERP] Sending request to ${selectedModel}...`);
 
-        if (!response.ok) {
-            const error = await response.json();
-            throw new Error(`Groq API Error: ${error?.error?.message ?? "Unknown error"}`);
+        try {
+            const response = await fetch(this.apiUrl, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${this.apiKey}`,
+                },
+                body: JSON.stringify({
+                    model: selectedModel,
+                    messages,
+                    temperature,
+                    max_tokens: 2048,
+                }),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                const msg = errorData?.error?.message || response.statusText || "Unknown Groq error";
+                console.error(`[GROQ_ERP] API Error (${response.status}):`, msg);
+                throw new Error(`Groq API Error: ${msg} (${response.status})`);
+            }
+
+            const data: GroqResponse = await response.json();
+            return data.choices[0]?.message?.content ?? "";
+        } catch (error: any) {
+            console.error("[GROQ_ERP] Fetch/Network Error:", error.message);
+            throw error;
         }
-
-        const data: GroqResponse = await response.json();
-        return data.choices[0]?.message?.content ?? "";
     }
 
     // ─────────────────────────────────────────────────────────────
