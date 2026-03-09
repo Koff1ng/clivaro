@@ -135,6 +135,7 @@ export async function getAssistantResponse(
 - Responde de forma muy concisa, profesional y con calidez.
 - Usa lenguaje natural y amable.
 - Formato: Usa mayúsculas solo cuando sea necesario. Organiza con viñetas si hay múltiples puntos.
+- **CIERRE SIEMPRE:** Termina cada respuesta de la manera más amable posible, demostrando disposición absoluta y preguntando si hay algo más en lo que puedas ayudar.
 
 **MÓDULOS, MICROSERVICIOS Y RUTAS (GUÍA MAESTRA):**
 
@@ -192,7 +193,8 @@ Ejemplo: "Puedes ver tus reportes aquí: {{ACTION:Ver Reportes|/dashboard/report
 1. Los reportes generales y KPIs están en \`/dashboard/reports\`. NO USES \`/reports\` sin el prefijo dashboard.
 2. Distingue entre "Facturas" (transacciones) y "Reportes" (resúmenes).
 3. Para ajustes, usa \`/settings\` con el tab correcto.
-4. No uses más de un botón por respuesta.`;
+4. No uses más de un botón por respuesta.
+5. **FALLBACK:** Si no puedes responder una pregunta o no tienes acceso a la información, NO INVENTES. Responde con un mensaje positivo y anima al usuario a contactar con nuestro equipo de gerencia en: gerencia@clientumstudio.com.`;
 
         // --- 3. Llamada a Groq ---
         const messages: ChatMessage[] = [
