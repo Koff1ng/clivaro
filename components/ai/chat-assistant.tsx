@@ -63,6 +63,27 @@ export function ChatAssistant() {
         toast('Chat reiniciado', 'info')
     }
 
+    // ─── Parsea markdown básico: **negrita**, *cursiva*, `código`, \n ───
+    const parseMarkdown = (text: string): (string | JSX.Element)[] => {
+        const segments = text.split(/(\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`|\n)/g)
+        return segments.map((seg, i) => {
+            if (/^\*\*(.+)\*\*$/.test(seg)) {
+                return <strong key={i} className="font-semibold">{seg.slice(2, -2)}</strong>
+            }
+            if (/^\*(.+)\*$/.test(seg)) {
+                return <em key={i} className="italic">{seg.slice(1, -1)}</em>
+            }
+            if (/^`(.+)`$/.test(seg)) {
+                return <code key={i} className="bg-muted px-1 py-0.5 rounded text-xs font-mono">{seg.slice(1, -1)}</code>
+            }
+            if (seg === '\n') {
+                return <br key={i} />
+            }
+            return seg
+        })
+    }
+
+    // ─── Renderiza contenido con acciones y markdown ───────────────────
     const renderContent = (content: string) => {
         const actionRegex = /{{ACTION:([^|]+)\|([^}]+)}}/g
         const parts: (string | JSX.Element)[] = []
@@ -71,7 +92,7 @@ export function ChatAssistant() {
 
         while ((match = actionRegex.exec(content)) !== null) {
             if (match.index > lastIndex) {
-                parts.push(content.substring(lastIndex, match.index))
+                parts.push(...parseMarkdown(content.substring(lastIndex, match.index)))
             }
             const label = match[1]
             const path = match[2]
@@ -94,7 +115,7 @@ export function ChatAssistant() {
         }
 
         if (lastIndex < content.length) {
-            parts.push(content.substring(lastIndex))
+            parts.push(...parseMarkdown(content.substring(lastIndex)))
         }
 
         return parts.length > 0 ? <div className="flex flex-col gap-1">{parts}</div> : content
