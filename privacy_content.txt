@@ -1,0 +1,352 @@
+Clivaro
+
+POLÍTICA DE TRATAMIENTO DE DATOS PERSONALES
+
+Conforme a la Ley 1581 de 2012 y el Decreto 1377 de 2013
+
+Versión 1.0 — Marzo de 2026
+
+
+
+1. Identificación del Responsable del Tratamiento
+
+En cumplimiento del artículo 15 de la Ley 1581 de 2012, Clientum Studio SAS (en adelante "la Empresa"), propietaria y operadora de la plataforma Clivaro, se identifica como Responsable del Tratamiento de los datos personales recopilados a través de la Plataforma y sus canales asociados.
+
+
+
+Nombre o razón social: Clientum Studio SAS
+
+Domicilio: Colombia
+
+Correo para ejercicio de derechos ARCO: datospersonales@clivaro.com
+
+Sitio web: www.clientumstudio.com
+
+
+
+El registro de la base de datos ha sido realizado ante la Superintendencia de Industria y Comercio (SIC) conforme a la normativa vigente.
+
+
+
+2. Marco Legal
+
+Esta Política se fundamenta en las siguientes normas:
+
+
+
+Constitución Política de Colombia, Artículo 15 — Derecho a la intimidad y Habeas Data.
+
+Ley 1581 de 2012 — Disposiciones generales para la protección de datos personales.
+
+Decreto 1377 de 2013 — Reglamentación parcial de la Ley 1581 de 2012.
+
+Decreto Único Reglamentario 1074 de 2015, Libro 2, Parte 2, Título 3, Capítulo 25.
+
+Ley 1266 de 2008 — Habeas Data financiero.
+
+Circulares de la Superintendencia de Industria y Comercio (SIC).
+
+
+
+3. Definiciones
+
+Conforme a la Ley 1581 de 2012:
+
+
+
+Titular: Persona natural cuyos datos personales son objeto de tratamiento.
+
+Responsable del Tratamiento: Persona natural o jurídica que decide sobre la base de datos y/o el tratamiento de los datos.
+
+Encargado del Tratamiento: Persona natural o jurídica que realiza el tratamiento por cuenta del Responsable.
+
+Tratamiento: Cualquier operación sobre datos personales, como recolección, almacenamiento, uso, circulación o supresión.
+
+Dato personal: Cualquier información vinculada o que pueda asociarse a una persona natural determinada o determinable.
+
+Dato sensible: Datos que afectan la intimidad del titular o cuyo uso indebido puede generar discriminación (origen étnico, salud, orientación sexual, datos biométricos, entre otros).
+
+Dato privado: Dato que por su naturaleza íntima sólo es relevante para el titular.
+
+Dato semiprivado: Dato que no es íntimo, privado ni público, y cuyo conocimiento puede interesar al titular y a ciertos sectores.
+
+Dato público: Dato que no es semiprivado, privado o sensible, y que puede ser conocido por cualquier persona.
+
+Autorización: Consentimiento previo, expreso e informado del titular para el tratamiento de sus datos.
+
+Habeas Data: Derecho fundamental que permite a las personas conocer, actualizar y rectificar sus datos personales.
+
+
+
+4. Datos Personales que se Recopilan
+
+4.1 Datos de los Clientes y sus representantes
+
+Al registrarse y contratar el servicio, la Empresa recopila los siguientes datos:
+
+
+
+Nombre completo o razón social
+
+NIT o cédula de ciudadanía / cédula de extranjería
+
+Correo electrónico corporativo y/o personal
+
+Número de teléfono de contacto
+
+Dirección postal o comercial
+
+Información de facturación y datos de medios de pago (procesados de forma segura)
+
+Ciudad y departamento
+
+4.2 Datos de los Usuarios de la Plataforma
+
+Sobre las personas que acceden a la Plataforma como usuarios habilitados:
+
+
+
+Nombre completo
+
+Correo electrónico
+
+Credenciales de acceso (contraseña almacenada mediante hash seguro)
+
+Rol dentro de la organización
+
+Registro de actividades dentro de la Plataforma (logs de auditoría)
+
+Dirección IP y datos técnicos de conexión
+
+4.3 Datos ingresados por el Cliente a través de la Plataforma
+
+La Empresa también actúa como Encargada del Tratamiento respecto a los datos que el Cliente ingrese en la Plataforma sobre sus propios clientes, proveedores y empleados. El Cliente es el Responsable del Tratamiento de dichos datos y deberá haber obtenido las autorizaciones correspondientes.
+
+4.4 Datos Sensibles
+
+La Empresa NO recopila deliberadamente datos sensibles de los titulares (datos de salud, biométricos, ideología política, entre otros). En caso de que el Cliente ingrese datos sensibles de sus propios usuarios en la Plataforma, será responsable de contar con las autorizaciones reforzadas exigidas por la ley.
+
+
+
+5. Finalidades del Tratamiento
+
+Los datos personales recopilados serán tratados para las siguientes finalidades:
+
+
+
+Gestionar el registro, creación y administración de cuentas en la Plataforma.
+
+Prestar los servicios contratados y brindar soporte técnico.
+
+Gestionar la facturación, cobros y relación comercial.
+
+Enviar comunicaciones relacionadas con el servicio: actualizaciones, mantenimientos, alertas de seguridad.
+
+Enviar comunicaciones comerciales y de marketing sobre productos o servicios de la Empresa (cuando el titular haya otorgado autorización expresa).
+
+Cumplir con obligaciones legales, tributarias y regulatorias colombianas (incluyendo la DIAN).
+
+Mejorar la Plataforma mediante el análisis de uso (datos anonimizados o seudonimizados).
+
+Prevenir fraudes y garantizar la seguridad de la Plataforma.
+
+Gestionar el ejercicio de derechos por parte de los titulares.
+
+
+
+Los datos NO serán utilizados para finalidades distintas a las aquí descritas sin previa autorización del titular, salvo requerimiento legal o judicial.
+
+
+
+6. Autorización para el Tratamiento
+
+La Empresa solicitará la autorización del titular de los datos personales de forma previa, expresa e informada, a través de los mecanismos dispuestos en la Plataforma (casillas de aceptación, formularios de registro u otros medios verificables).
+
+
+
+Se entiende que el titular ha sido informado y ha autorizado el tratamiento cuando acepta expresamente los Términos y Condiciones de Uso y la presente Política al momento del registro.
+
+
+
+El titular tiene el derecho de revocar su autorización en cualquier momento, lo cual no afectará la licitud del tratamiento previo a dicha revocación.
+
+
+
+7. Derechos de los Titulares (Derechos ARCO)
+
+Conforme a los artículos 8 y 22 de la Ley 1581 de 2012, los titulares tienen los siguientes derechos:
+
+
+
+Acceso: Conocer qué datos personales suyos están siendo tratados por la Empresa, así como la finalidad y las condiciones del tratamiento.
+
+Rectificación: Solicitar la corrección o actualización de sus datos cuando sean inexactos, incompletos o estén desactualizados.
+
+Cancelación / Supresión: Solicitar la eliminación de sus datos cuando: no sean necesarios para la finalidad que motivó su recolección; se haya revocado la autorización; se traten en violación de la ley; o haya terminado la relación contractual, salvo obligación legal de conservación.
+
+Oposición: Oponerse al tratamiento de sus datos para finalidades de marketing o comunicaciones comerciales, sin que ello afecte el tratamiento necesario para la prestación del servicio.
+
+Portabilidad: Solicitar copia de sus datos en un formato estructurado y legible por máquina.
+
+Presentación de queja ante la SIC: Si considera que la Empresa ha vulnerado sus derechos, puede presentar queja ante la Superintendencia de Industria y Comercio (www.sic.gov.co).
+
+
+
+8. Procedimiento para el Ejercicio de Derechos
+
+El titular o su representante legal podrá ejercer sus derechos mediante solicitud escrita enviada a:
+
+
+
+Correo electrónico: datospersonales@clivaro.com
+
+Asunto del correo: "Ejercicio de derechos ARCO — [Nombre del titular]"
+
+
+
+La solicitud deberá contener: nombre completo del titular, documento de identidad, descripción clara del derecho que desea ejercer, datos de contacto para enviar la respuesta, y documentos de soporte si aplica.
+
+
+
+La Empresa responderá dentro de los siguientes plazos:
+
+
+
+Consultas: 10 días hábiles, prorrogables por 5 días hábiles adicionales con aviso al titular.
+
+Reclamos (rectificación, cancelación, oposición): 15 días hábiles, prorrogables por 8 días hábiles adicionales con aviso al titular.
+
+
+
+Si la solicitud está incompleta, la Empresa informará al titular dentro de los 5 días hábiles siguientes para que subsane la información faltante.
+
+
+
+9. Transferencia y Transmisión Internacional de Datos
+
+La Empresa podrá transferir o transmitir datos personales a terceros en los siguientes casos:
+
+
+
+Proveedores tecnológicos que prestan servicios a la Empresa (hosting, seguridad, analítica) bajo contratos de encargo del tratamiento que garantizan niveles de protección equivalentes a los exigidos por la ley colombiana.
+
+Autoridades gubernamentales o judiciales colombianas cuando sea requerido por ley.
+
+
+
+Cuando se realicen transferencias internacionales de datos, la Empresa adoptará las medidas necesarias para garantizar que el país destinatario o el tercero receptor ofrezca niveles adecuados de protección de datos, o solicitará la autorización expresa del titular cuando corresponda.
+
+
+
+Los principales proveedores de infraestructura pueden ubicarse en países con niveles adecuados de protección reconocidos por la SIC.
+
+
+
+10. Seguridad de los Datos
+
+La Empresa implementa las siguientes medidas técnicas y organizativas para proteger los datos personales:
+
+
+
+Cifrado de datos en tránsito mediante TLS/SSL y en reposo.
+
+Contraseñas almacenadas mediante algoritmos de hash seguros (bcrypt o equivalente).
+
+Control de acceso basado en roles (RBAC) dentro de la Plataforma.
+
+Monitoreo continuo de actividades y logs de auditoría.
+
+Backups automáticos cifrados con almacenamiento en ubicaciones seguras.
+
+Procedimientos de gestión de incidentes de seguridad con notificación al titular y a la SIC en los plazos legales.
+
+Capacitación al personal en materia de protección de datos y seguridad de la información.
+
+
+
+En caso de un incidente de seguridad que pueda afectar los datos personales de los titulares, la Empresa notificará a los titulares afectados y a la SIC dentro de las 72 horas siguientes a tener conocimiento del incidente.
+
+
+
+11. Uso de Cookies y Tecnologías de Seguimiento
+
+La Plataforma utiliza cookies y tecnologías similares para los siguientes propósitos:
+
+
+
+Cookies técnicas esenciales: necesarias para el funcionamiento de la Plataforma (sesión, autenticación). No pueden desactivarse.
+
+Cookies analíticas: permiten medir el uso de la Plataforma para mejorar su desempeño (datos anonimizados o seudonimizados).
+
+Cookies de preferencias: almacenan configuraciones del usuario para personalizar la experiencia.
+
+
+
+El usuario puede gestionar o deshabilitar las cookies no esenciales desde la configuración de su navegador o desde el panel de preferencias de la Plataforma. La desactivación de cookies esenciales puede afectar el funcionamiento del servicio.
+
+
+
+12. Conservación de los Datos
+
+Los datos personales serán conservados durante el tiempo necesario para cumplir con las finalidades que motivaron su recolección y durante los plazos exigidos por la normativa colombiana, en especial:
+
+
+
+Datos contractuales: durante la vigencia del contrato y hasta 10 años después de su terminación, conforme al Código de Comercio.
+
+Datos tributarios y de facturación: hasta 5 años conforme al Estatuto Tributario.
+
+Datos de marketing: hasta que el titular revoque su autorización.
+
+Logs de auditoría: hasta 2 años después de la terminación del contrato.
+
+
+
+Vencidos los plazos de conservación, los datos serán eliminados de forma segura e irrecuperable, salvo que exista obligación legal de conservación por un plazo mayor.
+
+
+
+13. Menores de Edad
+
+La Plataforma está dirigida exclusivamente a personas mayores de 18 años. La Empresa no recopila conscientemente datos personales de menores de edad. Si se detecta que se han recopilado datos de un menor sin el consentimiento del padre, madre o representante legal, dichos datos serán eliminados de manera inmediata.
+
+
+
+14. Modificaciones a la Política
+
+La Empresa se reserva el derecho de actualizar esta Política en cualquier momento para reflejar cambios normativos, nuevas prácticas de tratamiento o mejoras en la Plataforma. Los cambios serán notificados a los titulares con al menos 10 días hábiles de anticipación mediante correo electrónico y/o aviso en la Plataforma.
+
+
+
+La versión vigente siempre estará disponible en el sitio web de la Empresa.
+
+
+
+15. Contacto y Canal de Atención
+
+Para el ejercicio de derechos, consultas o reclamos relacionados con el tratamiento de datos personales:
+
+
+
+Correo electrónico (Oficial SIC): datospersonales@clivaro.com
+
+Correo legal: legal@clivaro.com
+
+Sitio web: www.clientumstudio.com
+
+
+
+Para quejas no resueltas por la Empresa, el titular puede acudir a la Superintendencia de Industria y Comercio — Delegatura para la Protección de Datos Personales: www.sic.gov.co
+
+
+
+
+
+
+
+Clientum Studio SAS
+
+Responsable del Tratamiento de Datos Personales
+
+Última actualización: Marzo de 2026
+

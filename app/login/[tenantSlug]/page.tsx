@@ -9,7 +9,9 @@ import { Label } from '@/components/ui/label'
 import { Lock, Mail, AlertCircle, Loader2, ArrowRight, CheckCircle2, Building2 } from 'lucide-react'
 import { Logo } from '@/components/ui/logo'
 import { LoadingScreen } from '@/components/ui/loading-screen'
+import { LegalAcceptanceModal } from '@/components/onboarding/legal-acceptance-modal'
 import Link from 'next/link'
+import { useSession } from 'next-auth/react'
 
 export default function TenantLoginPage({ params }: { params: { tenantSlug: string } }) {
   const router = useRouter()
@@ -19,6 +21,8 @@ export default function TenantLoginPage({ params }: { params: { tenantSlug: stri
   const [loading, setLoading] = useState(false)
   const [tenantName, setTenantName] = useState('')
   const [verifying, setVerifying] = useState(true)
+  const [showLegalModal, setShowLegalModal] = useState(false)
+  const [tempSession, setTempSession] = useState<any>(null)
 
   useEffect(() => {
     async function verifyTenant() {
@@ -78,8 +82,18 @@ export default function TenantLoginPage({ params }: { params: { tenantSlug: stri
         setLoading(false)
       } else if (result?.ok) {
         // Redirigir manualmente después del login exitoso
-        await new Promise(resolve => setTimeout(resolve, 300))
-        window.location.href = '/dashboard'
+        // Pero primero verificar si necesita aceptar términos
+        const sessionResponse = await fetch('/api/auth/session')
+        const session = await sessionResponse.json()
+
+        if (session?.user && !session.user.legalAccepted) {
+          setTempSession(session)
+          setShowLegalModal(true)
+          setLoading(false)
+        } else {
+          await new Promise(resolve => setTimeout(resolve, 300))
+          window.location.href = '/dashboard'
+        }
       } else {
         setError('Error al iniciar sesión. Por favor, intente nuevamente.')
         setLoading(false)
@@ -90,13 +104,38 @@ export default function TenantLoginPage({ params }: { params: { tenantSlug: stri
     }
   }
 
+  const handleLegalAccept = async (marketing: boolean) => {
+    try {
+      const response = await fetch('/api/legal/accept', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          marketingAccepted: marketing,
+          version: 'v1.0 - Marzo 2026',
+        }),
+      })
+
+      if (response.ok) {
+        window.location.href = '/dashboard'
+      } else {
+        setError('Error al guardar la aceptación legal.')
+      }
+    } catch (err) {
+      setError('Error de conexión al procesar términos.')
+    }
+  }
+
   // Show loading screen when verifying or loading
   if (verifying || loading) {
     return <LoadingScreen />
   }
 
   return (
-    <div className="w-full h-screen grid lg:grid-cols-2 overflow-hidden">
+    <div className="w-full h-screen grid lg:grid-cols-2 overflow-hidden text-slate-900 dark:text-slate-100">
+      <LegalAcceptanceModal
+        open={showLegalModal}
+        onAccept={handleLegalAccept}
+      />
       {/* Left Panel - Brand & Visuals */}
       <div className="hidden lg:flex relative flex-col justify-between pt-4 px-12 pb-12 bg-slate-950 text-white overflow-hidden">
         {/* Abstract Background Effects */}

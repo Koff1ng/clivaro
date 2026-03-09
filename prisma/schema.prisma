@@ -50,6 +50,13 @@ model User {
   marketingCampaignsCreated MarketingCampaign[] @relation("MarketingCampaignCreatedBy")
   accountingAuditLogs AccountingAuditLog[] @relation("AccountingAuditLogs")
   creditNotesCreated  CreditNote[] @relation("CreditNoteCreatedBy")
+
+  // Campos de cumplimiento legal (Ley 1581 Colombia)
+  legalAccepted     Boolean   @default(false)
+  legalAcceptedAt   DateTime?
+  legalVersion      String?   // ej: "v1.0 - Marzo 2026"
+  marketingAccepted Boolean   @default(false)
+  acceptanceIp      String?
 }
 
 model Session {

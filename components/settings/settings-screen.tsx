@@ -16,7 +16,8 @@ import { DataConfig } from './data-config'
 import { AlegraConfig } from './alegra-config'
 import { PaymentMethodsConfig } from './payment-methods-config'
 import { TaxesPage } from './taxes-page'
-import { Wallet, Percent } from 'lucide-react'
+import { Wallet, Percent, ShieldCheck } from 'lucide-react'
+import { PrivacyConfig } from './privacy-config'
 
 async function fetchSettings() {
   const res = await fetch('/api/settings')
@@ -221,6 +222,10 @@ export function SettingsScreen() {
             <SettingsIcon className="h-4 w-4" />
             Datos / Backups
           </TabsTrigger>
+          <TabsTrigger value="privacy" className="flex items-center gap-2">
+            <ShieldCheck className="h-4 w-4" />
+            Privacidad
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="users" className="space-y-4">
@@ -297,6 +302,10 @@ export function SettingsScreen() {
             onSave={(data) => updateSettingsMutation.mutate(data)}
             isLoading={updateSettingsMutation.isPending}
           />
+        </TabsContent>
+
+        <TabsContent value="privacy" className="space-y-4">
+          <PrivacyConfig />
         </TabsContent>
       </Tabs>
     </div>

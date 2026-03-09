@@ -1,0 +1,304 @@
+Clivaro
+
+TÉRMINOS Y CONDICIONES DE USO
+
+Plataforma ERP & CRM en la Nube
+
+Versión 1.0 — Marzo de 2026
+
+
+
+1. Información General y Aceptación
+
+El presente documento establece los Términos y Condiciones de Uso (en adelante "Términos") que regulan el acceso y uso de la plataforma Clivaro, desarrollada y operada por Clientum Studio SAS (en adelante "la Empresa"), sociedad comercial constituida de conformidad con la legislación colombiana.
+
+
+
+Al registrarse, acceder, o utilizar cualquier funcionalidad de la plataforma Clivaro, el usuario o la entidad que este representa (en adelante "el Cliente") manifiesta su acuerdo pleno e incondicional con los presentes Términos, los cuales tienen carácter vinculante conforme a lo dispuesto en la Ley 527 de 1999 sobre comercio electrónico y la Ley 1480 de 2011 (Estatuto del Consumidor).
+
+
+
+Si el Cliente no acepta estos Términos en su totalidad, deberá abstenerse de usar la plataforma. El uso continuado de la misma constituye aceptación tácita de cualquier modificación que se realice con aviso previo.
+
+
+
+2. Definiciones
+
+Para efectos de interpretación de estos Términos, se establecen las siguientes definiciones:
+
+
+
+"Plataforma": El software Clivaro en modalidad SaaS (Software as a Service), accesible a través de Internet en la dirección www.clientumstudio.com y subdominios asociados.
+
+"Cliente": Persona natural o jurídica que contrata el acceso a la Plataforma mediante la suscripción a uno de los planes disponibles (Starter, Business o Enterprise).
+
+"Usuario": Persona natural que accede a la Plataforma con credenciales autorizadas por el Cliente.
+
+"Datos del Cliente": Toda la información introducida, cargada, generada o almacenada en la Plataforma por el Cliente o sus Usuarios.
+
+"Datos Personales": Cualquier información que permita identificar o hacer identificable a una persona natural, conforme a la Ley 1581 de 2012.
+
+"Plan de Suscripción": El nivel de servicio contratado (Starter, Business o Enterprise) que determina las funcionalidades habilitadas y el número de usuarios permitidos.
+
+"SLA": Acuerdo de Nivel de Servicio que establece los compromisos de disponibilidad y soporte de la Plataforma.
+
+
+
+3. Objeto del Contrato
+
+Mediante la aceptación de estos Términos, Clientum Studio SAS concede al Cliente una licencia de uso no exclusiva, no transferible e intransferible para acceder y utilizar la Plataforma Clivaro exclusivamente para sus actividades comerciales internas, según el plan contratado.
+
+
+
+El objeto incluye el acceso a los siguientes módulos, según disponibilidad por plan:
+
+
+
+Dashboard corporativo con indicadores clave de desempeño (KPIs)
+
+Gestión de productos e inventario (incluyendo multi-almacén en planes superiores)
+
+CRM: gestión de clientes, leads y oportunidades comerciales
+
+Facturación electrónica conforme a la normativa de la DIAN
+
+Punto de Venta (POS) y control de caja
+
+Gestión de proveedores, órdenes de compra y recepción de mercancía
+
+Campañas de marketing con editor visual (planes Business y Enterprise)
+
+Reportes y analytics avanzados
+
+Gestión de usuarios y configuración del sistema
+
+
+
+4. Planes, Precios y Facturación
+
+4.1 Planes de Suscripción
+
+La Plataforma se ofrece bajo los siguientes planes mensuales:
+
+
+
+Plan Starter: $49.900 COP/mes — hasta 2 usuarios, funcionalidades básicas.
+
+Plan Business: $79.900 COP/mes — hasta 5 usuarios, CRM completo, marketing campaigns y multi-almacén.
+
+Plan Enterprise: $149.900 COP/mes — hasta 15 usuarios (más usuarios a consultar), API personalizada, SLA garantizado, soporte 24/7 y gestor de cuenta dedicado.
+
+
+
+Los precios indicados no incluyen el Impuesto sobre las Ventas (IVA) del 19% aplicable conforme a la normativa tributaria colombiana vigente, a menos que se indique expresamente lo contrario en la factura electrónica correspondiente.
+
+4.2 Facturación
+
+La suscripción se cobra de forma mensual anticipada, mediante los medios de pago habilitados en la Plataforma. El Cliente recibirá factura electrónica conforme a la resolución de la DIAN aplicable.
+
+
+
+En caso de mora en el pago, la Empresa se reserva el derecho de suspender el acceso a la Plataforma tras un aviso previo de 5 días hábiles. La reactivación estará sujeta al pago de los valores adeudados.
+
+4.3 Cambio de Plan
+
+El Cliente podrá actualizar o degradar su plan en cualquier momento desde el panel de configuración. Los cambios aplicarán de forma prorrateada al siguiente ciclo de facturación. La degradación de plan no genera derecho a reembolso por el período en curso.
+
+4.4 Política de Reembolsos
+
+Dado que la Plataforma es un servicio digital de uso inmediato, no se realizan reembolsos por períodos ya facturados. El Cliente podrá cancelar su suscripción en cualquier momento, con efecto al final del período mensual pagado.
+
+
+
+5. Obligaciones del Cliente
+
+El Cliente se compromete a:
+
+
+
+Proporcionar información veraz, completa y actualizada durante el registro y durante toda la vigencia del contrato.
+
+Mantener la confidencialidad de las credenciales de acceso (usuario y contraseña) y ser responsable de todas las actividades realizadas bajo su cuenta.
+
+Notificar de manera inmediata a la Empresa ante cualquier uso no autorizado de su cuenta o cualquier brecha de seguridad.
+
+Utilizar la Plataforma exclusivamente para actividades lícitas conforme a la legislación colombiana.
+
+No intentar acceder a módulos, datos o funcionalidades para los cuales no cuenta con autorización.
+
+No realizar ingeniería inversa, descompilar, ni intentar extraer el código fuente de la Plataforma.
+
+No utilizar la Plataforma para almacenar o procesar información de terceros sin la debida autorización.
+
+Cumplir con la normativa sobre protección de datos personales (Ley 1581 de 2012) respecto a los datos de sus propios clientes y empleados que procese a través de la Plataforma.
+
+Realizar copias de seguridad adicionales de su información crítica, sin depender exclusivamente del servicio de backup de la Plataforma.
+
+
+
+6. Obligaciones de la Empresa
+
+Clientum Studio SAS se compromete a:
+
+
+
+Proveer el acceso continuo a la Plataforma Clivaro con una disponibilidad mínima del 99% mensual para planes Business y Enterprise, salvo en caso de mantenimientos programados o fuerza mayor.
+
+Mantener medidas de seguridad técnicas y organizativas adecuadas para la protección de los Datos del Cliente.
+
+Notificar al Cliente con al menos 48 horas de anticipación sobre mantenimientos programados que impliquen interrupción del servicio.
+
+Realizar backups automáticos de los datos del Cliente según los parámetros del plan contratado.
+
+Brindar soporte técnico conforme al nivel del plan contratado.
+
+Actualizar la Plataforma con mejoras y nuevas funcionalidades sin costo adicional para el Cliente.
+
+Informar al Cliente en un plazo máximo de 72 horas sobre cualquier incidente de seguridad que pueda afectar sus datos.
+
+
+
+7. Propiedad Intelectual
+
+La Plataforma Clivaro, incluyendo su diseño, código fuente, algoritmos, bases de datos, interfaces gráficas, logotipos, marcas y toda la documentación asociada, es propiedad exclusiva de Clientum Studio SAS y está protegida por las leyes colombianas de propiedad intelectual (Ley 23 de 1982, Decisión Andina 351 de 1993) y normas internacionales aplicables.
+
+
+
+Nada en estos Términos transfiere al Cliente derecho de propiedad alguno sobre la Plataforma. El Cliente únicamente adquiere una licencia de uso temporal y limitada al período de suscripción activa.
+
+
+
+Los Datos del Cliente pertenecen exclusivamente al Cliente. La Empresa no adquiere ningún derecho de propiedad sobre dichos datos y los utilizará únicamente para la prestación del servicio contratado.
+
+
+
+8. Tratamiento de Datos Personales
+
+En cumplimiento de la Ley 1581 de 2012 y el Decreto 1377 de 2013, Clientum Studio SAS actúa como:
+
+
+
+Responsable del Tratamiento respecto a los datos de los usuarios de la Plataforma y del personal de contacto del Cliente.
+
+Encargado del Tratamiento respecto a los datos personales que el Cliente procese a través de la Plataforma (datos de sus propios clientes, empleados, proveedores, etc.).
+
+
+
+El Cliente, al utilizar la Plataforma para procesar datos personales de terceros, acepta expresamente que actúa como Responsable del Tratamiento de dichos datos y que ha obtenido las autorizaciones correspondientes de los titulares, siendo la única responsable frente a estos.
+
+
+
+Para mayor detalle, consulte nuestra Política de Tratamiento de Datos Personales disponible en la Plataforma y en nuestro sitio web.
+
+
+
+9. Confidencialidad
+
+Cada parte se compromete a mantener la más estricta confidencialidad sobre la información no pública de la otra parte a la que tenga acceso en virtud de estos Términos, incluyendo pero sin limitarse a: estrategias comerciales, datos financieros, información técnica y datos de clientes.
+
+
+
+La obligación de confidencialidad persistirá por un período de 3 años después de la terminación del contrato, salvo que la ley imponga un plazo mayor.
+
+
+
+10. Limitación de Responsabilidad
+
+La Empresa no será responsable por:
+
+
+
+Pérdidas de datos causadas por el uso inadecuado de la Plataforma por parte del Cliente o sus Usuarios.
+
+Interrupciones del servicio causadas por fuerza mayor, eventos fortuitos, fallas en redes de telecomunicaciones, cortes de energía o ataques cibernéticos externos.
+
+Daños indirectos, lucro cesante, pérdida de oportunidades de negocio u otros daños consecuenciales derivados del uso o imposibilidad de uso de la Plataforma.
+
+Incumplimientos del Cliente de la normativa tributaria, contable o de cualquier otra índole en el uso de la facturación electrónica u otros módulos.
+
+
+
+En cualquier caso, la responsabilidad máxima acumulada de la Empresa frente al Cliente no podrá exceder el valor equivalente a 3 meses de suscripción del plan contratado al momento del evento que genera el daño.
+
+
+
+11. Suspensión y Terminación
+
+11.1 Terminación por el Cliente
+
+El Cliente podrá cancelar su suscripción en cualquier momento, sin expresión de causa, con efecto al final del período de facturación vigente. La solicitud deberá realizarse a través del panel de administración o mediante comunicación escrita al correo legal@clivaro.com.
+
+11.2 Terminación por la Empresa
+
+La Empresa podrá suspender o terminar el acceso del Cliente en los siguientes casos:
+
+
+
+Incumplimiento de pago tras el aviso de mora establecido en la sección 4.2.
+
+Violación grave o reiterada de estos Términos.
+
+Uso de la Plataforma para actividades ilícitas o fraudulentas.
+
+Por razones de seguridad técnica o de la integridad de la Plataforma.
+
+
+
+En los casos de terminación por causa imputable al Cliente, no habrá lugar a reembolso por el período en curso.
+
+11.3 Efectos de la Terminación
+
+Tras la terminación del contrato, el Cliente tendrá un plazo de 30 días calendario para exportar y descargar sus datos. Vencido este plazo, la Empresa procederá a la eliminación segura de los datos del Cliente de sus sistemas, salvo obligación legal de conservación.
+
+
+
+12. Modificaciones a los Términos
+
+La Empresa se reserva el derecho de modificar estos Términos en cualquier momento. Las modificaciones serán notificadas al Cliente con al menos 15 días hábiles de anticipación mediante correo electrónico registrado en la Plataforma y/o mediante aviso visible al ingresar a la misma.
+
+
+
+El uso continuado de la Plataforma tras la entrada en vigencia de las modificaciones constituye aceptación de las mismas. Si el Cliente no acepta los nuevos Términos, podrá cancelar su suscripción sin penalidad antes de la fecha de entrada en vigencia.
+
+
+
+13. Legislación Aplicable y Resolución de Controversias
+
+Estos Términos se rigen e interpretan de conformidad con las leyes de la República de Colombia, en particular:
+
+
+
+Ley 527 de 1999 — Comercio Electrónico
+
+Ley 1480 de 2011 — Estatuto del Consumidor
+
+Ley 1581 de 2012 — Protección de Datos Personales
+
+Código de Comercio colombiano
+
+Normativa de la DIAN en materia de facturación electrónica
+
+
+
+Para la resolución de cualquier controversia derivada de estos Términos, las partes se someten a la jurisdicción de los jueces y tribunales de la ciudad de Cali, Colombia, renunciando expresamente a cualquier otro fuero que pudiera corresponderles.
+
+
+
+Antes de acudir a instancias judiciales, las partes se comprometen a intentar una solución amigable o mediante mecanismos alternativos de resolución de conflictos (MASC) durante un período no inferior a 30 días hábiles.
+
+
+
+14. Contacto
+
+Para cualquier consulta, reclamación o ejercicio de derechos relacionados con estos Términos, el Cliente podrá contactar a Clientum Studio SAS a través de:
+
+
+
+Correo electrónico: legal@clivaro.com
+
+Sitio web: www.clientumstudio.com
+
+
+
+Última actualización: Marzo de 2026
+

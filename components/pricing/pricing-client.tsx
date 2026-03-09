@@ -4,7 +4,9 @@ import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Check, X, Zap, Building2, Rocket, TrendingUp, Users, Package, ShoppingCart, BarChart3, Mail, Sparkles, Database, Smartphone, Cloud, Lock, Globe, Headphones, Settings, Printer, Wallet, Truck, FileText, LayoutDashboard, MessageSquare, Calendar, Bell, Search, Shirt, Store, Wine, Hammer, Croissant, Car, BookOpen, Pill, Quote } from 'lucide-react'
+import { Check, X, Zap, Building2, Rocket, TrendingUp as TrendingUpIcon, Users, Package, ShoppingCart, BarChart3, Mail, Sparkles, Database, Smartphone, Cloud, Lock, Globe, Headphones, Settings, Printer, Wallet, Truck, FileText, LayoutDashboard, MessageSquare, Calendar, Bell, Search, Shirt, Store, Wine, Hammer, Croissant, Car, BookOpen, Pill, Quote, ShieldCheck, UserSquare, TrendingUp, HelpCircle, MessageCircle, ArrowRight, UserSquare as UserSquareIcon } from 'lucide-react'
+import Link from 'next/link'
+import { Logo } from '@/components/ui/logo'
 import { ContactForm } from './contact-form'
 import { ScrollNavbar } from './scroll-navbar'
 import { ScrollReveal } from './scroll-reveal'
@@ -20,7 +22,7 @@ const plans = [
     name: 'Starter',
     price: 49900,
     originalPrice: 99900,
-    description: 'Perfecto para pequeños negocios que están comenzando',
+    description: 'Esencial para pequeños negocios y emprendedores',
     icon: Zap,
     color: 'from-blue-500 to-cyan-500',
     badge: 'Más Popular',
@@ -28,72 +30,52 @@ const plans = [
       'Hasta 2 usuarios incluidos',
       'Gestión de productos ilimitados',
       'Punto de Venta (POS)',
-      'Control de inventario básico',
-      'Facturación electrónica',
-      'Clientes y proveedores',
-      'Reportes básicos',
-      'Dashboard con KPIs',
-      'Soporte por email',
-      'Actualizaciones incluidas',
+      'Facturación electrónica DIAN',
+      'Inventario con Alertas de Stock',
+      'Reportes básicos de ventas',
+      'Actualizaciones automáticas',
     ],
-    limitations: [
-      'Sin marketing campaigns',
-      'Sin multi-almacén',
-      'Soporte estándar',
-    ],
-    cta: 'Seleccionar Plan',
+    cta: 'Comenzar Ahora',
     popular: true,
   },
   {
     name: 'Business',
     price: 79900,
     originalPrice: 159900,
-    description: 'Ideal para negocios en crecimiento',
+    description: 'La solución completa para empresas en crecimiento',
     icon: Building2,
     color: 'from-indigo-500 to-purple-500',
     badge: 'Mejor Valor',
     features: [
       'Hasta 5 usuarios incluidos',
-      'Todas las funcionalidades de Starter',
-      'CRM completo (Clientes, Leads, Actividades)',
-      'Marketing campaigns con editor visual',
-      'Multi-almacén',
-      'Cotizaciones y facturas avanzadas',
-      'Gestión de compras completa',
-      'Reportes avanzados y analytics',
-      'Integración de email',
-      'Soporte prioritario',
-      'Backup automático',
-      'Actualizaciones prioritarias',
+      'Todas las funciones Starter',
+      'CRM con Inteligencia Artificial',
+      'Campañas de Marketing Pro',
+      'Multi-almacén y Traslados',
+      'Cotizaciones Automáticas',
+      'Reportes Avanzados con IA',
     ],
-    limitations: [],
-    cta: 'Seleccionar Plan',
+    cta: 'Seleccionar Business',
     popular: false,
   },
   {
     name: 'Enterprise',
     price: 149900,
     originalPrice: 299900,
-    description: 'Para negocios grandes que necesitan todo',
+    description: 'Escalabilidad total para grandes operaciones',
     icon: Rocket,
     color: 'from-orange-500 to-red-500',
-    badge: 'Más Completo',
+    badge: 'Máxima Potencia',
     features: [
-      'Hasta 15 usuarios incluidos',
-      'Todas las funcionalidades de Business',
-      'Usuarios ilimitados (consultar)',
-      'API personalizada',
-      'Integraciones avanzadas',
-      'Personalización de reportes',
-      'Soporte 24/7',
-      'Capacitación incluida',
-      'Gestor de cuenta dedicado',
-      'Migración de datos asistida',
-      'Hosting dedicado (opcional)',
-      'SLA garantizado',
+      'Usuarios ilimitados (personalizado)',
+      'Todas las funciones Business',
+      'API & Integraciones a Medida',
+      'Capacitación VIP para el equipo',
+      'Gestor de cuenta 24/7',
+      'Hosting dedicado y SLA',
+      'Asesoría en Transformación Digital',
     ],
-    limitations: [],
-    cta: 'Contactar Ventas',
+    cta: 'Hablar con Ventas',
     popular: false,
   },
 ]
@@ -231,12 +213,47 @@ export function PricingClient() {
             setShowContactForm(true)
           }}
           onViewPreview={() => {
-            const previewSection = document.getElementById('preview')
+            const previewSection = document.getElementById('pricing')
             if (previewSection) {
               previewSection.scrollIntoView({ behavior: 'smooth', block: 'start' })
             }
           }}
         />
+
+        {/* Trust Badges */}
+        <div className="bg-white/50 dark:bg-slate-900/50 border-y border-slate-100 dark:border-slate-800 py-6">
+          <div className="mx-auto max-w-7xl px-6 lg:px-8">
+            <div className="flex flex-wrap items-center justify-center gap-10 md:gap-20">
+              <div className="flex items-center gap-2 grayscale brightness-110 opacity-60 hover:grayscale-0 hover:opacity-100 transition-all duration-300">
+                <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/40 rounded-lg flex items-center justify-center">
+                  <ShieldCheck className="w-6 h-6 text-blue-600" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-tighter">Certificado</p>
+                  <p className="text-sm font-black text-slate-400">DIAN COLOMBIA</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 grayscale brightness-110 opacity-60 hover:grayscale-0 hover:opacity-100 transition-all duration-300">
+                <div className="w-10 h-10 bg-indigo-100 dark:bg-indigo-900/40 rounded-lg flex items-center justify-center">
+                  <Lock className="w-6 h-6 text-indigo-600" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-tighter">Seguridad</p>
+                  <p className="text-sm font-black text-slate-400">SSL 256-BIT</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 grayscale brightness-110 opacity-60 hover:grayscale-0 hover:opacity-100 transition-all duration-300">
+                <div className="w-10 h-10 bg-purple-100 dark:bg-purple-900/40 rounded-lg flex items-center justify-center">
+                  <Smartphone className="w-6 h-6 text-purple-600" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-tighter">Acceso</p>
+                  <p className="text-sm font-black text-slate-400">DISP. MÓVILES</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Billing Toggle */}
@@ -369,29 +386,13 @@ export function PricingClient() {
                           <ul className="space-y-4">
                             {plan.features.map((feature, featureIndex) => (
                               <li key={featureIndex} className="flex items-start gap-3 group/item">
-                                <div className={`flex-shrink-0 w-6 h-6 rounded-full bg-gradient-to-br ${plan.color} flex items-center justify-center mt-0.5 shadow-md group-hover/item:scale-110 transition-transform`}>
-                                  <Check className="h-4 w-4 text-white font-bold" />
-                                </div>
+                                <Check className={`h-5 w-5 ${plan.popular ? 'text-blue-500' : 'text-slate-400'} shrink-0 mt-0.5`} />
                                 <span className="text-sm leading-relaxed text-gray-700 dark:text-gray-300 group-hover/item:text-gray-900 dark:group-hover/item:text-white transition-colors">
                                   {feature}
                                 </span>
                               </li>
                             ))}
                           </ul>
-
-                          {plan.limitations.length > 0 && (
-                            <>
-                              <div className="h-px bg-gradient-to-r from-transparent via-gray-200 dark:via-gray-700 to-transparent my-6" />
-                              <ul className="space-y-3">
-                                {plan.limitations.map((limitation, i) => (
-                                  <li key={i} className="flex items-start gap-3 opacity-40">
-                                    <X className="h-5 w-5 text-gray-400 flex-shrink-0 mt-0.5" />
-                                    <span className="text-sm text-gray-500 line-through">{limitation}</span>
-                                  </li>
-                                ))}
-                              </ul>
-                            </>
-                          )}
                         </div>
                       </CardContent>
                     </SpotlightCard>
@@ -399,6 +400,52 @@ export function PricingClient() {
                 </ScrollReveal>
               )
             })}
+          </div>
+        </div>
+      </ScrollReveal>
+
+      {/* How it Works Section */}
+      <ScrollReveal delay={100}>
+        <div id="how-it-works" className="mx-auto max-w-7xl px-6 py-24 lg:px-8">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-4xl mb-4">
+              Empieza en 3 simples pasos
+            </h2>
+            <p className="text-lg text-slate-600 dark:text-slate-400 max-w-2xl mx-auto">
+              Implementar Clivaro es rápido y guiado. No necesitas ser un experto en tecnología.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
+            {[
+              {
+                step: '01',
+                title: 'Registro Rápido',
+                desc: 'Crea tu cuenta en segundos y accede a tu panel personalizado.',
+                icon: UserSquare
+              },
+              {
+                step: '02',
+                title: 'Carga de Datos',
+                desc: 'Importa tus productos y clientes. Nosotros te ayudamos en el proceso.',
+                icon: Database
+              },
+              {
+                step: '03',
+                title: 'Vende y Crece',
+                desc: 'Empieza a facturar legalmente y a gestionar tu CRM con IA.',
+                icon: TrendingUp
+              }
+            ].map((s, idx) => (
+              <div key={idx} className="relative group text-center">
+                <div className="mb-6 mx-auto w-20 h-20 rounded-3xl bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center text-blue-600 border border-blue-100 dark:border-blue-800 transition-all duration-300 group-hover:bg-blue-600 group-hover:text-white group-hover:rotate-6">
+                  <s.icon className="w-10 h-10" />
+                </div>
+                <h3 className="text-xl font-bold mb-3">{s.title}</h3>
+                <p className="text-slate-500 text-sm leading-relaxed">{s.desc}</p>
+                <div className="absolute top-0 right-0 text-6xl font-black text-slate-900/5 dark:text-white/5 select-none -z-10">{s.step}</div>
+              </div>
+            ))}
           </div>
         </div>
       </ScrollReveal>
@@ -508,55 +555,33 @@ export function PricingClient() {
 
       {/* FAQ Section */}
       <ScrollReveal delay={100}>
-        <div id="faq" className="mx-auto max-w-3xl px-6 py-16 lg:px-8">
-          <div className="text-center mb-12">
+        <div id="faq" className="mx-auto max-w-4xl px-6 py-24 lg:px-8">
+          <div className="text-center mb-16">
+            <Badge className="mb-4 bg-blue-100 text-blue-700 dark:bg-blue-900/30">FAQ</Badge>
             <h2 className="text-3xl font-bold mb-4">Preguntas Frecuentes</h2>
+            <p className="text-slate-500">Todo lo que necesitas saber sobre Clivaro</p>
           </div>
-          <div className="space-y-6">
-            <SpotlightCard className="text-left" spotlightColor="rgba(59, 130, 246, 0.05)">
-              <CardHeader>
-                <CardTitle className="text-lg">¿Hay período de prueba?</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-gray-600 dark:text-gray-400">
-                  Contáctanos para conocer nuestras opciones de implementación y planes personalizados
-                  adaptados a las necesidades de tu negocio.
-                </p>
-              </CardContent>
-            </SpotlightCard>
-            <SpotlightCard className="text-left" spotlightColor="rgba(59, 130, 246, 0.05)">
-              <CardHeader>
-                <CardTitle className="text-lg">¿Puedo cambiar de plan después?</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-gray-600 dark:text-gray-400">
-                  Sí, puedes actualizar o degradar tu plan en cualquier momento.
-                  Los cambios se aplican de forma prorrateada.
-                </p>
-              </CardContent>
-            </SpotlightCard>
-            <SpotlightCard className="text-left" spotlightColor="rgba(59, 130, 246, 0.05)">
-              <CardHeader>
-                <CardTitle className="text-lg">¿Qué incluye el soporte?</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-gray-600 dark:text-gray-400">
-                  Todos los planes incluyen soporte por email. Los planes Business y Enterprise
-                  incluyen soporte prioritario y 24/7 respectivamente.
-                </p>
-              </CardContent>
-            </SpotlightCard>
-            <SpotlightCard className="text-left" spotlightColor="rgba(59, 130, 246, 0.05)">
-              <CardHeader>
-                <CardTitle className="text-lg">¿Hay costos ocultos?</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-gray-600 dark:text-gray-400">
-                  No. El precio que ves es el precio que pagas. Incluye hosting, actualizaciones,
-                  soporte y todas las funcionalidades del plan.
-                </p>
-              </CardContent>
-            </SpotlightCard>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {[
+              { q: "¿Cumplen con la DIAN para facturación electrónica?", a: "Sí, Clivaro está 100% certificado por la DIAN. Emitimos facturas electrónicas legales, notas crédito y documentos soporte de forma automática y segura." },
+              { q: "¿Hay período de prueba gratuito?", a: "¡Claro! Ofrecemos 14 días de prueba con todas las funciones activas para que descubras el poder de la IA en tu negocio sin compromiso." },
+              { q: "¿Es difícil de implementar?", a: "Para nada. Clivaro es intuitivo y nuestro soporte te acompaña en la carga inicial de datos para que estés vendiendo en menos de 24 horas." },
+              { q: "¿Cómo protegen mis datos?", a: "Usamos encriptación SSL de 256 bits y backups automáticos diarios. Tus datos están alojados en centros de datos de clase mundial." },
+              { q: "¿Puedo cambiar de plan después?", a: "Sí, puedes subir o bajar de nivel según tu negocio crezca. Ajustamos el precio de forma justa y prorrateada." },
+              { q: "¿Brindan soporte en WhatsApp?", a: "Sí, tenemos un equipo dedicado en español listo para ayudarte por chat, email y WhatsApp directamente." }
+            ].map((f, i) => (
+              <div key={i} className="p-6 rounded-2xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-950 shadow-sm hover:shadow-md transition-shadow">
+                <div className="flex items-start gap-4">
+                  <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center shrink-0">
+                    <HelpCircle className="w-5 h-5 text-blue-600" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-slate-900 dark:text-white mb-2 leading-snug">{f.q}</h3>
+                    <p className="text-sm text-slate-500 leading-relaxed">{f.a}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </ScrollReveal>
@@ -610,6 +635,41 @@ export function PricingClient() {
           </div>
         </div>
       </ScrollReveal>
+
+      {/* Footer */}
+      <footer className="bg-slate-950 text-slate-500 py-12 px-6 lg:px-8 border-t border-white/5">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-8 text-sm">
+          <div className="flex flex-col items-center md:items-start gap-2">
+            <Logo size="sm" className="opacity-80 sepia brightness-200" />
+            <p>© 2026 Clivaro by <a href="https://www.clientumstudio.com" target="_blank" className="hover:text-blue-500 transition-colors">Clientum Studio</a>. Cali, Colombia.</p>
+          </div>
+
+          <nav className="flex flex-wrap justify-center gap-x-8 gap-y-4">
+            <Link href="/terminos-y-condiciones" className="text-slate-400 hover:text-blue-500 transition-colors font-medium">
+              Términos y Condiciones
+            </Link>
+            <Link href="/politica-de-privacidad" className="text-slate-400 hover:text-blue-500 transition-colors font-medium">
+              Política de Privacidad
+            </Link>
+            <a href="mailto:gerencia@clientumstudio.com" className="text-slate-400 hover:text-blue-500 transition-colors font-medium">
+              Soporte
+            </a>
+          </nav>
+        </div>
+      </footer>
+
+      {/* WhatsApp Floating Button */}
+      <a
+        href="https://wa.me/573000000000?text=Hola,%20quisiera%20recibir%20más%20información%20sobre%20Clivaro%20ERP/CRM"
+        target="_blank"
+        className="fixed bottom-8 right-8 z-[100] bg-[#25D366] text-white p-4 rounded-full shadow-2xl hover:scale-110 active:scale-95 transition-all duration-300 group animate-bounce hover:animate-none"
+        aria-label="Contactar por WhatsApp"
+      >
+        <MessageCircle className="w-8 h-8" />
+        <span className="absolute right-full mr-4 top-1/2 -translate-y-1/2 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 text-slate-900 dark:text-white px-4 py-2 rounded-xl text-sm font-bold shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
+          ¿Necesitas ayuda? Chatea con nosotros
+        </span>
+      </a>
 
       {/* Contact Form Modal */}
       <ContactForm

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
-import { Check } from 'lucide-react'
+import { Check, Sparkles, ArrowRight } from 'lucide-react'
 import { SoftwarePreview } from './software-preview'
 import { Logo } from '@/components/ui/logo'
 
@@ -73,17 +73,22 @@ export function HeroPreview({ onContactClick, onViewPreview }: HeroPreviewProps)
           {/* Left Side - Text and CTA */}
           <div className="space-y-8 relative z-10">
             <div>
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-100 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 mb-6">
+                <Sparkles className="w-4 h-4 text-blue-600 animate-pulse" />
+                <span className="text-xs font-bold text-blue-700 dark:text-blue-400 uppercase tracking-wider">Potenciado por IA</span>
+              </div>
               <h1 className="text-4xl lg:text-5xl xl:text-6xl font-bold tracking-tight text-gray-900 dark:text-white leading-tight">
-                Impulsa tu negocio con{' '}
-                <br className="lg:hidden" />
-                <TypingText words={["POS", "CRM Avanzado", "Estadisticas", "Facturacion", "Inventario"]} />
+                Gestione su Negocio con <br />
+                <span className="text-blue-600 dark:text-blue-400">
+                  <TypingText words={["Facturación DIAN", "CRM Inteligente", "Control de Stock", "IA de Ventas"]} />
+                </span>
                 <br />
-                <span className="text-slate-700 dark:text-slate-300">hecho a tu medida</span>
+                <span className="text-slate-600 dark:text-slate-400">hecho a su medida</span>
               </h1>
             </div>
 
-            <p className="text-lg lg:text-xl text-gray-600 dark:text-gray-300 leading-relaxed max-w-2xl">
-              Creamos sistemas web, CRMs y plataformas empresariales que simplifican tu operación y aumentan tus resultados.
+            <p className="text-xl lg:text-2xl text-gray-600 dark:text-gray-300 leading-relaxed max-w-2xl font-medium">
+              El ERP & CRM diseñado para transformar micro y pequeñas empresas colombianas con automatización inteligente.
             </p>
 
             {/* Features List */}
@@ -102,18 +107,19 @@ export function HeroPreview({ onContactClick, onViewPreview }: HeroPreviewProps)
             <div className="flex flex-col sm:flex-row gap-4 pt-4">
               <Button
                 size="lg"
-                className="bg-blue-600 hover:bg-blue-700 text-white text-lg px-8 py-6 font-semibold shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 rounded-xl"
+                className="bg-blue-600 hover:bg-blue-700 text-white text-xl px-10 py-7 font-bold shadow-xl hover:shadow-blue-500/25 hover:-translate-y-1 transition-all duration-300 rounded-xl group"
                 onClick={onContactClick}
               >
-                Solicitar demo
+                Prueba gratis 14 días
+                <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </Button>
               <Button
                 size="lg"
                 variant="outline"
-                className="border-2 border-slate-200 dark:border-slate-800 hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 text-slate-700 dark:text-slate-300 text-lg px-8 py-6 font-semibold transition-all duration-300 rounded-xl"
+                className="border-2 border-slate-200 dark:border-slate-800 hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 text-slate-700 dark:text-slate-300 text-lg px-8 py-7 font-semibold transition-all duration-300 rounded-xl"
                 onClick={onViewPreview}
               >
-                Ver proyectos
+                Agendar Demo
               </Button>
             </div>
           </div>

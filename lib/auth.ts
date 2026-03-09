@@ -49,7 +49,7 @@ async function findUserInTenantSchema(
 
     // Query the user with their roles and permissions
     const userResult = await client.query(
-      `SELECT id, username, email, name, password, active, "isSuperAdmin"
+      `SELECT id, username, email, name, password, active, "isSuperAdmin", "legalAccepted"
        FROM "User"
        WHERE (username = $1 OR email = $1)
        LIMIT 1`,
@@ -154,6 +154,7 @@ export const authOptions: NextAuthOptions = {
               isSuperAdmin: false, // tenant users are NEVER super admins
               tenantId: tenant.id,
               tenantSlug: tenant.slug,
+              legalAccepted: tenantUser.legalAccepted ?? false,
             }
           }
 
@@ -249,6 +250,7 @@ export const authOptions: NextAuthOptions = {
         token.isSuperAdmin = (user as any).isSuperAdmin ?? false
         token.tenantId = (user as any).tenantId ?? null
         token.tenantSlug = (user as any).tenantSlug ?? null
+        token.legalAccepted = (user as any).legalAccepted ?? false
       }
       if (!token.sub && token.id) {
         token.sub = token.id as string
@@ -266,6 +268,7 @@ export const authOptions: NextAuthOptions = {
           ; (session.user as any).isSuperAdmin = token.isSuperAdmin ?? false
           ; (session.user as any).tenantId = token.tenantId ?? null
           ; (session.user as any).tenantSlug = token.tenantSlug ?? null
+          ; (session.user as any).legalAccepted = token.legalAccepted ?? false
       }
       return session
     },
