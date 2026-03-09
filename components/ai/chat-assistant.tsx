@@ -92,10 +92,10 @@ export function ChatAssistant() {
                 const segments = cleanLine.split(/(\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`)/g)
                 const processedSegments = segments.map((seg, sIdx) => {
                     if (/^\*\*(.+)\*\*$/.test(seg)) {
-                        return <strong key={`${pIdx}-${lIdx}-${sIdx}`} className="font-bold text-sky-600 dark:text-sky-400">{seg.slice(2, -2)}</strong>
+                        return <strong key={`${pIdx}-${lIdx}-${sIdx}`} className="font-extrabold text-[#0284c7] dark:text-[#38bdf8] drop-shadow-sm">{seg.slice(2, -2)}</strong>
                     }
                     if (/^\*(.+)\*$/.test(seg)) {
-                        return <em key={`${pIdx}-${lIdx}-${sIdx}`} className="italic text-muted-foreground/80">{seg.slice(1, -1)}</em>
+                        return <em key={`${pIdx}-${lIdx}-${sIdx}`} className="italic text-muted-foreground/90">{seg.slice(1, -1)}</em>
                     }
                     if (/^`(.+)`$/.test(seg)) {
                         return <code key={`${pIdx}-${lIdx}-${sIdx}`} className="bg-muted px-1.5 py-0.5 rounded text-[11px] font-mono border border-border/50 text-sky-700 dark:text-sky-300">{seg.slice(1, -1)}</code>
@@ -120,9 +120,9 @@ export function ChatAssistant() {
                 )
             })
 
-            // Retornamos el párrafo envuelto con espaciado
+            // Retornamos el párrafo envuelto con espaciado compacto
             return [
-                <div key={pIdx} className="mb-4 last:mb-0 leading-relaxed tracking-tight">
+                <div key={pIdx} className="mb-2 last:mb-0 leading-snug tracking-tight">
                     {content}
                 </div>
             ]
@@ -167,15 +167,15 @@ export function ChatAssistant() {
                             key={i}
                             variant="secondary"
                             size="sm"
-                            className="w-full h-10 flex items-center justify-between group bg-sky-50 dark:bg-sky-900/20 hover:bg-sky-500 hover:text-white border-none shadow-sm transition-all transform active:scale-[0.98]"
+                            className="w-full h-10 flex items-center justify-between group bg-sky-500 hover:bg-sky-600 text-white border-none shadow-md transition-all transform active:scale-[0.98] rounded-xl"
                             onClick={() => {
                                 router.push(action.path)
                                 setIsOpen(false)
                             }}
                         >
-                            <span className="font-semibold">{action.label}</span>
-                            <div className="bg-white/20 p-1 rounded-md group-hover:bg-white/30 transition-colors">
-                                <Maximize2 className="h-3 w-3" />
+                            <span className="font-bold tracking-tight">{action.label}</span>
+                            <div className="bg-white/20 p-1.5 rounded-lg group-hover:bg-white/30 transition-colors">
+                                <Maximize2 className="h-3.5 w-3.5" />
                             </div>
                         </Button>
                     ))}
@@ -292,9 +292,9 @@ export function ChatAssistant() {
                                                     }`}>
                                                     {m.role === 'user' ? <User className="h-4 w-4 text-slate-600 dark:text-slate-400" /> : <Bot className="h-4 w-4" />}
                                                 </div>
-                                                <div className={`p-4 rounded-2xl text-[13.5px] leading-relaxed shadow-sm transition-all ${m.role === 'user'
+                                                <div className={`p-4 py-3.5 rounded-2xl text-[14px] leading-snug shadow-sm transition-all ${m.role === 'user'
                                                     ? 'bg-sky-500 text-white rounded-tr-none font-medium'
-                                                    : 'bg-white dark:bg-slate-800/80 border border-slate-200/60 dark:border-slate-700/60 rounded-tl-none text-slate-800 dark:text-slate-200'
+                                                    : 'bg-white dark:bg-slate-800/80 border border-slate-200/60 dark:border-slate-700/60 rounded-tl-none text-slate-800 dark:text-slate-100'
                                                     }`}>
                                                     {m.role === 'assistant' ? (
                                                         <motion.div
