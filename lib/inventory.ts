@@ -119,40 +119,28 @@ export async function updateStockLevel(
     hasTransaction: !!prismaTx
   })
 
-  const whereClause: any = {
-    warehouseId,
-    zoneId,
-    productId: productId ?? null,
-    variantId: variantId ?? null,
-  }
-
-  const existing = await client.stockLevel.findFirst({
-    where: whereClause,
-  })
-
-  console.log(`[updateStockLevel] Stock existente:`, existing ? { id: existing.id, quantity: existing.quantity } : 'No existe')
-
-  if (existing) {
-    const newQuantity = existing.quantity + quantityChange
-    console.log(`[updateStockLevel] Actualizando stock: ${existing.quantity} + ${quantityChange} = ${newQuantity}`)
-    await client.stockLevel.update({
-      where: { id: existing.id },
-      data: { quantity: newQuantity },
-    })
-    console.log(`[updateStockLevel] Stock actualizado exitosamente`)
-  } else {
-    console.log(`[updateStockLevel] Creando nuevo registro de stock con cantidad: ${quantityChange}`)
-    await client.stockLevel.create({
-      data: {
+  // Atomic Upsert to prevent race conditions
+  await client.stockLevel.upsert({
+    where: {
+      warehouseId_zoneId_productId_variantId: {
         warehouseId,
-        zoneId,
+        zoneId: zoneId ?? null,
         productId: productId ?? null,
         variantId: variantId ?? null,
-        quantity: quantityChange,
-      },
-    })
-    console.log(`[updateStockLevel] Registro de stock creado exitosamente`)
-  }
+      }
+    },
+    update: {
+      quantity: { increment: quantityChange }
+    },
+    create: {
+      warehouseId,
+      productId: productId ?? null,
+      variantId: variantId ?? null,
+      zoneId: zoneId ?? null,
+      quantity: quantityChange,
+    }
+  })
+  console.log(`[updateStockLevel] Stock actualizado/creado atómicamente con incremento: ${quantityChange}`)
 
   // Create movement if details provided
   if (movementDetails) {

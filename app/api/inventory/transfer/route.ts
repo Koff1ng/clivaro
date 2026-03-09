@@ -17,7 +17,7 @@ const transferSchema = z.object({
 
 export async function POST(request: Request) {
   const session = await requirePermission(request as any, PERMISSIONS.MANAGE_INVENTORY)
-  
+
   if (session instanceof NextResponse) {
     return session
   }
@@ -50,7 +50,8 @@ export async function POST(request: Request) {
       data.fromWarehouseId,
       data.productId!,
       data.variantId || null,
-      quantity
+      quantity,
+      prisma // Pass tenant client
     )
 
     if (!hasStock) {
@@ -95,14 +96,16 @@ export async function POST(request: Request) {
         data.fromWarehouseId,
         data.productId || null,
         data.variantId || null,
-        -quantity
+        -quantity,
+        tx // Pass transaction client
       )
 
       await updateStockLevel(
         data.toWarehouseId,
         data.productId || null,
         data.variantId || null,
-        quantity
+        quantity,
+        tx // Pass transaction client
       )
     })
 
@@ -121,4 +124,3 @@ export async function POST(request: Request) {
     )
   }
 }
-

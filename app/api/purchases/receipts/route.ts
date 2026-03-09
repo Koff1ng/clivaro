@@ -197,39 +197,15 @@ export async function POST(request: Request) {
         })
         logger.debug('[Goods Receipt] Stock movement created')
 
-        // Update stock level directly in transaction (more reliable)
-        const whereClause: any = {
-          warehouseId: data.warehouseId,
-          productId: item.productId,
-          variantId: item.variantId || null,
-        }
-
-        const existingStock = await tx.stockLevel.findFirst({
-          where: whereClause,
-        })
-
-        if (existingStock) {
-          const newQuantity = existingStock.quantity + quantity
-          logger.debug('[Goods Receipt] Updating existing stock', { from: existingStock.quantity, delta: Number(quantity), to: newQuantity })
-          await tx.stockLevel.update({
-            where: { id: existingStock.id },
-            data: { quantity: newQuantity },
-          })
-          logger.debug('[Goods Receipt] Stock updated')
-        } else {
-          // No existe registro, crear uno nuevo
-          logger.debug('[Goods Receipt] Creating stock record', { quantity: Number(quantity) })
-          await tx.stockLevel.create({
-            data: {
-              warehouseId: data.warehouseId,
-              productId: item.productId,
-              variantId: item.variantId || null,
-              quantity: quantity,
-              minStock: 0,
-            },
-          })
-          logger.debug('[Goods Receipt] Stock record created')
-        }
+        // Update stock level atomicly using consolidated logic
+        await updateStockLevel(
+          data.warehouseId,
+          item.productId,
+          item.variantId || null,
+          quantity,
+          tx
+        )
+        logger.debug('[Goods Receipt] Stock updated atomicly')
 
         // Update product cost (moving average) (using transaction client)
         await updateProductCost(
@@ -241,11 +217,6 @@ export async function POST(request: Request) {
           item.variantId
         )
 
-        // Verificar que el stock se actualizó
-        const updatedStock = await tx.stockLevel.findFirst({
-          where: whereClause,
-        })
-        logger.debug('[Goods Receipt] Stock verified', { productId: item.productId, quantity: updatedStock?.quantity || 0 })
       }
 
       // INTEGRACIÓN CONTABLE: Registrar entrada a inventario

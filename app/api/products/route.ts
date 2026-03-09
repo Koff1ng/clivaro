@@ -52,9 +52,9 @@ const createProductSchema = z.object({
   minStock: z.union([z.number().min(0), z.undefined()]).optional(),
   maxStock: z.union([z.number().min(0), z.null(), z.undefined()]).optional().nullable(),
   description: z.string().optional().nullable(),
-  productType: z.enum(['RETAIL', 'SERVICE', 'RAW', 'PREPARED', 'SELLABLE']).default('RETAIL'),
+  productType: z.string().default('RETAIL'),
   enableRecipeConsumption: z.boolean().default(false),
-  printerStation: z.enum(['KITCHEN', 'BAR', 'CASHIER']).optional().nullable(),
+  printerStation: z.string().optional().nullable(),
   // Variants
   variants: z.array(z.object({
     name: z.string().min(1),
