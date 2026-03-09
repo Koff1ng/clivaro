@@ -17,7 +17,7 @@ const productSchema = z.object({
   sku: z.string().min(1, 'El SKU es requerido'),
   cost: z.number().min(0, 'El costo debe ser mayor o igual a 0'),
   price: z.number().min(0, 'El precio debe ser mayor o igual a 0'),
-  unitOfMeasure: z.enum(['UNIT', 'BOX', 'METER', 'KILO', 'LITER']).default('UNIT'),
+  unitOfMeasure: z.string().min(1).default('UNIT'),
   taxRate: z.number().min(0).max(100).default(19),
   trackStock: z.boolean().default(true),
   minStock: z.number().min(0, 'El mínimo debe ser mayor o igual a 0').default(0),
@@ -208,10 +208,11 @@ export function ProductQuickCreate({
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                 >
                   <option value="UNIT">Unidad</option>
+                  <option value="GRAM">Gramo (g)</option>
+                  <option value="KILO">Kilogramo (kg)</option>
+                  <option value="LITER">Litro (L)</option>
+                  <option value="METER">Metro (m)</option>
                   <option value="BOX">Caja</option>
-                  <option value="METER">Metro</option>
-                  <option value="KILO">Kilogramo</option>
-                  <option value="LITER">Litro</option>
                 </select>
               </div>
               <div className="flex items-center gap-2 pt-8">

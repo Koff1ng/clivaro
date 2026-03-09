@@ -44,7 +44,7 @@ const createProductSchema = z.object({
   name: z.string().min(1),
   brand: z.string().optional().nullable(),
   category: z.string().optional().nullable(),
-  unitOfMeasure: z.enum(['UNIT', 'BOX', 'METER', 'KILO', 'LITER']),
+  unitOfMeasure: z.string().min(1),
   cost: z.number().min(0),
   price: z.number().min(0),
   taxRate: z.number().min(0).max(100),
@@ -52,7 +52,7 @@ const createProductSchema = z.object({
   minStock: z.union([z.number().min(0), z.undefined()]).optional(),
   maxStock: z.union([z.number().min(0), z.null(), z.undefined()]).optional().nullable(),
   description: z.string().optional().nullable(),
-  productType: z.enum(['RETAIL', 'RAW', 'PREPARED', 'SELLABLE']).default('RETAIL'),
+  productType: z.enum(['RETAIL', 'SERVICE', 'RAW', 'PREPARED', 'SELLABLE']).default('RETAIL'),
   enableRecipeConsumption: z.boolean().default(false),
   printerStation: z.enum(['KITCHEN', 'BAR', 'CASHIER']).optional().nullable(),
   // Variants
