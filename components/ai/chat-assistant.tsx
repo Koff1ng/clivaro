@@ -8,6 +8,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/componen
 import { Sparkles, Send, X, MessageSquare, Loader2, Bot, User, Maximize2, Minimize2 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useToast } from '@/components/ui/toast'
+import { getAssistantResponse } from './actions'
 
 interface Message {
     role: 'user' | 'assistant'
@@ -137,25 +138,14 @@ export function ChatAssistant() {
         setIsLoading(true)
 
         try {
-            const res = await fetch('/api/ai/chat', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    message: userMsg,
-                    history: newMessages.slice(-10).map(m => ({
-                        role: m.role,
-                        content: m.content
-                    }))
-                })
-            })
-
-            if (!res.ok) {
-                const err = await res.json()
-                throw new Error(err.error || 'Error al comunicarse con la IA')
-            }
-
-            const data = await res.json()
-            setMessages(prev => [...prev, { role: 'assistant' as const, content: data.response }])
+            const assistantResponse = await getAssistantResponse(
+                userMsg,
+                newMessages.slice(-10).map(m => ({
+                    role: m.role,
+                    content: m.content
+                }))
+            )
+            setMessages(prev => [...prev, { role: 'assistant' as const, content: assistantResponse }])
         } catch (error: any) {
             toast(error.message || 'Error en la conexión con la IA', 'error')
             setMessages(prev => [...prev, { role: 'assistant' as const, content: 'Lo siento, hubo un error al procesar tu solicitud. Por favor, verifica tu conexión o la configuración de la API.' }])
