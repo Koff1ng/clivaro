@@ -56,22 +56,24 @@ export async function getAssistantResponse(
         let discoveredContext = "";
         const query = message.toLowerCase();
 
+        // Búsqueda de Productos/Inventario
         if (query.includes("producto") || query.includes("stock") || query.includes("inventario")) {
             const products = await prisma.product.findMany({
-                take: 10,
+                take: 5,
                 where: { active: true },
                 select: { name: true, sku: true, price: true, trackStock: true, stockLevels: { select: { quantity: true } } }
             });
 
             if (products.length > 0) {
-                discoveredContext += "\nPRODUCTOS RECIENTES/RELEVANTES:\n" + products.map((p: any) => {
+                discoveredContext += "\nDATOS DE INVENTARIO:\n" + products.map((p: any) => {
                     const totalStock = p.stockLevels?.reduce((acc: number, s: any) => acc + s.quantity, 0) || 0;
                     return `- ${p.name} (SKU: ${p.sku}) | Precio: $${p.price} | Stock: ${p.trackStock ? totalStock : 'N/A'}`;
                 }).join("\n");
             }
         }
 
-        if (query.includes("venta") || query.includes("factura") || query.includes("vendi")) {
+        // Búsqueda de Ventas/Facturas
+        if (query.includes("venta") || query.includes("factura") || query.includes("vendi") || query.includes("ingreso")) {
             const lastInvoices = await prisma.invoice.findMany({
                 take: 5,
                 orderBy: { createdAt: 'desc' },
@@ -79,8 +81,23 @@ export async function getAssistantResponse(
             });
 
             if (lastInvoices.length > 0) {
-                discoveredContext += "\nFACTURAS RECIENTES:\n" + lastInvoices.map((inv: any) =>
+                discoveredContext += "\nFACTURAS/VENTAS RECIENTES:\n" + lastInvoices.map((inv: any) =>
                     `- ${inv.number} | Cliente: ${inv.customer?.name} | Total: $${inv.total} | Estado: ${inv.status}`
+                ).join("\n");
+            }
+        }
+
+        // Búsqueda de Reportes/Cuentas
+        if (query.includes("reporte") || query.includes("balance") || query.includes("contabilidad") || query.includes("ganancia")) {
+            const topAccounts = await prisma.account.findMany({
+                take: 10,
+                where: { type: { in: ['REVENUE', 'EXPENSE', 'ASSET', 'LIABILITY'] } },
+                select: { code: true, name: true, type: true }
+            });
+
+            if (topAccounts.length > 0) {
+                discoveredContext += "\nPLAN DE CUENTAS (RESUMEN):\n" + topAccounts.map((a: any) =>
+                    `- [${a.code}] ${a.name} (${a.type})`
                 ).join("\n");
             }
         }
@@ -106,51 +123,58 @@ export async function getAssistantResponse(
 - Usa lenguaje natural y amable.
 - Formato: Usa mayúsculas solo cuando sea necesario. Organiza con viñetas si hay múltiples puntos.
 
-**MÓDULOS Y RUTAS DISPONIBLES (TABLA DE VERDAD):**
-Utiliza estas rutas exactas para tus acciones. Si el usuario pregunta por un módulo, guíalo a la ruta correspondiente.
+**MÓDULOS, MICROSERVICIOS Y RUTAS (GUÍA MAESTRA):**
 
-- **Inventario/Productos:**
+- **Contabilidad y Reportes (CRÍTICO):**
+  - Reportes Generales: \`/accounting/reports\` (Usa esto si piden "reportes" en general)
+  - Balance General: \`/accounting/reports/balance-sheet\`
+  - Estado de Resultados (P&G): \`/accounting/reports/profit-loss\`
+  - Libro Auxiliar: \`/accounting/reports/aux-account\`
+  - Comprobantes (Vouchers): \`/accounting/vouchers\`
+  - Plan de Cuentas: \`/accounting/accounts\`
+
+- **Inventario y Productos:**
   - Ver Productos: \`/products\`
   - Nuevo Producto: \`/products?new=item\`
   - Control de Inventario: \`/inventory\`
-- **Ventas:**
+  - Almacenes (Warehouses): \`/inventory?tab=warehouses\`
+
+- **Ventas y Clientes:**
   - Punto de Venta (POS): \`/pos\`
-  - Listado de Ventas: \`/sales/invoices\`
+  - Facturación/Facturas: \`/sales/invoices\`
   - Órdenes de Venta: \`/sales/orders\`
-  - Nueva Orden: \`/sales/orders/new\`
   - Cotizaciones: \`/sales/quotes\`
-- **Compras:**
+  - Clientes (CRM): \`/crm/customers\`
+  - Prospectos (Leads): \`/crm/leads\`
+
+- **Compras y Proveedores:**
   - Proveedores: \`/purchases/suppliers\`
-  - Nuevo Proveedor: \`/purchases/suppliers?new=supplier\`
   - Órdenes de Compra: \`/purchases/orders\`
   - Recepción de Mercancía: \`/purchases/receipts\`
-- **CRM:**
-  - Clientes: \`/crm/customers\`
-  - Nuevo Cliente: \`/crm/customers?new=customer\`
-  - Oportunidades/Prospectos: \`/crm/leads\`
-  - Bandeja de Entrada: \`/crm/inbox\`
-- **Contabilidad:**
-  - Reportes Contables: \`/accounting/reports\`
-  - Comprobantes/Vouchers: \`/accounting/vouchers\`
-  - Plan de Cuentas: \`/accounting/accounts\`
-- **Recursos Humanos:**
-  - Empleados: \`/hr/employees\`
+
+- **Otros Servicios:**
+  - Turnos de Caja (Arqueos): \`/cash/shifts\`
+  - Campañas de Mercadeo: \`/marketing/campaigns\`
+  - Gestión de Empleados: \`/hr/employees\`
   - Nómina: \`/hr/payroll\`
-- **Configuración:**
-  - Ajustes del Sistema: \`/settings\`
 
-**PROTOCOLO DE ACCIÓN (CRÍTICO):**
-Al final de tu respuesta, si la consulta del usuario se puede resolver o facilitar navegando a una sección del ERP, incluye SIEMPRE un botón de acción con este formato: {{ACTION:Texto del Botón|/ruta}}.
-Ejemplo: "Para registrar un nuevo proveedor, puedes ir aquí: {{ACTION:Nuevo Proveedor|/purchases/suppliers?new=supplier}}"
+- **Configuración (Tabs Específicos):**
+  - Usuarios y Permisos: \`/settings?tab=users\`
+  - Facturación Electrónica: \`/settings?tab=billing\`
+  - Impuestos: \`/settings?tab=taxes\`
+  - Suscripción y Planes: \`/settings?tab=subscription\`
+  - Métodos de Pago: \`/settings?tab=payments-methods\`
+  - Ajustes Generales: \`/settings?tab=general\`
 
-**REGLAS IMPORTANTES:**
-1. No inventes rutas. Usa solo las listadas arriba.
-2. Si el usuario pide crear algo, usa la ruta con \`?new=\` si está disponible.
-3. No uses más de un botón por respuesta.
-4. Si no sabes algo sobre la empresa específica, básate en el contexto proporcionado o sugiere consultar al administrador.
+**PROTOCOLO DE ACCIÓN:**
+Al final de tu respuesta, si la consulta del usuario se puede resolver navegando a una sección del ERP, incluye SIEMPRE un botón de acción con este formato: {{ACTION:Texto del Botón|/ruta}}.
+Ejemplo: "Puedes consultar el balance aquí: {{ACTION:Ver Balance General|/accounting/reports/balance-sheet}}"
 
-Contexto actual del sistema (Datos en vivo):
-${fullContext}`;
+**REGLAS DE ORO:**
+1. Si el usuario pide un reporte específico, usa la ruta del sub-reporte. Si pide reportes en general, usa /accounting/reports.
+2. No mezcles "Facturas" con "Reportes Contables". Las facturas son transacciones, los reportes son resúmenes.
+3. Para ajustes o configuración, usa la ruta /settings con el \`?tab=\` correcto.
+4. No uses más de un botón por respuesta.`;
 
         // --- 3. Llamada a Groq ---
         const messages: ChatMessage[] = [
