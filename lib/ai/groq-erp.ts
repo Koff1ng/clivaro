@@ -42,7 +42,7 @@ export class GroqERP {
 
     private models: Record<GroqModel, string> = {
         fast: "llama-3.1-8b-instant",      // Respuestas simples y rápidas
-        smart: "llama-3.3-70b-versatile",  // Tareas complejas
+        smart: "llama-3.1-70b-versatile",  // Tareas complejas (más compatible)
         mixtral: "mixtral-8x7b-32768",     // Contexto largo (32k tokens)
     };
 
