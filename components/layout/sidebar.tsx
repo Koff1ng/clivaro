@@ -448,12 +448,12 @@ export function Sidebar() {
                   </DropdownMenuSubTrigger>
                   <DropdownMenuPortal>
                     <DropdownMenuSubContent className="w-56 bg-[#0F172A] border-slate-800 text-slate-100 shadow-2xl rounded-xl p-1.5 ml-2">
-                      <Link href="/">
+                      <Link href="/" target="_blank" rel="noopener noreferrer">
                         <DropdownMenuItem className="flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer hover:bg-slate-800 focus:bg-slate-800 focus:text-white transition-colors">
                           <span className="text-sm">Acerca de</span>
                         </DropdownMenuItem>
                       </Link>
-                      <Link href="/politica-de-privacidad">
+                      <Link href="/politica-de-privacidad" target="_blank" rel="noopener noreferrer">
                         <DropdownMenuItem className="flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer hover:bg-slate-800 focus:bg-slate-800 focus:text-white transition-colors">
                           <span className="text-sm">Políticas y términos</span>
                         </DropdownMenuItem>
