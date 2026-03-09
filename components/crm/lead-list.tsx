@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -21,7 +22,7 @@ async function fetchLeads(page: number, search: string, stage: string, assignedT
   if (search) params.append('search', search)
   if (stage) params.append('stage', stage)
   if (assignedToId) params.append('assignedToId', assignedToId)
-  
+
   const res = await fetch(`/api/leads?${params}`)
   if (!res.ok) throw new Error('Failed to fetch leads')
   return res.json()
@@ -112,6 +113,16 @@ export function LeadList() {
   const { leads = [], pagination = { totalPages: 1, page: 1, total: 0 } } = useMemo(() => {
     return data || { leads: [], pagination: { totalPages: 1, page: 1, total: 0 } }
   }, [data])
+
+  const searchParams = useSearchParams()
+
+  // Auto-open dialog if ?new=lead is in URL
+  useEffect(() => {
+    if (searchParams.get('new') === 'lead') {
+      setSelectedLead(null)
+      setIsFormOpen(true)
+    }
+  }, [searchParams])
 
   return (
     <div className="space-y-4">
@@ -213,123 +224,123 @@ export function LeadList() {
               <span className="text-muted-foreground">Cargando oportunidades...</span>
             </div>
           ) : (
-          <div className="border rounded-lg">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Nombre</TableHead>
-              <TableHead>Empresa</TableHead>
-              <TableHead>Contacto</TableHead>
-              <TableHead>Estado</TableHead>
-              <TableHead>Probabilidad</TableHead>
-              <TableHead>Ingreso Esperado</TableHead>
-              <TableHead>Valor Ponderado</TableHead>
-              <TableHead>Fecha Cierre</TableHead>
-              <TableHead>Asignado a</TableHead>
-              <TableHead>Acciones</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {leads.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={9} className="text-center text-gray-500">
-                  No hay oportunidades
-                </TableCell>
-              </TableRow>
-            ) : (
-              leads.map((lead: any) => (
-                <TableRow key={lead.id}>
-                  <TableCell className="font-medium">{lead.name}</TableCell>
-                  <TableCell>{lead.company || '-'}</TableCell>
-                  <TableCell>
-                    <div className="text-sm">
-                      {lead.email && <div>{lead.email}</div>}
-                      {lead.phone && <div className="text-gray-500">{lead.phone}</div>}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <span className={`px-2 py-1 text-xs rounded ${getStageColor(lead.stage)}`}>
-                      {getStageLabel(lead.stage)}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <div className="flex-1 bg-gray-200 rounded-full h-2">
-                        <div
-                          className="bg-blue-600 h-2 rounded-full"
-                          style={{ width: `${lead.probability || 0}%` }}
-                        />
-                      </div>
-                      <span className="text-xs text-gray-600">{lead.probability || 0}%</span>
-                    </div>
-                  </TableCell>
-                  <TableCell>{formatCurrency(lead.expectedRevenue || 0)}</TableCell>
-                  <TableCell className="font-semibold text-blue-600">
-                    {formatCurrency((lead.expectedRevenue || 0) * ((lead.probability || 0) / 100))}
-                  </TableCell>
-                  <TableCell>
-                    {lead.expectedCloseDate ? new Date(lead.expectedCloseDate).toLocaleDateString('es-ES') : '-'}
-                  </TableCell>
-                  <TableCell>{lead.assignedTo?.name || 'Sin asignar'}</TableCell>
-                  <TableCell>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleView(lead)}
-                        title="Ver detalles"
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleEdit(lead)}
-                        title="Editar"
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDelete(lead)}
-                        title="Eliminar"
-                      >
-                        <Trash2 className="h-4 w-4 text-red-500" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+            <div className="border rounded-lg">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Nombre</TableHead>
+                    <TableHead>Empresa</TableHead>
+                    <TableHead>Contacto</TableHead>
+                    <TableHead>Estado</TableHead>
+                    <TableHead>Probabilidad</TableHead>
+                    <TableHead>Ingreso Esperado</TableHead>
+                    <TableHead>Valor Ponderado</TableHead>
+                    <TableHead>Fecha Cierre</TableHead>
+                    <TableHead>Asignado a</TableHead>
+                    <TableHead>Acciones</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {leads.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={9} className="text-center text-gray-500">
+                        No hay oportunidades
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    leads.map((lead: any) => (
+                      <TableRow key={lead.id}>
+                        <TableCell className="font-medium">{lead.name}</TableCell>
+                        <TableCell>{lead.company || '-'}</TableCell>
+                        <TableCell>
+                          <div className="text-sm">
+                            {lead.email && <div>{lead.email}</div>}
+                            {lead.phone && <div className="text-gray-500">{lead.phone}</div>}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <span className={`px-2 py-1 text-xs rounded ${getStageColor(lead.stage)}`}>
+                            {getStageLabel(lead.stage)}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <div className="flex-1 bg-gray-200 rounded-full h-2">
+                              <div
+                                className="bg-blue-600 h-2 rounded-full"
+                                style={{ width: `${lead.probability || 0}%` }}
+                              />
+                            </div>
+                            <span className="text-xs text-gray-600">{lead.probability || 0}%</span>
+                          </div>
+                        </TableCell>
+                        <TableCell>{formatCurrency(lead.expectedRevenue || 0)}</TableCell>
+                        <TableCell className="font-semibold text-blue-600">
+                          {formatCurrency((lead.expectedRevenue || 0) * ((lead.probability || 0) / 100))}
+                        </TableCell>
+                        <TableCell>
+                          {lead.expectedCloseDate ? new Date(lead.expectedCloseDate).toLocaleDateString('es-ES') : '-'}
+                        </TableCell>
+                        <TableCell>{lead.assignedTo?.name || 'Sin asignar'}</TableCell>
+                        <TableCell>
+                          <div className="flex gap-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleView(lead)}
+                              title="Ver detalles"
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleEdit(lead)}
+                              title="Editar"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDelete(lead)}
+                              title="Eliminar"
+                            >
+                              <Trash2 className="h-4 w-4 text-red-500" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
           )}
 
-      {pagination.totalPages > 1 && (
-        <div className="flex items-center justify-between">
-          <div className="text-sm text-gray-600">
-            Página {pagination.page} de {pagination.totalPages} ({pagination.total} oportunidades)
-          </div>
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              onClick={() => setPage(p => Math.max(1, p - 1))}
-              disabled={page === 1}
-            >
-              Anterior
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => setPage(p => Math.min(pagination.totalPages, p + 1))}
-              disabled={page === pagination.totalPages}
-            >
-              Siguiente
-            </Button>
-          </div>
-        </div>
-      )}
+          {pagination.totalPages > 1 && (
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-gray-600">
+                Página {pagination.page} de {pagination.totalPages} ({pagination.total} oportunidades)
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setPage(p => Math.max(1, p - 1))}
+                  disabled={page === 1}
+                >
+                  Anterior
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setPage(p => Math.min(pagination.totalPages, p + 1))}
+                  disabled={page === pagination.totalPages}
+                >
+                  Siguiente
+                </Button>
+              </div>
+            </div>
+          )}
         </>
       )}
 

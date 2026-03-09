@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useMemo, useCallback } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import dynamic from 'next/dynamic'
 import { Button } from '@/components/ui/button'
@@ -139,6 +140,16 @@ export function CustomerList() {
   const { customers, pagination } = useMemo(() => {
     return data || { customers: [], pagination: { totalPages: 1 } }
   }, [data])
+
+  const searchParams = useSearchParams()
+
+  // Auto-open dialog if ?new=customer is in URL
+  React.useEffect(() => {
+    if (searchParams.get('new') === 'customer') {
+      setSelectedCustomer(null)
+      setIsFormOpen(true)
+    }
+  }, [searchParams])
 
   return (
     <div className="space-y-4">

@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useMemo, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import dynamic from 'next/dynamic'
 import { Button } from '@/components/ui/button'
@@ -276,6 +276,17 @@ export function InvoiceList() {
   const { invoices, pagination } = useMemo(() => {
     return data || { invoices: [], pagination: { totalPages: 1 } }
   }, [data])
+
+  const searchParams = useSearchParams()
+
+  // Si se intenta crear factura directamente, redirigir al POS o mostrar mensaje
+  // En este ERP las facturas se crean desde el POS o desde una Orden
+  React.useEffect(() => {
+    if (searchParams.get('new') === 'invoice') {
+      router.push('/pos')
+      toast('Redirigiendo al Punto de Venta para crear nueva factura', 'info')
+    }
+  }, [searchParams, router, toast])
 
   return (
     <div className="space-y-4">

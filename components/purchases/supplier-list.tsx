@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -87,6 +88,16 @@ export function SupplierList() {
   const { suppliers, pagination } = useMemo(() => {
     return data || { suppliers: [], pagination: { totalPages: 1 } }
   }, [data])
+
+  const searchParams = useSearchParams()
+
+  // Auto-open dialog if ?new=supplier is in URL
+  useEffect(() => {
+    if (searchParams.get('new') === 'supplier') {
+      setSelectedSupplier(null)
+      setIsFormOpen(true)
+    }
+  }, [searchParams])
 
   return (
     <div className="space-y-4">

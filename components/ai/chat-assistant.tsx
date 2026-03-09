@@ -202,7 +202,17 @@ export function ChatAssistant() {
                                                 ? 'bg-primary text-primary-foreground rounded-tr-none'
                                                 : 'bg-card border rounded-tl-none'
                                                 }`}>
-                                                {renderContent(m.content)}
+                                                {m.role === 'assistant' ? (
+                                                    <motion.div
+                                                        initial={{ opacity: 0, y: 5 }}
+                                                        animate={{ opacity: 1, y: 0 }}
+                                                        transition={{ duration: 0.4, ease: "easeOut" }}
+                                                    >
+                                                        {renderContent(m.content)}
+                                                    </motion.div>
+                                                ) : (
+                                                    renderContent(m.content)
+                                                )}
                                             </div>
                                         </div>
                                     </div>

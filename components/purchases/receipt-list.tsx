@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -73,6 +74,16 @@ export function ReceiptList() {
   const { receipts, pagination } = useMemo(() => {
     return data || { receipts: [], pagination: { totalPages: 1 } }
   }, [data])
+
+  const searchParams = useSearchParams()
+
+  // Auto-open dialog if ?new=receipt is in URL
+  useEffect(() => {
+    if (searchParams.get('new') === 'receipt') {
+      setSelectedPurchaseOrder(null)
+      setIsFormOpen(true)
+    }
+  }, [searchParams])
 
   return (
     <div className="space-y-4">

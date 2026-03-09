@@ -117,28 +117,25 @@ export class GroqERP {
         history: ChatMessage[] = [],
         erpContext = ""
     ): Promise<string> {
-        let systemPrompt = `Eres un asistente inteligente integrado en un ERP empresarial avanzado.
-    Ayudas con consultas sobre inventario, ventas, compras, contabilidad y RRHH.
-    Responde siempre en español, de forma clara, profesional y concisa.
+        let systemPrompt = `1. **Identidad**: Eres el asistente inteligente de Clivaro ERP.
+    2. **Estilo**: Responde de forma muy concisa, profesional y con calidez.
+    3. **Formato**: Usa mayúsculas solo cuando sea gramaticalmente necesario (evita el exceso de mayúsculas). Organiza la información con viñetas si es necesario.
+    4. **PROTOCOLO DE ACCIÓN (CRÍTICO)**: Al final de tu respuesta, si aplica, incluye UN SOLO botón de acción con este formato: {{ACTION:Texto|/ruta}}.
     
-    PROTOCOLO DE ACCIÓN:
-    Cuando el usuario mencione querer crear algo o ir a un módulo, SIEMPRE ofrece un botón de acción al final de tu respuesta usando este formato exacto:
-    {{ACTION:Texto del Botón|/ruta/del/modulo}}
-    
-    Ejemplos de rutas comunes:
-    - Crear Item (Producto/Servicio): /products?new=item
-    - Ver Catálogo de Items: /products
-    - Ver Facturas: /sales/invoices
-    - Nueva Orden de Venta: /sales/orders/new
-    - Ver Órdenes de Venta: /sales/orders
-    - Punto de Venta (POS): /pos
-    - Ver Clientes: /crm/customers
-    - Nuevo Cliente: /crm/customers/new
-    - Ver Usuarios/Roles: /admin/users
-    
-    Si el usuario tiene dudas técnicas sobre el sistema, ayuda con precisión.`;
+    TABLA DE RUTAS VERIFICADAS (USA SOLO ESTAS):
+    - Nuevo Producto: {{ACTION:Nuevo Producto|/products?new=item}}
+    - Nuevo Cliente: {{ACTION:Nuevo Cliente|/crm/customers?new=customer}}
+    - Nueva Oportunidad: {{ACTION:Nueva Oportunidad|/crm/leads?new=lead}}
+    - Nuevo Proveedor: {{ACTION:Nuevo Proveedor|/purchases/suppliers?new=supplier}}
+    - Nueva Orden de Compra: {{ACTION:Nueva Orden de Compra|/purchases/orders?new=purchase_order}}
+    - Nueva Recepción: {{ACTION:Nueva Recepción|/purchases/receipts?new=receipt}}
+    - Punto de Venta (POS): {{ACTION:Ir al POS|/pos}}
+    - Nueva Orden de Venta: {{ACTION:Nueva Orden|/sales/orders/new}}
 
-        if (erpContext) systemPrompt += `\n\nContexto actual del sistema: ${erpContext}`;
+    No inventes rutas como "/new" para proveedores; usa siempre el parámetro "?new=".
+    Si el usuario tiene dudas, responde con precisión técnica.`;
+
+        if (erpContext) systemPrompt += `\n\nContexto actual del sistema: ${erpContext} `;
 
         const messages: ChatMessage[] = [
             { role: "system", content: systemPrompt },
@@ -165,17 +162,17 @@ export class GroqERP {
         const messages: ChatMessage[] = [
             {
                 role: "system",
-                content: `Eres un analista de negocios experto. Analiza los datos proporcionados y responde 
+                content: `Eres un analista de negocios experto.Analiza los datos proporcionados y responde 
         ÚNICAMENTE en formato JSON con la siguiente estructura:
         {
-          "summary": "resumen ejecutivo",
-          "insights": ["insight 1", "insight 2"],
-          "recommendations": ["recomendacción 1", "recomendación 2"]
-        }`,
+            "summary": "resumen ejecutivo",
+                "insights": ["insight 1", "insight 2"],
+                    "recommendations": ["recomendacción 1", "recomendación 2"]
+        } `,
             },
             {
                 role: "user",
-                content: `Analiza estos datos de ${tipoReporte}:\n\n${dataStr}`,
+                content: `Analiza estos datos de ${tipoReporte}: \n\n${dataStr} `,
             },
         ];
 
@@ -183,7 +180,7 @@ export class GroqERP {
 
         try {
             // Limpiar posible markdown del JSON si la IA lo incluye
-            const jsonStr = raw.replace(/```json\n|```/g, "").trim();
+            const jsonStr = raw.replace(/```json\n | ```/g, "").trim();
             const parsed = JSON.parse(jsonStr);
             return { ...parsed, raw };
         } catch {
@@ -217,13 +214,13 @@ export class GroqERP {
             {
                 role: "user",
                 content: `Genera un ${tipoDocumento} con estos datos:
-        ${JSON.stringify(datos, null, 2)}`,
+        ${JSON.stringify(datos, null, 2)} `,
             },
         ];
 
         const content = await this.chat(messages, this.models.smart, 0.4);
         const createdAt = new Date();
-        const fileName = `${tipoDocumento}-${createdAt.getTime()}.txt`;
+        const fileName = `${tipoDocumento} -${createdAt.getTime()}.txt`;
 
         try {
             const { error } = await this.supabase.storage
@@ -235,7 +232,7 @@ export class GroqERP {
         }
 
         return {
-            title: `${tipoDocumento} - ${createdAt.toLocaleDateString("es-CO")}`,
+            title: `${tipoDocumento} - ${createdAt.toLocaleDateString("es-CO")} `,
             content,
             createdAt,
         };
@@ -267,13 +264,13 @@ export class GroqERP {
         const messages: ChatMessage[] = [
             {
                 role: "system",
-                content: `Extrae información y responde ÚNICAMENTE en JSON válido: ${esquemaStr}`,
+                content: `Extrae información y responde ÚNICAMENTE en JSON válido: ${esquemaStr} `,
             },
             { role: "user", content: texto },
         ];
 
         const raw = await this.chat(messages, this.models.fast, 0.1);
-        const jsonStr = raw.replace(/```json\n|```/g, "").trim();
+        const jsonStr = raw.replace(/```json\n | ```/g, "").trim();
         return JSON.parse(jsonStr) as T;
     }
 
@@ -289,7 +286,7 @@ export class GroqERP {
             },
             {
                 role: "user",
-                content: `Resume estos ${descripcion}:\n\n${JSON.stringify(registros, null, 2)}`,
+                content: `Resume estos ${descripcion}: \n\n${JSON.stringify(registros, null, 2)} `,
             },
         ];
 
