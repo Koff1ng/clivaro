@@ -75,11 +75,24 @@ export async function POST(req: Request) {
             });
 
             let grandTotalEarnings = 0;
+            let grandTotalDeductions = 0;
+            let grandNetPay = 0;
 
             // 3. Create Payslips & Basic Items for each employee
             for (const emp of employees) {
                 const salary = emp.baseSalary;
-                grandTotalEarnings += salary;
+
+                // CÁLCULOS DE LEY (COLOMBIA)
+                const healthDeduction = salary * 0.04; // 4% Salud
+                const pensionDeduction = salary * 0.04; // 4% Pensión
+
+                const totalEarnings = salary;
+                const totalDeductions = healthDeduction + pensionDeduction;
+                const netPay = totalEarnings - totalDeductions;
+
+                grandTotalEarnings += totalEarnings;
+                grandTotalDeductions += totalDeductions;
+                grandNetPay += netPay;
 
                 await tx.payslip.create({
                     data: {
@@ -87,15 +100,27 @@ export async function POST(req: Request) {
                         payrollPeriodId: period.id,
                         employeeId: emp.id,
                         baseSalary: salary,
-                        totalEarnings: salary,
-                        totalDeductions: 0,
-                        netPay: salary,
+                        totalEarnings: totalEarnings,
+                        totalDeductions: totalDeductions,
+                        netPay: netPay,
                         items: {
                             create: [
                                 {
                                     type: 'EARNING',
                                     concept: 'Salario Base',
                                     amount: salary,
+                                    isAutomatic: true,
+                                },
+                                {
+                                    type: 'DEDUCTION',
+                                    concept: 'Salud (4%)',
+                                    amount: healthDeduction,
+                                    isAutomatic: true,
+                                },
+                                {
+                                    type: 'DEDUCTION',
+                                    concept: 'Pensión (4%)',
+                                    amount: pensionDeduction,
                                     isAutomatic: true,
                                 },
                             ],
@@ -105,17 +130,14 @@ export async function POST(req: Request) {
             }
 
             // 4. Update the period with total amounts
-            if (grandTotalEarnings > 0) {
-                return tx.payrollPeriod.update({
-                    where: { id: period.id },
-                    data: {
-                        totalEarnings: grandTotalEarnings,
-                        netPay: grandTotalEarnings,
-                    },
-                });
-            }
-
-            return period;
+            return tx.payrollPeriod.update({
+                where: { id: period.id },
+                data: {
+                    totalEarnings: grandTotalEarnings,
+                    totalDeductions: grandTotalDeductions,
+                    netPay: grandNetPay,
+                },
+            });
         }, { timeout: 30000 })
 
         return NextResponse.json(newPeriod, { status: 201 });

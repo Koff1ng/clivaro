@@ -25,7 +25,7 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   const session = await requirePermission(request as any, PERMISSIONS.MANAGE_CRM)
-  
+
   if (session instanceof NextResponse) {
     return session
   }
@@ -113,7 +113,7 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   const session = await requirePermission(request as any, PERMISSIONS.MANAGE_CRM)
-  
+
   if (session instanceof NextResponse) {
     return session
   }
@@ -152,57 +152,74 @@ export async function PUT(
           notes: `Estado cambiado de ${currentLead.stage} a ${data.stage}`,
         },
       }
+    }
 
-      // Si la oportunidad se ganó, convertir automáticamente a cliente
-      if (data.stage === 'WON' && currentLead) {
-        const existingCustomer = await prisma.customer.findFirst({
+    const lead = await prisma.$transaction(async (tx) => {
+      // 1. Si la oportunidad se ganó, manejar conversión a cliente
+      if (data.stage === 'WON' && currentLead && data.stage !== currentLead.stage) {
+        // Normalizar para búsqueda
+        const email = currentLead.email?.trim().toLowerCase()
+        const phone = currentLead.phone?.trim()
+
+        let customerId = null
+
+        // Buscar cliente existente
+        const existingCustomer = await tx.customer.findFirst({
           where: {
             OR: [
-              ...(currentLead.email ? [{ email: currentLead.email }] : []),
-              ...(currentLead.phone ? [{ phone: currentLead.phone }] : []),
+              ...(email ? [{ email }] : []),
+              ...(phone ? [{ phone }] : []),
             ],
           },
         })
 
-        if (!existingCustomer && (currentLead.email || currentLead.phone)) {
-          await prisma.customer.create({
+        if (existingCustomer) {
+          customerId = existingCustomer.id
+        } else if (email || phone || currentLead.name) {
+          // Crear nuevo cliente
+          const newCustomer = await tx.customer.create({
             data: {
               name: currentLead.name,
-              email: currentLead.email || null,
-              phone: currentLead.phone || null,
-              taxId: null,
-              address: null,
+              email: email || null,
+              phone: phone || null,
               notes: `Cliente creado automáticamente desde oportunidad ganada: ${currentLead.name}`,
               createdById: (session.user as any).id,
             },
           })
+          customerId = newCustomer.id
+        }
+
+        // Vincular el cliente al lead en la actualización
+        if (customerId) {
+          updateData.customerId = customerId
         }
       }
-    }
 
-    const lead = await prisma.lead.update({
-      where: { id: params.id },
-      data: updateData,
-      include: {
-        assignedTo: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-        stageHistory: {
-          include: {
-            changedBy: {
-              select: {
-                id: true,
-                name: true,
-              },
+      // 2. Realizar la actualización del Lead
+      return tx.lead.update({
+        where: { id: params.id },
+        data: updateData,
+        include: {
+          assignedTo: {
+            select: {
+              id: true,
+              name: true,
             },
           },
-          orderBy: { changedAt: 'desc' },
-          take: 10,
+          stageHistory: {
+            include: {
+              changedBy: {
+                select: {
+                  id: true,
+                  name: true,
+                },
+              },
+            },
+            orderBy: { changedAt: 'desc' },
+            take: 10,
+          },
         },
-      },
+      })
     })
 
     return NextResponse.json(lead)
@@ -226,7 +243,7 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   const session = await requirePermission(request as any, PERMISSIONS.MANAGE_CRM)
-  
+
   if (session instanceof NextResponse) {
     return session
   }

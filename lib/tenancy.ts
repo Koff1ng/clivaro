@@ -71,6 +71,7 @@ async function getTenantPrismaClient(tenantId: string): Promise<PrismaClient> {
         const schemaUrl = buildTenantUrl(schemaName)
         tenantPrisma = new PrismaClient({
             datasources: { db: { url: schemaUrl } },
+            log: ['query', 'error', 'info', 'warn']
         })
         tenantPrismaClients.set(schemaName, tenantPrisma)
     }

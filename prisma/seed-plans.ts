@@ -15,10 +15,9 @@ const plans = [
       'Punto de Venta (POS)',
       'Control de inventario básico',
       'Facturación electrónica',
-      'Clientes y proveedores',
+      'Gestión de clientes y vendedores',
       'Reportes básicos',
       'Dashboard con KPIs',
-      'Soporte por email',
       'Actualizaciones incluidas'
     ]),
     active: true
@@ -32,16 +31,13 @@ const plans = [
     features: JSON.stringify([
       'Hasta 5 usuarios incluidos',
       'Todas las funcionalidades de Starter',
-      'CRM completo (Clientes, Leads, Actividades)',
-      'Marketing campaigns con editor visual',
       'Multi-almacén',
-      'Cotizaciones y facturas avanzadas',
-      'Gestión de compras completa',
+      'Gestión de compras avanzada',
+      'CRM completo (Leads, Actividades)',
+      'Marketing campaigns editor visual',
+      'Cotizaciones y ventas avanzadas',
       'Reportes avanzados y analytics',
-      'Integración de email',
-      'Soporte prioritario',
-      'Backup automático',
-      'Actualizaciones prioritarias'
+      'Soporte prioritario'
     ]),
     active: true
   },
@@ -52,44 +48,33 @@ const plans = [
     currency: 'COP',
     interval: 'monthly',
     features: JSON.stringify([
-      'Hasta 15 usuarios incluidos',
+      'Usuarios ilimitados',
       'Todas las funcionalidades de Business',
-      'Usuarios ilimitados (consultar)',
+      'Módulo de Contabilidad completo',
+      'Módulo de Nómina (RRHH)',
       'API personalizada',
-      'Integraciones avanzadas',
-      'Personalización de reportes',
-      'Soporte 24/7',
-      'Capacitación incluida',
-      'Gestor de cuenta dedicado',
-      'Migración de datos asistida',
-      'Hosting dedicado (opcional)',
-      'SLA garantizado'
+      'Reportes personalizados',
+      'Soporte 24/7 dedicado',
+      'Migración de datos asistida'
     ]),
     active: true
   }
 ]
 
 async function seedPlans() {
-  console.log('🌱 Inicializando planes...')
+  console.log('🌱 Inicializando/Actualizando planes...')
 
   for (const plan of plans) {
-    const existing = await prisma.plan.findUnique({
-      where: { name: plan.name }
+    await prisma.plan.upsert({
+      where: { name: plan.name },
+      update: plan,
+      create: plan
     })
 
-    if (existing) {
-      console.log(`⏭️  Plan "${plan.name}" ya existe, omitiendo...`)
-      continue
-    }
-
-    await prisma.plan.create({
-      data: plan
-    })
-
-    console.log(`✅ Plan "${plan.name}" creado`)
+    console.log(`✅ Plan "${plan.name}" sincronizado`)
   }
 
-  console.log('✨ Planes inicializados correctamente')
+  console.log('✨ Planes sincronizados correctamente')
 }
 
 seedPlans()

@@ -8,56 +8,74 @@ import type { PrismaClient } from '@prisma/client'
  * Calculate moving average cost for a product
  * newCost = (oldCost * oldStock + receivedCost * receivedQty) / (oldStock + receivedQty)
  */
+/**
+ * Calculate moving average cost for a product or variant
+ * newCost = (oldCost * oldStock + receivedCost * receivedQty) / (oldStock + receivedQty)
+ */
 export async function updateProductCost(
   productId: string,
   warehouseId: string,
   receivedQty: number,
   receivedCost: number,
-  tx?: Omit<PrismaClient, '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'>
+  tx?: any,
+  variantId?: string | null
 ) {
   const client = tx || prisma
 
-  const product = await client.product.findUnique({
-    where: { id: productId },
-  })
-
-  if (!product) {
-    throw new Error('Product not found')
+  // 1. Get current cost from Product or Variant
+  let oldCost = 0
+  if (variantId) {
+    const variant = await client.productVariant.findUnique({
+      where: { id: variantId },
+    })
+    oldCost = variant?.cost || 0
+  } else {
+    const product = await client.product.findUnique({
+      where: { id: productId },
+    })
+    if (!product) throw new Error('Product not found')
+    oldCost = product.cost || 0
   }
 
+  // 2. Get current stock level
   const stockLevel = await client.stockLevel.findFirst({
     where: {
       warehouseId,
       productId,
-      variantId: null,
+      variantId: variantId || null,
     },
   })
 
   const oldStock = stockLevel?.quantity || 0
-  const oldCost = product.cost
 
-  if (oldStock === 0 && receivedQty > 0) {
-    // First stock entry, use received cost
+  // 3. WAC Logic
+  let newCost = oldCost
+
+  if (oldStock <= 0) {
+    // If stock was negative or zero, the new cost is the received cost
+    newCost = receivedCost
+  } else if (oldStock + receivedQty > 0) {
+    // Standard Moving Average Calculation
+    const totalOldValue = oldCost * oldStock
+    const totalNewValue = receivedCost * receivedQty
+    newCost = (totalOldValue + totalNewValue) / (oldStock + receivedQty)
+  }
+
+  // Ensure newCost isn't negative or NaN
+  newCost = isNaN(newCost) ? receivedCost : Math.max(0, newCost)
+
+  // 4. Update cost
+  if (variantId) {
+    await client.productVariant.update({
+      where: { id: variantId },
+      data: { cost: newCost },
+    })
+  } else {
     await client.product.update({
       where: { id: productId },
-      data: { cost: receivedCost },
+      data: { cost: newCost },
     })
-    return receivedCost
   }
-
-  if (oldStock + receivedQty === 0) {
-    return oldCost
-  }
-
-  // Moving average calculation
-  const numerator = oldCost * oldStock + receivedCost * receivedQty
-  const denominator = oldStock + receivedQty
-  const newCost = numerator / denominator
-
-  await client.product.update({
-    where: { id: productId },
-    data: { cost: newCost },
-  })
 
   return newCost
 }

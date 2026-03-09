@@ -21,6 +21,7 @@ const COLUMNS_TO_CHECK = [
     { table: 'Customer', column: 'idType', type: 'TEXT' },
     { table: 'Customer', column: 'isCompany', type: 'BOOLEAN' },
     { table: 'Customer', column: 'taxRegime', type: 'TEXT' },
+    { table: 'PhysicalInventory', column: 'approvedById', type: 'TEXT' },
 ];
 
 async function main() {

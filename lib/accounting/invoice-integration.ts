@@ -14,10 +14,12 @@ import { getAccountingConfig } from './config-service'
 export async function createJournalEntryFromInvoice(
     invoiceId: string,
     tenantId: string,
-    userId: string
+    userId: string,
+    prismaTx?: any
 ) {
+    const client = prismaTx || prisma
     // Get invoice with details
-    const invoice = await prisma.invoice.findUnique({
+    const invoice = await client.invoice.findUnique({
         where: { id: invoiceId },
         include: {
             customer: true,
@@ -34,7 +36,7 @@ export async function createJournalEntryFromInvoice(
     }
 
     // Check if entry already exists
-    const existing = await prisma.journalEntry.findFirst({
+    const existing = await client.journalEntry.findFirst({
         where: {
             tenantId,
             sourceDocId: invoiceId,
@@ -59,7 +61,7 @@ export async function createJournalEntryFromInvoice(
     const total = invoice.total
 
     // Build journal entry lines
-    const lines = []
+    const lines: any[] = []
 
     // DEBIT: Accounts Receivable (Customer)
     lines.push({
@@ -96,10 +98,10 @@ export async function createJournalEntryFromInvoice(
         description: `Venta - Factura ${invoice.number}`,
         reference: invoice.number,
         lines
-    })
+    }, prismaTx)
 
     // Update entry with source reference
-    await prisma.journalEntry.update({
+    await client.journalEntry.update({
         where: { id: entry.id },
         data: {
             sourceDocId: invoiceId,

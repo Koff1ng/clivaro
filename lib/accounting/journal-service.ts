@@ -22,7 +22,7 @@ export type JournalEntryInput = {
     }>
 }
 
-export async function createJournalEntry(tenantId: string, userId: string, data: JournalEntryInput) {
+export async function createJournalEntry(tenantId: string, userId: string, data: JournalEntryInput, prismaTx?: any) {
     // Basic validation
     let totalDebit = 0
     let totalCredit = 0
@@ -43,7 +43,7 @@ export async function createJournalEntry(tenantId: string, userId: string, data:
     // Validate period is not closed
     await validatePeriodNotClosed(tenantId, date)
 
-    return await prisma.$transaction(async (tx) => {
+    const execute = async (tx: any) => {
         const count = await tx.journalEntry.count({
             where: { tenantId, period }
         })
@@ -87,6 +87,14 @@ export async function createJournalEntry(tenantId: string, userId: string, data:
         })
 
         return entry
+    }
+
+    if (prismaTx) {
+        return await execute(prismaTx)
+    }
+
+    return await prisma.$transaction(async (tx) => {
+        return await execute(tx)
     })
 }
 

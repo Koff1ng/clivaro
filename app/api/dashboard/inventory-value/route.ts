@@ -21,10 +21,11 @@ export async function GET(request: Request) {
         const result = await withTenantTx(tenantId, async (tx: any) => {
             const [products, stockLevels] = await Promise.all([
                 tx.product.findMany({
-                    where: { active: true },
+                    where: { active: true, trackStock: true },
                     select: { id: true, name: true, category: true, cost: true, price: true, trackStock: true, variants: { where: { active: true }, select: { id: true, cost: true, price: true } } }
                 }),
                 tx.stockLevel.findMany({
+                    where: { product: { active: true, trackStock: true } },
                     select: { productId: true, variantId: true, quantity: true }
                 })
             ])

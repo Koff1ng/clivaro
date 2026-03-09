@@ -13,10 +13,12 @@ import { getAccountingConfig } from './config-service'
 export async function createCostOfSalesEntry(
     invoiceId: string,
     tenantId: string,
-    userId: string
+    userId: string,
+    prismaTx?: any
 ) {
+    const client = prismaTx || prisma
     // Get invoice with items and product details
-    const invoice = await prisma.invoice.findUnique({
+    const invoice = await client.invoice.findUnique({
         where: { id: invoiceId },
         include: {
             items: {
@@ -32,7 +34,7 @@ export async function createCostOfSalesEntry(
     }
 
     // Check if entry already exists
-    const existing = await prisma.journalEntry.findFirst({
+    const existing = await client.journalEntry.findFirst({
         where: {
             tenantId,
             sourceDocId: invoiceId,
@@ -53,7 +55,7 @@ export async function createCostOfSalesEntry(
 
     // Calculate total cost
     let totalCost = 0
-    const itemsWithCost = []
+    const itemsWithCost: any[] = []
 
     for (const item of invoice.items) {
         // Only track cost for products with inventory tracking
@@ -75,7 +77,7 @@ export async function createCostOfSalesEntry(
         return null
     }
 
-    const lines = []
+    const lines: any[] = []
 
     // DEBIT: Cost of Sales
     lines.push({
@@ -100,10 +102,10 @@ export async function createCostOfSalesEntry(
         description: `Costo de Ventas - Factura ${invoice.number}`,
         reference: invoice.number,
         lines
-    })
+    }, prismaTx)
 
     // Update entry with source reference
-    await prisma.journalEntry.update({
+    await client.journalEntry.update({
         where: { id: entry.id },
         data: {
             sourceDocId: invoiceId,
@@ -124,15 +126,17 @@ export async function createInventoryPurchaseEntry(
     totalCost: number,
     supplierId?: string,
     supplierName?: string,
-    supplierNit?: string
+    supplierNit?: string,
+    prismaTx?: any
 ) {
+    const client = prismaTx || prisma
     // Get accounting config
     const config = await getAccountingConfig(tenantId)
     if (!config?.inventoryAccountId || !config?.accountsPayableId) {
         throw new Error('Configuración contable incompleta')
     }
 
-    const lines = []
+    const lines: any[] = []
 
     // DEBIT: Inventory
     lines.push({
@@ -158,9 +162,9 @@ export async function createInventoryPurchaseEntry(
         description: `Compra de Inventario`,
         reference: purchaseId,
         lines
-    })
+    }, prismaTx)
 
-    await prisma.journalEntry.update({
+    await client.journalEntry.update({
         where: { id: entry.id },
         data: {
             sourceDocId: purchaseId,

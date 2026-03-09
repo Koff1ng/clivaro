@@ -131,6 +131,7 @@ export async function POST(request: Request) {
   const prisma = await getPrismaForRequest(request, session)
 
   try {
+    const tenantId = (session.user as any).tenantId || 'public'
     const body = await request.json()
     const data = createReceiptSchema.parse(body)
 
@@ -235,8 +236,9 @@ export async function POST(request: Request) {
           item.productId,
           data.warehouseId,
           quantity,
-          unitCost,
-          tx
+          toDecimal(item.unitCost),
+          tx,
+          item.variantId
         )
 
         // Verificar que el stock se actualizó
@@ -244,6 +246,26 @@ export async function POST(request: Request) {
           where: whereClause,
         })
         logger.debug('[Goods Receipt] Stock verified', { productId: item.productId, quantity: updatedStock?.quantity || 0 })
+      }
+
+      // INTEGRACIÓN CONTABLE: Registrar entrada a inventario
+      const totalCost = data.items.reduce((sum, item) => sum + (item.quantity * item.unitCost), 0)
+
+      try {
+        const { createInventoryPurchaseEntry } = await import('@/lib/accounting/inventory-integration')
+        await createInventoryPurchaseEntry(
+          receipt.id,
+          tenantId,
+          (session.user as any).id,
+          totalCost,
+          purchaseOrder.supplierId,
+          undefined, // name will be fetched by service if needed or we could pass it
+          undefined, // nit will be fetched
+          tx
+        )
+      } catch (accError: any) {
+        logger.error('Error in accounting integration during purchase receipt', accError)
+        throw new Error(`Error en integración contable de compra: ${accError.message}`)
       }
 
       // Update purchase order status if all items received
