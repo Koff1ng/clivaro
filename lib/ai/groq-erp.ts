@@ -41,9 +41,9 @@ export class GroqERP {
     private supabase: ReturnType<typeof createClient>;
 
     private models: Record<GroqModel, string> = {
-        fast: "llama-3.1-8b-instant",      // Único modelo habilitado por el usuario
-        smart: "llama-3.1-8b-instant",     // Usamos el mismo para todas las tareas
-        mixtral: "mixtral-8x7b-32768",     // Mantener por si se activa luego
+        fast: "llama-3.1-8b-instant",      // Respuestas simples y rápidas
+        smart: "llama-3.3-70b-versatile",  // Tareas complejas y razonamiento
+        mixtral: "mixtral-8x7b-32768",     // Contexto largo (32k tokens)
     };
 
     constructor(
@@ -120,7 +120,21 @@ export class GroqERP {
         let systemPrompt = `Eres un asistente inteligente integrado en un ERP empresarial avanzado.
     Ayudas con consultas sobre inventario, ventas, compras, contabilidad y RRHH.
     Responde siempre en español, de forma clara, profesional y concisa.
-    Si el usuario pregunta algo técnico, responde con precisión.`;
+    
+    PROTOCOLO DE ACCIÓN:
+    Cuando el usuario mencione querer crear algo o ir a un módulo, SIEMPRE ofrece un botón de acción al final de tu respuesta usando este formato exacto:
+    {{ACTION:Texto del Botón|/ruta/del/modulo}}
+    
+    Ejemplos de rutas comunes:
+    - Crear Producto: /inventory/products/new
+    - Ver Inventario: /inventory/products
+    - Nueva Factura: /sales/invoices/new
+    - Ver Facturas: /sales/invoices
+    - Ver Clientes: /crm/customers
+    - Nuevo Cliente: /crm/customers/new
+    - Ver Usuarios/Roles: /admin/users
+    
+    Si el usuario tiene dudas técnicas sobre el sistema, ayuda con precisión.`;
 
         if (erpContext) systemPrompt += `\n\nContexto actual del sistema: ${erpContext}`;
 

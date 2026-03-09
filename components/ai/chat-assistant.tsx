@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
@@ -23,6 +24,44 @@ export function ChatAssistant() {
     const [isLoading, setIsLoading] = useState(false)
     const scrollRef = useRef<HTMLDivElement>(null)
     const { toast } = useToast()
+    const router = useRouter()
+
+    const renderContent = (content: string) => {
+        const actionRegex = /{{ACTION:([^|]+)\|([^}]+)}}/g
+        const parts: (string | JSX.Element)[] = []
+        let lastIndex = 0
+        let match
+
+        while ((match = actionRegex.exec(content)) !== null) {
+            if (match.index > lastIndex) {
+                parts.push(content.substring(lastIndex, match.index))
+            }
+            const label = match[1]
+            const path = match[2]
+            parts.push(
+                <Button
+                    key={match.index}
+                    variant="outline"
+                    size="sm"
+                    className="mt-2 w-full flex items-center justify-between group hover:bg-primary hover:text-primary-foreground border-primary/20 bg-background/50 backdrop-blur-sm"
+                    onClick={() => {
+                        router.push(path)
+                        setIsOpen(false)
+                    }}
+                >
+                    <span className="font-medium">{label}</span>
+                    <Maximize2 className="h-3 w-3 opacity-70 group-hover:opacity-100 transition-opacity" />
+                </Button>
+            )
+            lastIndex = match.index + match[0].length
+        }
+
+        if (lastIndex < content.length) {
+            parts.push(content.substring(lastIndex))
+        }
+
+        return parts.length > 0 ? <div className="flex flex-col gap-1">{parts}</div> : content
+    }
 
     useEffect(() => {
         if (scrollRef.current) {
@@ -113,10 +152,10 @@ export function ChatAssistant() {
                                                 {m.role === 'user' ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
                                             </div>
                                             <div className={`p-3 rounded-2xl text-sm leading-relaxed shadow-sm ${m.role === 'user'
-                                                    ? 'bg-primary text-primary-foreground rounded-tr-none'
-                                                    : 'bg-card border rounded-tl-none'
+                                                ? 'bg-primary text-primary-foreground rounded-tr-none'
+                                                : 'bg-card border rounded-tl-none'
                                                 }`}>
-                                                {m.content}
+                                                {renderContent(m.content)}
                                             </div>
                                         </div>
                                     </div>
