@@ -15,9 +15,9 @@ export const metadata: Metadata = {
   title: 'Clivaro',
   description: 'Sistema de gestion empresarial',
   icons: {
-    icon: '/clivaro-logo-new.png',
-    shortcut: '/clivaro-logo-new.png',
-    apple: '/clivaro-logo-new.png',
+    icon: '/LOGO FINAL.svg',
+    shortcut: '/LOGO FINAL.svg',
+    apple: '/LOGO FINAL.svg',
   },
 }
 

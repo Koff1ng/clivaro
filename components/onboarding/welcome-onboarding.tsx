@@ -296,12 +296,13 @@ export function WelcomeOnboarding({ onComplete, planName }: WelcomeOnboardingPro
                     transition={{ type: 'spring', stiffness: 300 }}
                   >
                     <Image
-                      src="/clivaro-logo-new.png"
+                      src="/LOGO FINAL.svg"
                       alt="Clivaro"
                       width={180}
                       height={180}
                       className="object-contain"
                       priority
+                      unoptimized
                     />
                   </motion.div>
 

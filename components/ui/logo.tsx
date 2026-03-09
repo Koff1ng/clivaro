@@ -66,7 +66,7 @@ export function LogoIcon({ className = '', size = 'md' }: { className?: string; 
     <div className={`${sizeClasses[size]} ${className} flex-shrink-0 relative overflow-hidden flex items-center justify-center`}>
       {!imgError ? (
         <Image
-          src="/clivaro-logo-new.png"
+          src="/LOGO FINAL.svg"
           alt="Clivaro"
           width={iconSize * 2} // Slightly larger to allow some focus on the "C"
           height={iconSize * 2}

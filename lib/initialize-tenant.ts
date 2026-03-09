@@ -152,11 +152,26 @@ async function initializePostgresTenant(databaseUrl: string, tenantId: string, t
       create: { name: 'ADMIN', description: 'Administrador con acceso total' },
     })
 
-    // Core permissions every tenant admin needs
+    // Core permissions every tenant admin needs (All modules)
     const corePermissions = [
-      'view_reports', 'manage_sales', 'manage_products', 'manage_inventory',
-      'manage_customers', 'manage_suppliers', 'manage_purchases', 'manage_users',
-      'manage_settings', 'view_dashboard', 'manage_pos',
+      'view_reports',
+      'manage_sales',
+      'manage_products',
+      'manage_inventory',
+      'manage_customers',
+      'manage_suppliers',
+      'manage_purchases',
+      'manage_users',
+      'manage_settings',
+      'view_dashboard',
+      'manage_pos',
+      'manage_accounting',
+      'manage_payroll',
+      'manage_crm',
+      'manage_cash',
+      'manage_returns',
+      'void_invoices',
+      'apply_discounts',
     ]
 
     for (const permName of corePermissions) {
