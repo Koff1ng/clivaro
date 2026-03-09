@@ -41,9 +41,9 @@ export class GroqERP {
     private supabase: ReturnType<typeof createClient>;
 
     private models: Record<GroqModel, string> = {
-        fast: "llama-3.1-8b-instant",      // Respuestas simples y rápidas
-        smart: "llama-3.1-70b-versatile",  // Tareas complejas (más compatible)
-        mixtral: "mixtral-8x7b-32768",     // Contexto largo (32k tokens)
+        fast: "llama-3.1-8b-instant",      // Único modelo habilitado por el usuario
+        smart: "llama-3.1-8b-instant",     // Usamos el mismo para todas las tareas
+        mixtral: "mixtral-8x7b-32768",     // Mantener por si se activa luego
     };
 
     constructor(
