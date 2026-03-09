@@ -11,6 +11,11 @@ CREATE TABLE "User" (
     "updatedAt" TIMESTAMP(3) NOT NULL,
     "createdById" TEXT,
     "updatedById" TEXT,
+    "legalAccepted" BOOLEAN NOT NULL DEFAULT false,
+    "legalAcceptedAt" TIMESTAMP(3),
+    "legalVersion" TEXT,
+    "marketingAccepted" BOOLEAN NOT NULL DEFAULT false,
+    "acceptanceIp" TEXT,
 
     CONSTRAINT "User_pkey" PRIMARY KEY ("id")
 );
