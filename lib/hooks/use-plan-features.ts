@@ -70,10 +70,11 @@ export function useTenantPlan() {
       }
     },
     enabled: !!session,
-    staleTime: 1 * 60 * 1000, // 1 minuto (reducido para reflejar upgrades rápido)
-    gcTime: 5 * 60 * 1000, // 5 minutos
-    retry: 2, // Reintentar 2 veces antes de usar el fallback
-    retryDelay: 2000, // Esperar 2 segundos entre reintentos
+    staleTime: 0, // Siempre verificar con el servidor al montar/enfocar
+    gcTime: 1 * 60 * 1000, // 1 minuto de cache persistente
+    refetchOnWindowFocus: true, // Re-validar cuando el usuario vuelve a la pestaña
+    retry: 2,
+    retryDelay: 2000,
   })
 
   const planName = (data?.plan?.name as PlanName) || null

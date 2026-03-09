@@ -18,7 +18,7 @@ async function executeWithRetry<T>(
     } catch (error: any) {
       lastError = error
       const errorMessage = error?.message || String(error)
-      
+
       // Si es error de límite de conexiones, esperar y reintentar
       if (errorMessage.includes('MaxClientsInSessionMode') || errorMessage.includes('max clients reached')) {
         if (attempt < maxRetries - 1) {
@@ -28,7 +28,7 @@ async function executeWithRetry<T>(
           continue
         }
       }
-      
+
       // Si no es error de conexión, lanzar inmediatamente
       throw error
     }
@@ -42,7 +42,7 @@ async function executeWithRetry<T>(
 export async function GET(request: Request) {
   try {
     const session = await requireAuth(request)
-    
+
     if (session instanceof NextResponse) {
       return session
     }
@@ -129,7 +129,7 @@ export async function GET(request: Request) {
           subscriptionId: subscription.id,
         })
       })
-      
+
       return NextResponse.json({
         plan: null,
         subscription: null,
@@ -175,22 +175,22 @@ export async function GET(request: Request) {
     const isRecentChange = daysSinceChange <= 7
 
     // Determinar si hubo un cambio de plan
-    const planChanged = previousSubscription && 
-                        previousSubscription.planId !== subscription.planId &&
-                        isRecentChange
+    const planChanged = previousSubscription &&
+      previousSubscription.planId !== subscription.planId &&
+      isRecentChange
 
     // Calcular la fecha del próximo pago
     const getNextPaymentDate = () => {
       if (!subscription.endDate) return null
-      
+
       const endDate = new Date(subscription.endDate)
       const now = new Date()
-      
+
       // Si la suscripción ya expiró, el próximo pago es ahora
       if (endDate <= now) {
         return now
       }
-      
+
       // Si está activa, el próximo pago es cuando expire
       return endDate
     }
@@ -216,11 +216,16 @@ export async function GET(request: Request) {
         name: previousSubscription.plan.name,
       } : null,
       isRecentChange: planChanged,
+    }, {
+      headers: {
+        'Cache-Control': 'no-store, max-age=0, must-revalidate',
+        'Pragma': 'no-cache',
+      }
     })
   } catch (error: any) {
     console.error('Error fetching tenant plan:', error)
     return NextResponse.json(
-      { 
+      {
         error: error.message || 'Error al obtener el plan',
         details: error?.message || String(error),
         code: error?.code || 'UNKNOWN_ERROR',

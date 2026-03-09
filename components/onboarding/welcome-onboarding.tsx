@@ -460,13 +460,15 @@ export function WelcomeOnboarding({ onComplete, planName }: WelcomeOnboardingPro
             {/* Actions */}
             <motion.div variants={itemVariants} className="flex gap-3">
               {step > 0 && (
-                <Button
-                  variant="outline"
-                  onClick={() => setStep(step - 1)}
-                  className="flex-1 border-slate-600 text-slate-300 hover:bg-slate-700 hover:text-white"
-                >
-                  Atrás
-                </Button>
+                <motion.div className="flex-1" whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                  <Button
+                    variant="outline"
+                    onClick={() => setStep(step - 1)}
+                    className="w-full h-12 border-slate-600 bg-slate-800/50 text-slate-300 hover:bg-slate-700/50 hover:text-white hover:border-slate-500 transition-all duration-300"
+                  >
+                    Atrás
+                  </Button>
+                </motion.div>
               )}
               <motion.div className="flex-1" whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
                 <Button
