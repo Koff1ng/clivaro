@@ -7,6 +7,7 @@ import { Sidebar } from './sidebar'
 import { Header } from './header'
 import { SidebarProvider } from '@/lib/sidebar-context'
 import { OnboardingProvider } from '@/components/onboarding/onboarding-provider'
+import { ChatAssistant } from '@/components/ai/chat-assistant'
 
 function LayoutContent({ children }: { children: React.ReactNode }) {
   return (
@@ -20,6 +21,7 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
           </div>
         </main>
       </div>
+      <ChatAssistant />
     </div>
   )
 }
