@@ -300,77 +300,75 @@ export function PricingClient() {
                     )}
 
                     <SpotlightCard
-                      spotlightColor={plan.popular ? 'rgba(14, 165, 233, 0.3)' : 'rgba(99, 102, 241, 0.15)'}
-                      className={`relative flex flex-col h-full backdrop-blur-sm transition-all duration-500 ${plan.popular
-                        ? 'bg-gradient-to-br from-white/95 via-blue-50/90 to-white/95 dark:from-slate-900/95 dark:via-blue-950/40 dark:to-slate-900/95 border-2 border-blue-400/50 dark:border-blue-500/50 shadow-2xl shadow-blue-500/20 hover:shadow-blue-500/40 scale-105 lg:scale-110 hover:scale-110 lg:hover:scale-115 z-20'
-                        : 'bg-white/80 dark:bg-slate-900/80 border border-gray-200/80 dark:border-gray-700/50 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-2xl hover:shadow-indigo-500/10 hover:scale-105 z-10'
+                      spotlightColor={plan.popular ? 'rgba(37, 99, 235, 0.1)' : 'rgba(148, 163, 184, 0.05)'}
+                      className={`relative flex flex-col h-full bg-white dark:bg-slate-950 border transition-all duration-300 ${plan.popular
+                        ? 'border-blue-500 dark:border-blue-400 shadow-2xl shadow-blue-500/10 z-20 ring-1 ring-blue-500/50'
+                        : 'border-slate-200 dark:border-slate-800 shadow-sm z-10'
                         }`}
                     >
                       {/* Badge */}
                       {plan.badge && (
-                        <div className="absolute -top-5 left-1/2 -translate-x-1/2 z-30">
-                          <Badge className={`px-6 py-1.5 text-sm font-bold shadow-2xl backdrop-blur-sm ${plan.popular
-                            ? 'bg-gradient-to-r from-blue-600 via-cyan-500 to-blue-600 text-white animate-pulse border-2 border-white/50'
-                            : plan.name === 'Business'
-                              ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white border-2 border-white/30'
-                              : 'bg-gradient-to-r from-orange-600 to-red-600 text-white border-2 border-white/30'
+                        <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 z-30">
+                          <Badge className={`px-4 py-1 text-[10px] font-black uppercase tracking-widest border shadow-sm ${plan.popular
+                            ? 'bg-blue-600 text-white border-blue-400'
+                            : 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white border-slate-200 dark:border-slate-800'
                             }`}>
-                            ✨ {plan.badge}
+                            {plan.badge}
                           </Badge>
                         </div>
                       )}
 
-                      <CardHeader className="pb-8 pt-8 flex flex-col items-center text-center">
-                        {/* Icon with enhanced gradient */}
-                        <div className={`inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br ${plan.color} mb-6 shadow-lg relative overflow-hidden group-hover:scale-110 transition-transform duration-300`}>
-                          <div className="absolute inset-0 bg-white/20 group-hover:bg-white/30 transition-colors"></div>
-                          <Icon className="h-8 w-8 text-white relative z-10" />
+                      <CardHeader className="pb-8 pt-10 flex flex-col items-center text-center">
+                        {/* Icon with subtle gradient */}
+                        <div className={`inline-flex items-center justify-center w-14 h-14 rounded-xl bg-gradient-to-br ${plan.color} mb-6 shadow-sm`}>
+                          <Icon className="h-6 w-6 text-white" />
                         </div>
 
-                        {/* Plan name with enhanced typography */}
-                        <CardTitle className="text-3xl font-bold bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 dark:from-white dark:via-gray-100 dark:to-white bg-clip-text text-transparent">
+                        {/* Plan name */}
+                        <CardTitle className="text-2xl font-bold text-slate-900 dark:text-white">
                           {plan.name}
                         </CardTitle>
 
-                        <CardDescription className="mt-3 text-base leading-relaxed text-gray-600 dark:text-gray-400 max-w-xs mx-auto">
+                        <CardDescription className="mt-2 text-sm text-slate-500 dark:text-slate-400 h-10 flex items-center justify-center">
                           {plan.description}
                         </CardDescription>
 
-                        {/* Price section with enhanced styling */}
-                        <div className="mt-10 relative w-full flex flex-col items-center">
-                          <div className="flex items-baseline justify-center gap-2">
-                            <span className={`text-5xl lg:text-6xl font-black tracking-tight bg-gradient-to-br ${plan.color} bg-clip-text text-transparent`}>
+                        {/* Price section */}
+                        <div className="mt-8 relative w-full flex flex-col items-center h-24 justify-center">
+                          <div className="flex items-baseline justify-center gap-1">
+                            <span className="text-4xl font-extrabold tracking-tight text-slate-900 dark:text-white">
                               {formatPrice(displayPrice)}
                             </span>
-                            <span className="text-base font-semibold text-gray-500 dark:text-gray-400">
+                            <span className="text-sm font-medium text-slate-400">
                               {billingCycle === 'annual' ? '/año' : '/mes'}
                             </span>
                           </div>
                           {billingCycle === 'annual' && (
-                            <p className="text-sm text-gray-500 dark:text-gray-400 mt-3 font-medium">
-                              💳 Facturado anualmente
-                            </p>
+                            <div className="mt-2 px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800">
+                              <p className="text-[10px] text-blue-600 dark:text-blue-400 font-bold uppercase tracking-tighter">
+                                Facturado anual
+                              </p>
+                            </div>
                           )}
                         </div>
                       </CardHeader>
 
                       <CardContent className="flex-1 flex flex-col pt-0">
-                        {/* CTA Button with enhanced design */}
+                        {/* CTA Button */}
                         <Button
-                          className={`w-full mb-10 font-bold text-lg py-7 rounded-xl shadow-xl transition-all duration-300 relative overflow-hidden group/btn ${plan.popular
-                            ? 'bg-gradient-to-r from-blue-600 via-cyan-500 to-blue-600 hover:from-blue-700 hover:via-cyan-600 hover:to-blue-700 text-white shadow-blue-500/40 hover:shadow-blue-500/60 hover:shadow-2xl hover:-translate-y-1 border-2 border-white/20'
-                            : 'bg-gradient-to-br from-slate-900 to-slate-800 hover:from-slate-800 hover:to-slate-700 text-white dark:from-slate-800 dark:to-slate-700 dark:hover:from-slate-700 dark:hover:to-slate-600 shadow-slate-500/20 hover:shadow-slate-500/40 hover:-translate-y-1'
+                          className={`w-full mb-8 font-bold text-base py-6 rounded-xl transition-all duration-300 ${plan.popular
+                            ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/20'
+                            : 'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-white'
                             }`}
                           onClick={() => {
                             setSelectedPlan(plan.name)
                             setShowContactForm(true)
                           }}
                         >
-                          <span className="relative z-10 flex items-center justify-center gap-2">
+                          <span className="flex items-center justify-center gap-2">
                             {plan.cta}
-                            <Sparkles className="h-5 w-5" />
+                            <ArrowRight className="h-4 w-4" />
                           </span>
-                          <div className="absolute inset-0 bg-white/10 translate-y-full group-hover/btn:translate-y-0 transition-transform duration-300"></div>
                         </Button>
 
                         {/* Features list with enhanced spacing */}
@@ -662,10 +660,12 @@ export function PricingClient() {
       <a
         href="https://wa.me/573000000000?text=Hola,%20quisiera%20recibir%20más%20información%20sobre%20Clivaro%20ERP/CRM"
         target="_blank"
-        className="fixed bottom-8 right-8 z-[100] bg-[#25D366] text-white p-4 rounded-full shadow-2xl hover:scale-110 active:scale-95 transition-all duration-300 group animate-bounce hover:animate-none"
+        className="fixed bottom-8 right-8 z-[100] bg-[#25D366] text-white p-4 rounded-full shadow-2xl hover:scale-110 active:scale-95 transition-all duration-300 group hover:animate-none group"
         aria-label="Contactar por WhatsApp"
       >
-        <MessageCircle className="w-8 h-8" />
+        <div className="animate-[bounce_3s_infinite]">
+          <MessageCircle className="w-8 h-8" />
+        </div>
         <span className="absolute right-full mr-4 top-1/2 -translate-y-1/2 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 text-slate-900 dark:text-white px-4 py-2 rounded-xl text-sm font-bold shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
           ¿Necesitas ayuda? Chatea con nosotros
         </span>
