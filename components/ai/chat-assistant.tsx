@@ -73,24 +73,59 @@ export function ChatAssistant() {
         toast('Chat reiniciado', 'info')
     }
 
-    // ─── Parsea markdown básico: **negrita**, *cursiva*, `código`, \n ───
+    // ─── Parsea markdown avanzado y limpio ──────────────────────────
     const parseMarkdown = (text: string): (string | JSX.Element)[] => {
-        // Mejorado para manejar bloques de texto y espaciado
-        const segments = text.split(/(\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`|\n)/g)
-        return segments.map((seg, i) => {
-            if (/^\*\*(.+)\*\*$/.test(seg)) {
-                return <strong key={i} className="font-bold text-sky-600 dark:text-sky-400">{seg.slice(2, -2)}</strong>
-            }
-            if (/^\*(.+)\*$/.test(seg)) {
-                return <em key={i} className="italic text-muted-foreground">{seg.slice(1, -1)}</em>
-            }
-            if (/^`(.+)`$/.test(seg)) {
-                return <code key={i} className="bg-muted px-1.5 py-0.5 rounded text-[11px] font-mono border border-border/50">{seg.slice(1, -1)}</code>
-            }
-            if (seg === '\n') {
-                return <div key={i} className="h-2" />
-            }
-            return seg
+        if (!text) return []
+
+        // Primero separamos por bloques de párrafos (doble salto de línea)
+        const paragraphs = text.split(/\n\n+/)
+
+        return paragraphs.flatMap((p, pIdx) => {
+            // Procesamos líneas individuales dentro del párrafo (listas o saltos simples)
+            const lines = p.split('\n')
+            const content = lines.flatMap((line, lIdx) => {
+                // Si es un ítem de lista (empieza con * o - o •)
+                const isListItem = /^[*-•]\s+/.test(line.trim())
+                const cleanLine = isListItem ? line.trim().replace(/^[*-•]\s+/, '') : line
+
+                // Procesamos negritas, cursivas y código en la línea
+                const segments = cleanLine.split(/(\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`)/g)
+                const processedSegments = segments.map((seg, sIdx) => {
+                    if (/^\*\*(.+)\*\*$/.test(seg)) {
+                        return <strong key={`${pIdx}-${lIdx}-${sIdx}`} className="font-bold text-sky-600 dark:text-sky-400">{seg.slice(2, -2)}</strong>
+                    }
+                    if (/^\*(.+)\*$/.test(seg)) {
+                        return <em key={`${pIdx}-${lIdx}-${sIdx}`} className="italic text-muted-foreground/80">{seg.slice(1, -1)}</em>
+                    }
+                    if (/^`(.+)`$/.test(seg)) {
+                        return <code key={`${pIdx}-${lIdx}-${sIdx}`} className="bg-muted px-1.5 py-0.5 rounded text-[11px] font-mono border border-border/50 text-sky-700 dark:text-sky-300">{seg.slice(1, -1)}</code>
+                    }
+                    return seg
+                })
+
+                if (isListItem) {
+                    return (
+                        <div key={`${pIdx}-${lIdx}`} className="flex gap-2 items-start ml-2 my-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-sky-500 mt-1.5 shrink-0 shadow-sm shadow-sky-500/50" />
+                            <span className="flex-1">{processedSegments}</span>
+                        </div>
+                    )
+                }
+
+                return (
+                    <span key={`${pIdx}-${lIdx}`}>
+                        {processedSegments}
+                        {lIdx < lines.length - 1 && <br />}
+                    </span>
+                )
+            })
+
+            // Retornamos el párrafo envuelto con espaciado
+            return [
+                <div key={pIdx} className="mb-4 last:mb-0 leading-relaxed tracking-tight">
+                    {content}
+                </div>
+            ]
         })
     }
 
@@ -101,35 +136,52 @@ export function ChatAssistant() {
         let lastIndex = 0
         let match
 
+        const textParts: string[] = []
+        const actions: { label: string, path: string }[] = []
+
         while ((match = actionRegex.exec(content)) !== null) {
             if (match.index > lastIndex) {
-                parts.push(...parseMarkdown(content.substring(lastIndex, match.index)))
+                textParts.push(content.substring(lastIndex, match.index))
             }
-            const label = match[1]
-            const path = match[2]
-            parts.push(
-                <Button
-                    key={match.index}
-                    variant="outline"
-                    size="sm"
-                    className="mt-2 w-full flex items-center justify-between group hover:bg-primary hover:text-primary-foreground border-primary/20 bg-background/50 backdrop-blur-sm"
-                    onClick={() => {
-                        router.push(path)
-                        setIsOpen(false)
-                    }}
-                >
-                    <span className="font-medium">{label}</span>
-                    <Maximize2 className="h-3 w-3 opacity-70 group-hover:opacity-100 transition-opacity" />
-                </Button>
-            )
+            actions.push({ label: match[1], path: match[2] })
             lastIndex = match.index + match[0].length
         }
 
         if (lastIndex < content.length) {
-            parts.push(...parseMarkdown(content.substring(lastIndex)))
+            textParts.push(content.substring(lastIndex))
         }
 
-        return parts.length > 0 ? <div className="flex flex-col gap-1">{parts}</div> : content
+        // Si no hay acciones, devolvemos solo el texto parseado
+        if (actions.length === 0) {
+            return <div className="space-y-1">{parseMarkdown(content)}</div>
+        }
+
+        // Si hay acciones, las ponemos al final de forma elegante
+        return (
+            <div className="space-y-3">
+                <div className="space-y-1">{parseMarkdown(textParts.join('\n'))}</div>
+                <div className="flex flex-col gap-2 pt-2 border-t border-border/30">
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-1">Acciones sugeridas</p>
+                    {actions.map((action, i) => (
+                        <Button
+                            key={i}
+                            variant="secondary"
+                            size="sm"
+                            className="w-full h-10 flex items-center justify-between group bg-sky-50 dark:bg-sky-900/20 hover:bg-sky-500 hover:text-white border-none shadow-sm transition-all transform active:scale-[0.98]"
+                            onClick={() => {
+                                router.push(action.path)
+                                setIsOpen(false)
+                            }}
+                        >
+                            <span className="font-semibold">{action.label}</span>
+                            <div className="bg-white/20 p-1 rounded-md group-hover:bg-white/30 transition-colors">
+                                <Maximize2 className="h-3 w-3" />
+                            </div>
+                        </Button>
+                    ))}
+                </div>
+            </div>
+        )
     }
 
     useEffect(() => {
@@ -232,21 +284,23 @@ export function ChatAssistant() {
 
                                 <CardContent ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-4 bg-zinc-50 dark:bg-zinc-900/50 scrollbar-thin">
                                     {messages.map((m, i) => (
-                                        <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                                            <div className={`flex gap-3 max-w-[85%] ${m.role === 'user' ? 'flex-row-reverse' : ''}`}>
-                                                <div className={`shrink-0 h-8 w-8 rounded-full flex items-center justify-center border shadow-sm ${m.role === 'user' ? 'bg-secondary' : 'bg-primary text-primary-foreground'
+                                        <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-2 duration-300`}>
+                                            <div className={`flex gap-2.5 max-w-[90%] ${m.role === 'user' ? 'flex-row-reverse' : ''}`}>
+                                                <div className={`shrink-0 h-8 w-8 rounded-xl flex items-center justify-center border shadow-sm ${m.role === 'user'
+                                                    ? 'bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900 border-slate-200 dark:border-slate-700'
+                                                    : 'bg-gradient-to-br from-sky-500 to-sky-600 text-white border-sky-400'
                                                     }`}>
-                                                    {m.role === 'user' ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
+                                                    {m.role === 'user' ? <User className="h-4 w-4 text-slate-600 dark:text-slate-400" /> : <Bot className="h-4 w-4" />}
                                                 </div>
-                                                <div className={`p-3 rounded-2xl text-sm leading-relaxed shadow-sm ${m.role === 'user'
-                                                    ? 'bg-primary text-primary-foreground rounded-tr-none'
-                                                    : 'bg-card border rounded-tl-none'
+                                                <div className={`p-4 rounded-2xl text-[13.5px] leading-relaxed shadow-sm transition-all ${m.role === 'user'
+                                                    ? 'bg-sky-500 text-white rounded-tr-none font-medium'
+                                                    : 'bg-white dark:bg-slate-800/80 border border-slate-200/60 dark:border-slate-700/60 rounded-tl-none text-slate-800 dark:text-slate-200'
                                                     }`}>
                                                     {m.role === 'assistant' ? (
                                                         <motion.div
-                                                            initial={{ opacity: 0, y: 5 }}
-                                                            animate={{ opacity: 1, y: 0 }}
-                                                            transition={{ duration: 0.4, ease: "easeOut" }}
+                                                            initial={{ opacity: 0 }}
+                                                            animate={{ opacity: 1 }}
+                                                            transition={{ duration: 0.5 }}
                                                         >
                                                             {renderContent(m.content)}
                                                         </motion.div>

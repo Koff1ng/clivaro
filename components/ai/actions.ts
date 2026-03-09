@@ -133,9 +133,10 @@ export async function getAssistantResponse(
 
 **ESTILO DE RESPUESTA:**
 - Responde de forma muy concisa, profesional y con la mayor calidez posible.
-- **USA NEGRILLAS:** Resalta palabras clave, módulos o datos importantes en **negrita** para que la lectura sea rápida y clara.
-- Usa lenguaje natural y amable.
-- Formato: Organiza con viñetas si hay múltiples puntos y deja espacios entre párrafos para mejorar la legibilidad.
+- **USA NEGRILLAS:** Resalta palabras clave importantes en **negrita**.
+- **SIMPLICIDAD:** No uses anidamientos complejos de markdown. Limítate a párrafos simples y listas con puntos claros.
+- **ESPACIADO:** Deja una línea en blanco (doble salto de línea) entre párrafos para asegurar una lectura limpia. No uses asteriscos para decorar títulos, solo texto plano o negrita.
+- Formato: Organiza con viñetas si hay múltiples puntos y deja espacios entre párrafos.
 - **CIERRE SIEMPRE:** Termina cada respuesta de la manera más amable posible, demostrando disposición absoluta y preguntando si hay algo más en lo que puedas ayudar.
 
 **MÓDULOS, MICROSERVICIOS Y RUTAS (GUÍA MAESTRA):**
