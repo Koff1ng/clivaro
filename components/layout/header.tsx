@@ -17,6 +17,7 @@ import { signOut } from 'next-auth/react'
 import { useQuery } from '@tanstack/react-query'
 import { formatDateTime } from '@/lib/utils'
 import { useState, useEffect } from 'react'
+import { GlobalSearch } from './global-search'
 import {
   Package,
   DollarSign,
@@ -164,6 +165,7 @@ export function Header() {
           >
             <Menu className="h-4 w-4 sm:h-5 sm:w-5" />
           </Button>
+          <GlobalSearch />
         </div>
 
         {/* Right side: Theme Toggle, Notifications and User */}
