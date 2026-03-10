@@ -135,6 +135,11 @@ model Product {
   enableRecipeConsumption Boolean                 @default(false)
   printerStation          String? // KITCHEN, BAR, CASHIER, null (for kitchen printer routing)
   cost                    Float                   @default(0)
+  lastCost                Float                   @default(0)
+  averageCost             Float                   @default(0)
+  percentageMerma         Float                   @default(0)
+  useScale                Boolean                 @default(false)
+  stockAlertEnabled       Boolean                 @default(true)
   price                   Float
   taxRate                 Float                   @default(0)
   trackStock              Boolean                 @default(true)
@@ -171,6 +176,9 @@ model ProductVariant {
   sku                    String?                 @unique
   barcode                String?                 @unique
   cost                   Float?
+  lastCost               Float?                  @default(0)
+  averageCost            Float?                  @default(0)
+  yieldFactor            Float                   @default(1)
   price                  Float?
   active                 Boolean                 @default(true)
   createdAt              DateTime                @default(now())

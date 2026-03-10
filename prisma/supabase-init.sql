@@ -109,6 +109,11 @@ CREATE TABLE "Product" (
     "updatedAt" TIMESTAMP(3) NOT NULL,
     "createdById" TEXT,
     "updatedById" TEXT,
+    "lastCost" DOUBLE PRECISION DEFAULT 0,
+    "averageCost" DOUBLE PRECISION DEFAULT 0,
+    "percentageMerma" DOUBLE PRECISION DEFAULT 0,
+    "useScale" BOOLEAN NOT NULL DEFAULT false,
+    "stockAlertEnabled" BOOLEAN NOT NULL DEFAULT true,
     "preferredZoneId" TEXT,
 
     CONSTRAINT "Product_pkey" PRIMARY KEY ("id")
@@ -124,6 +129,9 @@ CREATE TABLE "ProductVariant" (
     "cost" DOUBLE PRECISION,
     "price" DOUBLE PRECISION,
     "active" BOOLEAN NOT NULL DEFAULT true,
+    "lastCost" DOUBLE PRECISION DEFAULT 0,
+    "averageCost" DOUBLE PRECISION DEFAULT 0,
+    "yieldFactor" DOUBLE PRECISION NOT NULL DEFAULT 1,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 

@@ -32,6 +32,9 @@ const productSchema = z.object({
   productType: z.enum(['RETAIL', 'SERVICE', 'RAW', 'PREPARED', 'SELLABLE']).default('RETAIL'),
   enableRecipeConsumption: z.boolean().default(false),
   printerStation: z.enum(['KITCHEN', 'BAR', 'CASHIER']).optional().nullable(),
+  percentageMerma: z.number().min(0).max(100).default(0),
+  useScale: z.boolean().default(false),
+  stockAlertEnabled: z.boolean().default(true),
   // Variants
   variants: z.array(z.object({
     id: z.string().optional(),
@@ -40,6 +43,7 @@ const productSchema = z.object({
     barcode: z.string().optional(),
     price: z.number().min(0).optional(),
     cost: z.number().min(0).optional(),
+    yieldFactor: z.number().min(0.001, 'Mínimo 0.001').default(1),
   })).optional(),
 })
 
@@ -74,6 +78,12 @@ export function ProductForm({ product, onSuccess }: { product?: any; onSuccess: 
       price: product.price,
       taxRate: product.taxRate,
       description: product.description || '',
+      productType: (product as any).productType || 'RETAIL',
+      enableRecipeConsumption: (product as any).enableRecipeConsumption || false,
+      printerStation: (product as any).printerStation || null,
+      percentageMerma: (product as any).percentageMerma || 0,
+      useScale: (product as any).useScale || false,
+      stockAlertEnabled: (product as any).stockAlertEnabled ?? true,
       variants: product.variants?.map((v: any) => ({
         id: v.id,
         name: v.name,
@@ -81,10 +91,8 @@ export function ProductForm({ product, onSuccess }: { product?: any; onSuccess: 
         barcode: v.barcode,
         price: v.price,
         cost: v.cost,
+        yieldFactor: v.yieldFactor || 1,
       })) || [],
-      productType: (product as any).productType || 'RETAIL',
-      enableRecipeConsumption: (product as any).enableRecipeConsumption || false,
-      printerStation: (product as any).printerStation || null,
     } : {
       unitOfMeasure: 'UNIT',
       cost: 0,
@@ -93,6 +101,9 @@ export function ProductForm({ product, onSuccess }: { product?: any; onSuccess: 
       productType: 'RETAIL',
       enableRecipeConsumption: false,
       printerStation: null,
+      percentageMerma: 0,
+      useScale: false,
+      stockAlertEnabled: true,
       variants: [],
     },
   })
@@ -251,7 +262,35 @@ export function ProductForm({ product, onSuccess }: { product?: any; onSuccess: 
       {enableRestaurantMode && (
         <div className="space-y-4 pt-4 border-t">
           <Label className="text-base font-semibold">Configuración de Restaurante</Label>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 bg-orange-50/30 dark:bg-orange-950/10 border border-orange-100 dark:border-orange-900/30 rounded-xl">
+            <div className="space-y-1">
+              <Label className="text-[10px] uppercase font-bold text-muted-foreground">Último Costo</Label>
+              <div className="text-sm font-mono font-bold text-orange-600">
+                ${(product?.lastCost || 0).toLocaleString()}
+              </div>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-[10px] uppercase font-bold text-muted-foreground">Costo Promedio</Label>
+              <div className="text-sm font-mono font-bold text-blue-600">
+                ${(product?.averageCost || 0).toLocaleString()}
+              </div>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-[10px] uppercase font-bold text-muted-foreground">Costo c/ Impuestos</Label>
+              <div className="text-sm font-mono font-bold text-green-600">
+                ${((watch('cost') || 0) * (1 + (watch('taxRate') || 0) / 100)).toLocaleString()}
+              </div>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-[10px] uppercase font-bold text-muted-foreground">Costo c/ Merma</Label>
+              <div className="text-sm font-mono font-bold text-red-600">
+                ${((watch('cost') || 0) / (1 - (watch('percentageMerma') || 0) / 100)).toLocaleString()}
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <Label htmlFor="productType">Tipo de Producto</Label>
               <select
@@ -265,22 +304,53 @@ export function ProductForm({ product, onSuccess }: { product?: any; onSuccess: 
                 <option value="PREPARED">Item Elaborado (No vendible)</option>
                 <option value="SELLABLE">Plato / Vendible con Receta</option>
               </select>
-              <p className="text-xs text-muted-foreground mt-1">
-                Determina cómo se comporta este producto en inventario y recetas.
-              </p>
             </div>
-            <div className="flex items-center gap-2 pt-6">
-              <input
-                id="enableRecipeConsumption"
-                type="checkbox"
-                {...register('enableRecipeConsumption')}
-                className="h-4 w-4 rounded border-gray-300"
+
+            <div>
+              <Label htmlFor="percentageMerma">% Merma (Desperdicio)</Label>
+              <Input
+                id="percentageMerma"
+                type="number"
+                step="0.01"
+                {...register('percentageMerma', { valueAsNumber: true })}
+                placeholder="0.00 %"
               />
-              <Label htmlFor="enableRecipeConsumption">Habilitar consumo por receta</Label>
+            </div>
+
+            <div className="flex flex-col gap-3 justify-center pt-2">
+              <div className="flex items-center gap-2">
+                <input
+                  id="enableRecipeConsumption"
+                  type="checkbox"
+                  {...register('enableRecipeConsumption')}
+                  className="h-4 w-4 rounded border-gray-300"
+                />
+                <Label htmlFor="enableRecipeConsumption" className="text-xs">Habilitar Receta</Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  id="useScale"
+                  type="checkbox"
+                  {...register('useScale')}
+                  className="h-4 w-4 rounded border-gray-300"
+                />
+                <Label htmlFor="useScale" className="text-xs text-orange-600 font-bold">Usar Báscula</Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  id="stockAlertEnabled"
+                  type="checkbox"
+                  {...register('stockAlertEnabled')}
+                  className="h-4 w-4 rounded border-gray-300"
+                />
+                <Label htmlFor="stockAlertEnabled" className="text-xs">Alerta de Existencias</Label>
+              </div>
             </div>
           </div>
+
           {watch('enableRecipeConsumption') && (
             <div className="p-3 bg-muted/30 rounded-lg text-sm">
+              {/* ... recipe details ... */}
               <p className="text-blue-600 font-medium">Consumo por Receta Activado</p>
               <p className="text-muted-foreground">Al vender este producto, se descontarán sus ingredientes definidos en la receta.</p>
 
@@ -326,7 +396,7 @@ export function ProductForm({ product, onSuccess }: { product?: any; onSuccess: 
             type="button"
             variant="outline"
             size="sm"
-            onClick={() => append({ name: '', sku: '', price: 0, cost: 0 })}
+            onClick={() => append({ name: '', sku: '', price: 0, cost: 0, yieldFactor: 1 })}
           >
             <Plus className="h-4 w-4 mr-2" />
             Agregar Variante
@@ -348,6 +418,15 @@ export function ProductForm({ product, onSuccess }: { product?: any; onSuccess: 
                   <Label>SKU (Opcional)</Label>
                   <Input {...register(`variants.${index}.sku`)} placeholder="SKU Único" />
                 </div>
+                <div className="col-span-12 sm:col-span-2">
+                  <Label>Rendimiento</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    {...register(`variants.${index}.yieldFactor`, { valueAsNumber: true })}
+                    placeholder="1.0"
+                  />
+                </div>
                 <div className="col-span-6 sm:col-span-2">
                   <Label>Costo</Label>
                   <Input
@@ -364,7 +443,7 @@ export function ProductForm({ product, onSuccess }: { product?: any; onSuccess: 
                     {...register(`variants.${index}.price`, { valueAsNumber: true })}
                   />
                 </div>
-                <div className="col-span-12 sm:col-span-2 flex justify-end">
+                <div className="col-span-12 sm:col-span-1 flex justify-end">
                   <Button
                     type="button"
                     variant="ghost"

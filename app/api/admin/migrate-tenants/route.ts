@@ -55,6 +55,25 @@ export async function POST(req: Request) {
                         ADD COLUMN IF NOT EXISTS "marketingAccepted" BOOLEAN DEFAULT false,
                         ADD COLUMN IF NOT EXISTS "acceptanceIp" TEXT;
                     `)
+
+                    // Update Product table with SoftRestaurant features
+                    await client.query(`
+                        ALTER TABLE "${schemaName}"."Product" 
+                        ADD COLUMN IF NOT EXISTS "lastCost" DOUBLE PRECISION DEFAULT 0,
+                        ADD COLUMN IF NOT EXISTS "averageCost" DOUBLE PRECISION DEFAULT 0,
+                        ADD COLUMN IF NOT EXISTS "percentageMerma" DOUBLE PRECISION DEFAULT 0,
+                        ADD COLUMN IF NOT EXISTS "useScale" BOOLEAN NOT NULL DEFAULT false,
+                        ADD COLUMN IF NOT EXISTS "stockAlertEnabled" BOOLEAN NOT NULL DEFAULT true;
+                    `)
+
+                    // Update ProductVariant table with SoftRestaurant features
+                    await client.query(`
+                        ALTER TABLE "${schemaName}"."ProductVariant" 
+                        ADD COLUMN IF NOT EXISTS "lastCost" DOUBLE PRECISION DEFAULT 0,
+                        ADD COLUMN IF NOT EXISTS "averageCost" DOUBLE PRECISION DEFAULT 0,
+                        ADD COLUMN IF NOT EXISTS "yieldFactor" DOUBLE PRECISION NOT NULL DEFAULT 1;
+                    `)
+
                     results.push({ tenant: tenant.slug, status: 'success' })
                 } catch (err: any) {
                     console.error(`[MIGRATE] Error updating ${schemaName}:`, err.message)

@@ -55,6 +55,9 @@ const createProductSchema = z.object({
   productType: z.string().default('RETAIL'),
   enableRecipeConsumption: z.boolean().default(false),
   printerStation: z.string().optional().nullable(),
+  percentageMerma: z.number().min(0).max(100).default(0),
+  useScale: z.boolean().default(false),
+  stockAlertEnabled: z.boolean().default(true),
   // Variants
   variants: z.array(z.object({
     name: z.string().min(1),
@@ -62,6 +65,7 @@ const createProductSchema = z.object({
     barcode: z.string().optional().nullable(),
     price: z.number().min(0).optional(),
     cost: z.number().min(0).optional(),
+    yieldFactor: z.number().min(0.001).default(1),
   })).optional(),
 })
 
@@ -258,6 +262,7 @@ export async function POST(request: Request) {
               barcode: v.barcode || null,
               price: v.price ?? productData.price, // Inherit if not set
               cost: v.cost ?? productData.cost,     // Inherit if not set
+              yieldFactor: v.yieldFactor || 1,
             }))
           } : undefined
         },

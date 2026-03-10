@@ -69,12 +69,20 @@ export async function updateProductCost(
   if (variantId) {
     await client.productVariant.update({
       where: { id: variantId },
-      data: { cost: newCost },
+      data: {
+        cost: newCost,
+        lastCost: receivedCost,
+        averageCost: newCost
+      },
     })
   } else {
     await client.product.update({
       where: { id: productId },
-      data: { cost: newCost },
+      data: {
+        cost: newCost,
+        lastCost: receivedCost,
+        averageCost: newCost
+      },
     })
   }
 

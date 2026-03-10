@@ -115,6 +115,32 @@ async function initializePostgresTenant(databaseUrl: string, tenantId: string, t
     await syncClient.end()
   }
 
+  // Step 2.6: Sync SoftRestaurant / Professional features
+  console.log(`[STEP 2.6/4] Sincronizando campos SoftRestaurant en "${schemaName}"...`)
+  const srClient = new Client({ connectionString: tenantSchemaUrl })
+  try {
+    await srClient.connect()
+    await srClient.query(`SET search_path TO "${schemaName}"`)
+    await srClient.query(`
+      ALTER TABLE "Product" 
+      ADD COLUMN IF NOT EXISTS "lastCost" DOUBLE PRECISION DEFAULT 0,
+      ADD COLUMN IF NOT EXISTS "averageCost" DOUBLE PRECISION DEFAULT 0,
+      ADD COLUMN IF NOT EXISTS "percentageMerma" DOUBLE PRECISION DEFAULT 0,
+      ADD COLUMN IF NOT EXISTS "useScale" BOOLEAN NOT NULL DEFAULT false,
+      ADD COLUMN IF NOT EXISTS "stockAlertEnabled" BOOLEAN NOT NULL DEFAULT true;
+
+      ALTER TABLE "ProductVariant" 
+      ADD COLUMN IF NOT EXISTS "lastCost" DOUBLE PRECISION DEFAULT 0,
+      ADD COLUMN IF NOT EXISTS "averageCost" DOUBLE PRECISION DEFAULT 0,
+      ADD COLUMN IF NOT EXISTS "yieldFactor" DOUBLE PRECISION NOT NULL DEFAULT 1;
+    `)
+    console.log('[STEP 2.6/4] ✓ Campos SoftRestaurant sincronizados')
+  } catch (srErr: any) {
+    console.warn(`[TENANT INIT] Warning during SR sync: ${srErr.message}`)
+  } finally {
+    await srClient.end()
+  }
+
   // Step 3: Seed initial data (admin user, warehouse) via PrismaClient
   console.log('[STEP 3/4] Creando datos iniciales (admin, roles, almacén)...')
 

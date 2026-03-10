@@ -25,6 +25,9 @@ const updateProductSchema = z.object({
   enableRecipeConsumption: z.boolean().optional(),
   printerStation: z.string().optional().nullable(),
   active: z.boolean().optional(),
+  percentageMerma: z.number().min(0).max(100).optional(),
+  useScale: z.boolean().optional(),
+  stockAlertEnabled: z.boolean().optional(),
   // Variants (Upsert)
   variants: z.array(z.object({
     id: z.string().optional(), // If present, update. If missing, create.
@@ -33,6 +36,7 @@ const updateProductSchema = z.object({
     barcode: z.string().optional().nullable(),
     price: z.number().min(0).optional(),
     cost: z.number().min(0).optional(),
+    yieldFactor: z.number().min(0.001).optional(),
   })).optional(),
 })
 
@@ -138,6 +142,7 @@ export async function PATCH(
                 barcode: v.barcode,
                 price: v.price,
                 cost: v.cost,
+                yieldFactor: v.yieldFactor,
               }
             })
           } else {
@@ -150,6 +155,7 @@ export async function PATCH(
                 barcode: v.barcode,
                 price: v.price ?? product.price,
                 cost: v.cost ?? product.cost,
+                yieldFactor: v.yieldFactor || 1,
               }
             })
           }
