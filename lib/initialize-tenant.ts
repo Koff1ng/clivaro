@@ -123,10 +123,8 @@ async function initializePostgresTenant(databaseUrl: string, tenantId: string, t
     await srClient.query(`SET search_path TO "${schemaName}"`)
     await srClient.query(`
       ALTER TABLE "Product" 
-      ADD COLUMN IF NOT EXISTS "lastCost" DOUBLE PRECISION DEFAULT 0,
-      ADD COLUMN IF NOT EXISTS "averageCost" DOUBLE PRECISION DEFAULT 0,
+      ADD COLUMN IF NOT EXISTS "lastCost" DOUBLE PRECISION,
       ADD COLUMN IF NOT EXISTS "percentageMerma" DOUBLE PRECISION DEFAULT 0,
-      ADD COLUMN IF NOT EXISTS "useScale" BOOLEAN NOT NULL DEFAULT false,
       ADD COLUMN IF NOT EXISTS "stockAlertEnabled" BOOLEAN NOT NULL DEFAULT true;
 
       ALTER TABLE "ProductVariant" 

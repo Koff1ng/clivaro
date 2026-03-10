@@ -112,7 +112,6 @@ CREATE TABLE "Product" (
     "lastCost" DOUBLE PRECISION DEFAULT 0,
     "averageCost" DOUBLE PRECISION DEFAULT 0,
     "percentageMerma" DOUBLE PRECISION DEFAULT 0,
-    "useScale" BOOLEAN NOT NULL DEFAULT false,
     "stockAlertEnabled" BOOLEAN NOT NULL DEFAULT true,
     "preferredZoneId" TEXT,
 

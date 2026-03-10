@@ -56,7 +56,6 @@ const createProductSchema = z.object({
   enableRecipeConsumption: z.boolean().default(false),
   printerStation: z.string().optional().nullable(),
   percentageMerma: z.number().min(0).max(100).default(0),
-  useScale: z.boolean().default(false),
   stockAlertEnabled: z.boolean().default(true),
   // Variants
   variants: z.array(z.object({

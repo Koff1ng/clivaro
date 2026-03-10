@@ -138,7 +138,6 @@ model Product {
   lastCost                Float                   @default(0)
   averageCost             Float                   @default(0)
   percentageMerma         Float                   @default(0)
-  useScale                Boolean                 @default(false)
   stockAlertEnabled       Boolean                 @default(true)
   price                   Float
   taxRate                 Float                   @default(0)

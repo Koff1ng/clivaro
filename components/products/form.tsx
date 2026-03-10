@@ -32,9 +32,8 @@ const productSchema = z.object({
   productType: z.enum(['RETAIL', 'SERVICE', 'RAW', 'PREPARED', 'SELLABLE']).default('RETAIL'),
   enableRecipeConsumption: z.boolean().default(false),
   printerStation: z.enum(['KITCHEN', 'BAR', 'CASHIER']).optional().nullable(),
-  percentageMerma: z.number().min(0).max(100).default(0),
-  useScale: z.boolean().default(false),
-  stockAlertEnabled: z.boolean().default(true),
+  percentageMerma: z.number().min(0).max(100).optional(),
+  stockAlertEnabled: z.boolean().optional(),
   // Variants
   variants: z.array(z.object({
     id: z.string().optional(),
@@ -82,7 +81,6 @@ export function ProductForm({ product, onSuccess }: { product?: any; onSuccess: 
       enableRecipeConsumption: (product as any).enableRecipeConsumption || false,
       printerStation: (product as any).printerStation || null,
       percentageMerma: (product as any).percentageMerma || 0,
-      useScale: (product as any).useScale || false,
       stockAlertEnabled: (product as any).stockAlertEnabled ?? true,
       variants: product.variants?.map((v: any) => ({
         id: v.id,
@@ -102,7 +100,6 @@ export function ProductForm({ product, onSuccess }: { product?: any; onSuccess: 
       enableRecipeConsumption: false,
       printerStation: null,
       percentageMerma: 0,
-      useScale: false,
       stockAlertEnabled: true,
       variants: [],
     },
@@ -326,15 +323,6 @@ export function ProductForm({ product, onSuccess }: { product?: any; onSuccess: 
                   className="h-4 w-4 rounded border-gray-300"
                 />
                 <Label htmlFor="enableRecipeConsumption" className="text-xs">Habilitar Receta</Label>
-              </div>
-              <div className="flex items-center gap-2">
-                <input
-                  id="useScale"
-                  type="checkbox"
-                  {...register('useScale')}
-                  className="h-4 w-4 rounded border-gray-300"
-                />
-                <Label htmlFor="useScale" className="text-xs text-orange-600 font-bold">Usar Báscula</Label>
               </div>
               <div className="flex items-center gap-2">
                 <input

@@ -26,7 +26,6 @@ const updateProductSchema = z.object({
   printerStation: z.string().optional().nullable(),
   active: z.boolean().optional(),
   percentageMerma: z.number().min(0).max(100).optional(),
-  useScale: z.boolean().optional(),
   stockAlertEnabled: z.boolean().optional(),
   // Variants (Upsert)
   variants: z.array(z.object({

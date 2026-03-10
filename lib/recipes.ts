@@ -7,10 +7,21 @@ import { PrismaClient } from '@prisma/client'
 export async function resolveAllIngredients(
     prisma: any,
     productId: string,
-    baseQuantity: number
+    baseQuantity: number,
+    variantId?: string | null
 ) {
     const result: { ingredientId: string; quantity: number }[] = []
-    const stack = [{ productId, quantity: baseQuantity }]
+    // 1. Get Variant Yield Factor if applicable
+    let variantYieldMultiplier = 1
+    if (variantId) {
+        const variant = await prisma.productVariant.findUnique({
+            where: { id: variantId },
+            select: { yieldFactor: true }
+        })
+        variantYieldMultiplier = variant?.yieldFactor ?? 1
+    }
+
+    const stack = [{ productId, quantity: baseQuantity * variantYieldMultiplier }]
 
     // Track visited products to prevent infinite loops in malformed data
     const visited = new Set<string>()
@@ -41,8 +52,6 @@ export async function resolveAllIngredients(
 
         if (!product || !product.enableRecipeConsumption || !product.recipe) {
             // If it's not a recipe item, it's a leaf (RAW or RETAIL that we just deduct as is)
-            // but wait, if it's the TOP level item and has no recipe, we just return the item itself.
-            // However, the POS logic will call this ONLY for items that have recipes.
             result.push({ ingredientId: currentId, quantity: currentQty })
             continue
         }
@@ -52,12 +61,17 @@ export async function resolveAllIngredients(
         const scale = currentQty / yield_
 
         for (const item of recipe.items) {
+            // Apply Merma (Waste) Factor for stock deduction
+            // Deduction = Net Qty / (1 - % Merma)
+            const mermaFactor = 1 / (1 - Math.min((item.ingredient.percentageMerma || 0) / 100, 0.999))
+            const requiredGross = item.quantity * scale * mermaFactor
+
             if (item.ingredient.productType === 'PREPARED' && item.ingredient.enableRecipeConsumption) {
                 // Nested recipe
-                stack.push({ productId: item.ingredientId, quantity: item.quantity * scale })
+                stack.push({ productId: item.ingredientId, quantity: requiredGross })
             } else {
                 // Raw ingredient or Retail item
-                result.push({ ingredientId: item.ingredientId, quantity: item.quantity * scale })
+                result.push({ ingredientId: item.ingredientId, quantity: requiredGross })
             }
         }
     }
@@ -195,8 +209,10 @@ export async function calculateRecipeCost(
                     isNested: true
                 })
             } else {
-                // Use direct cost for RAW/RETAIL items
-                ingredientCost = ingredient.cost
+                // Use adjusted cost for RAW/RETAIL items (Account for Merma/Waste)
+                // Real Cost = Purchase Cost / (1 - % Merma)
+                const mermaDecimal = (ingredient.percentageMerma || 0) / 100
+                ingredientCost = ingredient.cost / (1 - Math.min(mermaDecimal, 0.999))
 
                 result.breakdown.push({
                     ingredientId: ingredient.id,
