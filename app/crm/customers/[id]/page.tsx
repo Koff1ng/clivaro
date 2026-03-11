@@ -2,17 +2,15 @@ import { MainLayout } from '@/components/layout/main-layout'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { redirect, notFound } from 'next/navigation'
-import { getPrismaForRequest } from '@/lib/get-tenant-prisma'
+import { withTenantRead, getTenantIdFromSession } from '@/lib/tenancy'
 import { CustomerDetails } from '@/components/crm/customer-details'
 import { PageHeader } from '@/components/ui/page-header'
-import { Users, ChevronLeft } from 'lucide-react'
-import Link from 'next/link'
-import { Button } from '@/components/ui/button'
+import { Users } from 'lucide-react'
 
 interface CustomerPageProps {
     params: {
         id: string
-    }
+    } | Promise<{ id: string }>
 }
 
 export default async function CustomerPage({ params }: CustomerPageProps) {
@@ -22,52 +20,59 @@ export default async function CustomerPage({ params }: CustomerPageProps) {
         redirect('/login')
     }
 
-    const prisma = await getPrismaForRequest(undefined, session)
+    const resolvedParams = typeof params === 'object' && 'then' in params ? await params : params as { id: string }
+    const tenantId = getTenantIdFromSession(session)
 
-    // Fetch customer with relations
-    const customer = await prisma.customer.findUnique({
-        where: { id: params.id },
+    const customerData = await withTenantRead(tenantId, async (prisma) => {
+        // Fetch customer with relations
+        const customer = await prisma.customer.findUnique({
+            where: { id: resolvedParams.id },
+        })
+
+        if (!customer) return null
+
+        // Fetch related data
+        // Invoices (Sales History)
+        const invoices = await prisma.invoice.findMany({
+            where: { customerId: resolvedParams.id },
+            orderBy: { createdAt: 'desc' },
+            take: 50,
+        })
+
+        // Quotations
+        const quotations = await prisma.quotation.findMany({
+            where: { customerId: resolvedParams.id },
+            orderBy: { createdAt: 'desc' },
+            take: 50,
+        })
+
+        // Calculate statistics
+        const totalSales = invoices
+            .filter((inv: any) => ['PAID', 'PAGADA', 'ISSUED', 'EMITIDA'].includes(inv.status))
+            .reduce((sum: number, inv: any) => sum + Number(inv.total), 0)
+
+        const totalInvoices = invoices.reduce((sum: number, inv: any) => sum + Number(inv.total), 0)
+
+        return {
+            customer,
+            statistics: {
+                totalSales,
+                totalInvoices,
+                invoicesCount: invoices.length,
+                quotationsCount: quotations.length,
+                ordersCount: 0, // Sales Orders not used
+            },
+            recentInvoices: invoices,
+            recentQuotations: quotations,
+            recentOrders: [], // Skipped
+        }
     })
 
-    if (!customer) {
+    if (!customerData) {
         notFound()
     }
 
-    // Fetch related data
-    // Invoices (Sales History)
-    const invoices = await prisma.invoice.findMany({
-        where: { customerId: params.id },
-        orderBy: { createdAt: 'desc' },
-        take: 50,
-    })
-
-    // Quotations
-    const quotations = await prisma.quotation.findMany({
-        where: { customerId: params.id },
-        orderBy: { createdAt: 'desc' },
-        take: 50,
-    })
-
-    // Calculate statistics
-    const totalSales = invoices
-        .filter((inv: any) => ['PAID', 'PAGADA', 'ISSUED', 'EMITIDA'].includes(inv.status))
-        .reduce((sum: number, inv: any) => sum + Number(inv.total), 0)
-
-    const totalInvoices = invoices.reduce((sum: number, inv: any) => sum + Number(inv.total), 0)
-
-    const customerData = {
-        customer,
-        statistics: {
-            totalSales,
-            totalInvoices,
-            invoicesCount: invoices.length,
-            quotationsCount: quotations.length,
-            ordersCount: 0, // Sales Orders not used
-        },
-        recentInvoices: invoices,
-        recentQuotations: quotations,
-        recentOrders: [], // Skipped
-    }
+    const { customer } = customerData
 
     return (
         <MainLayout>

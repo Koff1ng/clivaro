@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requirePermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
-import { getPrismaForRequest } from '@/lib/get-tenant-prisma'
-import { getTenantIdFromSession } from '@/lib/tenancy'
+import { withTenantRead, getTenantIdFromSession } from '@/lib/tenancy'
 
 /**
  * GET /api/credit-notes
@@ -15,9 +14,7 @@ export async function GET(request: Request) {
     ])
     if (session instanceof NextResponse) return session
 
-    const prisma = await getPrismaForRequest(request, session)
     const tenantId = getTenantIdFromSession(session)
-
     const { searchParams } = new URL(request.url)
     const status = searchParams.get('status') || undefined
     const electronicStatus = searchParams.get('electronicStatus') || undefined
@@ -35,35 +32,37 @@ export async function GET(request: Request) {
             if (endDate) where.createdAt.lte = endDate
         }
 
-        const creditNotes = await prisma.creditNote.findMany({
-            where,
-            include: {
-                invoice: {
-                    select: {
-                        number: true,
-                        customer: {
-                            select: {
-                                name: true,
-                                taxId: true
+        const creditNotes = await withTenantRead(tenantId, async (prisma) => {
+            return await prisma.creditNote.findMany({
+                where,
+                include: {
+                    invoice: {
+                        select: {
+                            number: true,
+                            customer: {
+                                select: {
+                                    name: true,
+                                    taxId: true
+                                }
                             }
+                        }
+                    },
+                    createdBy: {
+                        select: {
+                            name: true
+                        }
+                    },
+                    _count: {
+                        select: {
+                            items: true
                         }
                     }
                 },
-                createdBy: {
-                    select: {
-                        name: true
-                    }
+                orderBy: {
+                    createdAt: 'desc'
                 },
-                _count: {
-                    select: {
-                        items: true
-                    }
-                }
-            },
-            orderBy: {
-                createdAt: 'desc'
-            },
-            take: 100
+                take: 100
+            })
         })
 
         return NextResponse.json(creditNotes)

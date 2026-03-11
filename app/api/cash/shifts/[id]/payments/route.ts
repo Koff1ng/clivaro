@@ -1,77 +1,43 @@
 import { NextResponse } from 'next/server'
-import { requirePermission, requireAnyPermission } from '@/lib/api-middleware'
+import { requireAnyPermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
-import { getPrismaForRequest } from '@/lib/get-tenant-prisma'
+import { withTenantRead, getTenantIdFromSession } from '@/lib/tenancy'
+import { logger } from '@/lib/logger'
 
 export async function GET(
   request: Request,
   { params }: { params: { id: string } | Promise<{ id: string }> }
 ) {
   const session = await requireAnyPermission(request as any, [PERMISSIONS.MANAGE_CASH, PERMISSIONS.MANAGE_SALES])
+  if (session instanceof NextResponse) return session
 
-  if (session instanceof NextResponse) {
-    return session
-  }
-
-  // Obtener el cliente Prisma correcto (tenant o master según el usuario)
-  const prisma = await getPrismaForRequest(request, session)
+  const tenantId = getTenantIdFromSession(session)
 
   try {
     const resolvedParams = await params
-    // Get shift
-    const shift = await prisma.cashShift.findUnique({
-      where: { id: resolvedParams.id },
+
+    const result = await withTenantRead(tenantId, async (prisma) => {
+      const shift = await prisma.cashShift.findUnique({ where: { id: resolvedParams.id } })
+      if (!shift) throw new Error('Cash shift not found')
+
+      const invoices = await prisma.invoice.findMany({
+        where: {
+          createdAt: { gte: shift.openedAt, lte: shift.closedAt || new Date() },
+          createdById: shift.userId,
+          status: { notIn: ['ANULADA', 'VOID'] as any },
+        },
+        select: {
+          id: true, number: true, subtotal: true, discount: true, tax: true, total: true,
+          payments: { select: { id: true, amount: true, method: true, createdAt: true } },
+          items: { select: { quantity: true, unitPrice: true, discount: true, product: { select: { cost: true } } } },
+        },
+      })
+
+      return { shift, invoices }
     })
 
-    if (!shift) {
-      return NextResponse.json(
-        { error: 'Cash shift not found' },
-        { status: 404 }
-      )
-    }
+    const { invoices } = result
 
-    // Get all invoices created during this shift
-    const invoices = await prisma.invoice.findMany({
-      where: {
-        createdAt: {
-          gte: shift.openedAt,
-          lte: shift.closedAt || new Date(),
-        },
-        createdById: shift.userId,
-        // excluir anuladas del resumen operativo
-        status: { notIn: ['ANULADA', 'VOID'] as any },
-      },
-      select: {
-        id: true,
-        number: true,
-        subtotal: true,
-        discount: true,
-        tax: true,
-        total: true,
-        payments: {
-          select: {
-            id: true,
-            amount: true,
-            method: true,
-            createdAt: true,
-          },
-        },
-        items: {
-          select: {
-            quantity: true,
-            unitPrice: true,
-            discount: true,
-            product: {
-              select: {
-                cost: true,
-              },
-            },
-          },
-        },
-      },
-    })
-
-    // Extract all payments with invoice number
     const payments = (invoices as any[]).flatMap((invoice: any) =>
       invoice.payments.map((payment: any) => ({
         id: payment.id,
@@ -82,48 +48,25 @@ export async function GET(
       }))
     )
 
-    // Calculate totals by payment method
     const totalsByMethod = payments.reduce((acc: any, payment: any) => {
-      const method = payment.method
-      if (!acc[method]) {
-        acc[method] = 0
-      }
-      acc[method] += payment.amount
+      acc[payment.method] = (acc[payment.method] || 0) + payment.amount
       return acc
     }, {})
 
-    // Discounts summary (line discounts + invoice-level discount)
     const discountsByInvoice = invoices.map((inv: any) => {
       const lineDiscount = (inv.items || []).reduce((sum: number, it: any) => {
-        const gross = Number(it.quantity || 0) * Number(it.unitPrice || 0)
-        const discPct = Number(it.discount || 0)
-        return sum + (gross * discPct / 100)
+        return sum + (Number(it.quantity || 0) * Number(it.unitPrice || 0) * Number(it.discount || 0) / 100)
       }, 0)
-      const headerDiscount = Number(inv.discount || 0)
-      const discountTotal = lineDiscount + headerDiscount
-      return {
-        invoiceNumber: inv.number,
-        discountTotal,
-      }
+      return { invoiceNumber: inv.number, discountTotal: lineDiscount + Number(inv.discount || 0) }
     }).filter((d: any) => d.discountTotal > 0)
 
     const totalDiscounts = discountsByInvoice.reduce((sum: number, d: any) => sum + d.discountTotal, 0)
 
-    // Calcular ganancias del turno: (ingresos sin impuestos - descuentos - costos)
     const profit = invoices.reduce((sum: number, inv: any) => {
-      // Subtotal sin impuestos = subtotal - descuento de factura
-      const invoiceSubtotal = typeof inv.subtotal === 'number' ? inv.subtotal : 0
-      const invoiceDiscount = typeof inv.discount === 'number' ? inv.discount : 0
-      const subtotalWithoutTaxes = invoiceSubtotal > 0
-        ? invoiceSubtotal - invoiceDiscount
-        : (inv.total || 0) - (inv.tax || 0) - invoiceDiscount
-
-      // Costo de productos vendidos en esta factura
+      const subtotalWithoutTaxes = (inv.subtotal || (inv.total - inv.tax)) - (inv.discount || 0)
       const invoiceCost = (inv.items || []).reduce((itemSum: number, item: any) => {
-        const productCost = item.product?.cost || 0
-        return itemSum + (Number(item.quantity || 0) * productCost)
+        return itemSum + (Number(item.quantity || 0) * (item.product?.cost || 0))
       }, 0)
-
       return sum + (subtotalWithoutTaxes - invoiceCost)
     }, 0)
 
@@ -131,18 +74,12 @@ export async function GET(
       payments,
       totalsByMethod,
       total: payments.reduce((sum: number, p: any) => sum + p.amount, 0),
-      discounts: {
-        total: totalDiscounts,
-        byInvoice: discountsByInvoice.sort((a: any, b: any) => b.discountTotal - a.discountTotal).slice(0, 20),
-      },
-      profit, // Ganancia del turno
+      discounts: { total: totalDiscounts, byInvoice: discountsByInvoice.sort((a, b) => b.discountTotal - a.discountTotal).slice(0, 20) },
+      profit,
     })
-  } catch (error) {
-    console.error('Error fetching shift payments:', error)
-    return NextResponse.json(
-      { error: 'Failed to fetch payments' },
-      { status: 500 }
-    )
+  } catch (error: any) {
+    logger.error('Error fetching shift payments', error)
+    return NextResponse.json({ error: error.message || 'Failed to fetch payments' }, { status: 500 })
   }
 }
 

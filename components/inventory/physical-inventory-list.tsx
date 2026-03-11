@@ -15,16 +15,32 @@ import { PhysicalInventoryPrint } from './physical-inventory-print'
 import { PhysicalInventoryCountForm } from './physical-inventory-count-form'
 import { useToast } from '@/components/ui/toast'
 
-async function fetchPhysicalInventories(warehouseId?: string, q?: string) {
+interface PhysicalInventoryItem {
+  id: string
+  number: string
+  status: 'PENDING' | 'COUNTING' | 'COMPLETED' | 'CANCELLED'
+  createdAt: string
+  warehouse?: { id: string, name: string }
+  createdBy?: { id: string, name: string }
+  _count?: { items: number }
+  hasDifferences?: boolean
+  hasPositiveDifferences?: boolean
+  hasNegativeDifferences?: boolean
+}
+
+async function fetchPhysicalInventories(warehouseId?: string, q?: string): Promise<{ inventories: PhysicalInventoryItem[] }> {
   const params = new URLSearchParams()
   if (warehouseId) params.append('warehouseId', warehouseId)
   if (q) params.append('q', q)
   const res = await fetch(`/api/inventory/physical?${params}`)
-  if (!res.ok) throw new Error('Failed to fetch physical inventories')
+  if (!res.ok) {
+    const error = await res.json()
+    throw new Error(error.error || 'Failed to fetch physical inventories')
+  }
   return res.json()
 }
 
-async function fetchWarehouses() {
+async function fetchWarehouses(): Promise<{ id: string, name: string }[]> {
   const res = await fetch('/api/warehouses')
   if (!res.ok) throw new Error('Failed to fetch warehouses')
   return res.json()
@@ -46,7 +62,7 @@ export function PhysicalInventoryList() {
     queryFn: fetchWarehouses,
   })
 
-  const { data, isLoading, isPlaceholderData, refetch } = useQuery({
+  const { data, isLoading, isError, error, refetch, isPlaceholderData } = useQuery<{ inventories: PhysicalInventoryItem[] }>({
     queryKey: ['physical-inventories', selectedWarehouse, debouncedSearch],
     queryFn: () => fetchPhysicalInventories(selectedWarehouse || undefined, debouncedSearch),
     placeholderData: (prev) => prev,
@@ -54,80 +70,53 @@ export function PhysicalInventoryList() {
 
   const inventories = data?.inventories || []
 
-  const getStatusColor = (status: string) => {
+  const getStatusConfig = (status: string) => {
     switch (status) {
-      case 'PENDING': return 'bg-gray-100 text-gray-800'
-      case 'COUNTING': return 'bg-blue-100 text-blue-800'
-      case 'COMPLETED': return 'bg-green-100 text-green-800'
-      case 'CANCELLED': return 'bg-red-100 text-red-800'
-      default: return 'bg-gray-100 text-gray-800'
+      case 'PENDING': return { color: 'bg-gray-100 text-gray-800 border-gray-200', label: 'Pendiente', icon: FileText }
+      case 'COUNTING': return { color: 'bg-blue-100 text-blue-800 border-blue-200', label: 'En Conteo', icon: Clock }
+      case 'COMPLETED': return { color: 'bg-green-100 text-green-800 border-green-200', label: 'Completado', icon: CheckCircle }
+      case 'CANCELLED': return { color: 'bg-red-100 text-red-800 border-red-200', label: 'Cancelado', icon: XCircle }
+      default: return { color: 'bg-gray-100 text-gray-800 border-gray-200', label: status, icon: FileText }
     }
   }
 
-  const getStatusLabel = (status: string) => {
-    switch (status) {
-      case 'PENDING': return 'Pendiente'
-      case 'COUNTING': return 'En Conteo'
-      case 'COMPLETED': return 'Completado'
-      case 'CANCELLED': return 'Cancelado'
-      default: return status
-    }
-  }
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'PENDING': return FileText
-      case 'COUNTING': return Clock
-      case 'COMPLETED': return CheckCircle
-      case 'CANCELLED': return XCircle
-      default: return FileText
-    }
-  }
-
-  const handleView = async (inventory: any) => {
+  const handleAction = async (inventoryId: string, action: 'view' | 'print' | 'count') => {
     try {
-      const res = await fetch(`/api/inventory/physical/${inventory.id}`, {
-        credentials: 'include',
-      })
-      if (!res.ok) throw new Error('Failed to fetch inventory details')
+      const res = await fetch(`/api/inventory/physical/${inventoryId}`)
+      if (!res.ok) {
+        const error = await res.json()
+        throw new Error(error.error || error.details || 'Error al cargar detalles')
+      }
       const data = await res.json()
-      setViewInventory(data)
+
+      if (action === 'view') setViewInventory(data)
+      else if (action === 'print') setPrintInventory(data)
+      else if (action === 'count') setCountInventory(data)
     } catch (error: any) {
-      toast(error.message || 'Error al cargar detalles', 'error')
+      toast(error.message, 'error')
     }
   }
 
-  const handlePrint = async (inventory: any) => {
-    try {
-      const res = await fetch(`/api/inventory/physical/${inventory.id}`, {
-        credentials: 'include',
-      })
-      if (!res.ok) throw new Error('Failed to fetch inventory details')
-      const data = await res.json()
-      setPrintInventory(data)
-    } catch (error: any) {
-      toast(error.message || 'Error al cargar detalles', 'error')
-    }
-  }
-
-  const handleCount = async (inventory: any) => {
-    try {
-      const res = await fetch(`/api/inventory/physical/${inventory.id}`, {
-        credentials: 'include',
-      })
-      if (!res.ok) throw new Error('Failed to fetch inventory details')
-      const data = await res.json()
-      setCountInventory(data)
-    } catch (error: any) {
-      toast(error.message || 'Error al cargar detalles', 'error')
-    }
+  if (isError) {
+    return (
+      <div className="flex flex-col items-center justify-center p-12 bg-red-50 rounded-xl border border-red-100 animate-in fade-in zoom-in duration-300">
+        <AlertTriangle className="h-12 w-12 text-red-500 mb-4" />
+        <h3 className="text-lg font-bold text-red-900 mb-2">Error al cargar inventarios</h3>
+        <p className="text-red-700 mb-6 text-center max-w-md">
+          {error instanceof Error ? error.message : 'No se pudo conectar con el servidor.'}
+        </p>
+        <Button variant="outline" onClick={() => refetch()} className="bg-white hover:bg-red-100 border-red-200">
+          Reintentar
+        </Button>
+      </div>
+    )
   }
 
   return (
     <>
       <div className="space-y-4">
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-4 flex-1">
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <div className="flex items-center gap-3 flex-1 min-w-[300px]">
             <div className="relative flex-1 max-w-sm">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
               <Input
@@ -138,14 +127,14 @@ export function PhysicalInventoryList() {
               />
               {(isLoading || isPlaceholderData) && (
                 <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  <Loader2 className="h-4 w-4 animate-spin text-primary" />
                 </div>
               )}
             </div>
             <select
               value={selectedWarehouse}
               onChange={(e) => setSelectedWarehouse(e.target.value)}
-              className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
+              className="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20"
             >
               <option value="">Todos los almacenes</option>
               {warehouses.map((wh: any) => (
@@ -153,117 +142,115 @@ export function PhysicalInventoryList() {
               ))}
             </select>
           </div>
-          <Button onClick={() => setIsFormOpen(true)}>
+          <Button onClick={() => setIsFormOpen(true)} className="shadow-sm">
             <Plus className="h-4 w-4 mr-2" />
-            Nuevo Inventario Físico
+            Nuevo Inventario
           </Button>
         </div>
 
-        {isLoading && !data ? (
-          <div className="flex flex-col items-center justify-center py-12 space-y-4">
-            <Loader2 className="h-8 w-8 animate-spin text-primary mr-2" />
-            <span className="text-muted-foreground animate-pulse">Cargando inventarios físicos...</span>
-          </div>
-        ) : (
-          <div className="border rounded-lg">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b bg-gray-50 dark:bg-gray-800/50">
-                  <th className="text-left p-3 text-sm font-medium">Número</th>
-                  <th className="text-left p-3 text-sm font-medium">Almacén</th>
-                  <th className="text-left p-3 text-sm font-medium">Estado</th>
-                  <th className="text-left p-3 text-sm font-medium">Productos</th>
-                  <th className="text-left p-3 text-sm font-medium">Creado</th>
-                  <th className="text-left p-3 text-sm font-medium">Creado Por</th>
-                  <th className="text-right p-3 text-sm font-medium">Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {inventories.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="text-center p-8 text-gray-500">
-                      No hay inventarios físicos
-                    </td>
+        <div className="border rounded-lg overflow-hidden shadow-sm bg-white">
+          <table className="w-full">
+            <thead className="bg-gray-50/50 border-b">
+              <tr>
+                <th className="text-left p-4 text-xs font-bold uppercase text-gray-500 tracking-wider">Número</th>
+                <th className="text-left p-4 text-xs font-bold uppercase text-gray-500 tracking-wider">Origen</th>
+                <th className="text-left p-4 text-xs font-bold uppercase text-gray-500 tracking-wider">Estado</th>
+                <th className="text-left p-4 text-xs font-bold uppercase text-gray-500 tracking-wider">Ítems</th>
+                <th className="text-left p-4 text-xs font-bold uppercase text-gray-500 tracking-wider">Fecha Creación</th>
+                <th className="text-right p-4 text-xs font-bold uppercase text-gray-500 tracking-wider">Acciones</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {isLoading && !data ? (
+                [...Array(3)].map((_, i) => (
+                  <tr key={i} className="animate-pulse">
+                    <td colSpan={6} className="p-4"><div className="h-8 bg-gray-50 rounded" /></td>
                   </tr>
-                ) : (
-                  inventories.map((inventory: any) => {
-                    const StatusIcon = getStatusIcon(inventory.status)
-                    return (
-                      <tr key={inventory.id} className="border-b hover:bg-gray-50">
-                        <td className="p-3 font-medium">{inventory.number}</td>
-                        <td className="p-3">{inventory.warehouse?.name || '-'}</td>
-                        <td className="p-3">
-                          <div className="flex flex-col gap-2">
-                            <span className={`inline-flex items-center gap-1 px-2 py-1 text-xs rounded ${getStatusColor(inventory.status)}`}>
-                              <StatusIcon className="h-3 w-3" />
-                              {getStatusLabel(inventory.status)}
+                ))
+              ) : inventories.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="h-64 text-center">
+                    <div className="flex flex-col items-center justify-center text-gray-400">
+                      <ClipboardList className="h-12 w-12 mb-3 opacity-20" />
+                      <p className="text-gray-500 font-medium text-lg">No hay inventarios físicos</p>
+                      <p className="text-sm">Inicia un nuevo conteo para regularizar existencias.</p>
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                inventories.map((inventory) => {
+                  const config = getStatusConfig(inventory.status)
+                  const StatusIcon = config.icon
+                  return (
+                    <tr key={inventory.id} className="hover:bg-gray-50/50 transition-colors">
+                      <td className="p-4 font-bold text-gray-900">{inventory.number}</td>
+                      <td className="p-4 text-sm text-gray-600">{inventory.warehouse?.name || '-'}</td>
+                      <td className="p-4">
+                        <div className="flex flex-col gap-1.5 items-start">
+                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-tight border ${config.color}`}>
+                            <StatusIcon className="h-3.3 w-3.5" />
+                            {config.label}
+                          </span>
+                          {inventory.hasDifferences && (
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] bg-orange-50 text-orange-700 font-bold border border-orange-200 animate-pulse">
+                              <AlertTriangle className="h-2.5 w-2.5" />
+                              DIFERENCIAS DETECTADAS
                             </span>
-                            {inventory.hasDifferences && (
-                              <>
-                                {inventory.hasPositiveDifferences && (
-                                  <span className="inline-flex items-center gap-1 px-2 py-1 text-xs rounded bg-orange-100 text-orange-800 font-semibold animate-pulse">
-                                    <AlertTriangle className="h-3 w-3" />
-                                    ¡Se contaron productos de más!
-                                  </span>
-                                )}
-                                {inventory.hasNegativeDifferences && (
-                                  <span className="inline-flex items-center gap-1 px-2 py-1 text-xs rounded bg-orange-100 text-orange-800 font-semibold animate-pulse">
-                                    <AlertTriangle className="h-3 w-3" />
-                                    ¡Revisar diferencias!
-                                  </span>
-                                )}
-                              </>
-                            )}
-                          </div>
-                        </td>
-                        <td className="p-3">{inventory._count?.items || 0}</td>
-                        <td className="p-3 text-sm text-gray-600">{formatDate(inventory.createdAt)}</td>
-                        <td className="p-3 text-sm text-gray-600">{inventory.createdBy?.name || '-'}</td>
-                        <td className="p-3">
-                          <div className="flex items-center justify-end gap-2">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleView(inventory)}
-                              title="Ver detalles"
-                            >
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                            {inventory.status === 'PENDING' || inventory.status === 'COUNTING' ? (
-                              <>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handlePrint(inventory)}
-                                  title="Imprimir formato"
-                                >
-                                  <Printer className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleCount(inventory)}
-                                  title="Ingresar cantidades contadas"
-                                >
-                                  <ClipboardList className="h-4 w-4" />
-                                </Button>
-                              </>
-                            ) : null}
-                          </div>
-                        </td>
-                      </tr>
-                    )
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
-        )}
+                          )}
+                        </div>
+                      </td>
+                      <td className="p-4 text-sm font-medium">{inventory._count?.items || 0}</td>
+                      <td className="p-4">
+                        <div className="text-sm text-gray-700">{formatDate(inventory.createdAt)}</div>
+                        <div className="text-[10px] text-gray-400">Por: {inventory.createdBy?.name || '-'}</div>
+                      </td>
+                      <td className="p-4 text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleAction(inventory.id, 'view')}
+                            className="h-8 w-8 p-0 text-gray-500 hover:text-primary hover:bg-gray-100"
+                            title="Ver detalles"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          {(inventory.status === 'PENDING' || inventory.status === 'COUNTING') && (
+                            <>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleAction(inventory.id, 'print')}
+                                className="h-8 w-8 p-0 text-gray-500 hover:text-primary hover:bg-gray-100"
+                                title="Imprimir formato"
+                              >
+                                <Printer className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleAction(inventory.id, 'count')}
+                                className="h-8 w-8 p-0 text-orange-600 hover:text-orange-700 hover:bg-orange-50"
+                                title="Ingresar conteo"
+                              >
+                                <ClipboardList className="h-4 w-4" />
+                              </Button>
+                            </>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* Form Dialog */}
       <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Nuevo Inventario Físico</DialogTitle>
           </DialogHeader>
@@ -280,7 +267,7 @@ export function PhysicalInventoryList() {
       {/* Details Dialog */}
       {viewInventory && (
         <Dialog open={!!viewInventory} onOpenChange={() => setViewInventory(null)}>
-          <DialogContent className="w-auto sm:max-w-fit max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col p-0">
             <PhysicalInventoryDetails
               inventory={viewInventory}
               onClose={() => setViewInventory(null)}
@@ -293,21 +280,26 @@ export function PhysicalInventoryList() {
       {/* Print View */}
       {printInventory && (
         <Dialog open={!!printInventory} onOpenChange={() => setPrintInventory(null)}>
-          <DialogContent className="w-auto sm:max-w-fit max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <DialogTitle>Formato de Conteo Físico</DialogTitle>
+              <div className="flex justify-between items-center bg-gray-50 p-4 rounded-lg sticky top-0 z-10">
+                <div className="flex items-center gap-2">
+                  <Printer className="h-5 w-5 text-gray-500" />
+                  <DialogTitle className="text-lg">Formato de Conteo Físico</DialogTitle>
+                </div>
                 <div className="flex gap-2">
-                  <Button variant="outline" onClick={() => window.print()}>
+                  <Button onClick={() => window.print()} className="bg-primary shadow-sm hover:translate-y-[-1px] transition-transform">
                     <Printer className="h-4 w-4 mr-2" />
-                    Imprimir
+                    Imprimir Ahora
                   </Button>
                   <Button variant="outline" onClick={() => setPrintInventory(null)}>
                     Cerrar
                   </Button>
                 </div>
               </div>
-              <PhysicalInventoryPrint inventory={printInventory} />
+              <div className="p-4 border border-dashed rounded-lg bg-white">
+                <PhysicalInventoryPrint inventory={printInventory} />
+              </div>
             </div>
           </DialogContent>
         </Dialog>
@@ -316,17 +308,15 @@ export function PhysicalInventoryList() {
       {/* Count Form Dialog */}
       {countInventory && (
         <Dialog open={!!countInventory} onOpenChange={() => setCountInventory(null)}>
-          <DialogContent className="w-auto sm:max-w-fit max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-5xl max-h-[95vh] overflow-hidden flex flex-col p-0">
             <PhysicalInventoryCountForm
               inventory={countInventory}
               onClose={() => {
                 setCountInventory(null)
-                // Refetch to show updated status
                 refetch()
               }}
               onSuccess={() => {
                 setCountInventory(null)
-                // Refetch to show updated status (PENDING -> COUNTING)
                 refetch()
               }}
             />

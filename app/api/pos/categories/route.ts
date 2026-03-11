@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requirePermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
-import { withTenantTx } from '@/lib/tenancy'
+import { withTenantRead } from '@/lib/tenancy'
 
 export async function GET(request: Request) {
   const session = await requirePermission(request as any, PERMISSIONS.MANAGE_SALES)
@@ -13,7 +13,7 @@ export async function GET(request: Request) {
   const tenantId = (session.user as any).tenantId
 
   try {
-    const categories = await withTenantTx(tenantId, async (prisma) => {
+    const result = await withTenantRead(tenantId, async (prisma) => {
       // Get all unique categories from products (exclude RAW ingredients)
       const products = await prisma.product.findMany({
         where: {
@@ -24,13 +24,15 @@ export async function GET(request: Request) {
         distinct: ['category'],
       })
 
-      return products
+      const categories = products
         .map((p: any) => p.category)
         .filter((cat: any): cat is string => cat !== null && cat !== undefined)
         .sort()
+
+      return { categories }
     })
 
-    return NextResponse.json({ categories })
+    return NextResponse.json(result)
   } catch (error) {
     console.error('Error fetching categories:', error)
     return NextResponse.json(
@@ -39,4 +41,3 @@ export async function GET(request: Request) {
     )
   }
 }
-

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requirePermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
-import { getPrismaForRequest } from '@/lib/get-tenant-prisma'
+import { withTenantRead, withTenantTx, getTenantIdFromSession } from '@/lib/tenancy'
 import { requirePlanFeature } from '@/lib/plan-middleware'
 import { z } from 'zod'
 
@@ -14,59 +14,42 @@ const createCampaignSchema = z.object({
 
 export async function GET(request: Request) {
   const session = await requirePermission(request as any, PERMISSIONS.MANAGE_CRM)
-  
-  if (session instanceof NextResponse) {
-    return session
-  }
+  if (session instanceof NextResponse) return session
+
+  const tenantId = getTenantIdFromSession(session)
+  const user = session.user as any
 
   // Verificar feature del plan
-  const user = session.user as any
-  const planCheck = await requirePlanFeature(user.tenantId, 'marketing', user.isSuperAdmin)
-  if (planCheck) {
-    return planCheck
-  }
-
-  // Obtener el cliente Prisma correcto (tenant o master según el usuario)
-  const prisma = await getPrismaForRequest(request, session)
+  const planCheck = await requirePlanFeature(tenantId, 'marketing', user.isSuperAdmin)
+  if (planCheck) return planCheck
 
   try {
     const { searchParams } = new URL(request.url)
     const status = searchParams.get('status')
 
-    const where: any = {}
-    if (status) {
-      where.status = status
-    }
+    const result = await withTenantRead(tenantId, async (prisma) => {
+      const where: any = {}
+      if (status) where.status = status
 
-    const campaigns = await prisma.marketingCampaign.findMany({
-      where,
-      include: {
-        createdBy: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
+      return await prisma.marketingCampaign.findMany({
+        where,
+        include: {
+          createdBy: {
+            select: { id: true, name: true, email: true },
+          },
+          recipients: {
+            select: { id: true, status: true, email: true },
           },
         },
-        recipients: {
-          select: {
-            id: true,
-            status: true,
-            email: true,
-          },
-        },
-      },
-      orderBy: { createdAt: 'desc' },
+        orderBy: { createdAt: 'desc' },
+      })
     })
 
-    return NextResponse.json(campaigns)
-  } catch (error) {
+    return NextResponse.json(result)
+  } catch (error: any) {
     console.error('Error fetching campaigns:', error)
     return NextResponse.json(
-      { 
-        error: 'Failed to fetch campaigns',
-        details: error instanceof Error ? error.message : String(error)
-      },
+      { error: 'Failed to fetch campaigns', details: error.message },
       { status: 500 }
     )
   }
@@ -74,57 +57,44 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   const session = await requirePermission(request as any, PERMISSIONS.MANAGE_CRM)
-  
-  if (session instanceof NextResponse) {
-    return session
-  }
+  if (session instanceof NextResponse) return session
+
+  const tenantId = getTenantIdFromSession(session)
+  const user = session.user as any
 
   // Verificar feature del plan
-  const user = session.user as any
-  const planCheck = await requirePlanFeature(user.tenantId, 'marketing', user.isSuperAdmin)
-  if (planCheck) {
-    return planCheck
-  }
-
-  // Obtener el cliente Prisma correcto (tenant o master según el usuario)
-  const prisma = await getPrismaForRequest(request, session)
+  const planCheck = await requirePlanFeature(tenantId, 'marketing', user.isSuperAdmin)
+  if (planCheck) return planCheck
 
   try {
     const body = await request.json()
     const data = createCampaignSchema.parse(body)
 
-    const campaign = await prisma.marketingCampaign.create({
-      data: {
-        name: data.name,
-        subject: data.subject,
-        htmlContent: data.htmlContent,
-        scheduledAt: data.scheduledAt ? new Date(data.scheduledAt) : null,
-        status: data.scheduledAt ? 'SCHEDULED' : 'DRAFT',
-        createdById: (session.user as any).id,
-      },
-      include: {
-        createdBy: {
-          select: {
-            id: true,
-            name: true,
+    const result = await withTenantTx(tenantId, async (prisma) => {
+      return await prisma.marketingCampaign.create({
+        data: {
+          name: data.name,
+          subject: data.subject,
+          htmlContent: data.htmlContent,
+          scheduledAt: data.scheduledAt ? new Date(data.scheduledAt) : null,
+          status: data.scheduledAt ? 'SCHEDULED' : 'DRAFT',
+          createdById: user.id,
+        },
+        include: {
+          createdBy: {
+            select: { id: true, name: true },
           },
         },
-      },
+      })
     })
 
-    return NextResponse.json(campaign, { status: 201 })
-  } catch (error) {
+    return NextResponse.json(result, { status: 201 })
+  } catch (error: any) {
     if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { error: 'Validation error', details: error.errors },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'Validation error', details: error.errors }, { status: 400 })
     }
     console.error('Error creating campaign:', error)
-    return NextResponse.json(
-      { error: 'Failed to create campaign' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: error.message || 'Failed to create campaign' }, { status: 500 })
   }
 }
 

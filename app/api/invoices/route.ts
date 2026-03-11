@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requirePermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
-import { withTenantTx, getTenantIdFromSession } from '@/lib/tenancy'
-import { Prisma } from '@prisma/client'
+import { withTenantRead } from '@/lib/tenancy'
 
 export async function GET(request: Request) {
   const session = await requirePermission(request as any, PERMISSIONS.MANAGE_SALES)
@@ -11,7 +10,7 @@ export async function GET(request: Request) {
     return session
   }
 
-  const tenantId = getTenantIdFromSession(session)
+  const tenantId = (session.user as any).tenantId
 
   try {
     const { searchParams } = new URL(request.url)
@@ -22,35 +21,34 @@ export async function GET(request: Request) {
     const customerId = searchParams.get('customerId')
     const skip = (page - 1) * limit
 
-    const where: any = {}
+    const result = await withTenantRead(tenantId, async (prisma) => {
+      const where: any = {}
 
-    if (search) {
-      where.OR = [
-        { number: { contains: search } },
-        { cufe: { contains: search } },
-        { customer: { name: { contains: search } } },
-      ]
-    }
-
-    if (status) {
-      // Mapear estados antiguos a nuevos para compatibilidad
-      const statusMap: Record<string, string> = {
-        'ISSUED': 'EMITIDA',
-        'PAID': 'PAGADA',
-        'VOID': 'ANULADA',
-        'PARTIAL': 'EN_COBRANZA',
-        'PARCIAL': 'EN_COBRANZA',
+      if (search) {
+        where.OR = [
+          { number: { contains: search, mode: 'insensitive' } },
+          { cufe: { contains: search, mode: 'insensitive' } },
+          { customer: { name: { contains: search, mode: 'insensitive' } } },
+        ]
       }
-      where.status = statusMap[status] || status
-    }
 
-    if (customerId) {
-      where.customerId = customerId
-    }
+      if (status) {
+        const statusMap: Record<string, string> = {
+          'ISSUED': 'EMITIDA',
+          'PAID': 'PAGADA',
+          'VOID': 'ANULADA',
+          'PARTIAL': 'EN_COBRANZA',
+          'PARCIAL': 'EN_COBRANZA',
+        }
+        where.status = statusMap[status] || status
+      }
 
-    const { invoices, total } = await withTenantTx(tenantId, async (tx: Prisma.TransactionClient) => {
+      if (customerId) {
+        where.customerId = customerId
+      }
+
       const [invoices, total] = await Promise.all([
-        tx.invoice.findMany({
+        prisma.invoice.findMany({
           where,
           skip,
           take: limit,
@@ -89,20 +87,21 @@ export async function GET(request: Request) {
           },
           orderBy: { createdAt: 'desc' },
         }),
-        tx.invoice.count({ where }),
+        prisma.invoice.count({ where }),
       ])
-      return { invoices, total }
+
+      return {
+        invoices,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages: Math.ceil(total / limit),
+        },
+      }
     })
 
-    return NextResponse.json({
-      invoices,
-      pagination: {
-        page,
-        limit,
-        total,
-        totalPages: Math.ceil(total / limit),
-      },
-    })
+    return NextResponse.json(result)
   } catch (error) {
     console.error('Error fetching invoices:', error)
     return NextResponse.json(

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requireAnyPermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
-import { withTenantTx } from '@/lib/tenancy'
+import { withTenantRead, getTenantIdFromSession } from '@/lib/tenancy'
 import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
@@ -10,16 +10,12 @@ export async function GET(request: Request) {
   const session = await requireAnyPermission(request as any, [PERMISSIONS.MANAGE_INVENTORY, PERMISSIONS.VIEW_REPORTS])
   if (session instanceof NextResponse) return session
 
-  const tenantId = (session.user as any).tenantId
-  const isSuperAdmin = (session.user as any).isSuperAdmin
-
-  if (isSuperAdmin || !tenantId) {
-    return NextResponse.json([])
-  }
+  const tenantId = getTenantIdFromSession(session)
+  if (!tenantId) return NextResponse.json([])
 
   try {
-    const stockLevels = await withTenantTx(tenantId, async (tx: any) => {
-      return tx.stockLevel.findMany({
+    const stockLevels = await withTenantRead(tenantId, async (prisma) => {
+      return prisma.stockLevel.findMany({
         where: { product: { active: true, trackStock: true } },
         include: { product: true, warehouse: true },
       })

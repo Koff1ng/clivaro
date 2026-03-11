@@ -115,6 +115,20 @@ BEGIN
         
         BEGIN ALTER TABLE "Product" ADD COLUMN "productType" TEXT NOT NULL DEFAULT 'RETAIL'; EXCEPTION WHEN duplicate_column THEN NULL; END;
         BEGIN ALTER TABLE "Product" ADD COLUMN "enableRecipeConsumption" BOOLEAN NOT NULL DEFAULT false; EXCEPTION WHEN duplicate_column THEN NULL; END;
+        BEGIN ALTER TABLE "Product" ADD COLUMN "barcode" TEXT; EXCEPTION WHEN duplicate_column THEN NULL; END;
+        BEGIN ALTER TABLE "Product" ADD COLUMN "brand" TEXT; EXCEPTION WHEN duplicate_column THEN NULL; END;
+        BEGIN ALTER TABLE "Product" ADD COLUMN "category" TEXT; EXCEPTION WHEN duplicate_column THEN NULL; END;
+        BEGIN ALTER TABLE "Product" ADD COLUMN "unitOfMeasure" TEXT NOT NULL DEFAULT 'UNIT'; EXCEPTION WHEN duplicate_column THEN NULL; END;
+        BEGIN ALTER TABLE "Product" ADD COLUMN "trackStock" BOOLEAN NOT NULL DEFAULT true; EXCEPTION WHEN duplicate_column THEN NULL; END;
+        BEGIN ALTER TABLE "Product" ADD COLUMN "active" BOOLEAN NOT NULL DEFAULT true; EXCEPTION WHEN duplicate_column THEN NULL; END;
+        BEGIN ALTER TABLE "Product" ADD COLUMN "description" TEXT; EXCEPTION WHEN duplicate_column THEN NULL; END;
+        BEGIN ALTER TABLE "Product" ADD COLUMN "createdById" TEXT; EXCEPTION WHEN duplicate_column THEN NULL; END;
+        BEGIN ALTER TABLE "Product" ADD COLUMN "updatedById" TEXT; EXCEPTION WHEN duplicate_column THEN NULL; END;
+        BEGIN ALTER TABLE "Product" ADD COLUMN "lastCost" DOUBLE PRECISION NOT NULL DEFAULT 0; EXCEPTION WHEN duplicate_column THEN NULL; END;
+        BEGIN ALTER TABLE "Product" ADD COLUMN "averageCost" DOUBLE PRECISION NOT NULL DEFAULT 0; EXCEPTION WHEN duplicate_column THEN NULL; END;
+        BEGIN ALTER TABLE "Product" ADD COLUMN "percentageMerma" DOUBLE PRECISION NOT NULL DEFAULT 0; EXCEPTION WHEN duplicate_column THEN NULL; END;
+        BEGIN ALTER TABLE "Product" ADD COLUMN "stockAlertEnabled" BOOLEAN NOT NULL DEFAULT true; EXCEPTION WHEN duplicate_column THEN NULL; END;
+        BEGIN ALTER TABLE "Product" ADD COLUMN "cost" DOUBLE PRECISION NOT NULL DEFAULT 0; EXCEPTION WHEN duplicate_column THEN NULL; END;
         
         BEGIN ALTER TABLE "StockMovement" ADD COLUMN "reasonCode" TEXT; EXCEPTION WHEN duplicate_column THEN NULL; END;
         BEGIN ALTER TABLE "StockMovement" ADD COLUMN "reasonNote" TEXT; EXCEPTION WHEN duplicate_column THEN NULL; END;

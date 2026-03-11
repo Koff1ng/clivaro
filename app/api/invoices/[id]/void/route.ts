@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { requirePermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
-import { getPrismaForRequest } from '@/lib/get-tenant-prisma'
+import { withTenantTx, getTenantIdFromSession } from '@/lib/tenancy'
 import { logger } from '@/lib/logger'
 import { logActivity } from '@/lib/activity'
 
@@ -21,77 +21,56 @@ export async function POST(
     PERMISSIONS.VOID_INVOICES,
     PERMISSIONS.MANAGE_RETURNS,
   ])
-
   if (session instanceof NextResponse) return session
 
-  const prisma = await getPrismaForRequest(request, session)
+  const tenantId = getTenantIdFromSession(session)
+  const userId = (session.user as any).id as string
 
   try {
     const body = await request.json()
     const { reason } = voidInvoiceSchema.parse(body)
 
-    const invoice = await prisma.invoice.findUnique({
-      where: { id: invoiceId },
-      include: {
-        items: true,
-        payments: true,
-      },
-    })
+    const result = await withTenantTx(tenantId, async (prisma) => {
+      const invoice = await prisma.invoice.findUnique({
+        where: { id: invoiceId },
+        include: { items: true, payments: true },
+      })
 
-    if (!invoice) {
-      return NextResponse.json({ error: 'Factura no encontrada' }, { status: 404 })
-    }
+      if (!invoice) throw new Error('Factura no encontrada')
+      if (['ANULADA', 'VOID'].includes(invoice.status)) throw new Error('La factura ya está anulada')
 
-    if (invoice.status === 'ANULADA' || invoice.status === 'VOID') {
-      return NextResponse.json({ error: 'La factura ya está anulada' }, { status: 400 })
-    }
+      if (['ACCEPTED', 'SENT'].includes(invoice.electronicStatus || '')) {
+        throw new Error('Esta factura ya fue enviada/aceptada por DIAN. Debes generar una Nota Crédito.')
+      }
 
-    if (invoice.electronicStatus === 'ACCEPTED' || invoice.electronicStatus === 'SENT') {
-      return NextResponse.json(
-        { error: 'Esta factura ya fue enviada/aceptada por DIAN. Debes generar una Nota Crédito (no anulación directa).' },
-        { status: 400 }
+      // Group payments
+      const sums = invoice.payments.reduce(
+        (acc, p) => {
+          const method = (p.method || '').toUpperCase()
+          if (method === 'CASH') acc.cash += p.amount
+          else if (method === 'CARD') acc.card += p.amount
+          else if (method === 'TRANSFER') acc.transfer += p.amount
+          else acc.other += p.amount
+          acc.total += p.amount
+          return acc
+        },
+        { cash: 0, card: 0, transfer: 0, other: 0, total: 0 }
       )
-    }
 
-    // Agrupar pagos por método (para devolución/refund)
-    const sums = invoice.payments.reduce(
-      (acc, p) => {
-        const method = (p.method || '').toUpperCase()
-        if (method === 'CASH') acc.cash += p.amount
-        else if (method === 'CARD') acc.card += p.amount
-        else if (method === 'TRANSFER') acc.transfer += p.amount
-        else acc.other += p.amount
-        acc.total += p.amount
-        return acc
-      },
-      { cash: 0, card: 0, transfer: 0, other: 0, total: 0 }
-    )
+      // Find stock movements
+      const outMovements = await prisma.stockMovement.findMany({
+        where: { reference: invoice.number, type: 'OUT' },
+      })
 
-    // Encontrar movimientos de stock de la venta (POS) por referencia = invoice.number
-    const outMovements = await prisma.stockMovement.findMany({
-      where: {
-        reference: invoice.number,
-        type: 'OUT',
-      },
-    })
-
-    const userId = (session.user as any).id as string
-
-    const result = await prisma.$transaction(async (tx) => {
-      // Si hay efectivo a devolver, debe existir turno abierto del usuario actual
+      // Nested logic for Cash Shift
       if (sums.cash > 0) {
-        const openShift = await tx.cashShift.findFirst({
-          where: {
-            userId,
-            status: 'OPEN',
-          },
+        const openShift = await prisma.cashShift.findFirst({
+          where: { userId, status: 'OPEN' },
         })
 
-        if (!openShift) {
-          throw new Error('Debes tener un turno de caja abierto para registrar devolución en efectivo.')
-        }
+        if (!openShift) throw new Error('Debes tener un turno de caja abierto para registrar devolución en efectivo.')
 
-        await tx.cashMovement.create({
+        await prisma.cashMovement.create({
           data: {
             cashShiftId: openShift.id,
             type: 'OUT',
@@ -101,17 +80,15 @@ export async function POST(
           },
         })
 
-        await tx.cashShift.update({
+        await prisma.cashShift.update({
           where: { id: openShift.id },
-          data: {
-            expectedCash: openShift.expectedCash - sums.cash,
-          },
+          data: { expectedCash: openShift.expectedCash - sums.cash },
         })
       }
 
-      // Reintegrar stock basado en movimientos OUT previos (si existieron)
+      // Restock
       for (const m of outMovements) {
-        await tx.stockMovement.create({
+        await prisma.stockMovement.create({
           data: {
             warehouseId: m.warehouseId,
             productId: m.productId,
@@ -124,8 +101,7 @@ export async function POST(
           },
         })
 
-        // Actualizar stock level
-        const existing = await tx.stockLevel.findFirst({
+        const existing = await prisma.stockLevel.findFirst({
           where: {
             warehouseId: m.warehouseId,
             productId: m.productId,
@@ -134,12 +110,12 @@ export async function POST(
         })
 
         if (existing) {
-          await tx.stockLevel.update({
+          await prisma.stockLevel.update({
             where: { id: existing.id },
             data: { quantity: existing.quantity + m.quantity },
           })
         } else {
-          await tx.stockLevel.create({
+          await prisma.stockLevel.create({
             data: {
               warehouseId: m.warehouseId,
               productId: m.productId,
@@ -157,11 +133,9 @@ export async function POST(
         `ANULADA (${stamp})`,
         `Motivo: ${reason}`,
         `Pagos (ref): efectivo=${sums.cash}, tarjeta=${sums.card}, transferencia=${sums.transfer}`,
-      ]
-        .filter(Boolean)
-        .join('\n')
+      ].filter(Boolean).join('\n')
 
-      const updated = await tx.invoice.update({
+      const updated = await prisma.invoice.update({
         where: { id: invoiceId },
         data: {
           status: 'ANULADA',
@@ -171,6 +145,16 @@ export async function POST(
         },
       })
 
+      await logActivity({
+        prisma,
+        type: 'INVOICE_VOID',
+        subject: `Factura Anulada: ${invoice.number}`,
+        description: `Motivo: ${reason}. Total reintegrado: ${sums.total}.`,
+        userId,
+        customerId: invoice.customerId,
+        metadata: { invoiceId: invoice.id, invoiceNumber: invoice.number, reason, refund: sums.total }
+      })
+
       return {
         invoice: updated,
         restockedMovements: outMovements.length,
@@ -178,27 +162,13 @@ export async function POST(
       }
     })
 
-    // Audit Log
-    await logActivity({
-      prisma,
-      type: 'INVOICE_VOID',
-      subject: `Factura Anulada: ${invoice.number}`,
-      description: `Motivo: ${reason}. Total reintegrado: ${sums.total}. Items: ${invoice.items.length}.`,
-      userId: (session.user as any).id,
-      customerId: invoice.customerId,
-      metadata: { invoiceId: invoice.id, invoiceNumber: invoice.number, reason, refund: sums.total }
-    })
-
-    return NextResponse.json(result, { status: 200 })
+    return NextResponse.json(result)
   } catch (error: any) {
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: 'Error de validación', details: error.errors }, { status: 400 })
     }
-    logger.error('Error voiding invoice', error, { invoiceId, endpoint: '/api/invoices/[id]/void' })
-    return NextResponse.json(
-      { error: error.message || 'Error al anular la factura' },
-      { status: 500 }
-    )
+    logger.error('Error voiding invoice', error)
+    return NextResponse.json({ error: error.message || 'Error al anular la factura' }, { status: 500 })
   }
 }
 

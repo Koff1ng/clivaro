@@ -2,7 +2,7 @@
 
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { getPrismaForRequest } from "@/lib/get-tenant-prisma";
+import { withTenantRead, withTenantTx } from "@/lib/tenancy";
 import { createClient } from "@supabase/supabase-js";
 
 // ─────────────────────────────────────────────────────────────
@@ -44,8 +44,8 @@ export async function getAssistantResponse(
     }
 
     // Obtener prisma con scope de tenant
-    const prisma = await getPrismaForRequest(null as any, session);
     const tenantId = (session.user as any).tenantId;
+    if (!tenantId) throw new Error("Tenant no encontrado");
 
     if (!process.env.GROQ_API_KEY) {
         throw new Error("GROQ_API_KEY no encontrada en el servidor");
@@ -56,8 +56,12 @@ export async function getAssistantResponse(
         let discoveredContext = "";
         const query = message.toLowerCase();
 
-        // Búsqueda de Productos/Inventario
-        try {
+        const ragData = await withTenantRead(tenantId, async (prisma) => {
+            let inventoryContext = "";
+            let salesContext = "";
+            let accountingContext = "";
+
+            // Búsqueda de Productos/Inventario
             if (query.includes("producto") || query.includes("stock") || query.includes("inventario")) {
                 const products = await prisma.product.findMany({
                     take: 5,
@@ -66,18 +70,14 @@ export async function getAssistantResponse(
                 });
 
                 if (products.length > 0) {
-                    discoveredContext += "\nDATOS DE INVENTARIO:\n" + products.map((p: any) => {
+                    inventoryContext = "\nDATOS DE INVENTARIO:\n" + products.map((p: any) => {
                         const totalStock = p.stockLevels?.reduce((acc: number, s: any) => acc + s.quantity, 0) || 0;
                         return `- ${p.name} (SKU: ${p.sku}) | Precio: $${p.price} | Stock: ${p.trackStock ? totalStock : 'N/A'}`;
                     }).join("\n");
                 }
             }
-        } catch (e) {
-            console.error("[RAG_INVENTORY_ERROR]", e);
-        }
 
-        // Búsqueda de Ventas/Facturas
-        try {
+            // Búsqueda de Ventas/Facturas
             if (query.includes("venta") || query.includes("factura") || query.includes("vendi") || query.includes("ingreso")) {
                 const lastInvoices = await prisma.invoice.findMany({
                     take: 5,
@@ -86,19 +86,14 @@ export async function getAssistantResponse(
                 });
 
                 if (lastInvoices.length > 0) {
-                    discoveredContext += "\nFACTURAS/VENTAS RECIENTES:\n" + lastInvoices.map((inv: any) =>
+                    salesContext = "\nFACTURAS/VENTAS RECIENTES:\n" + lastInvoices.map((inv: any) =>
                         `- ${inv.number} | Cliente: ${inv.customer?.name} | Total: $${inv.total} | Estado: ${inv.status}`
                     ).join("\n");
                 }
             }
-        } catch (e) {
-            console.error("[RAG_SALES_ERROR]", e);
-        }
 
-        // Búsqueda de Reportes/Cuentas
-        try {
+            // Búsqueda de Reportes/Cuentas
             if (query.includes("reporte") || query.includes("balance") || query.includes("contabilidad") || query.includes("ganancia")) {
-                // Usamos accountingAccount que es el modelo correcto para el PUC
                 const topAccounts = await prisma.accountingAccount.findMany({
                     take: 10,
                     where: { type: { in: ['ASSET', 'LIABILITY', 'EQUITY', 'INCOME', 'EXPENSE'] } },
@@ -106,14 +101,16 @@ export async function getAssistantResponse(
                 });
 
                 if (topAccounts.length > 0) {
-                    discoveredContext += "\nPLAN DE CUENTAS (RESUMEN):\n" + topAccounts.map((a: any) =>
+                    accountingContext = "\nPLAN DE CUENTAS (RESUMEN):\n" + topAccounts.map((a: any) =>
                         `- [${a.code}] ${a.name} (${a.type})`
                     ).join("\n");
                 }
             }
-        } catch (e) {
-            console.error("[RAG_ACCOUNTING_ERROR]", e);
-        }
+
+            return { inventoryContext, salesContext, accountingContext };
+        });
+
+        discoveredContext = `${ragData.inventoryContext}${ragData.salesContext}${ragData.accountingContext}`;
 
         const userRoles = (session.user as any).roles;
         const rolesStr = Array.isArray(userRoles) ? userRoles.join(', ') : 'Ninguno';
@@ -150,14 +147,14 @@ Utiliza estos nombres exactos para referirte a las secciones:
   - Oportunidades: **Marketing -> Oportunidades** -> \`/crm/leads\`
   - Campañas: **Marketing -> Campañas** -> \`/marketing/campaigns\`
 
-- **Punto de Venta (POS):**
-  - Punto de Venta: **POS -> Punto de Venta** -> \`/pos\`
-  - Caja: **POS -> Caja** -> \`/cash/shifts\`
-  - Cotizaciones: **POS -> Cotizaciones** -> \`/sales/quotes\`
-  - Órdenes: **POS -> Órdenes** -> \`/sales/orders\`
-  - Facturas: **POS -> Facturas** -> \`/sales/invoices\`
-  - Notas Crédito: **POS -> Notas Crédito** -> \`/credit-notes\`
-  - Fact. Electrónica: **POS -> Fact. Electrónica** -> \`/dashboard/electronic-invoicing\`
+- **Ventas / Punto de Venta (POS):**
+  - Punto de Venta: **Ventas -> Punto de Venta** -> \`/pos\`
+  - Caja: **Ventas -> Caja** -> \`/cash/shifts\`
+  - Cotizaciones: **Ventas -> Cotizaciones** -> \`/sales/quotes\`
+  - Órdenes: **Ventas -> Órdenes** -> \`/sales/orders\`
+  - Facturas: **Ventas -> Facturas** -> \`/sales/invoices\`
+  - Notas Crédito: **Ventas -> Notas Crédito** -> \`/credit-notes\`
+  - Fact. Electrónica: **Ventas -> Fact. Electrónica** -> \`/dashboard/electronic-invoicing\`
 
 - **Inventario:**
   - Items: **Inventario -> Items** -> \`/products\`

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requireAnyPermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
-import { withTenantTx, getTenantIdFromSession } from '@/lib/tenancy'
+import { withTenantTx, withTenantRead, getTenantIdFromSession } from '@/lib/tenancy'
 import { z } from 'zod'
 import { logActivity } from '@/lib/activity'
 
@@ -82,7 +82,7 @@ export async function GET(request: Request) {
     const active = searchParams.get('active')
     const status = searchParams.get('status')
 
-    const shifts = await withTenantTx(tenantId, async (tx: any) => {
+    const shifts = await withTenantRead(tenantId, async (prisma) => {
       const where: any = { userId }
       if (active === 'true') {
         where.status = 'OPEN'
@@ -90,7 +90,7 @@ export async function GET(request: Request) {
         where.status = status
       }
 
-      return await tx.cashShift.findMany({
+      return await prisma.cashShift.findMany({
         where,
         include: {
           user: { select: { id: true, name: true } },
@@ -125,7 +125,7 @@ export async function POST(request: Request) {
     if (action === 'open') {
       const { startingCash } = openShiftSchema.parse(data)
 
-      const result = await withTenantTx(tenantId, async (tx: any) => {
+      const result = await withTenantTx(tenantId, async (tx) => {
         const existingShift = await tx.cashShift.findFirst({
           where: { userId, status: 'OPEN' },
         })
@@ -166,7 +166,7 @@ export async function POST(request: Request) {
     if (action === 'close') {
       const { countedCash, notes } = closeShiftSchema.parse(data)
 
-      const result = await withTenantTx(tenantId, async (tx: any) => {
+      const result = await withTenantTx(tenantId, async (tx) => {
         const openShift = await tx.cashShift.findFirst({
           where: { userId, status: 'OPEN' },
           include: { movements: true, summaryItems: true },
@@ -202,13 +202,9 @@ export async function POST(request: Request) {
         })
 
         // Update ShiftSummary actual amounts
-        // For CASH, the actual amount of sales is (counted - starting - movements)
-        // For others, we assume expected = actual for now unless there was a manual input
         for (const item of shift.summaryItems) {
           let actualItemAmount = item.expectedAmount
           if (item.paymentMethod?.type === 'CASH') {
-            // Actual CASH sales = countedCash - starting - movements
-            // But sometimes countedCash might be less than starting+movements if negative difference
             actualItemAmount = Math.max(0, Number(countedCash) - Number(openShift.startingCash || 0) - totalMovements)
           }
 

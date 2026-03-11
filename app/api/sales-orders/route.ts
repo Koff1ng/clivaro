@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requirePermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
-import { withTenantTx, getTenantIdFromSession } from '@/lib/tenancy'
+import { withTenantTx, withTenantRead, getTenantIdFromSession } from '@/lib/tenancy'
 import { z } from 'zod'
 
 const createSalesOrderSchema = z.object({
@@ -31,46 +31,51 @@ export async function GET(request: Request) {
 
     const tenantId = getTenantIdFromSession(session)
 
-    return await withTenantTx(tenantId, async (tx: any) => {
-        const where: any = {}
+    try {
+        const result = await withTenantRead(tenantId, async (prisma) => {
+            const where: any = {}
 
-        if (search) {
-            where.OR = [
-                { number: { contains: search, mode: 'insensitive' } },
-                { customer: { name: { contains: search, mode: 'insensitive' } } },
-            ]
-        }
+            if (search) {
+                where.OR = [
+                    { number: { contains: search, mode: 'insensitive' } },
+                    { customer: { name: { contains: search, mode: 'insensitive' } } },
+                ]
+            }
 
-        if (status) {
-            where.status = status
-        }
+            if (status) {
+                where.status = status
+            }
 
-        if (customerId) {
-            where.customerId = customerId
-        }
+            if (customerId) {
+                where.customerId = customerId
+            }
 
-        const [items, total] = await Promise.all([
-            tx.salesOrder.findMany({
-                where,
-                include: {
-                    customer: { select: { id: true, name: true } },
-                    _count: { select: { items: true } }
-                },
-                orderBy: { createdAt: 'desc' },
-                skip: (page - 1) * limit,
-                take: limit,
-            }),
-            tx.salesOrder.count({ where }),
-        ])
+            const [items, total] = await Promise.all([
+                prisma.salesOrder.findMany({
+                    where,
+                    include: {
+                        customer: { select: { id: true, name: true } },
+                        _count: { select: { items: true } }
+                    },
+                    orderBy: { createdAt: 'desc' },
+                    skip: (page - 1) * limit,
+                    take: limit,
+                }),
+                prisma.salesOrder.count({ where }),
+            ])
 
-        return NextResponse.json({
-            items,
-            total,
-            page,
-            limit,
-            totalPages: Math.ceil(total / limit),
+            return {
+                items,
+                total,
+                page,
+                limit,
+                totalPages: Math.ceil(total / limit),
+            }
         })
-    })
+        return NextResponse.json(result)
+    } catch (error: any) {
+        return NextResponse.json({ error: error.message || 'Error al listar órdenes de venta' }, { status: 500 })
+    }
 }
 
 export async function POST(request: Request) {

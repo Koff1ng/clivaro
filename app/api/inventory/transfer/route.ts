@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server'
 import { requirePermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
-import { getPrismaForRequest } from '@/lib/get-tenant-prisma'
+import { withTenantTx, getTenantIdFromSession } from '@/lib/tenancy'
 import { z } from 'zod'
-import { toDecimal } from '@/lib/numbers'
 import { updateStockLevel, checkStock } from '@/lib/inventory'
+import { handleError } from '@/lib/error-handler'
 
 const transferSchema = z.object({
   fromWarehouseId: z.string(),
@@ -17,52 +17,42 @@ const transferSchema = z.object({
 
 export async function POST(request: Request) {
   const session = await requirePermission(request as any, PERMISSIONS.MANAGE_INVENTORY)
+  if (session instanceof NextResponse) return session
 
-  if (session instanceof NextResponse) {
-    return session
-  }
-
-  // Obtener el cliente Prisma correcto (tenant o master según el usuario)
-  const prisma = await getPrismaForRequest(request, session)
+  const tenantId = getTenantIdFromSession(session)
 
   try {
     const body = await request.json()
-    const data = transferSchema.parse(body)
+    const result = await withTenantTx(tenantId, async (tx) => {
+      const parsed = transferSchema.safeParse(body)
+      if (!parsed.success) {
+        return { error: 'Validation error', details: parsed.error.flatten(), status: 400 }
+      }
+      const data = parsed.data
 
-    if (data.fromWarehouseId === data.toWarehouseId) {
-      return NextResponse.json(
-        { error: 'Source and destination warehouses must be different' },
-        { status: 400 }
+      if (data.fromWarehouseId === data.toWarehouseId) {
+        return { error: 'Source and destination warehouses must be different', status: 400 }
+      }
+
+      if (!data.productId && !data.variantId) {
+        return { error: 'Either productId or variantId is required', status: 400 }
+      }
+
+      const quantity = data.quantity
+
+      // Check stock availability within transaction
+      const hasStock = await checkStock(
+        data.fromWarehouseId,
+        data.productId!,
+        data.variantId || null,
+        quantity,
+        tx // Pass transaction client
       )
-    }
 
-    if (!data.productId && !data.variantId) {
-      return NextResponse.json(
-        { error: 'Either productId or variantId is required' },
-        { status: 400 }
-      )
-    }
+      if (!hasStock) {
+        throw new Error('Insufficient stock in source warehouse')
+      }
 
-    const quantity = data.quantity
-
-    // Check stock availability
-    const hasStock = await checkStock(
-      data.fromWarehouseId,
-      data.productId!,
-      data.variantId || null,
-      quantity,
-      prisma // Pass tenant client
-    )
-
-    if (!hasStock) {
-      return NextResponse.json(
-        { error: 'Insufficient stock in source warehouse' },
-        { status: 400 }
-      )
-    }
-
-    // Use transaction
-    await prisma.$transaction(async (tx) => {
       // Create OUT movement from source
       await tx.stockMovement.create({
         data: {
@@ -91,7 +81,7 @@ export async function POST(request: Request) {
         },
       })
 
-      // Update stock levels
+      // Update stock levels within transaction
       await updateStockLevel(
         data.fromWarehouseId,
         data.productId || null,
@@ -107,20 +97,16 @@ export async function POST(request: Request) {
         quantity,
         tx // Pass transaction client
       )
+
+      return { success: true }
     })
 
-    return NextResponse.json({ success: true })
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { error: 'Validation error', details: error.errors },
-        { status: 400 }
-      )
+    if ('error' in result) {
+      return NextResponse.json({ error: result.error, details: result.details }, { status: result.status })
     }
-    console.error('Error creating transfer:', error)
-    return NextResponse.json(
-      { error: 'Failed to create transfer' },
-      { status: 500 }
-    )
+
+    return NextResponse.json(result)
+  } catch (error: unknown) {
+    return handleError(error, 'INVENTORY_TRANSFER_POST')
   }
 }

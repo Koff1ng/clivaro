@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { requirePermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
-import { getPrismaForRequest } from '@/lib/get-tenant-prisma'
+import { withTenantTx, getTenantIdFromSession } from '@/lib/tenancy'
 
 const schema = z.object({
   warehouseId: z.string().min(1),
@@ -16,31 +16,31 @@ export async function POST(request: Request) {
   const session = await requirePermission(request as any, PERMISSIONS.MANAGE_INVENTORY)
   if (session instanceof NextResponse) return session
 
-  const prisma = await getPrismaForRequest(request, session)
+  const tenantId = getTenantIdFromSession(session)
 
   try {
     const body = await request.json()
     const data = schema.parse(body)
 
-    // Prisma has limitations with compound unique filters when nullable fields are involved.
-    // Use findFirst + update/create to support variantId = null safely.
-    const where = {
-      warehouseId: data.warehouseId,
-      productId: data.productId,
-      variantId: data.variantId ?? null,
-    }
+    const result = await withTenantTx(tenantId, async (prisma) => {
+      const where = {
+        warehouseId: data.warehouseId,
+        productId: data.productId,
+        variantId: data.variantId ?? null,
+      }
 
-    const existing = await prisma.stockLevel.findFirst({
-      where,
-      select: { id: true },
-    })
+      const existing = await prisma.stockLevel.findFirst({
+        where,
+        select: { id: true },
+      })
 
-    const updated = existing
-      ? await prisma.stockLevel.update({
+      if (existing) {
+        return await prisma.stockLevel.update({
           where: { id: existing.id },
           data: { minStock: data.minStock, maxStock: data.maxStock },
         })
-      : await prisma.stockLevel.create({
+      } else {
+        return await prisma.stockLevel.create({
           data: {
             warehouseId: data.warehouseId,
             productId: data.productId,
@@ -50,8 +50,10 @@ export async function POST(request: Request) {
             maxStock: data.maxStock,
           },
         })
+      }
+    })
 
-    return NextResponse.json({ stockLevel: updated })
+    return NextResponse.json({ stockLevel: result })
   } catch (error: any) {
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: 'Error de validación', details: error.errors }, { status: 400 })

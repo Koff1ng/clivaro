@@ -46,36 +46,44 @@ async function executeWithRetry<T>(
 }
 
 const createPOSSaleSchema = z.object({
-  customerId: z.string().optional(),
-  warehouseId: z.string(),
+  customerId: z.string().optional().nullable(),
+  warehouseId: z.string().min(1, "El almacén es requerido"),
   items: z.array(z.object({
-    productId: z.string(),
+    productId: z.string().min(1, "El ID del producto es requerido"),
     variantId: z.string().optional().nullable(),
-    quantity: z.number().positive(),
-    unitPrice: z.number().min(0),
+    quantity: z.number().positive("La cantidad debe ser mayor a 0"),
+    unitPrice: z.number().min(0, "El precio unitario no puede ser negativo"),
     discount: z.number().min(0).max(100).default(0),
-    taxRate: z.number().min(0).max(100).optional(), // Solo para compatibilidad
+    taxRate: z.number().min(0).max(100).optional(), // Legacy compat
     appliedTaxes: z.array(z.object({
       id: z.string(),
       name: z.string(),
       rate: z.number(),
       type: z.string(),
     })).optional(),
-  })),
-  // Compat: flujo antiguo (un solo método)
-  paymentMethod: z.enum(['CASH', 'CARD', 'TRANSFER']).optional(),
+  })).min(1, "La venta debe tener al menos un producto"),
+
+  // Compatibilidad: flujo antiguo (un solo método de texto)
+  paymentMethod: z.enum(['CASH', 'CARD', 'TRANSFER']).optional().nullable(),
   discount: z.number().min(0).default(0),
-  cashReceived: z.number().optional(), // For cash payments
-  // Nuevo: pagos múltiples (split) con métodos dinámicos
+  cashReceived: z.number().min(0).optional().nullable(),
+
+  // Nuevo: pagos múltiples (split) con IDs dinámicos
   payments: z.array(z.object({
-    paymentMethodId: z.string(),
-    amount: z.number().min(0.01),
+    paymentMethodId: z.string().min(1, "El ID del método de pago es requerido"),
+    amount: z.number().min(0.01, "El monto del pago debe ser mayor a 0"),
     reference: z.string().optional().nullable(),
     notes: z.string().optional().nullable(),
-  })).min(1).optional(),
-  // Override temporal para descuentos (manager override)
-  discountOverrideToken: z.string().optional(),
-})
+  })).optional().nullable(),
+
+  // Token para override de manager
+  discountOverrideToken: z.string().optional().nullable(),
+}).refine(data => !!(data.paymentMethod || (data.payments && data.payments.length > 0)), {
+  message: "Debe indicar al menos un método de pago (paymentMethod o payments)",
+  path: ["payments"]
+});
+
+type POSSaleInput = z.infer<typeof createPOSSaleSchema>;
 
 async function getUserPermissions(prisma: any, userId: string) {
   const userRoles = await executeWithRetry(() => prisma.userRole.findMany({
@@ -103,16 +111,17 @@ export async function POST(request: Request) {
   }
 
   try {
-    const body = await request.json()
-    const data = createPOSSaleSchema.parse(body)
+    const body: any = await request.json()
+    const result = createPOSSaleSchema.safeParse(body)
 
-    // Validación de forma de pago
-    if (!data.payments?.length && !data.paymentMethod) {
+    if (!result.success) {
       return NextResponse.json(
-        { error: 'Debe indicar paymentMethod o payments', code: 'VALIDATION_ERROR' },
+        { error: 'Error de validación', details: result.error.flatten() },
         { status: 400 }
       )
     }
+
+    const data: POSSaleInput = result.data
 
     // Use withTenantTx for strict isolation and the core logic
     return await withTenantTx(session.user.tenantId, async (tx: any) => {
@@ -141,7 +150,23 @@ export async function POST(request: Request) {
         }
       }
 
-      // 2. Shift check
+      // 2. Fetch all products and payment methods needed in one go (Batch Fetching)
+      const productIds = Array.from(new Set(data.items.map(it => it.productId)))
+      const productsList = await tx.product.findMany({
+        where: { id: { in: productIds } }
+      })
+      const productMap = new Map(productsList.map((p: any) => [p.id, p]))
+
+      const paymentMethodIds = Array.from(new Set([
+        ...(data.payments?.map(p => p.paymentMethodId) || [])
+      ])).filter(Boolean) as string[]
+
+      const paymentMethodsList = paymentMethodIds.length > 0
+        ? await tx.paymentMethod.findMany({ where: { id: { in: paymentMethodIds } } })
+        : []
+      const paymentMethodMap = new Map(paymentMethodsList.map((pm: any) => [pm.id, pm]))
+
+      // 3. Shift check
       const openShift = await tx.cashShift.findFirst({
         where: {
           userId: (session.user as any).id,
@@ -155,11 +180,11 @@ export async function POST(request: Request) {
       // 3. Totals and Items Calculation
       let totalSubtotal = 0
       let totalTaxAmount = 0
-      const processedItems = []
+      const processedItems: any[] = []
       const taxSummariesByRate = new Map<string, { taxRateId: string, name: string, rate: number, base: number, amount: number }>()
 
       for (const item of data.items) {
-        const product = await tx.product.findUnique({ where: { id: item.productId } })
+        const product = productMap.get(item.productId) as any
         if (!product) throw new Error(`Producto ${item.productId} no encontrado`)
 
         const itemSubtotal = Math.round(item.quantity * item.unitPrice * (1 - item.discount / 100) * 100) / 100
@@ -299,7 +324,7 @@ export async function POST(request: Request) {
       // Check if this is a pure Credit sale
       if (data.payments?.length === 1) {
         const p = data.payments[0]
-        const methodInfo = await tx.paymentMethod.findUnique({ where: { id: p.paymentMethodId } })
+        const methodInfo = paymentMethodMap.get(p.paymentMethodId) as any
         if (methodInfo && methodInfo.type === 'CREDIT') {
           isCreditSale = true
           isPaid = false
@@ -342,7 +367,7 @@ export async function POST(request: Request) {
         if (data.payments?.length) {
           change = tenderedTotal - finalTotal
           for (const p of data.payments) {
-            const methodInfo = await tx.paymentMethod.findUnique({ where: { id: p.paymentMethodId } })
+            const methodInfo = paymentMethodMap.get(p.paymentMethodId) as any
             if (!methodInfo) throw new Error(`Método de pago ${p.paymentMethodId} no encontrado`)
 
             // Skip if it were mixed with credit (future feature), for now assume split is only immediate payments
@@ -448,7 +473,7 @@ export async function POST(request: Request) {
 
       // 9. Stock & Recipes
       for (const item of data.items) {
-        const product = await tx.product.findUnique({ where: { id: item.productId } })
+        const product = productMap.get(item.productId) as any
         if (!product?.trackStock) continue
 
         const isRestaurant = tenantSettings?.enableRestaurantMode

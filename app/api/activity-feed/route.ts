@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requireAnyPermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
-import { withTenantTx } from '@/lib/tenancy'
+import { withTenantRead, getTenantIdFromSession } from '@/lib/tenancy'
 import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
@@ -10,46 +10,47 @@ export async function GET(request: Request) {
   const session = await requireAnyPermission(request as any, [PERMISSIONS.VIEW_REPORTS, PERMISSIONS.MANAGE_CRM])
   if (session instanceof NextResponse) return session
 
-  const tenantId = (session.user as any).tenantId
-  const isSuperAdmin = (session.user as any).isSuperAdmin
-
-  if (isSuperAdmin || !tenantId) {
+  const tenantId = getTenantIdFromSession(session)
+  if (!tenantId) {
     return NextResponse.json({ activities: [], total: 0 })
   }
 
   try {
     const { searchParams } = new URL(request.url)
     const customerId = searchParams.get('customerId') || undefined
-    const leadId = searchParams.get('leadId') || undefined
     const rawLimit = parseInt(searchParams.get('limit') || '30')
     const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(rawLimit, 50) : 30
 
-    const data = await withTenantTx(tenantId, async (tx: any) => {
+    const result = await withTenantRead(tenantId, async (prisma) => {
       const [invoices, products, payments] = await Promise.all([
-        tx.invoice.findMany({
+        prisma.invoice.findMany({
           take: limit,
           include: { customer: { select: { id: true, name: true } }, createdBy: { select: { id: true, name: true } } },
-          where: { customerId: customerId },
+          where: customerId ? { customerId } : undefined,
           orderBy: { createdAt: 'desc' },
-        }).catch(() => []),
-        tx.product.findMany({
+        }),
+        prisma.product.findMany({
           take: limit,
-          where: { active: true, id: customerId ? 'none' : undefined },
+          where: { active: true },
           orderBy: { createdAt: 'desc' },
-        }).catch(() => []),
-        tx.payment.findMany({
+        }),
+        prisma.payment.findMany({
           take: limit,
-          select: { id: true, amount: true, method: true, createdAt: true, invoice: { select: { id: true, number: true, customer: { select: { id: true, name: true } } } } },
-          where: { invoice: { customerId: customerId } },
+          select: {
+            id: true,
+            amount: true,
+            method: true,
+            createdAt: true,
+            invoice: { select: { id: true, number: true, customer: { select: { id: true, name: true } } } }
+          },
+          where: customerId ? { invoice: { customerId } } : undefined,
           orderBy: { createdAt: 'desc' },
-        }).catch(() => []),
+        }),
       ])
-      return { invoices, products, payments }
-    })
 
-    const activities: any[] = []
+      const activities: any[] = []
 
-      ; (data as any).invoices.forEach((inv: any) => {
+      invoices.forEach((inv: any) => {
         activities.push({
           id: `invoice-${inv.id}`,
           type: 'INVOICE',
@@ -63,7 +64,7 @@ export async function GET(request: Request) {
         })
       })
 
-      ; (data as any).products.forEach((p: any) => {
+      products.forEach((p: any) => {
         activities.push({
           id: `product-${p.id}`,
           type: 'PRODUCT',
@@ -77,7 +78,7 @@ export async function GET(request: Request) {
         })
       })
 
-      ; (data as any).payments.forEach((p: any) => {
+      payments.forEach((p: any) => {
         activities.push({
           id: `payment-${p.id}`,
           type: 'PAYMENT',
@@ -91,9 +92,15 @@ export async function GET(request: Request) {
         })
       })
 
-    activities.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      activities.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
 
-    return NextResponse.json({ activities: activities.slice(0, limit), total: activities.length })
+      return {
+        activities: activities.slice(0, limit),
+        total: activities.length
+      }
+    })
+
+    return NextResponse.json(result)
   } catch (error: any) {
     logger.error('Error fetching activity feed', error, { endpoint: '/api/activity-feed' })
     return NextResponse.json({ activities: [], total: 0 })

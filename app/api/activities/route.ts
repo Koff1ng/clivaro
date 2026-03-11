@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server'
 import { requirePermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
-import { getPrismaForRequest } from '@/lib/get-tenant-prisma'
+import { withTenantRead, withTenantTx, getTenantIdFromSession } from '@/lib/tenancy'
 import { z } from 'zod'
+import { logger } from '@/lib/logger'
 
 const createActivitySchema = z.object({
   leadId: z.string().optional(),
@@ -16,13 +17,9 @@ const createActivitySchema = z.object({
 
 export async function GET(request: Request) {
   const session = await requirePermission(request as any, PERMISSIONS.MANAGE_CRM)
-  
-  if (session instanceof NextResponse) {
-    return session
-  }
+  if (session instanceof NextResponse) return session
 
-  // Obtener el cliente Prisma correcto (tenant o master según el usuario)
-  const prisma = await getPrismaForRequest(request, session)
+  const tenantId = getTenantIdFromSession(session)
 
   try {
     const { searchParams } = new URL(request.url)
@@ -32,104 +29,59 @@ export async function GET(request: Request) {
     const completed = searchParams.get('completed')
 
     const where: any = {}
+    if (leadId) where.leadId = leadId
+    if (customerId) where.customerId = customerId
+    if (type) where.type = type
+    if (completed !== null) where.completed = completed === 'true'
 
-    if (leadId) {
-      where.leadId = leadId
-    }
-
-    if (customerId) {
-      where.customerId = customerId
-    }
-
-    if (type) {
-      where.type = type
-    }
-
-    if (completed !== null) {
-      where.completed = completed === 'true'
-    }
-
-    const activities = await prisma.activity.findMany({
-      where,
-      include: {
-        createdBy: {
-          select: {
-            id: true,
-            name: true,
-          },
+    const activities = await withTenantRead(tenantId, async (prisma) => {
+      return await prisma.activity.findMany({
+        where,
+        include: {
+          createdBy: { select: { id: true, name: true } },
+          lead: { select: { id: true, name: true } },
+          customer: { select: { id: true, name: true } },
         },
-        lead: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-        customer: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-      },
-      orderBy: { createdAt: 'desc' },
+        orderBy: { createdAt: 'desc' },
+      })
     })
 
     return NextResponse.json(activities)
-  } catch (error) {
-    console.error('Error fetching activities:', error)
-    return NextResponse.json(
-      { error: 'Failed to fetch activities' },
-      { status: 500 }
-    )
+  } catch (error: any) {
+    logger.error('Error fetching activities', error)
+    return NextResponse.json({ error: 'Failed to fetch activities' }, { status: 500 })
   }
 }
 
 export async function POST(request: Request) {
   const session = await requirePermission(request as any, PERMISSIONS.MANAGE_CRM)
-  
-  if (session instanceof NextResponse) {
-    return session
-  }
+  if (session instanceof NextResponse) return session
 
-  // Obtener el cliente Prisma correcto (tenant o master según el usuario)
-  const prisma = await getPrismaForRequest(request, session)
+  const tenantId = getTenantIdFromSession(session)
+  const userId = (session.user as any).id
 
   try {
     const body = await request.json()
     const data = createActivitySchema.parse(body)
 
-    const activity = await prisma.activity.create({
-      data: {
-        ...data,
-        leadId: data.leadId || null,
-        customerId: data.customerId || null,
-        description: data.description || null,
-        dueDate: data.dueDate ? new Date(data.dueDate) : null,
-        createdById: (session.user as any).id,
-      },
-      include: {
-        createdBy: {
-          select: {
-            id: true,
-            name: true,
-          },
+    const activity = await withTenantTx(tenantId, async (prisma) => {
+      return await prisma.activity.create({
+        data: {
+          ...data,
+          leadId: data.leadId || null,
+          customerId: data.customerId || null,
+          description: data.description || null,
+          dueDate: data.dueDate ? new Date(data.dueDate) : null,
+          createdById: userId,
         },
-      },
+        include: { createdBy: { select: { id: true, name: true } } },
+      })
     })
 
     return NextResponse.json(activity, { status: 201 })
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { error: 'Validation error', details: error.errors },
-        { status: 400 }
-      )
-    }
-    console.error('Error creating activity:', error)
-    return NextResponse.json(
-      { error: 'Failed to create activity' },
-      { status: 500 }
-    )
+  } catch (error: any) {
+    if (error instanceof z.ZodError) return NextResponse.json({ error: 'Validation error', details: error.errors }, { status: 400 })
+    logger.error('Error creating activity', error)
+    return NextResponse.json({ error: 'Failed to create activity' }, { status: 500 })
   }
 }
-

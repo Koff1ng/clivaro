@@ -115,24 +115,42 @@ async function initializePostgresTenant(databaseUrl: string, tenantId: string, t
     await syncClient.end()
   }
 
-  // Step 2.6: Sync SoftRestaurant / Professional features
-  console.log(`[STEP 2.6/4] Sincronizando campos SoftRestaurant en "${schemaName}"...`)
+  // Step 2.6: Sync SoftRestaurant / Professional / AI features
+  console.log(`[STEP 2.6/4] Sincronizando campos avanzados en "${schemaName}"...`)
   const srClient = new Client({ connectionString: tenantSchemaUrl })
   try {
     await srClient.connect()
     await srClient.query(`SET search_path TO "${schemaName}"`)
+
+    // Product columns
     await srClient.query(`
       ALTER TABLE "Product" 
-      ADD COLUMN IF NOT EXISTS "lastCost" DOUBLE PRECISION,
+      ADD COLUMN IF NOT EXISTS "barcode" TEXT,
+      ADD COLUMN IF NOT EXISTS "brand" TEXT,
+      ADD COLUMN IF NOT EXISTS "category" TEXT,
+      ADD COLUMN IF NOT EXISTS "unitOfMeasure" TEXT NOT NULL DEFAULT 'UNIT',
+      ADD COLUMN IF NOT EXISTS "productType" TEXT NOT NULL DEFAULT 'RETAIL',
+      ADD COLUMN IF NOT EXISTS "enableRecipeConsumption" BOOLEAN NOT NULL DEFAULT false,
+      ADD COLUMN IF NOT EXISTS "cost" DOUBLE PRECISION NOT NULL DEFAULT 0,
+      ADD COLUMN IF NOT EXISTS "lastCost" DOUBLE PRECISION DEFAULT 0,
+      ADD COLUMN IF NOT EXISTS "averageCost" DOUBLE PRECISION DEFAULT 0,
       ADD COLUMN IF NOT EXISTS "percentageMerma" DOUBLE PRECISION DEFAULT 0,
-      ADD COLUMN IF NOT EXISTS "stockAlertEnabled" BOOLEAN NOT NULL DEFAULT true;
+      ADD COLUMN IF NOT EXISTS "stockAlertEnabled" BOOLEAN NOT NULL DEFAULT true,
+      ADD COLUMN IF NOT EXISTS "trackStock" BOOLEAN NOT NULL DEFAULT true,
+      ADD COLUMN IF NOT EXISTS "active" BOOLEAN NOT NULL DEFAULT true,
+      ADD COLUMN IF NOT EXISTS "description" TEXT,
+      ADD COLUMN IF NOT EXISTS "createdById" TEXT,
+      ADD COLUMN IF NOT EXISTS "updatedById" TEXT;
+    `)
 
+    // ProductVariant columns
+    await srClient.query(`
       ALTER TABLE "ProductVariant" 
       ADD COLUMN IF NOT EXISTS "lastCost" DOUBLE PRECISION DEFAULT 0,
       ADD COLUMN IF NOT EXISTS "averageCost" DOUBLE PRECISION DEFAULT 0,
       ADD COLUMN IF NOT EXISTS "yieldFactor" DOUBLE PRECISION NOT NULL DEFAULT 1;
     `)
-    console.log('[STEP 2.6/4] ✓ Campos SoftRestaurant sincronizados')
+    console.log('[STEP 2.6/4] ✓ Campos sincronizados')
   } catch (srErr: any) {
     console.warn(`[TENANT INIT] Warning during SR sync: ${srErr.message}`)
   } finally {

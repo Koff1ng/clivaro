@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requireAnyPermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
-import { withTenantTx } from '@/lib/tenancy'
+import { withTenantRead } from '@/lib/tenancy'
 import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
@@ -14,37 +14,34 @@ export async function GET(request: Request) {
   }
 
   const tenantId = (session.user as any).tenantId
-  const isSuperAdmin = (session.user as any).isSuperAdmin
-
-  if (isSuperAdmin || !tenantId) {
-    return NextResponse.json([])
+  if (!tenantId) {
+    return NextResponse.json([], { status: 403 })
   }
 
   try {
-    const topClients = await withTenantTx(tenantId, async (tx: any) => {
-      return tx.customer.findMany({
+    const result = await withTenantRead(tenantId, async (prisma) => {
+      const topClients = await prisma.customer.findMany({
         include: {
           invoices: {
-            select: { total: true, status: true },
+            where: { status: { in: ['PAGADA', 'PAID'] } },
+            select: { total: true },
           },
         },
         take: 10,
       })
+
+      return topClients
+        .map((customer: any) => ({
+          id: customer.id,
+          name: customer.name,
+          total: customer.invoices.reduce((sum: number, inv: any) => sum + inv.total, 0),
+        }))
+        .filter((c: any) => c.total > 0)
+        .sort((a: any, b: any) => b.total - a.total)
+        .slice(0, 5)
     })
 
-    const clientsWithTotal = (topClients as any[])
-      .map((customer: any) => ({
-        id: customer.id,
-        name: customer.name,
-        total: customer.invoices
-          .filter((inv: any) => inv.status === 'PAGADA' || inv.status === 'PAID')
-          .reduce((sum: number, inv: any) => sum + inv.total, 0),
-      }))
-      .filter((c: any) => c.total > 0)
-      .sort((a: any, b: any) => b.total - a.total)
-      .slice(0, 5)
-
-    return NextResponse.json(clientsWithTotal)
+    return NextResponse.json(result)
   } catch (error: any) {
     logger.error('Error fetching top clients', error, {
       endpoint: '/api/dashboard/top-clients',

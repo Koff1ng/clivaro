@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requirePermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
-import { getPrismaForRequest } from '@/lib/get-tenant-prisma'
+import { withTenantRead, withTenantTx, getTenantIdFromSession } from '@/lib/tenancy'
 import { z } from 'zod'
 import { parseDateOnlyToDate } from '@/lib/date-only'
 import { toDecimal } from '@/lib/numbers'
@@ -27,72 +27,64 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   const session = await requirePermission(request as any, PERMISSIONS.MANAGE_PURCHASES)
+  if (session instanceof NextResponse) return session
 
-  if (session instanceof NextResponse) {
-    return session
-  }
-
-  // Obtener el cliente Prisma correcto (tenant o master según el usuario)
-  const prisma = await getPrismaForRequest(request, session)
+  const tenantId = getTenantIdFromSession(session)
 
   try {
-    const order = await prisma.purchaseOrder.findUnique({
-      where: { id: params.id },
-      include: {
-        supplier: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            phone: true,
-            address: true,
-            taxId: true,
-          },
-        },
-        items: {
-          include: {
-            product: {
-              select: {
-                id: true,
-                name: true,
-                sku: true,
-                price: true,
-              },
-            },
-            variant: {
-              select: {
-                id: true,
-                name: true,
-              },
+    const order = await withTenantRead(tenantId, async (prisma) => {
+      return await prisma.purchaseOrder.findUnique({
+        where: { id: params.id },
+        include: {
+          supplier: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              phone: true,
+              address: true,
+              taxId: true,
             },
           },
-        },
-        goodsReceipts: {
-          select: {
-            id: true,
-            number: true,
-            receivedAt: true,
-            createdAt: true,
+          items: {
+            include: {
+              product: {
+                select: {
+                  id: true,
+                  name: true,
+                  sku: true,
+                  price: true,
+                },
+              },
+              variant: {
+                select: {
+                  id: true,
+                  name: true,
+                },
+              },
+            },
           },
-          orderBy: { createdAt: 'desc' },
+          goodsReceipts: {
+            select: {
+              id: true,
+              number: true,
+              receivedAt: true,
+              createdAt: true,
+            },
+            orderBy: { createdAt: 'desc' },
+          },
         },
-      },
+      })
     })
 
     if (!order) {
-      return NextResponse.json(
-        { error: 'Purchase order not found' },
-        { status: 404 }
-      )
+      return NextResponse.json({ error: 'Purchase order not found' }, { status: 404 })
     }
 
     return NextResponse.json(order)
   } catch (error) {
     console.error('Error fetching purchase order:', error)
-    return NextResponse.json(
-      { error: 'Failed to fetch purchase order' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Failed to fetch purchase order' }, { status: 500 })
   }
 }
 
@@ -101,198 +93,136 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   const session = await requirePermission(request as any, PERMISSIONS.MANAGE_PURCHASES)
+  if (session instanceof NextResponse) return session
 
-  if (session instanceof NextResponse) {
-    return session
-  }
-
-  // Obtener el cliente Prisma correcto (tenant o master según el usuario)
-  const prisma = await getPrismaForRequest(request, session)
+  const tenantId = getTenantIdFromSession(session)
+  const user = session.user as any
 
   try {
     const body = await request.json()
     const data = updatePurchaseOrderSchema.parse(body)
 
-    // Check if order exists and can be edited
-    const existingOrder = await prisma.purchaseOrder.findUnique({
-      where: { id: params.id },
-      include: {
-        goodsReceipts: true,
-      },
-    })
+    const resultOrder = await withTenantTx(tenantId, async (prisma) => {
+      const existingOrder = await prisma.purchaseOrder.findUnique({
+        where: { id: params.id },
+        include: { goodsReceipts: true },
+      })
 
-    if (!existingOrder) {
-      return NextResponse.json(
-        { error: 'Purchase order not found' },
-        { status: 404 }
-      )
-    }
-
-    if (existingOrder.status === 'RECEIVED' && existingOrder.goodsReceipts.length > 0) {
-      return NextResponse.json(
-        { error: 'Cannot edit a received order with receipts' },
-        { status: 400 }
-      )
-    }
-
-    // If items are being updated, recalculate totals
-    let updateData: any = {
-      notes: data.notes !== undefined ? (data.notes || null) : undefined,
-      updatedById: (session.user as any).id,
-    }
-
-    if (data.status) {
-      updateData.status = data.status
-    }
-
-    if (data.supplierId) {
-      updateData.supplierId = data.supplierId
-    }
-
-    if (data.expectedDate !== undefined) {
-      updateData.expectedDate = parseDateOnlyToDate(data.expectedDate)
-    }
-
-    if (data.items && data.items.length > 0) {
-      // Recalculate totals
-      let subtotal = 0
-      const items: Array<{
-        productId: string
-        variantId: string | null
-        quantity: number
-        unitCost: number
-        taxRate: number
-        subtotal: number
-      }> = []
-
-      for (const item of data.items) {
-        const itemSubtotal = toDecimal(item.quantity) * toDecimal(item.unitCost)
-        const itemTax = itemSubtotal * (toDecimal(item.taxRate) / 100)
-        const itemTotal = itemSubtotal + itemTax
-
-        subtotal += itemSubtotal
-        items.push({
-          productId: item.productId,
-          variantId: item.variantId || null,
-          quantity: toDecimal(item.quantity),
-          unitCost: toDecimal(item.unitCost),
-          taxRate: toDecimal(item.taxRate),
-          subtotal: itemTotal,
-        })
+      if (!existingOrder) {
+        throw new Error('Purchase order not found')
       }
 
-      const discount = toDecimal(data.discount || 0)
-      const subtotalAfterDiscount = subtotal - discount
-      const tax = items.reduce((sum, item) => {
-        const itemSubtotal = item.quantity * item.unitCost
-        return sum + (itemSubtotal * item.taxRate / 100)
-      }, 0)
-      const total = subtotalAfterDiscount + tax
+      if (existingOrder.status === 'RECEIVED' && existingOrder.goodsReceipts.length > 0) {
+        throw new Error('Cannot edit a received order with receipts')
+      }
 
-      updateData.subtotal = subtotalAfterDiscount
-      updateData.discount = discount
-      updateData.tax = tax
-      updateData.total = total
+      let updateData: any = {
+        notes: data.notes !== undefined ? (data.notes || null) : undefined,
+        updatedById: user.id,
+      }
 
-      // Use transaction to update items
-      await prisma.$transaction(async (tx) => {
-        // Delete existing items
-        await tx.purchaseOrderItem.deleteMany({
-          where: { purchaseOrderId: params.id },
+      if (data.status) updateData.status = data.status
+      if (data.supplierId) updateData.supplierId = data.supplierId
+      if (data.expectedDate !== undefined) updateData.expectedDate = parseDateOnlyToDate(data.expectedDate)
+
+      if (data.items && data.items.length > 0) {
+        let subtotal = 0
+        const itemsToCreate: Array<any> = []
+
+        for (const item of data.items) {
+          const itemSubtotal = toDecimal(item.quantity) * toDecimal(item.unitCost)
+          const itemTax = itemSubtotal * (toDecimal(item.taxRate) / 100)
+          const itemTotal = itemSubtotal + itemTax
+
+          subtotal += itemSubtotal
+          itemsToCreate.push({
+            productId: item.productId,
+            variantId: item.variantId || null,
+            quantity: toDecimal(item.quantity),
+            unitCost: toDecimal(item.unitCost),
+            taxRate: toDecimal(item.taxRate),
+            subtotal: itemTotal,
+            purchaseOrderId: params.id,
+          })
+        }
+
+        const discount = toDecimal(data.discount || 0)
+        const subtotalAfterDiscount = subtotal - discount
+        const tax = itemsToCreate.reduce((sum, item) => sum + (item.quantity * item.unitCost * item.taxRate / 100), 0)
+        const total = subtotalAfterDiscount + tax
+
+        updateData.subtotal = subtotalAfterDiscount
+        updateData.discount = discount
+        updateData.tax = tax
+        updateData.total = total
+
+        await prisma.purchaseOrderItem.deleteMany({ where: { purchaseOrderId: params.id } })
+        await prisma.purchaseOrder.update({ where: { id: params.id }, data: updateData })
+        await prisma.purchaseOrderItem.createMany({ data: itemsToCreate })
+
+        await logActivity({
+          prisma,
+          type: 'PURCHASE_ORDER_UPDATE',
+          subject: `Orden de Compra actualizada: ${params.id}`,
+          userId: user.id,
+          metadata: { orderId: params.id, updates: { items: data.items.length, status: data.status, notes: data.notes } }
         })
 
-        // Update order with new totals
-        await tx.purchaseOrder.update({
+        return await prisma.purchaseOrder.findUnique({
+          where: { id: params.id },
+          include: { supplier: true, items: { include: { product: true } } },
+        })
+      } else {
+        if (data.discount !== undefined) {
+          const orderWithItems = await prisma.purchaseOrder.findUnique({
+            where: { id: params.id },
+            include: { items: true },
+          })
+
+          if (orderWithItems) {
+            let subtotal = orderWithItems.items.reduce((sum, item) => sum + (item.quantity * item.unitCost), 0)
+            const discount = data.discount || 0
+            const subtotalAfterDiscount = subtotal - discount
+            const tax = orderWithItems.items.reduce((sum, item) => sum + (item.quantity * item.unitCost * item.taxRate / 100), 0)
+            const total = subtotalAfterDiscount + tax
+
+            updateData.subtotal = subtotalAfterDiscount
+            updateData.discount = discount
+            updateData.tax = tax
+            updateData.total = total
+          }
+        }
+
+        const order = await prisma.purchaseOrder.update({
           where: { id: params.id },
           data: updateData,
         })
 
-        // Create new items
-        await tx.purchaseOrderItem.createMany({
-          data: items.map(item => ({
-            ...item,
-            purchaseOrderId: params.id,
-          })),
-        })
-      })
-
-      // Fetch updated order
-      const updatedOrder = await prisma.purchaseOrder.findUnique({
-        where: { id: params.id },
-        include: {
-          supplier: true,
-          items: {
-            include: {
-              product: true,
-            },
-          },
-        },
-      })
-
-      // Audit Log for Full Update
-      await logActivity({
-        prisma,
-        type: 'PURCHASE_ORDER_UPDATE',
-        subject: `Orden de Compra actualizada: ${params.id}`,
-        userId: (session.user as any).id,
-        metadata: { orderId: params.id, updates: { items: data.items?.length, status: data.status, notes: data.notes } }
-      })
-
-      return NextResponse.json(updatedOrder)
-    } else {
-      // Just update basic fields
-      if (data.discount !== undefined) {
-        // Recalculate totals with existing items
-        const orderWithItems = await prisma.purchaseOrder.findUnique({
-          where: { id: params.id },
-          include: { items: true },
+        await logActivity({
+          prisma,
+          type: 'PURCHASE_ORDER_UPDATE',
+          subject: `Orden de Compra actualizada: ${params.id}`,
+          userId: user.id,
+          metadata: { orderId: params.id, updates: { discount: data.discount, status: data.status, notes: data.notes } }
         })
 
-        if (orderWithItems) {
-          let subtotal = orderWithItems.items.reduce((sum, item) => sum + (item.quantity * item.unitCost), 0)
-          const discount = data.discount || 0
-          const subtotalAfterDiscount = subtotal - discount
-          const tax = orderWithItems.items.reduce((sum, item) => {
-            const itemSubtotal = item.quantity * item.unitCost
-            return sum + (itemSubtotal * item.taxRate / 100)
-          }, 0)
-          const total = subtotalAfterDiscount + tax
-
-          updateData.subtotal = subtotalAfterDiscount
-          updateData.discount = discount
-          updateData.tax = tax
-          updateData.total = total
-        }
+        return order
       }
+    })
 
-      const order = await prisma.purchaseOrder.update({
-        where: { id: params.id },
-        data: updateData,
-      })
-
-      // Audit Log for Partial Update
-      await logActivity({
-        prisma,
-        type: 'PURCHASE_ORDER_UPDATE',
-        subject: `Orden de Compra actualizada: ${params.id}`,
-        userId: (session.user as any).id,
-        metadata: { orderId: params.id, updates: { discount: data.discount, status: data.status, notes: data.notes } }
-      })
-
-      return NextResponse.json(order)
-    }
-  } catch (error) {
+    return NextResponse.json(resultOrder)
+  } catch (error: any) {
     if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { error: 'Validation error', details: error.errors },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'Validation error', details: error.errors }, { status: 400 })
+    }
+    if (error.message === 'Purchase order not found') {
+      return NextResponse.json({ error: error.message }, { status: 404 })
+    }
+    if (error.message === 'Cannot edit a received order with receipts') {
+      return NextResponse.json({ error: error.message }, { status: 400 })
     }
     console.error('Error updating purchase order:', error)
-    return NextResponse.json(
-      { error: 'Failed to update purchase order' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Failed to update purchase order' }, { status: 500 })
   }
 }
 
@@ -301,53 +231,38 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   const session = await requirePermission(request as any, PERMISSIONS.MANAGE_PURCHASES)
+  if (session instanceof NextResponse) return session
 
-  if (session instanceof NextResponse) {
-    return session
-  }
-
-  // Obtener el cliente Prisma correcto (tenant o master según el usuario)
-  const prisma = await getPrismaForRequest(request, session)
+  const tenantId = getTenantIdFromSession(session)
+  const user = session.user as any
 
   try {
-    const order = await prisma.purchaseOrder.findUnique({
-      where: { id: params.id },
-    })
+    await withTenantTx(tenantId, async (prisma) => {
+      const order = await prisma.purchaseOrder.findUnique({ where: { id: params.id } })
+      if (!order) throw new Error('Purchase order not found')
+      if (order.status === 'RECEIVED') throw new Error('Cannot delete a received order')
 
-    if (!order) {
-      return NextResponse.json(
-        { error: 'Purchase order not found' },
-        { status: 404 }
-      )
-    }
+      await prisma.purchaseOrder.delete({ where: { id: params.id } })
 
-    if (order.status === 'RECEIVED') {
-      return NextResponse.json(
-        { error: 'Cannot delete a received order' },
-        { status: 400 }
-      )
-    }
-
-    await prisma.purchaseOrder.delete({
-      where: { id: params.id },
-    })
-
-    // Audit Log
-    await logActivity({
-      prisma,
-      type: 'PURCHASE_ORDER_DELETE',
-      subject: `Orden de Compra eliminada: ${order.number}`,
-      userId: (session.user as any).id,
-      metadata: { orderId: params.id, orderNumber: order.number }
+      await logActivity({
+        prisma,
+        type: 'PURCHASE_ORDER_DELETE',
+        subject: `Orden de Compra eliminada: ${order.number}`,
+        userId: user.id,
+        metadata: { orderId: params.id, orderNumber: order.number }
+      })
     })
 
     return NextResponse.json({ success: true })
-  } catch (error) {
+  } catch (error: any) {
+    if (error.message === 'Purchase order not found') {
+      return NextResponse.json({ error: error.message }, { status: 404 })
+    }
+    if (error.message === 'Cannot delete a received order') {
+      return NextResponse.json({ error: error.message }, { status: 400 })
+    }
     console.error('Error deleting purchase order:', error)
-    return NextResponse.json(
-      { error: 'Failed to delete purchase order' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Failed to delete purchase order' }, { status: 500 })
   }
 }
 

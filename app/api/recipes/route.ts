@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requirePermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
-import { getPrismaForRequest } from '@/lib/get-tenant-prisma'
+import { withTenantRead, withTenantTx, getTenantIdFromSession } from '@/lib/tenancy'
 import { calculateRecipeCost } from '@/lib/recipes'
 import { z } from 'zod'
 
@@ -19,24 +19,28 @@ const recipeSchema = z.object({
 export async function GET(request: Request) {
     const session = await requirePermission(request as any, PERMISSIONS.MANAGE_PRODUCTS)
     if (session instanceof NextResponse) return session
-    const prisma = await getPrismaForRequest(request, session)
+
+    const tenantId = getTenantIdFromSession(session)
 
     try {
         const { searchParams } = new URL(request.url)
         const productId = searchParams.get('productId')
         if (!productId) return NextResponse.json({ error: 'ProductId is required' }, { status: 400 })
 
-        const recipe = await prisma.recipe.findUnique({
-            where: { productId },
-            include: {
-                items: {
-                    include: {
-                        ingredient: true,
-                        unit: true
+        const recipe = await withTenantRead(tenantId, async (prisma) => {
+            return await prisma.recipe.findUnique({
+                where: { productId },
+                include: {
+                    items: {
+                        include: {
+                            ingredient: true,
+                            unit: true
+                        }
                     }
                 }
-            }
+            })
         })
+
         return NextResponse.json(recipe)
     } catch (error) {
         return NextResponse.json({ error: 'Failed to fetch recipe' }, { status: 500 })
@@ -46,14 +50,15 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
     const session = await requirePermission(request as any, PERMISSIONS.MANAGE_PRODUCTS)
     if (session instanceof NextResponse) return session
-    const prisma = await getPrismaForRequest(request, session)
+
+    const tenantId = getTenantIdFromSession(session)
 
     try {
         const body = await request.json()
         const data = recipeSchema.parse(body)
 
         // Use transaction for Upsert Recipe + Replace Items + Calculate Cost
-        const result = await prisma.$transaction(async (tx: any) => {
+        const result = await withTenantTx(tenantId, async (tx: any) => {
             // 1. Upsert Recipe
             const recipe = await tx.recipe.upsert({
                 where: { productId: data.productId },

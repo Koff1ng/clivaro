@@ -2,28 +2,33 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { requirePermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
-import { getPrismaForRequest } from '@/lib/get-tenant-prisma'
+import { withTenantTx, getTenantIdFromSession } from '@/lib/tenancy'
 import { logger } from '@/lib/logger'
 import { logActivity } from '@/lib/activity'
 import { createCreditNoteWithAccounting } from '@/lib/credit-note-service'
 
 const createReturnSchema = z.object({
-  reason: z.string().min(3),
-  warehouseId: z.string().min(1),
-  // Compat (modo simple)
-  refundMethod: z.enum(['CASH', 'CARD', 'TRANSFER']).optional(),
-  // Nuevo: reembolso mixto
+  reason: z.string().min(3, "El motivo debe tener al menos 3 caracteres"),
+  warehouseId: z.string().min(1, "El almacén de reingreso es requerido"),
+  // TODO: migrar a paymentMethodId dinámico igual que POS sale
+  refundMethod: z.string().optional().nullable(),
   refundPayments: z.array(z.object({
-    method: z.enum(['CASH', 'CARD', 'TRANSFER']),
-    amount: z.number().min(0.01),
+    // TODO: migrar a paymentMethodId dinámico igual que POS sale
+    method: z.string().min(1, "El método es requerido"),
+    amount: z.number().min(0.01, "El monto debe ser mayor a 0"),
     reference: z.string().optional().nullable(),
     notes: z.string().optional().nullable(),
   })).min(1).optional(),
   items: z.array(z.object({
-    invoiceItemId: z.string().min(1),
-    quantity: z.number().positive(),
-  })).min(1),
+    invoiceItemId: z.string().min(1, "ID de ítem requerido"),
+    quantity: z.number().positive("La cantidad debe ser mayor a 0"),
+  })).min(1, "Debe devolver al menos un ítem"),
+}).refine(data => !!(data.refundMethod || (data.refundPayments && data.refundPayments.length > 0)), {
+  message: "Debe indicar al menos un método de reembolso (refundMethod o refundPayments)",
+  path: ["refundPayments"]
 })
+
+type CreateReturnInput = z.infer<typeof createReturnSchema>
 
 export async function POST(
   request: Request,
@@ -38,61 +43,57 @@ export async function POST(
   ])
   if (session instanceof NextResponse) return session
 
-  const prisma = await getPrismaForRequest(request, session)
+  const tenantId = getTenantIdFromSession(session)
+  const userId = (session.user as any).id as string
 
   try {
     const body = await request.json()
-    const data = createReturnSchema.parse(body)
+    const parseResult = createReturnSchema.safeParse(body)
+
+    if (!parseResult.success) {
+      return NextResponse.json(
+        { error: 'Error de validación', details: parseResult.error.flatten() },
+        { status: 400 }
+      )
+    }
+
+    const data: CreateReturnInput = parseResult.data
 
     if (!data.refundPayments?.length && !data.refundMethod) {
       return NextResponse.json({ error: 'Debe indicar refundMethod o refundPayments' }, { status: 400 })
     }
 
-    const invoice = await prisma.invoice.findUnique({
-      where: { id: invoiceId },
-      include: {
-        items: {
-          include: {
-            product: { select: { name: true } }
-          }
+    const result = await withTenantTx(tenantId, async (prisma) => {
+      const invoice = await prisma.invoice.findUnique({
+        where: { id: invoiceId },
+        include: {
+          items: { include: { product: { select: { name: true } } } },
+          customer: true
         },
-        customer: true
-      },
-    })
+      })
 
-    if (!invoice) return NextResponse.json({ error: 'Factura no encontrada' }, { status: 404 })
+      if (!invoice) throw new Error('Factura no encontrada')
+      if (['ANULADA', 'VOID'].includes(invoice.status)) throw new Error('No se puede devolver una factura anulada')
 
-    if (invoice.status === 'ANULADA' || invoice.status === 'VOID') {
-      return NextResponse.json({ error: 'No se puede devolver una factura anulada' }, { status: 400 })
-    }
+      if (['SENT', 'ACCEPTED'].includes(invoice.electronicStatus || '')) {
+        throw new Error('Factura enviada/aceptada por DIAN. Para devoluciones debes emitir Nota Crédito.')
+      }
 
-    if (invoice.electronicStatus === 'SENT' || invoice.electronicStatus === 'ACCEPTED') {
-      return NextResponse.json(
-        { error: 'Factura enviada/aceptada por DIAN. Para devoluciones debes emitir Nota Crédito.' },
-        { status: 400 }
-      )
-    }
-
-    const userId = (session.user as any).id as string
-
-    const result = await prisma.$transaction(async (tx) => {
       // Validar turno para reembolso en efectivo
-      let openShift: any = null
       const cashRefund = data.refundPayments?.reduce((sum, p) => sum + (p.method === 'CASH' ? p.amount : 0), 0)
         ?? (data.refundMethod === 'CASH' ? 1 : 0)
 
-      if (cashRefund) {
-        openShift = await tx.cashShift.findFirst({
+      let openShift: any = null
+      if (cashRefund > 0) {
+        openShift = await prisma.cashShift.findFirst({
           where: { userId, status: 'OPEN' },
         })
-        if (!openShift) {
-          throw new Error('Debes tener un turno de caja abierto para registrar devolución en efectivo.')
-        }
+        if (!openShift) throw new Error('Debes tener un turno de caja abierto para registrar devolución en efectivo.')
       }
 
-      // Calcular cuánto ya se devolvió por invoiceItem
+      // Calcular cuánto ya se devolvió
       const alreadyReturnedByItem = new Map<string, number>()
-      const existingReturns = await tx.return.findMany({
+      const existingReturns = await prisma.return.findMany({
         where: { invoiceId: invoice.id },
         include: { items: true },
       })
@@ -103,26 +104,19 @@ export async function POST(
       }
 
       const invoiceItemsById = new Map(invoice.items.map((it: any) => [it.id, it]))
-
-      // Validar cantidades y calcular totales
       let returnTotal = 0
-      const returnItemsToCreate: Array<{ invoiceItemId: string; quantity: number; total: number; productId: string; variantId: string | null }> = []
+      const returnItemsToCreate: any[] = []
 
       for (const reqItem of data.items) {
         const invItem = invoiceItemsById.get(reqItem.invoiceItemId)
-        if (!invItem) {
-          throw new Error('Item de factura inválido')
-        }
+        if (!invItem) throw new Error('Item de factura inválido')
+
         const already = alreadyReturnedByItem.get(invItem.id) || 0
         const available = invItem.quantity - already
-        if (reqItem.quantity > available + 0.0001) {
-          throw new Error(`Cantidad a devolver excede lo disponible. Disponible: ${available}`)
-        }
+        if (reqItem.quantity > available + 0.0001) throw new Error(`Cantidad a devolver excede lo disponible. Disponible: ${available}`)
 
         const unitNet = invItem.unitPrice * (1 - (invItem.discount || 0) / 100)
-        const lineSubtotal = unitNet * reqItem.quantity
-        const lineTax = lineSubtotal * ((invItem.taxRate || 0) / 100)
-        const lineTotal = lineSubtotal + lineTax
+        const lineTotal = (unitNet * (1 + (invItem.taxRate || 0) / 100)) * reqItem.quantity
 
         returnTotal += lineTotal
         returnItemsToCreate.push({
@@ -134,7 +128,6 @@ export async function POST(
         })
       }
 
-      // Validar reembolso mixto (si aplica)
       const refundLines = data.refundPayments?.map((p) => ({
         method: p.method,
         amount: p.amount,
@@ -144,13 +137,10 @@ export async function POST(
 
       if (refundLines?.length) {
         const paid = refundLines.reduce((sum, p) => sum + p.amount, 0)
-        if (Math.abs(paid - returnTotal) > 0.01) {
-          throw new Error(`El reembolso debe ser exactamente igual al total. Total: ${returnTotal}, Reembolso: ${paid}`)
-        }
+        if (Math.abs(paid - returnTotal) > 0.01) throw new Error(`El reembolso debe ser exactamente igual al total.`)
       }
 
-      // Crear Return + items + payment(s)
-      const createdReturn = await tx.return.create({
+      const createdReturn = await prisma.return.create({
         data: {
           invoiceId: invoice.id,
           status: 'COMPLETED',
@@ -186,9 +176,9 @@ export async function POST(
         include: { items: true, payments: true },
       })
 
-      // Stock IN por cada item devuelto
+      // Stock and Cash updates
       for (const it of returnItemsToCreate) {
-        await tx.stockMovement.create({
+        await prisma.stockMovement.create({
           data: {
             warehouseId: data.warehouseId,
             productId: it.productId,
@@ -201,21 +191,17 @@ export async function POST(
           },
         })
 
-        const existingStock = await tx.stockLevel.findFirst({
-          where: {
-            warehouseId: data.warehouseId,
-            productId: it.productId,
-            variantId: it.variantId,
-          },
+        const existingStock = await prisma.stockLevel.findFirst({
+          where: { warehouseId: data.warehouseId, productId: it.productId, variantId: it.variantId },
         })
 
         if (existingStock) {
-          await tx.stockLevel.update({
+          await prisma.stockLevel.update({
             where: { id: existingStock.id },
             data: { quantity: existingStock.quantity + it.quantity },
           })
         } else {
-          await tx.stockLevel.create({
+          await prisma.stockLevel.create({
             data: {
               warehouseId: data.warehouseId,
               productId: it.productId,
@@ -227,13 +213,12 @@ export async function POST(
         }
       }
 
-      // Si es reembolso en efectivo, registrar salida de caja y disminuir expectedCash
       const cashOut = refundLines?.length
         ? refundLines.filter(p => p.method === 'CASH').reduce((sum, p) => sum + p.amount, 0)
         : (data.refundMethod === 'CASH' ? returnTotal : 0)
 
       if (cashOut > 0 && openShift) {
-        await tx.cashMovement.create({
+        await prisma.cashMovement.create({
           data: {
             cashShiftId: openShift.id,
             type: 'OUT',
@@ -242,99 +227,70 @@ export async function POST(
             createdById: userId,
           },
         })
-        await tx.cashShift.update({
+        await prisma.cashShift.update({
           where: { id: openShift.id },
           data: { expectedCash: openShift.expectedCash - cashOut },
         })
       }
 
-      // Generate Credit Note for electronic invoices
       let creditNote: any = null
-      if (invoice.electronicStatus === 'SENT' || invoice.electronicStatus === 'ACCEPTED') {
-        try {
-          // Determine if it's total or partial return
-          const isTotal = returnItemsToCreate.length === invoice.items.length &&
-            returnItemsToCreate.every(ri => {
+      if (['SENT', 'ACCEPTED'].includes(invoice.electronicStatus || '')) {
+        const isTotal = returnItemsToCreate.length === invoice.items.length
+        const type = isTotal ? 'TOTAL' : 'PARTIAL'
+        const referenceCode = isTotal ? '20' : '22'
+        const affectedPeriod = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`
+
+        creditNote = await createCreditNoteWithAccounting(
+          prisma,
+          tenantId,
+          userId,
+          {
+            invoiceId: invoice.id,
+            returnId: createdReturn.id,
+            type,
+            referenceCode,
+            reason: data.reason,
+            affectedPeriod: referenceCode === '22' ? affectedPeriod : undefined,
+            items: returnItemsToCreate.map(ri => {
               const invItem = invoice.items.find((ii: any) => ii.id === ri.invoiceItemId)
-              return invItem && Math.abs(ri.quantity - invItem.quantity) < 0.0001
+              return {
+                invoiceItemId: ri.invoiceItemId,
+                productId: ri.productId,
+                variantId: ri.variantId,
+                description: invItem?.preparationNotes || `${invItem?.product?.name || 'Producto'}`,
+                quantity: ri.quantity,
+                unitPrice: invItem?.unitPrice || 0,
+                discount: invItem?.discount || 0,
+                taxRate: invItem?.taxRate || 0
+              }
             })
-
-          const type = isTotal ? 'TOTAL' : 'PARTIAL'
-          const referenceCode = isTotal ? '20' : '22'
-
-          // Get current period for code 22
-          const now = new Date()
-          const affectedPeriod = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
-
-          // Map return items to credit note items
-          const creditNoteItems = returnItemsToCreate.map(ri => {
-            const invItem = invoice.items.find((ii: any) => ii.id === ri.invoiceItemId)
-            return {
-              invoiceItemId: ri.invoiceItemId,
-              productId: ri.productId,
-              variantId: ri.variantId,
-              description: invItem?.preparationNotes || `${invItem?.product?.name || 'Producto'}`,
-              quantity: ri.quantity,
-              unitPrice: invItem?.unitPrice || 0,
-              discount: invItem?.discount || 0,
-              taxRate: invItem?.taxRate || 0
-            }
-          })
-
-          // Get tenantId from session since invoice doesn't have it directly
-          const tenantId = (session.user as any).tenantId || ''
-
-          creditNote = await createCreditNoteWithAccounting(
-            tx,
-            tenantId,
-            userId,
-            {
-              invoiceId: invoice.id,
-              returnId: createdReturn.id,
-              type,
-              referenceCode,
-              reason: data.reason,
-              affectedPeriod: referenceCode === '22' ? affectedPeriod : undefined,
-              items: creditNoteItems
-            },
-            {
-              reverseInventory: true,
-              warehouseId: data.warehouseId
-            }
-          )
-
-          // Note: creditNote relation will be automatically set via returnId in CreditNote
-        } catch (err: any) {
-          logger.error('Failed to create credit note for return', err, { invoiceId: invoice.id })
-          // Don't fail the whole return if credit note fails
-        }
+          },
+          { reverseInventory: true, warehouseId: data.warehouseId }
+        )
       }
 
-      // Anotar en la factura (sin tocar totales por ahora)
-      const stamp = new Date().toISOString()
-      const refundLabel = refundLines?.length
-        ? `mixto (${refundLines.map(p => `${p.method}:${p.amount}`).join(', ')})`
-        : String(data.refundMethod)
-      const notes = [invoice.notes || null, `DEVOLUCIÓN (${stamp}) ${returnTotal} via ${refundLabel}`, `Motivo: ${data.reason}`]
-        .filter(Boolean)
-        .join('\n')
-      await tx.invoice.update({
+      const nextNotes = [
+        invoice.notes || null,
+        `DEVOLUCIÓN (${new Date().toISOString()}) ${returnTotal}`,
+        `Motivo: ${data.reason}`
+      ].filter(Boolean).join('\n')
+
+      await prisma.invoice.update({
         where: { id: invoice.id },
-        data: { notes, updatedById: userId },
+        data: { notes: nextNotes, updatedById: userId },
+      })
+
+      await logActivity({
+        prisma,
+        type: 'INVOICE_RETURN',
+        subject: `Devolución de factura: ${invoice.number}`,
+        description: `Motivo: ${data.reason}. Total devuelto: ${returnTotal}.`,
+        userId,
+        customerId: invoice.customerId,
+        metadata: { invoiceId: invoice.id, returnId: createdReturn.id, total: returnTotal }
       })
 
       return { return: createdReturn, returnTotal, creditNote }
-    })
-
-    // Audit Log
-    await logActivity({
-      prisma,
-      type: 'INVOICE_RETURN',
-      subject: `Devolución de factura: ${invoice.number}`,
-      description: `Motivo: ${data.reason}. Total devuelto: ${result.returnTotal}. Items: ${data.items.length}.`,
-      userId: (session.user as any).id,
-      customerId: invoice.customerId,
-      metadata: { invoiceId: invoice.id, returnId: result.return.id, total: result.returnTotal }
     })
 
     return NextResponse.json(result, { status: 201 })
@@ -342,7 +298,7 @@ export async function POST(
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: 'Error de validación', details: error.errors }, { status: 400 })
     }
-    logger.error('Error creating return', error, { invoiceId, endpoint: '/api/invoices/[id]/returns' })
+    logger.error('Error creating return', error)
     return NextResponse.json({ error: error.message || 'Error al crear devolución' }, { status: 500 })
   }
 }

@@ -1,13 +1,13 @@
 import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/db'
+import { prisma as masterPrisma } from '@/lib/db'
 import { withTenantTx } from '@/lib/tenancy'
 
 export async function POST(req: Request) {
     try {
         const session = await getServerSession(authOptions)
-        if (!session || !session.user) {
+        if (!session?.user) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
         }
 
@@ -15,15 +15,15 @@ export async function POST(req: Request) {
         const tenantId = (session.user as any).tenantId
 
         if (!tenantId) {
-            await (prisma.user as any).update({
+            await masterPrisma.user.update({
                 where: { id: userId },
-                data: { marketingAccepted: false },
+                data: { marketingAccepted: false } as any,
             })
         } else {
             await withTenantTx(tenantId, async (tx) => {
-                await (tx.user as any).update({
+                await (tx as any).user.update({
                     where: { id: userId },
-                    data: { marketingAccepted: false },
+                    data: { marketingAccepted: false } as any,
                 })
             })
         }

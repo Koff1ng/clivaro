@@ -1,18 +1,17 @@
 import { NextResponse } from 'next/server'
 import { requirePermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
-import { getPrismaForRequest } from '@/lib/get-tenant-prisma'
+import { withTenantRead } from '@/lib/tenancy'
 import { startOfMonth, endOfMonth, eachDayOfInterval, format, setHours, setMinutes, setSeconds, setMilliseconds } from 'date-fns'
 
 export async function GET(request: Request) {
   const session = await requirePermission(request as any, PERMISSIONS.VIEW_REPORTS)
-  
+
   if (session instanceof NextResponse) {
     return session
   }
 
-  // Obtener el cliente Prisma correcto (tenant o master según el usuario)
-  const prisma = await getPrismaForRequest(request, session)
+  const tenantId = (session.user as any).tenantId
 
   try {
     const { searchParams } = new URL(request.url)
@@ -22,179 +21,170 @@ export async function GET(request: Request) {
     const monthStart = new Date(year, month - 1, 1)
     const monthEnd = endOfMonth(monthStart)
 
-    // Ventas del mes
-    const invoices = await prisma.invoice.findMany({
-      where: {
-        status: { in: ['PAGADA', 'PAID'] }, // Compatibilidad con estados antiguos y nuevos
-        issuedAt: {
-          gte: monthStart,
-          lte: monthEnd,
+    const result = await withTenantRead(tenantId, async (prisma) => {
+      // Ventas del mes
+      const invoices = await prisma.invoice.findMany({
+        where: {
+          status: { in: ['PAGADA', 'PAID'] },
+          issuedAt: {
+            gte: monthStart,
+            lte: monthEnd,
+          },
         },
-      },
-      select: {
-        id: true,
-        number: true,
-        subtotal: true,
-        discount: true,
-        tax: true,
-        total: true,
-        issuedAt: true,
-        createdAt: true,
-        status: true,
-        items: {
-          select: {
-            id: true,
-            productId: true,
-            quantity: true,
-            subtotal: true,
-            product: {
-              select: {
-                id: true,
-                name: true,
-                cost: true,
-                price: true,
+        select: {
+          id: true,
+          number: true,
+          subtotal: true,
+          discount: true,
+          tax: true,
+          total: true,
+          issuedAt: true,
+          createdAt: true,
+          status: true,
+          items: {
+            select: {
+              id: true,
+              productId: true,
+              quantity: true,
+              subtotal: true,
+              product: {
+                select: {
+                  id: true,
+                  name: true,
+                  cost: true,
+                  price: true,
+                },
               },
             },
           },
-        },
-        payments: {
-          select: {
-            method: true,
-            amount: true,
+          payments: {
+            select: {
+              method: true,
+              amount: true,
+            },
           },
         },
-      },
-    })
+      })
 
-    // Calcular totales
-    const totalSales = invoices.reduce((sum, inv) => sum + (inv.total || 0), 0)
-
-    // Calcular impuestos totales
-    const totalTaxes = invoices.reduce((sum, inv) => sum + (inv.tax || 0), 0)
-
-    // Calcular costos de productos vendidos (basado en el costo de cada producto vendido)
-    const costOfGoodsSold = invoices.reduce((sum, inv) => {
-      const invoiceCost = inv.items.reduce((itemSum, item) => {
-        const productCost = item.product?.cost || 0
-        return itemSum + (item.quantity * productCost)
+      // Calcular totales
+      const totalSales = invoices.reduce((sum, inv) => sum + (inv.total || 0), 0)
+      const totalTaxes = invoices.reduce((sum, inv) => sum + (inv.tax || 0), 0)
+      const costOfGoodsSold = invoices.reduce((sum, inv) => {
+        const invoiceCost = inv.items.reduce((itemSum, item) => {
+          const productCost = item.product?.cost || 0
+          return itemSum + (item.quantity * productCost)
+        }, 0)
+        return sum + invoiceCost
       }, 0)
-      return sum + invoiceCost
-    }, 0)
 
-    // Subtotal sin impuestos = subtotal de items - descuento de factura
-    // El subtotal de items ya incluye los descuentos de cada item
-    const subtotalWithoutTaxes = invoices.reduce((sum, inv) => {
-      const invoiceSubtotal = typeof inv.subtotal === 'number' ? inv.subtotal : 0
-      const invoiceDiscount = typeof inv.discount === 'number' ? inv.discount : 0
-      // Si no hay subtotal, calcularlo como total - tax
-      if (invoiceSubtotal === 0) {
-        const calculatedSubtotal = (inv.total || 0) - (inv.tax || 0)
-        return sum + calculatedSubtotal - invoiceDiscount
-      }
-      return sum + invoiceSubtotal - invoiceDiscount
-    }, 0)
-
-    // Ganancia bruta = (precio_venta_sin_impuestos - descuentos - costos)
-    // Fórmula: (subtotal - descuento_factura) - costo_de_mercancía_vendida
-    const grossProfit = subtotalWithoutTaxes - costOfGoodsSold
-
-    // Ganancia neta (por ahora igual a ganancia bruta; no incluye gastos operativos)
-    const totalProfit = grossProfit
-
-    const profitMargin = subtotalWithoutTaxes > 0 ? (grossProfit / subtotalWithoutTaxes) * 100 : 0
-
-    // Ventas por día
-    const daysInMonth = eachDayOfInterval({ start: monthStart, end: monthEnd })
-    const salesByDay = daysInMonth.map(day => {
-      const dayStart = setMilliseconds(setSeconds(setMinutes(setHours(new Date(day), 0), 0), 0), 0)
-      const dayEnd = setMilliseconds(setSeconds(setMinutes(setHours(new Date(day), 23), 59), 59), 999)
-      
-      const dayInvoices = invoices.filter(inv => {
-        const invDate = inv.issuedAt || inv.createdAt
-        return invDate >= dayStart && invDate <= dayEnd
-      })
-      
-      const daySales = dayInvoices.reduce((sum, inv) => sum + (inv.total || 0), 0)
-      
-      return {
-        date: format(day, 'yyyy-MM-dd'),
-        day: format(day, 'dd'),
-        sales: daySales,
-      }
-    })
-
-    // Ventas por método de pago
-    const salesByPaymentMethod = invoices.reduce((acc, inv) => {
-      inv.payments.forEach(payment => {
-        const method = payment.method
-        if (!acc[method]) {
-          acc[method] = 0
+      const subtotalWithoutTaxes = invoices.reduce((sum, inv) => {
+        const invoiceSubtotal = typeof inv.subtotal === 'number' ? inv.subtotal : 0
+        const invoiceDiscount = typeof inv.discount === 'number' ? inv.discount : 0
+        if (invoiceSubtotal === 0) {
+          const calculatedSubtotal = (inv.total || 0) - (inv.tax || 0)
+          return sum + calculatedSubtotal - invoiceDiscount
         }
-        acc[method] += payment.amount
-      })
-      return acc
-    }, {} as Record<string, number>)
+        return sum + invoiceSubtotal - invoiceDiscount
+      }, 0)
 
-    // Top productos vendidos
-    const productSales = invoices.reduce((acc, inv) => {
-      inv.items.forEach(item => {
-        const productId = item.productId
-        const productName = item.product?.name || 'Producto desconocido'
-        if (!acc[productId]) {
-          acc[productId] = {
-            id: productId,
-            name: productName,
-            quantity: 0,
-            revenue: 0,
-            cost: 0,
+      const grossProfit = subtotalWithoutTaxes - costOfGoodsSold
+      const totalProfit = grossProfit
+      const profitMargin = subtotalWithoutTaxes > 0 ? (grossProfit / subtotalWithoutTaxes) * 100 : 0
+
+      // Ventas por día
+      const daysInMonth = eachDayOfInterval({ start: monthStart, end: monthEnd })
+      const salesByDay = daysInMonth.map(day => {
+        const dayStart = setMilliseconds(setSeconds(setMinutes(setHours(new Date(day), 0), 0), 0), 0)
+        const dayEnd = setMilliseconds(setSeconds(setMinutes(setHours(new Date(day), 23), 59), 59), 999)
+
+        const dayInvoices = invoices.filter(inv => {
+          const invDate = inv.issuedAt || inv.createdAt
+          return invDate >= dayStart && invDate <= dayEnd
+        })
+
+        const daySales = dayInvoices.reduce((sum, inv) => sum + (inv.total || 0), 0)
+
+        return {
+          date: format(day, 'yyyy-MM-dd'),
+          day: format(day, 'dd'),
+          sales: daySales,
+        }
+      })
+
+      // Ventas por método de pago
+      const salesByPaymentMethod = invoices.reduce((acc, inv) => {
+        inv.payments.forEach(payment => {
+          const method = payment.method
+          if (!acc[method]) {
+            acc[method] = 0
           }
-        }
-        acc[productId].quantity += item.quantity
-        acc[productId].revenue += item.subtotal
-        acc[productId].cost += (item.product?.cost || 0) * item.quantity
-      })
-      return acc
-    }, {} as Record<string, any>)
+          acc[method] += payment.amount
+        })
+        return acc
+      }, {} as Record<string, number>)
 
-    const topProducts = Object.values(productSales)
-      .sort((a: any, b: any) => b.revenue - a.revenue)
-      .slice(0, 10)
-      .map((p: any) => ({
-        ...p,
-        profit: p.revenue - p.cost,
-      }))
+      // Top productos vendidos
+      const productSales = invoices.reduce((acc, inv) => {
+        inv.items.forEach(item => {
+          const productId = item.productId
+          const productName = item.product?.name || 'Producto desconocido'
+          if (!acc[productId]) {
+            acc[productId] = {
+              id: productId,
+              name: productName,
+              quantity: 0,
+              revenue: 0,
+              cost: 0,
+            }
+          }
+          acc[productId].quantity += item.quantity
+          acc[productId].revenue += item.subtotal
+          acc[productId].cost += (item.product?.cost || 0) * item.quantity
+        })
+        return acc
+      }, {} as Record<string, any>)
 
-    // Estadísticas adicionales
-    const totalInvoices = invoices.length
-    const averageInvoiceValue = totalInvoices > 0 ? totalSales / totalInvoices : 0
-    const totalItemsSold = invoices.reduce((sum, inv) => {
-      return sum + inv.items.reduce((itemSum, item) => itemSum + item.quantity, 0)
-    }, 0)
+      const topProducts = Object.values(productSales)
+        .sort((a: any, b: any) => b.revenue - a.revenue)
+        .slice(0, 10)
+        .map((p: any) => ({
+          ...p,
+          profit: p.revenue - p.cost,
+        }))
 
-    return NextResponse.json({
-      period: {
-        year,
-        month,
-        monthName: format(monthStart, 'MMMM yyyy'),
-        start: monthStart.toISOString(),
-        end: monthEnd.toISOString(),
-      },
-      summary: {
-        totalSales,
-        subtotalWithoutTaxes,
-        totalTaxes,
-        costOfGoodsSold,
-        grossProfit,
-        totalProfit,
-        profitMargin: Math.round(profitMargin * 100) / 100,
-        totalInvoices,
-        averageInvoiceValue,
-        totalItemsSold,
-      },
-      salesByDay,
-      salesByPaymentMethod,
-      topProducts,
+      const totalInvoices = invoices.length
+      const averageInvoiceValue = totalInvoices > 0 ? totalSales / totalInvoices : 0
+      const totalItemsSold = invoices.reduce((sum, inv) => {
+        return sum + inv.items.reduce((itemSum, item) => itemSum + item.quantity, 0)
+      }, 0)
+
+      return {
+        period: {
+          year,
+          month,
+          monthName: format(monthStart, 'MMMM yyyy'),
+          start: monthStart.toISOString(),
+          end: monthEnd.toISOString(),
+        },
+        summary: {
+          totalSales,
+          subtotalWithoutTaxes,
+          totalTaxes,
+          costOfGoodsSold,
+          grossProfit,
+          totalProfit,
+          profitMargin: Math.round(profitMargin * 100) / 100,
+          totalInvoices,
+          averageInvoiceValue,
+          totalItemsSold,
+        },
+        salesByDay,
+        salesByPaymentMethod,
+        topProducts,
+      }
     })
+
+    return NextResponse.json(result)
   } catch (error) {
     console.error('Error fetching monthly report:', error)
     return NextResponse.json(

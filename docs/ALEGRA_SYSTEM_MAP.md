@@ -3,7 +3,7 @@
 ## Core Components
 - **Invoice Service**: POS sales are created in `app/api/pos/sale/route.ts`. Standard invoices are managed in `app/api/invoices/route.ts`.
 - **Numeration**: Managed via `prefix` and `consecutive` in the `Invoice` model. Resolution numbers can be stored in `resolutionNumber`.
-- **Multi-tenancy**: Source is `session.user.id/tenantId`. Datastores are isolated via `getPrismaForRequest`.
+- **Multi-tenancy**: Source is `session.user.id/tenantId`. Access is scoped via `withTenantTx` and `withTenantRead`.
 - **Access Control**: RBAC using `lib/permissions.ts`.
 - **Job Engine**: `lib/jobs/queue.ts` provides a serverless-friendly queue (Upstash QStash) with an in-memory fallback for local development.
 

@@ -1,78 +1,55 @@
 import { NextResponse } from 'next/server'
 import { requirePermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
-import { getPrismaForRequest } from '@/lib/get-tenant-prisma'
+import { withTenantRead, getTenantIdFromSession } from '@/lib/tenancy'
 import { generateInvoicePDF } from '@/lib/pdf'
+import { logger } from '@/lib/logger'
 
 export async function GET(
   request: Request,
   { params }: { params: { id: string } | Promise<{ id: string }> }
 ) {
   const session = await requirePermission(request as any, PERMISSIONS.MANAGE_SALES)
+  if (session instanceof NextResponse) return session
 
-  if (session instanceof NextResponse) {
-    return session
-  }
-
-  // Obtener el cliente Prisma correcto (tenant o master según el usuario)
-  const prisma = await getPrismaForRequest(request, session)
+  const tenantId = getTenantIdFromSession(session)
 
   try {
     const resolvedParams = await params
-    const invoice = await prisma.invoice.findUnique({
-      where: { id: resolvedParams.id },
-      include: {
-        customer: {
-          select: {
-            name: true,
-            email: true,
-            phone: true,
-            address: true,
-            taxId: true,
-          },
-        },
-        items: {
-          include: {
-            product: {
-              select: {
-                name: true,
-                sku: true,
-              },
-            },
-            variant: {
-              select: {
-                name: true,
-              },
+
+    const result = await withTenantRead(tenantId, async (prisma) => {
+      const invoice = await prisma.invoice.findUnique({
+        where: { id: resolvedParams.id },
+        include: {
+          customer: { select: { name: true, email: true, phone: true, address: true, taxId: true } },
+          items: {
+            include: {
+              product: { select: { name: true, sku: true } },
+              variant: { select: { name: true } },
             },
           },
         },
-      },
+      })
+
+      if (!invoice) throw new Error('Factura no encontrada')
+
+      const settings = await prisma.tenantSettings.findUnique({
+        where: { tenantId }
+      })
+
+      return { invoice, settings }
     })
 
-    if (!invoice) {
-      return NextResponse.json(
-        { error: 'Factura no encontrada' },
-        { status: 404 }
-      )
-    }
+    const { invoice, settings } = result
 
-    // Obtener configuración del tenant
-    const settings = await prisma.tenantSettings.findUnique({
-      where: { tenantId: (session.user as any).tenantId }
-    })
-
-    // Parsear configuración custom para obtener regimen si está ahí
     let regime = 'Responsable de IVA'
     try {
       if (settings?.customSettings) {
         const custom = JSON.parse(settings.customSettings)
         if (custom.identity?.regime) regime = custom.identity.regime
       }
-    } catch (e) {
-      // ignore
-    }
+    } catch (e) { /* ignore */ }
 
-    // Generar PDF
     const pdfBuffer = await generateInvoicePDF({
       number: invoice.number,
       prefix: invoice.prefix || undefined,
@@ -83,14 +60,12 @@ export async function GET(
         address: invoice.customer?.address || undefined,
         taxId: invoice.customer?.taxId || undefined,
       },
-      items: invoice.items.map(item => ({
+      items: (invoice.items as any[]).map(item => ({
         product: {
           name: item.product?.name || 'Producto',
           sku: item.product?.sku || undefined,
         },
-        variant: item.variant ? {
-          name: item.variant.name,
-        } : undefined,
+        variant: item.variant ? { name: item.variant.name } : undefined,
         quantity: item.quantity,
         unitPrice: item.unitPrice,
         discount: item.discount || 0,
@@ -114,7 +89,7 @@ export async function GET(
         phone: settings?.companyPhone || undefined,
         email: settings?.companyEmail || undefined,
         nit: settings?.companyNit || undefined,
-        regime: regime
+        regime
       }
     })
 
@@ -125,27 +100,8 @@ export async function GET(
       },
     })
   } catch (error: any) {
-    console.error('Error generating invoice PDF:', error)
-    const errorMessage = error?.message || 'Error desconocido al generar PDF'
-    const errorStack = error?.stack || ''
-
-    // Log detallado para debugging
-    console.error('PDF Generation Error Details:', {
-      message: errorMessage,
-      stack: errorStack,
-      name: error?.name,
-      code: error?.code,
-    })
-
-    return NextResponse.json(
-      {
-        error: 'Error al generar PDF',
-        details: errorMessage,
-        // Solo incluir stack en desarrollo
-        ...(process.env.NODE_ENV === 'development' && { stack: errorStack })
-      },
-      { status: 500 }
-    )
+    logger.error('Error generating invoice PDF', error)
+    return NextResponse.json({ error: 'Error al generar PDF', details: error.message }, { status: 500 })
   }
 }
 

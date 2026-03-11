@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requirePermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
-import { getPrismaForRequest } from '@/lib/get-tenant-prisma'
+import { withTenantRead, withTenantTx } from '@/lib/tenancy'
 import { z } from 'zod'
 
 const unitSchema = z.object({
@@ -12,13 +12,16 @@ const unitSchema = z.object({
 export async function GET(request: Request) {
     const session = await requirePermission(request as any, PERMISSIONS.MANAGE_PRODUCTS)
     if (session instanceof NextResponse) return session
-    const prisma = await getPrismaForRequest(request, session)
+
+    const tenantId = (session.user as any).tenantId
 
     try {
-        const units = await prisma.unit.findMany({
-            orderBy: { name: 'asc' }
+        const result = await withTenantRead(tenantId, async (prisma) => {
+            return await prisma.unit.findMany({
+                orderBy: { name: 'asc' }
+            })
         })
-        return NextResponse.json(units)
+        return NextResponse.json(result)
     } catch (error) {
         return NextResponse.json({ error: 'Failed to fetch units' }, { status: 500 })
     }
@@ -27,17 +30,20 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
     const session = await requirePermission(request as any, PERMISSIONS.MANAGE_PRODUCTS)
     if (session instanceof NextResponse) return session
-    const prisma = await getPrismaForRequest(request, session)
+
+    const tenantId = (session.user as any).tenantId
 
     try {
         const body = await request.json()
         const data = unitSchema.parse(body)
 
-        const unit = await prisma.unit.create({
-            data: {
-                name: data.name,
-                symbol: data.symbol,
-            }
+        const unit = await withTenantTx(tenantId, async (prisma) => {
+            return await prisma.unit.create({
+                data: {
+                    name: data.name,
+                    symbol: data.symbol,
+                }
+            })
         })
         return NextResponse.json(unit, { status: 201 })
     } catch (error: any) {

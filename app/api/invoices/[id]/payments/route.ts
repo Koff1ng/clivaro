@@ -1,16 +1,21 @@
 import { NextResponse } from 'next/server'
 import { requirePermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
-import { getPrismaForRequest } from '@/lib/get-tenant-prisma'
+import { withTenantTx, getTenantIdFromSession } from '@/lib/tenancy'
 import { z } from 'zod'
 import { logActivity } from '@/lib/activity'
+import { logger } from '@/lib/logger'
 
 const createPaymentSchema = z.object({
-  amount: z.number().min(0.01),
-  method: z.enum(['CASH', 'CARD', 'TRANSFER']),
+  amount: z.number().min(0.01, "El monto debe ser mayor a 0"),
+  // TODO: migrar a paymentMethodId dinámico igual que POS sale
+  // cuando se unifique el flujo de pagos de facturas
+  method: z.string().min(1, "El método es requerido"),
   reference: z.string().optional().nullable(),
   notes: z.string().optional().nullable(),
 })
+
+type CreatePaymentInput = z.infer<typeof createPaymentSchema>
 
 export async function POST(
   request: Request,
@@ -20,217 +25,137 @@ export async function POST(
   const invoiceId = resolvedParams.id
 
   const session = await requirePermission(request as any, PERMISSIONS.MANAGE_SALES)
+  if (session instanceof NextResponse) return session
 
-  if (session instanceof NextResponse) {
-    return session
-  }
-
-  // Obtener el cliente Prisma correcto (tenant o master según el usuario)
-  const prisma = await getPrismaForRequest(request, session)
+  const tenantId = getTenantIdFromSession(session)
+  const userId = (session.user as any).id
 
   try {
     const body = await request.json()
-    const data = createPaymentSchema.parse(body)
+    const parseResult = createPaymentSchema.safeParse(body)
 
-    // Obtener la factura con sus pagos
-    const invoice = await prisma.invoice.findUnique({
-      where: { id: invoiceId },
-      include: {
-        payments: {
-          select: {
-            amount: true,
-          },
-        },
-      },
-    })
-
-    if (!invoice) {
+    if (!parseResult.success) {
       return NextResponse.json(
-        { error: 'Factura no encontrada' },
-        { status: 404 }
-      )
-    }
-
-    // Verificar que la factura no esté anulada
-    if (invoice.status === 'ANULADA' || invoice.status === 'VOID') {
-      return NextResponse.json(
-        { error: 'No se puede registrar un pago en una factura anulada' },
+        { error: 'Error de validación', details: parseResult.error.flatten() },
         { status: 400 }
       )
     }
 
-    // Calcular el total pagado actual
-    const totalPaid = invoice.payments.reduce((sum, p) => sum + p.amount, 0)
-    const newTotalPaid = totalPaid + data.amount
+    const data: CreatePaymentInput = parseResult.data
 
-    // Verificar que no se exceda el total de la factura
-    if (newTotalPaid > invoice.total) {
-      return NextResponse.json(
-        { error: `El pago excede el total de la factura. Total: ${invoice.total}, Pagado: ${totalPaid}, Nuevo pago: ${data.amount}` },
-        { status: 400 }
-      )
-    }
-
-    // 7. Payments Logic
-    // Find or create Payment Method ID (if provided as string name) or use existing
-    // The schema allows `methodName` for now, but we should try to link to PaymentMethod
-    const methodStr = data.method
-    let paymentMethodId = ''
-
-    // Try to find by name if no ID (for now we rely on name enum in schema but database has dynamic)
-    const pm = await prisma.paymentMethod.findFirst({
-      where: { name: methodStr }
-    })
-
-    if (pm) {
-      paymentMethodId = pm.id
-    } else {
-      // Create if missing (legacy safety)
-      const newPm = await prisma.paymentMethod.create({
-        data: {
-          name: methodStr,
-          type: methodStr === 'CASH' ? 'CASH' : 'ELECTRONIC'
-        }
+    const result = await withTenantTx(tenantId, async (prisma) => {
+      const invoice = await prisma.invoice.findUnique({
+        where: { id: invoiceId },
+        include: { payments: { select: { amount: true } } },
       })
-      paymentMethodId = newPm.id
-    }
 
-    // Calcular el nuevo balance
-    const currentBalance = invoice.balance ?? (invoice.total - totalPaid)
-    const newBalance = Math.max(0, currentBalance - data.amount)
+      if (!invoice) throw new Error('Factura no encontrada')
+      if (['ANULADA', 'VOID'].includes(invoice.status)) throw new Error('No se puede registrar un pago en una factura anulada')
 
-    // Check Open Shift for this user to record movement
-    const openShift = await prisma.cashShift.findFirst({
-      where: {
-        userId: (session.user as any).id,
-        status: 'OPEN',
-      },
-    })
+      const totalPaid = invoice.payments.reduce((sum, p) => sum + p.amount, 0)
+      const newTotalPaid = totalPaid + data.amount
+      if (newTotalPaid > invoice.total + 0.01) throw new Error(`El pago excede el total de la factura.`)
 
-    // Crear el pago y actualizar el estado de la factura en una transacción
-    const result = await prisma.$transaction(async (tx) => {
-      // Crear el pago
-      const payment = await tx.payment.create({
+      const methodStr = data.method
+      let pm = await prisma.paymentMethod.findFirst({ where: { name: methodStr } })
+      if (!pm) {
+        pm = await prisma.paymentMethod.create({
+          data: { name: methodStr, type: methodStr === 'CASH' ? 'CASH' : 'ELECTRONIC' }
+        })
+      }
+      const paymentMethodId = pm.id
+
+      const currentBalance = invoice.balance ?? (invoice.total - totalPaid)
+      const newBalance = Math.max(0, currentBalance - data.amount)
+
+      const openShift = await prisma.cashShift.findFirst({ where: { userId, status: 'OPEN' } })
+
+      const payment = await prisma.payment.create({
         data: {
           invoiceId: invoice.id,
           amount: data.amount,
           method: data.method,
-          paymentMethodId: paymentMethodId,
+          paymentMethodId,
           reference: data.reference || null,
           notes: data.notes || null,
-          createdById: (session.user as any).id,
+          createdById: userId,
         },
       })
 
-      // Determinar el nuevo estado
-      let newStatus: string
-      if (newBalance <= 0.01) {
-        newStatus = 'PAGADA'
-      } else {
-        newStatus = 'EN_COBRANZA'
-      }
+      const newStatus = newBalance <= 0.01 ? 'PAGADA' : 'EN_COBRANZA'
 
-      // Actualizar el estado de la factura y balance
-      await tx.invoice.update({
+      await prisma.invoice.update({
         where: { id: invoiceId },
         data: {
           status: newStatus,
           balance: newBalance,
           paidAt: newStatus === 'PAGADA' ? new Date() : invoice.paidAt,
-          updatedById: (session.user as any).id,
+          updatedById: userId,
         },
       })
 
-      // Actualizar deuda del cliente
       if (invoice.customerId) {
-        await tx.customer.update({
+        await prisma.customer.update({
           where: { id: invoice.customerId },
-          data: {
-            currentBalance: { decrement: data.amount }
-          }
+          data: { currentBalance: { decrement: data.amount } }
         })
       }
 
-      // Update Cash Shift if applicable
       if (openShift) {
-        // Shift Summary
-        await tx.shiftSummary.upsert({
-          where: {
-            shiftId_paymentMethodId: {
-              shiftId: openShift.id,
-              paymentMethodId: paymentMethodId
-            }
-          },
-          update: {
-            expectedAmount: { increment: data.amount }
-          },
-          create: {
-            shiftId: openShift.id,
-            paymentMethodId: paymentMethodId,
-            expectedAmount: data.amount
-          }
+        await prisma.shiftSummary.upsert({
+          where: { shiftId_paymentMethodId: { shiftId: openShift.id, paymentMethodId } },
+          update: { expectedAmount: { increment: data.amount } },
+          create: { shiftId: openShift.id, paymentMethodId, expectedAmount: data.amount }
         })
 
-        // If CASH, update cash shift total and add movement
         if (data.method === 'CASH') {
-          await tx.cashShift.update({
+          await prisma.cashShift.update({
             where: { id: openShift.id },
             data: { expectedCash: { increment: data.amount } }
           })
-
-          await tx.cashMovement.create({
+          await prisma.cashMovement.create({
             data: {
               cashShiftId: openShift.id,
               type: 'IN',
               amount: data.amount,
               reason: `Pago de factura ${invoice.number}`,
-              createdById: (session.user as any).id,
+              createdById: userId,
             }
           })
         }
       }
 
+      await logActivity({
+        prisma,
+        type: 'PAYMENT_RECEIVE',
+        subject: `Pago recibido: ${invoice.number}`,
+        description: `Monto: ${data.amount}. Método: ${data.method}.`,
+        userId,
+        customerId: invoice.customerId,
+        metadata: { invoiceId: invoice.id, paymentId: payment.id, amount: data.amount }
+      })
+
       return { payment, newStatus }
     })
 
-    // Audit Log
-    await logActivity({
-      prisma,
-      type: 'PAYMENT_RECEIVE',
-      subject: `Pago recibido: ${invoice.number}`,
-      description: `Monto: ${data.amount}. Método: ${data.method}. Factura: ${invoice.number}`,
-      userId: (session.user as any).id,
-      customerId: invoice.customerId,
-      metadata: { invoiceId: invoice.id, paymentId: result.payment.id, amount: data.amount }
-    })
-
-    // Accounting Integration (Non-blocking)
+    // Background accounting integration
     import('@/lib/accounting/payment-integration').then(async ({ createJournalEntryFromPayment }) => {
       try {
-        await createJournalEntryFromPayment(result.payment.id, (session.user as any).tenantId, (session.user as any).id)
-      } catch (error) {
-        console.error('[Accounting] Failed to create journal entry from payment:', error)
-        // Don't throw - payment should succeed even if accounting fails
+        await createJournalEntryFromPayment(result.payment.id, tenantId, userId)
+      } catch (err) {
+        logger.error('[Accounting] Failed entry creation', err)
       }
-    }).catch(e => console.error('[Accounting] Import failed:', e))
+    }).catch(e => logger.error('[Accounting] Import failed', e))
 
     return NextResponse.json({
       payment: result.payment,
       invoiceStatus: result.newStatus,
       message: 'Pago registrado exitosamente',
     }, { status: 201 })
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { error: 'Error de validación', details: error.errors },
-        { status: 400 }
-      )
-    }
-    console.error('Error creating payment:', error)
-    return NextResponse.json(
-      { error: 'Error al registrar el pago' },
-      { status: 500 }
-    )
+  } catch (error: any) {
+    if (error instanceof z.ZodError) return NextResponse.json({ error: 'Error de validación', details: error.errors }, { status: 400 })
+    logger.error('Error creating payment', error)
+    return NextResponse.json({ error: error.message || 'Error al registrar el pago' }, { status: 500 })
   }
 }
 

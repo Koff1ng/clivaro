@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requirePermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
-import { withTenantTx } from '@/lib/tenancy'
+import { withTenantRead } from '@/lib/tenancy'
 import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
@@ -11,34 +11,37 @@ export async function GET(request: Request) {
     if (session instanceof NextResponse) return session
 
     const tenantId = (session.user as any).tenantId
-    const isSuperAdmin = (session.user as any).isSuperAdmin
-
-    if (isSuperAdmin || !tenantId) {
-        return NextResponse.json({ summary: { totalValue: 0, totalMarketValue: 0, potentialProfit: 0, totalItems: 0, productCount: 0 }, categoryBreakdown: [] })
+    if (!tenantId) {
+        return NextResponse.json({ summary: { totalValue: 0, totalMarketValue: 0, potentialProfit: 0, totalItems: 0, productCount: 0 }, categoryBreakdown: [] }, { status: 403 })
     }
 
     try {
-        const result = await withTenantTx(tenantId, async (tx: any) => {
+        const result = await withTenantRead(tenantId, async (prisma) => {
             const [products, stockLevels] = await Promise.all([
-                tx.product.findMany({
+                prisma.product.findMany({
                     where: { active: true, trackStock: true },
-                    select: { id: true, name: true, category: true, cost: true, price: true, trackStock: true, variants: { where: { active: true }, select: { id: true, cost: true, price: true } } }
+                    select: {
+                        id: true,
+                        name: true,
+                        category: true,
+                        cost: true,
+                        price: true,
+                        variants: { where: { active: true }, select: { id: true, cost: true, price: true } }
+                    }
                 }),
-                tx.stockLevel.findMany({
+                prisma.stockLevel.findMany({
                     where: { product: { active: true, trackStock: true } },
                     select: { productId: true, variantId: true, quantity: true }
                 })
             ])
-            return { products, stockLevels }
-        })
 
-        const productMap = new Map<string, any>()
-            ; (result as any).products.forEach((p: any) => productMap.set(p.id, p))
+            const productMap = new Map<string, any>()
+            products.forEach((p: any) => productMap.set(p.id, p))
 
-        let totalValue = 0, totalMarketValue = 0, totalItems = 0
-        const categoryBreakdown: Record<string, { value: number; marketValue: number; stock: number }> = {}
+            let totalValue = 0, totalMarketValue = 0, totalItems = 0
+            const categoryBreakdown: Record<string, { value: number; marketValue: number; stock: number }> = {}
 
-            ; (result as any).stockLevels.forEach((sl: any) => {
+            stockLevels.forEach((sl: any) => {
                 if (!sl.productId) return
                 const product = productMap.get(sl.productId)
                 if (!product) return
@@ -66,20 +69,28 @@ export async function GET(request: Request) {
                 categoryBreakdown[category].stock += stock
             })
 
-        return NextResponse.json({
-            summary: {
-                totalValue: Math.round(totalValue * 100) / 100,
-                totalMarketValue: Math.round(totalMarketValue * 100) / 100,
-                potentialProfit: Math.round((totalMarketValue - totalValue) * 100) / 100,
-                totalItems: Math.round(totalItems * 100) / 100,
-                productCount: (result as any).products.length,
-            },
-            categoryBreakdown: Object.entries(categoryBreakdown)
-                .map(([name, data]) => ({ name, value: Math.round(data.value * 100) / 100, marketValue: Math.round(data.marketValue * 100) / 100, stock: Math.round(data.stock * 100) / 100 }))
-                .sort((a, b) => b.value - a.value)
+            return {
+                summary: {
+                    totalValue: Math.round(totalValue * 100) / 100,
+                    totalMarketValue: Math.round(totalMarketValue * 100) / 100,
+                    potentialProfit: Math.round((totalMarketValue - totalValue) * 100) / 100,
+                    totalItems: Math.round(totalItems * 100) / 100,
+                    productCount: products.length,
+                },
+                categoryBreakdown: Object.entries(categoryBreakdown)
+                    .map(([name, data]) => ({
+                        name,
+                        value: Math.round(data.value * 100) / 100,
+                        marketValue: Math.round(data.marketValue * 100) / 100,
+                        stock: Math.round(data.stock * 100) / 100
+                    }))
+                    .sort((a, b) => b.value - a.value)
+            }
         })
+
+        return NextResponse.json(result)
     } catch (error: any) {
         logger.error('Error fetching inventory value', error, { endpoint: '/api/dashboard/inventory-value' })
-        return NextResponse.json({ summary: { totalValue: 0, totalMarketValue: 0, potentialProfit: 0, totalItems: 0, productCount: 0 }, categoryBreakdown: [] })
+        return NextResponse.json({ summary: { totalValue: 0, totalMarketValue: 0, potentialProfit: 0, totalItems: 0, productCount: 0 }, categoryBreakdown: [] }, { status: 500 })
     }
 }

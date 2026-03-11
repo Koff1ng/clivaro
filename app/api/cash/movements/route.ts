@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requirePermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
-import { getPrismaForRequest } from '@/lib/get-tenant-prisma'
+import { withTenantRead, withTenantTx } from '@/lib/tenancy'
 import { z } from 'zod'
 
 const createMovementSchema = z.object({
@@ -13,13 +13,12 @@ const createMovementSchema = z.object({
 
 export async function GET(request: Request) {
   const session = await requirePermission(request as any, PERMISSIONS.MANAGE_CASH)
-  
+
   if (session instanceof NextResponse) {
     return session
   }
 
-  // Obtener el cliente Prisma correcto (tenant o master según el usuario)
-  const prisma = await getPrismaForRequest(request, session)
+  const tenantId = (session.user as any).tenantId
 
   try {
     const { searchParams } = new URL(request.url)
@@ -32,20 +31,23 @@ export async function GET(request: Request) {
       )
     }
 
-    const movements = await prisma.cashMovement.findMany({
-      where: { cashShiftId },
-      include: {
-        createdBy: {
-          select: {
-            id: true,
-            name: true,
+    const result = await withTenantRead(tenantId, async (prisma) => {
+      const movements = await prisma.cashMovement.findMany({
+        where: { cashShiftId },
+        include: {
+          createdBy: {
+            select: {
+              id: true,
+              name: true,
+            },
           },
         },
-      },
-      orderBy: { createdAt: 'desc' },
+        orderBy: { createdAt: 'desc' },
+      })
+      return { movements }
     })
 
-    return NextResponse.json({ movements })
+    return NextResponse.json(result)
   } catch (error) {
     console.error('Error fetching cash movements:', error)
     return NextResponse.json(
@@ -57,67 +59,64 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   const session = await requirePermission(request as any, PERMISSIONS.MANAGE_CASH)
-  
+
   if (session instanceof NextResponse) {
     return session
   }
 
-  // Obtener el cliente Prisma correcto (tenant o master según el usuario)
-  const prisma = await getPrismaForRequest(request, session)
+  const tenantId = (session.user as any).tenantId
 
   try {
     const body = await request.json()
     const data = createMovementSchema.parse(body)
 
-    // Verify shift exists and is open
-    const shift = await prisma.cashShift.findUnique({
-      where: { id: data.cashShiftId },
-    })
+    const result = await withTenantTx(tenantId, async (prisma) => {
+      // Verify shift exists and is open
+      const shift = await prisma.cashShift.findUnique({
+        where: { id: data.cashShiftId },
+      })
 
-    if (!shift) {
-      return NextResponse.json(
-        { error: 'Cash shift not found' },
-        { status: 404 }
-      )
-    }
+      if (!shift) {
+        throw new Error('Cash shift not found')
+      }
 
-    if (shift.status !== 'OPEN') {
-      return NextResponse.json(
-        { error: 'Cash shift is not open' },
-        { status: 400 }
-      )
-    }
+      if (shift.status !== 'OPEN') {
+        throw new Error('Cash shift is not open')
+      }
 
-    // Create movement
-    const movement = await prisma.cashMovement.create({
-      data: {
-        cashShiftId: data.cashShiftId,
-        type: data.type,
-        amount: data.amount,
-        reason: data.reason || null,
-        createdById: (session.user as any).id,
-      },
-      include: {
-        createdBy: {
-          select: {
-            id: true,
-            name: true,
+      // Create movement
+      const movement = await prisma.cashMovement.create({
+        data: {
+          cashShiftId: data.cashShiftId,
+          type: data.type,
+          amount: data.amount,
+          reason: data.reason || null,
+          createdById: (session.user as any).id,
+        },
+        include: {
+          createdBy: {
+            select: {
+              id: true,
+              name: true,
+            },
           },
         },
-      },
+      })
+
+      // Update expected cash in shift
+      const amountChange = data.type === 'IN' ? data.amount : -data.amount
+      await prisma.cashShift.update({
+        where: { id: data.cashShiftId },
+        data: {
+          expectedCash: shift.expectedCash + amountChange,
+        },
+      })
+
+      return movement
     })
 
-    // Update expected cash in shift
-    const amountChange = data.type === 'IN' ? data.amount : -data.amount
-    await prisma.cashShift.update({
-      where: { id: data.cashShiftId },
-      data: {
-        expectedCash: shift.expectedCash + amountChange,
-      },
-    })
-
-    return NextResponse.json({ movement }, { status: 201 })
-  } catch (error) {
+    return NextResponse.json({ movement: result }, { status: 201 })
+  } catch (error: any) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: 'Validation error', details: error.errors },
@@ -126,9 +125,8 @@ export async function POST(request: Request) {
     }
     console.error('Error creating cash movement:', error)
     return NextResponse.json(
-      { error: 'Failed to create cash movement' },
+      { error: error.message || 'Failed to create cash movement' },
       { status: 500 }
     )
   }
 }
-

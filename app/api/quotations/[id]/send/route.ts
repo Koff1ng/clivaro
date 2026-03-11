@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requirePermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
-import { getPrismaForRequest } from '@/lib/get-tenant-prisma'
+import { withTenantTx, getTenantIdFromSession } from '@/lib/tenancy'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { sendEmail } from '@/lib/email'
 import { generateQuotationPDF } from '@/lib/pdf'
@@ -12,43 +12,22 @@ export async function POST(
   { params }: { params: { id: string } | Promise<{ id: string }> }
 ) {
   const session = await requirePermission(request as any, PERMISSIONS.MANAGE_SALES)
-  
-  if (session instanceof NextResponse) {
-    return session
-  }
+  if (session instanceof NextResponse) return session
 
-  // Obtener el cliente Prisma correcto (tenant o master según el usuario)
-  const prisma = await getPrismaForRequest(request, session)
-
-  let quotationId: string | undefined
+  const tenantId = getTenantIdFromSession(session)
 
   try {
-    // Handle params as Promise (Next.js 15+)
-    try {
-      const resolvedParams = typeof params === 'object' && 'then' in params 
-        ? await params 
-        : params as { id: string }
-      quotationId = resolvedParams.id
-      logger.debug('Send quotation requested', { quotationId })
-      
-      if (!quotationId) {
-        return NextResponse.json(
-          { error: 'ID de cotización requerido' },
-          { status: 400 }
-        )
-      }
-    } catch (paramError: any) {
-      logger.warn('Error resolving params', { paramError })
-      return NextResponse.json(
-        { error: 'Error al procesar parámetros de la solicitud' },
-        { status: 400 }
-      )
+    const resolvedParams = typeof params === 'object' && 'then' in params
+      ? await params
+      : params as { id: string }
+    const quotationId = resolvedParams.id
+
+    if (!quotationId) {
+      return NextResponse.json({ error: 'ID de cotización requerido' }, { status: 400 })
     }
 
-    let quotation
-    try {
-      logger.debug('Fetching quotation from database', { quotationId })
-      quotation = await prisma.quotation.findUnique({
+    const result = await withTenantTx(tenantId, async (prisma) => {
+      const quotation = await prisma.quotation.findUnique({
         where: { id: quotationId },
         include: {
           customer: {
@@ -63,102 +42,55 @@ export async function POST(
           },
           items: {
             include: {
-              product: {
-                select: {
-                  id: true,
-                  name: true,
-                  sku: true,
-                  price: true,
-                },
-              },
-              variant: {
-                select: {
-                  id: true,
-                  name: true,
-                },
-              },
+              product: { select: { id: true, name: true, sku: true, price: true } },
+              variant: { select: { id: true, name: true } },
             },
           },
         },
       })
-    } catch (dbError: any) {
-      logger.error('Database error fetching quotation', dbError, { quotationId })
-      throw dbError
-    }
 
-    if (!quotation) {
-      return NextResponse.json(
-        { error: 'Cotización no encontrada' },
-        { status: 404 }
-      )
-    }
+      if (!quotation) throw new Error('Cotización no encontrada')
+      if (!quotation.customer?.email) throw new Error('El cliente no tiene un email registrado')
 
-    if (!quotation.customer?.email) {
-      return NextResponse.json(
-        { error: 'El cliente no tiene un email registrado para enviar la cotización' },
-        { status: 400 }
-      )
-    }
+      const quotationHtml = generateQuotationHTML(quotation)
 
-    logger.debug('Sending quotation email', { to: quotation.customer.email })
-
-    // Generate quotation HTML
-    let quotationHtml: string
-    try {
-      logger.debug('Generating quotation HTML', { quotationId })
-      quotationHtml = generateQuotationHTML(quotation)
-      logger.debug('Quotation HTML generated', { quotationId, length: quotationHtml.length })
-    } catch (htmlError: any) {
-      logger.error('Error generating HTML', htmlError, { quotationId })
-      throw new Error(`Error al generar el HTML de la cotización: ${htmlError.message}`)
-    }
-    
-    // Generate quotation PDF
-    let pdfBuffer: Buffer | null = null
-    try {
-      logger.debug('Generating quotation PDF', { quotationId })
-      pdfBuffer = await generateQuotationPDF({
-        number: quotation.number,
-        customer: {
-          name: quotation.customer?.name || 'N/A',
-          email: quotation.customer?.email,
-          phone: quotation.customer?.phone || undefined,
-          address: quotation.customer?.address || undefined,
-          taxId: quotation.customer?.taxId || undefined,
-        },
-        items: quotation.items.map(item => ({
-          product: {
-            name: item.product?.name || 'Producto',
-            sku: item.product?.sku,
+      let pdfBuffer: Buffer | null = null
+      try {
+        pdfBuffer = await generateQuotationPDF({
+          number: quotation.number,
+          customer: {
+            name: quotation.customer?.name || 'N/A',
+            email: quotation.customer?.email,
+            phone: quotation.customer?.phone || undefined,
+            address: quotation.customer?.address || undefined,
+            taxId: quotation.customer?.taxId || undefined,
           },
-          variant: item.variant ? {
-            name: item.variant.name,
-          } : undefined,
-          quantity: item.quantity || 0,
-          unitPrice: item.unitPrice || 0,
-          discount: item.discount || 0,
-          subtotal: item.subtotal || 0,
-        })),
-        subtotal: quotation.subtotal || 0,
-        discount: quotation.discount || 0,
-        tax: quotation.tax || 0,
-        total: quotation.total || 0,
-        validUntil: quotation.validUntil,
-        notes: quotation.notes,
-        createdAt: quotation.createdAt,
-      })
-      logger.debug('Quotation PDF generated', { quotationId, bytes: pdfBuffer.length })
-    } catch (pdfError: any) {
-      logger.warn('Error generating PDF (continuing without attachment)', { quotationId, pdfError })
-      // Continue without PDF if generation fails
-    }
-    
-    const companyName = process.env.COMPANY_NAME || 'Ferretería'
-    
-    // Send email to customer
-    let emailResult
-    try {
-      emailResult = await sendEmail({
+          items: quotation.items.map(item => ({
+            product: {
+              name: item.product?.name || 'Producto',
+              sku: item.product?.sku,
+            },
+            variant: item.variant ? { name: item.variant.name } : undefined,
+            quantity: item.quantity || 0,
+            unitPrice: item.unitPrice || 0,
+            discount: item.discount || 0,
+            subtotal: item.subtotal || 0,
+          })),
+          subtotal: quotation.subtotal || 0,
+          discount: quotation.discount || 0,
+          tax: quotation.tax || 0,
+          total: quotation.total || 0,
+          validUntil: quotation.validUntil,
+          notes: quotation.notes,
+          createdAt: quotation.createdAt,
+        })
+      } catch (pdfError) {
+        logger.warn('Error generating PDF (continuing without attachment)', { quotationId, pdfError })
+      }
+
+      const companyName = process.env.COMPANY_NAME || 'Ferretería'
+
+      const emailResult = await sendEmail({
         to: quotation.customer.email,
         subject: `Cotización ${quotation.number} - ${companyName}`,
         html: quotationHtml,
@@ -168,61 +100,28 @@ export async function POST(
           contentType: 'application/pdf',
         }] : undefined,
       })
-    } catch (emailError: any) {
-      logger.error('Error in sendEmail call', emailError, { quotationId })
-      throw emailError
-    }
 
-    // Update quotation status to SENT (only if not already SENT, to allow resending)
-    if (quotation.status !== 'SENT') {
-      await prisma.quotation.update({
-        where: { id: quotationId },
-        data: {
-          status: 'SENT',
-          updatedById: (session.user as any).id,
-        },
-      })
-    }
+      if (emailResult.success) {
+        if (quotation.status !== 'SENT') {
+          await prisma.quotation.update({
+            where: { id: quotationId },
+            data: { status: 'SENT', updatedById: (session.user as any).id },
+          })
+        }
+        return {
+          success: true,
+          message: `Cotización ${quotation.number} enviada exitosamente a ${quotation.customer.email}`,
+          email: quotation.customer.email,
+        }
+      } else {
+        throw new Error(emailResult.message || 'Error al enviar el email')
+      }
+    })
 
-    if (emailResult.success) {
-      logger.info('Quotation email sent', { quotationId })
-      return NextResponse.json({
-        success: true,
-        message: `Cotización ${quotation.number} enviada exitosamente a ${quotation.customer.email}`,
-        email: quotation.customer.email,
-        emailSent: true,
-      })
-    } else {
-      // Don't mark as sent if email failed
-      const errorMessage = emailResult.error === 'SMTP not configured'
-        ? 'El servicio de email no está configurado. Por favor, configure las variables SMTP en el archivo .env (SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD)'
-        : emailResult.message || 'Error desconocido al enviar el email'
-      
-      return NextResponse.json({
-        success: false,
-        message: `Error al enviar la cotización: ${errorMessage}`,
-        email: quotation.customer.email,
-        emailSent: false,
-        emailError: emailResult.error || 'Unknown error',
-        emailMessage: emailResult.message,
-      }, { status: 500 })
-    }
+    return NextResponse.json(result)
   } catch (error: any) {
-    logger.error('Error sending quotation', error, { endpoint: '/api/quotations/[id]/send', method: 'POST', quotationId })
-    
-    const errorMessage = error.message || 'Error desconocido al enviar la cotización'
-    const isSmtpError = errorMessage.includes('SMTP') || errorMessage.includes('email') || errorMessage.includes('smtp')
-    
-    return NextResponse.json(
-      { 
-        error: 'Failed to send quotation',
-        message: isSmtpError 
-          ? `Error de configuración SMTP: ${errorMessage}. Verifique las variables SMTP en .env`
-          : errorMessage,
-        details: process.env.NODE_ENV === 'development' ? error.message : undefined
-      },
-      { status: 500 }
-    )
+    logger.error('Error sending quotation', error)
+    return NextResponse.json({ error: error.message || 'Error al enviar la cotización' }, { status: 500 })
   }
 }
 
@@ -234,7 +133,6 @@ function generateQuotationHTML(quotation: any): string {
     const companyEmail = process.env.COMPANY_EMAIL || ''
     const companyNit = process.env.COMPANY_NIT || ''
 
-    // Safely handle items
     const items = quotation.items || []
     const itemsHtml = items.map((item: any) => {
       const productName = item.product?.name || 'Producto'
@@ -243,7 +141,7 @@ function generateQuotationHTML(quotation: any): string {
       const unitPrice = item.unitPrice || 0
       const discount = item.discount || 0
       const subtotal = item.subtotal || 0
-      
+
       return `
       <tr>
         <td style="padding: 10px; border-bottom: 1px solid #e5e7eb;">
@@ -258,7 +156,7 @@ function generateQuotationHTML(quotation: any): string {
       `
     }).join('')
 
-  return `
+    return `
     <!DOCTYPE html>
     <html>
     <head>

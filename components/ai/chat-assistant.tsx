@@ -206,13 +206,43 @@ export function ChatAssistant() {
         setMessages(newMessages)
         setIsLoading(true)
 
+        const getFriendlyPath = (path: string) => {
+            const mapping: Record<string, string> = {
+                '/dashboard': 'General -> Dashboard',
+                '/dashboard/reports': 'General -> Reportes',
+                '/crm/customers': 'Marketing -> Clientes',
+                '/crm/leads': 'Marketing -> Oportunidades',
+                '/marketing/campaigns': 'Marketing -> Campañas',
+                '/pos': 'Ventas -> Punto de Venta (POS)',
+                '/cash/shifts': 'Ventas -> Caja / Turnos',
+                '/sales/quotes': 'Ventas -> Cotizaciones',
+                '/sales/orders': 'Ventas -> Órdenes de Venta',
+                '/sales/invoices': 'Ventas -> Facturas',
+                '/credit-notes': 'Ventas -> Notas Crédito',
+                '/dashboard/electronic-invoicing': 'Ventas -> Facturación Electrónica',
+                '/products': 'Inventario -> Items / Productos',
+                '/inventory': 'Inventario -> Movimientos de Stock',
+                '/purchases/suppliers': 'Inventario -> Proveedores',
+                '/purchases/orders': 'Inventario -> Órdenes de Compra',
+                '/purchases/receipts': 'Inventario -> Recepciones de Mercancía',
+                '/accounting/accounts': 'Contabilidad -> Catálogo de Cuentas (PUC)',
+                '/accounting/vouchers': 'Contabilidad -> Comprobantes Contables',
+                '/accounting/reports': 'Contabilidad -> Centro de Reportes',
+                '/admin/users': 'Sistema -> Usuarios y Permisos',
+                '/settings': 'Sistema -> Configuración General',
+            }
+            return mapping[path] || path;
+        }
+
         try {
+            const friendlyPath = getFriendlyPath(window.location.pathname);
             const assistantResponse = await getAssistantResponse(
                 userMsg,
                 newMessages.slice(-10).map(m => ({
                     role: m.role,
                     content: m.content
-                }))
+                })),
+                `El usuario se encuentra actualmente en la sección: ${friendlyPath}`
             )
             setMessages(prev => [...prev, { role: 'assistant' as const, content: assistantResponse }])
         } catch (error: any) {

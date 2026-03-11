@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requirePermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
-import { getPrismaForRequest } from '@/lib/get-tenant-prisma'
+import { withTenantRead, withTenantTx } from '@/lib/tenancy'
 import { logger } from '@/lib/logger'
 import { z } from 'zod'
 import { toDecimal } from '@/lib/numbers'
@@ -9,17 +9,19 @@ import { updateStockLevel, updateProductCost } from '@/lib/inventory'
 import { logActivity } from '@/lib/activity'
 
 const createReceiptSchema = z.object({
-  purchaseOrderId: z.string(),
-  warehouseId: z.string(),
+  purchaseOrderId: z.string().min(1, "El ID de la orden de compra es requerido"),
+  warehouseId: z.string().min(1, "El almacén es requerido"),
   items: z.array(z.object({
-    productId: z.string(),
+    productId: z.string().min(1, "El ID del producto es requerido"),
     variantId: z.string().optional().nullable(),
-    quantity: z.number().positive(),
-    unitCost: z.number().min(0),
-    purchaseOrderItemId: z.string().optional(),
-  })),
-  notes: z.string().optional(),
+    quantity: z.number().positive("La cantidad debe ser mayor a 0"),
+    unitCost: z.number().min(0, "El costo unitario no puede ser negativo"),
+    purchaseOrderItemId: z.string().optional().nullable(),
+  })).min(1, "La recepción debe tener al menos un ítem"),
+  notes: z.string().optional().nullable(),
 })
+
+type CreateReceiptInput = z.infer<typeof createReceiptSchema>
 
 export async function GET(request: Request) {
   const session = await requirePermission(request as any, PERMISSIONS.MANAGE_PURCHASES)
@@ -28,8 +30,7 @@ export async function GET(request: Request) {
     return session
   }
 
-  // Obtener el cliente Prisma correcto (tenant o master según el usuario)
-  const prisma = await getPrismaForRequest(request, session)
+  const tenantId = (session.user as any).tenantId
 
   try {
     const { searchParams } = new URL(request.url)
@@ -39,78 +40,82 @@ export async function GET(request: Request) {
     const purchaseOrderId = searchParams.get('purchaseOrderId')
     const skip = (page - 1) * limit
 
-    const where: any = {}
+    const result = await withTenantRead(tenantId, async (prisma) => {
+      const where: any = {}
 
-    if (search) {
-      where.OR = [
-        { number: { contains: search } },
-        { purchaseOrder: { number: { contains: search } } },
-      ]
-    }
+      if (search) {
+        where.OR = [
+          { number: { contains: search, mode: 'insensitive' } },
+          { purchaseOrder: { number: { contains: search, mode: 'insensitive' } } },
+        ]
+      }
 
-    if (purchaseOrderId) {
-      where.purchaseOrderId = purchaseOrderId
-    }
+      if (purchaseOrderId) {
+        where.purchaseOrderId = purchaseOrderId
+      }
 
-    const [receipts, total] = await Promise.all([
-      prisma.goodsReceipt.findMany({
-        where,
-        skip,
-        take: limit,
-        include: {
-          purchaseOrder: {
-            select: {
-              id: true,
-              number: true,
-              supplier: {
-                select: {
-                  id: true,
-                  name: true,
+      const [receipts, total] = await Promise.all([
+        prisma.goodsReceipt.findMany({
+          where,
+          skip,
+          take: limit,
+          include: {
+            purchaseOrder: {
+              select: {
+                id: true,
+                number: true,
+                supplier: {
+                  select: {
+                    id: true,
+                    name: true,
+                  },
+                },
+              },
+            },
+            warehouse: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+            items: {
+              include: {
+                product: {
+                  select: {
+                    id: true,
+                    name: true,
+                    sku: true,
+                  },
                 },
               },
             },
           },
-          warehouse: {
-            select: {
-              id: true,
-              name: true,
-            },
-          },
-          items: {
-            include: {
-              product: {
-                select: {
-                  id: true,
-                  name: true,
-                  sku: true,
-                },
-              },
-            },
-          },
-        },
-        orderBy: { createdAt: 'desc' },
-      }),
-      prisma.goodsReceipt.count({ where }),
-    ])
+          orderBy: { createdAt: 'desc' },
+        }),
+        prisma.goodsReceipt.count({ where }),
+      ])
 
-    // Calculate totals for each receipt
-    const receiptsWithTotals = receipts.map(receipt => {
-      const total = receipt.items.reduce((sum, item) => sum + (item.quantity * item.unitCost), 0)
+      // Calculate totals for each receipt
+      const receiptsWithTotals = receipts.map(receipt => {
+        const total = receipt.items.reduce((sum, item) => sum + (item.quantity * item.unitCost), 0)
+        return {
+          ...receipt,
+          total,
+        }
+      })
+
       return {
-        ...receipt,
-        total,
+        receipts: receiptsWithTotals,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages: Math.ceil(total / limit),
+        },
       }
     })
 
-    return NextResponse.json({
-      receipts: receiptsWithTotals,
-      pagination: {
-        page,
-        limit,
-        total,
-        totalPages: Math.ceil(total / limit),
-      },
-    })
+    return NextResponse.json(result)
   } catch (error) {
     logger.error('Error fetching receipts', error, { endpoint: '/api/purchases/receipts', method: 'GET' })
     return NextResponse.json(
@@ -127,36 +132,39 @@ export async function POST(request: Request) {
     return session
   }
 
-  // Obtener el cliente Prisma correcto (tenant o master según el usuario)
-  const prisma = await getPrismaForRequest(request, session)
+  const tenantId = (session.user as any).tenantId
 
   try {
-    const tenantId = (session.user as any).tenantId || 'public'
     const body = await request.json()
-    const data = createReceiptSchema.parse(body)
+    const parseResult = createReceiptSchema.safeParse(body)
 
-    // Get purchase order to validate
-    const purchaseOrder = await prisma.purchaseOrder.findUnique({
-      where: { id: data.purchaseOrderId },
-      include: {
-        items: true,
-      },
-    })
-
-    if (!purchaseOrder) {
+    if (!parseResult.success) {
       return NextResponse.json(
-        { error: 'Purchase order not found' },
-        { status: 404 }
+        { error: 'Error de validación', details: parseResult.error.flatten() },
+        { status: 400 }
       )
     }
 
-    // Use transaction
-    const receipt = await prisma.$transaction(async (tx) => {
+    const data: CreateReceiptInput = parseResult.data
+
+    const result = await withTenantTx(tenantId, async (prisma) => {
+      // Get purchase order to validate
+      const purchaseOrder = await prisma.purchaseOrder.findUnique({
+        where: { id: data.purchaseOrderId },
+        include: {
+          items: true,
+        },
+      })
+
+      if (!purchaseOrder) {
+        throw new Error('Purchase order not found')
+      }
+
       // Create goods receipt
-      const receiptCount = await tx.goodsReceipt.count()
+      const receiptCount = await prisma.goodsReceipt.count()
       const receiptNumber = `GR-${String(receiptCount + 1).padStart(6, '0')}`
 
-      const receipt = await tx.goodsReceipt.create({
+      const receipt = await prisma.goodsReceipt.create({
         data: {
           number: receiptNumber,
           purchaseOrderId: data.purchaseOrderId,
@@ -178,12 +186,11 @@ export async function POST(request: Request) {
       // Update stock levels and product costs
       for (const item of data.items) {
         const quantity = toDecimal(item.quantity)
-        const unitCost = toDecimal(item.unitCost)
 
         logger.debug('[Goods Receipt] Processing item', { productId: item.productId, quantity: Number(quantity) })
 
         // Create IN stock movement
-        await tx.stockMovement.create({
+        await prisma.stockMovement.create({
           data: {
             warehouseId: data.warehouseId,
             productId: item.productId,
@@ -195,44 +202,41 @@ export async function POST(request: Request) {
             reference: receiptNumber,
           },
         })
-        logger.debug('[Goods Receipt] Stock movement created')
 
-        // Update stock level atomicly using consolidated logic
+        // Update stock level atomicly
         await updateStockLevel(
           data.warehouseId,
           item.productId,
           item.variantId || null,
           quantity,
-          tx
+          prisma
         )
-        logger.debug('[Goods Receipt] Stock updated atomicly')
 
-        // Update product cost (moving average) (using transaction client)
+        // Update product cost (moving average)
         await updateProductCost(
           item.productId,
           data.warehouseId,
           quantity,
           toDecimal(item.unitCost),
-          tx,
+          prisma,
           item.variantId
         )
-
       }
 
       // INTEGRACIÓN CONTABLE: Registrar entrada a inventario
-      const totalCost = data.items.reduce((sum, item) => sum + (item.quantity * item.unitCost), 0)
+      const totalCost = data.items.reduce((sum: number, item: any) => sum + (item.quantity * item.unitCost), 0)
 
       try {
         const { createInventoryPurchaseEntry } = await import('@/lib/accounting/inventory-integration')
         await createInventoryPurchaseEntry(
           receipt.id,
-          tenantId,
+          tenantId || 'public',
           (session.user as any).id,
           totalCost,
           purchaseOrder.supplierId,
-          undefined, // name will be fetched by service if needed or we could pass it
-          undefined, // nit will be fetched
-          tx
+          undefined,
+          undefined,
+          prisma
         )
       } catch (accError: any) {
         logger.error('Error in accounting integration during purchase receipt', accError)
@@ -240,7 +244,7 @@ export async function POST(request: Request) {
       }
 
       // Update purchase order status if all items received
-      const po = await tx.purchaseOrder.findUnique({
+      const po = await prisma.purchaseOrder.findUnique({
         where: { id: data.purchaseOrderId },
         include: {
           items: true,
@@ -253,44 +257,42 @@ export async function POST(request: Request) {
       })
 
       if (po) {
-        // Check if all items are received (simplified check)
-        const totalOrdered = po.items.reduce((sum, item) => sum + item.quantity, 0)
-        const totalReceived = po.goodsReceipts.reduce((sum, gr) => {
-          return sum + gr.items.reduce((sum2, item) => sum2 + item.quantity, 0)
+        const totalOrdered = po.items.reduce((sum: number, item: any) => sum + item.quantity, 0)
+        const totalReceived = po.goodsReceipts.reduce((sum: number, gr: any) => {
+          return sum + gr.items.reduce((sum2: number, item: any) => sum2 + item.quantity, 0)
         }, 0)
 
         if (totalReceived >= totalOrdered) {
-          await tx.purchaseOrder.update({
+          await prisma.purchaseOrder.update({
             where: { id: data.purchaseOrderId },
             data: { status: 'RECEIVED' },
           })
         } else {
-          await tx.purchaseOrder.update({
+          await prisma.purchaseOrder.update({
             where: { id: data.purchaseOrderId },
             data: { status: 'SENT' },
           })
         }
       }
+
+      // Audit Log
+      await logActivity({
+        prisma,
+        type: 'PURCHASE_RECEIPT',
+        subject: `Recepción de mercancía: ${receipt.number}`,
+        userId: (session.user as any).id,
+        metadata: {
+          receiptId: receipt.id,
+          receiptNumber: receipt.number,
+          purchaseOrderId: data.purchaseOrderId
+        }
+      })
+
       return receipt
     })
 
-
-
-    // Audit Log
-    await logActivity({
-      prisma,
-      type: 'PURCHASE_RECEIPT',
-      subject: `Recepción de mercancía: ${receipt.number}`,
-      userId: (session.user as any).id,
-      metadata: {
-        receiptId: receipt.id,
-        receiptNumber: receipt.number,
-        purchaseOrderId: data.purchaseOrderId
-      }
-    })
-
     return NextResponse.json({ success: true }, { status: 201 })
-  } catch (error) {
+  } catch (error: any) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: 'Validation error', details: error.errors },
@@ -299,7 +301,7 @@ export async function POST(request: Request) {
     }
     logger.error('Error creating receipt', error, { endpoint: '/api/purchases/receipts', method: 'POST' })
     return NextResponse.json(
-      { error: 'Failed to create receipt' },
+      { error: error.message || 'Failed to create receipt' },
       { status: 500 }
     )
   }

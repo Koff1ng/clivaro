@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requirePermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
-import { getPrismaForRequest } from '@/lib/get-tenant-prisma'
+import { withTenantRead, withTenantTx } from '@/lib/tenancy'
 import { z } from 'zod'
 
 const createCustomerSchema = z.object({
@@ -24,8 +24,7 @@ export async function GET(request: Request) {
     return session
   }
 
-  // Obtener el cliente Prisma correcto (tenant o master según el usuario)
-  const prisma = await getPrismaForRequest(request, session)
+  const tenantId = (session.user as any).tenantId
 
   try {
     const { searchParams } = new URL(request.url)
@@ -34,38 +33,42 @@ export async function GET(request: Request) {
     const search = searchParams.get('search') || ''
     const skip = (page - 1) * limit
 
-    const where: any = {
-      active: true,
-    }
+    const result = await withTenantRead(tenantId, async (prisma) => {
+      const where: any = {
+        active: true,
+      }
 
-    if (search) {
-      where.OR = [
-        { name: { contains: search, mode: 'insensitive' } },
-        { email: { contains: search, mode: 'insensitive' } },
-        { phone: { contains: search, mode: 'insensitive' } },
-        { taxId: { contains: search, mode: 'insensitive' } },
-      ]
-    }
+      if (search) {
+        where.OR = [
+          { name: { contains: search, mode: 'insensitive' } },
+          { email: { contains: search, mode: 'insensitive' } },
+          { phone: { contains: search, mode: 'insensitive' } },
+          { taxId: { contains: search, mode: 'insensitive' } },
+        ]
+      }
 
-    const [customers, total] = await Promise.all([
-      prisma.customer.findMany({
-        where,
-        skip,
-        take: limit,
-        orderBy: { name: 'asc' },
-      }),
-      prisma.customer.count({ where }),
-    ])
+      const [customers, total] = await Promise.all([
+        prisma.customer.findMany({
+          where,
+          skip,
+          take: limit,
+          orderBy: { name: 'asc' },
+        }),
+        prisma.customer.count({ where }),
+      ])
 
-    return NextResponse.json({
-      customers,
-      pagination: {
-        page,
-        limit,
-        total,
-        totalPages: Math.ceil(total / limit),
-      },
+      return {
+        customers,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages: Math.ceil(total / limit),
+        },
+      }
     })
+
+    return NextResponse.json(result)
   } catch (error) {
     console.error('Error fetching customers:', error)
     return NextResponse.json(
@@ -82,27 +85,28 @@ export async function POST(request: Request) {
     return session
   }
 
-  // Obtener el cliente Prisma correcto (tenant o master según el usuario)
-  const prisma = await getPrismaForRequest(request, session)
+  const tenantId = (session.user as any).tenantId
 
   try {
     const body = await request.json()
     const data = createCustomerSchema.parse(body)
 
-    const customer = await prisma.customer.create({
-      data: {
-        ...data,
-        email: data.email || null,
-        phone: data.phone || null,
-        address: data.address || null,
-        taxId: data.taxId || null,
-        notes: data.notes || null,
-        tags: data.tags ? (Array.isArray(data.tags) ? data.tags.join(',') : data.tags) : null,
-        isCompany: data.isCompany || false,
-        taxRegime: data.taxRegime || null,
-        idType: data.idType || null,
-        createdById: (session.user as any).id,
-      },
+    const customer = await withTenantTx(tenantId, async (prisma) => {
+      return prisma.customer.create({
+        data: {
+          ...data,
+          email: data.email || null,
+          phone: data.phone || null,
+          address: data.address || null,
+          taxId: data.taxId || null,
+          notes: data.notes || null,
+          tags: data.tags ? (Array.isArray(data.tags) ? data.tags.join(',') : data.tags) : null,
+          isCompany: data.isCompany || false,
+          taxRegime: data.taxRegime || null,
+          idType: data.idType || null,
+          createdById: (session.user as any).id,
+        },
+      })
     })
 
     return NextResponse.json(customer, { status: 201 })

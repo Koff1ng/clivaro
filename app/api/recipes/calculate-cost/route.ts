@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requirePermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
-import { getPrismaForRequest } from '@/lib/get-tenant-prisma'
+import { withTenantRead, getTenantIdFromSession } from '@/lib/tenancy'
 import { calculateRecipeCost } from '@/lib/recipes'
 
 /**
@@ -11,7 +11,8 @@ import { calculateRecipeCost } from '@/lib/recipes'
 export async function GET(request: Request) {
     const session = await requirePermission(request as any, PERMISSIONS.MANAGE_PRODUCTS)
     if (session instanceof NextResponse) return session
-    const prisma = await getPrismaForRequest(request, session)
+
+    const tenantId = getTenantIdFromSession(session)
 
     try {
         const { searchParams } = new URL(request.url)
@@ -21,7 +22,9 @@ export async function GET(request: Request) {
             return NextResponse.json({ error: 'ProductId is required' }, { status: 400 })
         }
 
-        const result = await calculateRecipeCost(prisma, productId)
+        const result = await withTenantRead(tenantId, async (prisma) => {
+            return await calculateRecipeCost(prisma, productId)
+        })
 
         return NextResponse.json(result)
     } catch (error: any) {

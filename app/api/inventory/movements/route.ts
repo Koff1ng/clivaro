@@ -1,20 +1,16 @@
 import { NextResponse } from 'next/server'
 import { requirePermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
-import { withTenantTx } from '@/lib/tenancy'
+import { withTenantRead, getTenantIdFromSession } from '@/lib/tenancy'
 
 export async function GET(request: Request) {
   const session = await requirePermission(request as any, PERMISSIONS.MANAGE_INVENTORY)
+  if (session instanceof NextResponse) return session
 
-  if (session instanceof NextResponse) {
-    return session
-  }
-
-  // Obtener el cliente Prisma correcto (tenant o master según el usuario)
-  const tenantId = (session.user as any).tenantId
+  const tenantId = getTenantIdFromSession(session)
 
   try {
-    return await withTenantTx(tenantId, async (prisma) => {
+    return await withTenantRead(tenantId, async (prisma) => {
       const { searchParams } = new URL(request.url)
       const page = parseInt(searchParams.get('page') || '1')
       const limit = parseInt(searchParams.get('limit') || '50')
@@ -28,26 +24,14 @@ export async function GET(request: Request) {
 
       const where: any = {}
 
-      if (warehouseId) {
-        where.warehouseId = warehouseId
-      }
-
-      if (type) {
-        where.type = type
-      }
-
-      if (createdById) {
-        where.createdById = createdById
-      }
+      if (warehouseId) where.warehouseId = warehouseId
+      if (type) where.type = type
+      if (createdById) where.createdById = createdById
 
       if (startDate || endDate) {
         where.createdAt = {}
-        if (startDate) {
-          where.createdAt.gte = new Date(startDate)
-        }
-        if (endDate) {
-          where.createdAt.lte = new Date(endDate)
-        }
+        if (startDate) where.createdAt.gte = new Date(startDate)
+        if (endDate) where.createdAt.lte = new Date(endDate)
       }
 
       if (q) {
@@ -73,25 +57,9 @@ export async function GET(request: Request) {
           skip,
           take: limit,
           include: {
-            product: {
-              select: {
-                id: true,
-                name: true,
-                sku: true,
-              },
-            },
-            warehouse: {
-              select: {
-                id: true,
-                name: true,
-              },
-            },
-            createdBy: {
-              select: {
-                id: true,
-                name: true,
-              },
-            },
+            product: { select: { id: true, name: true, sku: true } },
+            warehouse: { select: { id: true, name: true } },
+            createdBy: { select: { id: true, name: true } },
           },
           orderBy: { createdAt: 'desc' },
         }),

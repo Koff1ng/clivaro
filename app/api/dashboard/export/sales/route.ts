@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requirePermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
-import { getPrismaForRequest } from '@/lib/get-tenant-prisma'
+import { withTenantRead, getTenantIdFromSession } from '@/lib/tenancy'
 import { logger } from '@/lib/logger'
 import * as XLSX from 'xlsx'
 import { format } from 'date-fns'
@@ -13,11 +13,9 @@ export async function GET(request: Request) {
 
     try {
         const session = await requirePermission(request as any, PERMISSIONS.VIEW_REPORTS)
+        if (session instanceof NextResponse) return session
 
-        if (session instanceof NextResponse) {
-            return session
-        }
-
+        const tenantId = getTenantIdFromSession(session)
         const { searchParams } = new URL(request.url)
         let year = parseInt(searchParams.get('year') || '')
         let month = parseInt(searchParams.get('month') || '')
@@ -28,27 +26,17 @@ export async function GET(request: Request) {
         const monthStart = new Date(year, month - 1, 1)
         const monthEnd = new Date(year, month, 0, 23, 59, 59, 999)
 
-        const prisma = await getPrismaForRequest(request, session)
-
-        const invoices = await prisma.invoice.findMany({
-            where: {
-                issuedAt: {
-                    gte: monthStart,
-                    lte: monthEnd,
+        const invoices = await withTenantRead(tenantId, async (prisma) => {
+            return await prisma.invoice.findMany({
+                where: { issuedAt: { gte: monthStart, lte: monthEnd } },
+                include: {
+                    customer: { select: { name: true, taxId: true } },
+                    payments: { select: { amount: true, method: true } }
                 },
-            },
-            include: {
-                customer: {
-                    select: { name: true, taxId: true }
-                },
-                payments: {
-                    select: { amount: true, method: true }
-                }
-            },
-            orderBy: { createdAt: 'desc' }
+                orderBy: { createdAt: 'desc' }
+            })
         })
 
-        // Prepare data for Excel
         const data = invoices.map(inv => ({
             'Número': inv.number,
             'Fecha': format(inv.issuedAt || inv.createdAt, 'dd/MM/yyyy HH:mm'),
@@ -63,14 +51,11 @@ export async function GET(request: Request) {
             'Métodos': inv.payments.map(p => p.method).join(', ')
         }))
 
-        // Create workbook
         const worksheet = XLSX.utils.json_to_sheet(data)
         const workbook = XLSX.utils.book_new()
         XLSX.utils.book_append_sheet(workbook, worksheet, 'Ventas')
 
-        // Generate Uint8Array
         const array = XLSX.write(workbook, { type: 'array', bookType: 'xlsx' })
-
         const fileName = `Ventas_${year}_${month}.xlsx`
 
         const duration = Date.now() - startTime
@@ -83,10 +68,7 @@ export async function GET(request: Request) {
             },
         })
     } catch (error: any) {
-        logger.error('Error exporting sales to Excel', error, { endpoint: '/api/dashboard/export/sales' })
-        return NextResponse.json(
-            { error: 'Failed to export sales' },
-            { status: 500 }
-        )
+        logger.error('Error exporting sales to Excel', error)
+        return NextResponse.json({ error: 'Failed to export sales' }, { status: 500 })
     }
 }

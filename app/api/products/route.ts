@@ -1,42 +1,10 @@
 import { NextResponse } from 'next/server'
 import { requirePermission, requireAnyPermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
-import { withTenantTx } from '@/lib/tenancy'
+import { withTenantRead, withTenantTx } from '@/lib/tenancy'
 import { z } from 'zod'
-import { toDecimal } from '@/lib/numbers'
 import { logger } from '@/lib/logger'
 import { logActivity } from '@/lib/activity'
-
-// Función helper para ejecutar consultas con retry y manejo de errores de conexión
-async function executeWithRetry<T>(
-  fn: () => Promise<T>,
-  maxRetries = 3,
-  delay = 1000
-): Promise<T> {
-  let lastError: any
-  for (let attempt = 0; attempt < maxRetries; attempt++) {
-    try {
-      return await fn()
-    } catch (error: any) {
-      lastError = error
-      const errorMessage = error?.message || String(error)
-
-      // Si es error de límite de conexiones, esperar y reintentar
-      if (errorMessage.includes('MaxClientsInSessionMode') || errorMessage.includes('max clients reached')) {
-        if (attempt < maxRetries - 1) {
-          const backoffDelay = Math.min(delay * Math.pow(2, attempt), 10000) // Backoff exponencial, max 10s
-          logger.warn(`[Products] Límite de conexiones alcanzado, reintentando en ${backoffDelay}ms (intento ${attempt + 1}/${maxRetries})`)
-          await new Promise(resolve => setTimeout(resolve, backoffDelay))
-          continue
-        }
-      }
-
-      // Si no es error de conexión, lanzar inmediatamente
-      throw error
-    }
-  }
-  throw lastError
-}
 
 const createProductSchema = z.object({
   sku: z.string().min(1),
@@ -76,28 +44,28 @@ export async function GET(request: Request) {
     return session
   }
 
-  const tenantId = session.user.tenantId
+  const tenantId = (session.user as any).tenantId
 
   try {
-    return await withTenantTx(tenantId, async (prisma) => {
-      const { searchParams } = new URL(request.url)
-      const page = parseInt(searchParams.get('page') || '1')
-      const limit = parseInt(searchParams.get('limit') || '20')
-      const search = searchParams.get('search') || ''
-      const category = searchParams.get('category') || ''
-      const productType = searchParams.get('productType') || ''
-      const orderBy = searchParams.get('orderBy') || 'name'
-      const skip = (page - 1) * limit
+    const { searchParams } = new URL(request.url)
+    const page = parseInt(searchParams.get('page') || '1')
+    const limit = parseInt(searchParams.get('limit') || '20')
+    const search = searchParams.get('search') || ''
+    const category = searchParams.get('category') || ''
+    const productType = searchParams.get('productType') || ''
+    const orderBy = searchParams.get('orderBy') || 'name'
+    const skip = (page - 1) * limit
 
+    const result = await withTenantRead(tenantId, async (prisma) => {
       const where: any = {
         active: true,
       }
 
       if (search) {
         where.OR = [
-          { name: { contains: search } },
-          { sku: { contains: search } },
-          { barcode: { contains: search } },
+          { name: { contains: search, mode: 'insensitive' } },
+          { sku: { contains: search, mode: 'insensitive' } },
+          { barcode: { contains: search, mode: 'insensitive' } },
         ]
       }
 
@@ -128,7 +96,7 @@ export async function GET(request: Request) {
       }
 
       const [productsRaw, total] = await Promise.all([
-        executeWithRetry(() => prisma.product.findMany({
+        prisma.product.findMany({
           where,
           skip,
           take: limit,
@@ -158,11 +126,9 @@ export async function GET(request: Request) {
               }
             }
           } as any,
-        })),
-        executeWithRetry(() => prisma.product.count({ where })),
+        }),
+        prisma.product.count({ where }),
       ])
-
-      console.log("[DEBUG PRODUCTS API]", { where, limit, skip, rawCount: productsRaw.length, total });
 
       // Explicitly cast or handle the type safely
       const productsWithStock = productsRaw.map((p: any) => {
@@ -199,7 +165,7 @@ export async function GET(request: Request) {
         }
       })
 
-      return NextResponse.json({
+      return {
         products: productsWithStock,
         pagination: {
           page,
@@ -207,8 +173,10 @@ export async function GET(request: Request) {
           total,
           totalPages: Math.ceil(total / limit),
         },
-      })
+      }
     })
+
+    return NextResponse.json(result)
   } catch (error) {
     console.error('Error fetching products:', error)
     return NextResponse.json(
@@ -229,7 +197,7 @@ export async function POST(request: Request) {
     return session
   }
 
-  const tenantId = session.user.tenantId
+  const tenantId = (session.user as any).tenantId
   let requestBody: any = null
 
   try {

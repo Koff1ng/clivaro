@@ -5,7 +5,7 @@ import { withTenantTx } from '@/lib/tenancy'
 import { logger } from '@/lib/logger'
 import { handleError } from '@/lib/error-handler'
 import { sendToElectronicBilling, validateInvoiceData, InvoiceData, ElectronicBillingConfig } from '@/lib/electronic-billing'
-import { prisma } from '@/lib/db'
+import { prisma as masterPrisma } from '@/lib/db'
 
 export async function POST(request: Request) {
     const session = await requirePermission(request as any, PERMISSIONS.MANAGE_SALES)
@@ -30,7 +30,7 @@ export async function POST(request: Request) {
                             product: true,
                             lineTaxes: {
                                 include: { taxRate: true }
-                            } // Assuming this relation exists from previous phase
+                            }
                         }
                     },
                     taxSummary: true
@@ -40,15 +40,7 @@ export async function POST(request: Request) {
             if (!invoice) throw new Error('Factura no encontrada')
 
             // 2. Fetch Tenant Settings (Billing Config)
-            // We need to fetch from masterPrisma.tenantSettings as withTenantTx gives us the tenant DB context
-            // But settings are likely in tenant DB too if using the correct schema strategy
-            // For now assuming existing pattern: settings are in public or per-tenant table
-
-            // Re-checking how settings were fetched in 'settings-screen.tsx' -> /api/settings.
-            // It seems likely stored in the TenantSettings model. 
-            // Let's check schema via Prisma Client usage in other files if needed, but assuming standard access:
-
-            const settings = await prisma.tenantSettings.findUnique({
+            const settings = await masterPrisma.tenantSettings.findUnique({
                 where: { tenantId: session.user.tenantId }
             })
 
@@ -61,9 +53,9 @@ export async function POST(request: Request) {
                 prefix: invoice.prefix || '',
                 consecutive: invoice.consecutive || '',
                 issueDate: invoice.issuedAt || new Date(),
-                issueTime: formatTime(invoice.createdAt), // Helper needed
+                issueTime: formatTime(invoice.createdAt),
                 customer: {
-                    nit: invoice.customer.taxId || '222222222222', // Fallback
+                    nit: invoice.customer.taxId || '222222222222',
                     name: invoice.customer.name,
                     email: invoice.customer.email || undefined,
                     phone: invoice.customer.phone || undefined,
@@ -98,7 +90,7 @@ export async function POST(request: Request) {
                 total: invoice.total
             }
 
-            // 3. Fetch specialized provider config if needed (e.g. Alegra)
+            // 3. Fetch specialized provider config if needed
             let providerConfig: any = null
             if (settings.electronicBillingProvider === 'ALEGRA') {
                 providerConfig = await (tx as any).electronicInvoiceProviderConfig.findUnique({
@@ -125,10 +117,10 @@ export async function POST(request: Request) {
                 resolutionTo: settings.billingResolutionTo || '',
                 resolutionValidFrom: settings.billingResolutionValidFrom ? new Date(settings.billingResolutionValidFrom).toISOString().split('T')[0] : '',
                 resolutionValidTo: settings.billingResolutionValidTo ? new Date(settings.billingResolutionValidTo).toISOString().split('T')[0] : '',
-                softwareId: undefined, // No longer in TenantSettings
-                softwarePin: undefined, // No longer in TenantSettings
-                technicalKey: undefined, // No longer in TenantSettings
-                environment: '2', // Test by default for now
+                softwareId: undefined,
+                softwarePin: undefined,
+                technicalKey: undefined,
+                environment: '2',
                 alegraEmail: providerConfig?.alegraEmail || undefined,
                 alegraToken: providerConfig?.alegraTokenEncrypted
                     ? providerConfig.alegraTokenEncrypted.replace('enc_', '')
@@ -138,7 +130,7 @@ export async function POST(request: Request) {
             // 5. Validation
             const validation = validateInvoiceData(invoiceData)
             if (!validation.valid) {
-                return NextResponse.json({ error: 'Datos de factura inválidos', details: validation.errors }, { status: 400 })
+                throw new Error('Datos de factura inválidos: ' + validation.errors.join(', '))
             }
 
             // 6. Send
