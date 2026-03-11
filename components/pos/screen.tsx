@@ -30,7 +30,8 @@ async function searchProducts(query: string) {
 async function fetchWarehouses() {
   const res = await fetch('/api/warehouses')
   if (!res.ok) throw new Error('Failed to fetch warehouses')
-  return res.json()
+  const data = await res.json()
+  return data.warehouses || []
 }
 
 // NOTE: Componente legacy (no usado). El POS activo vive en `components/pos/pos-screen.tsx`.

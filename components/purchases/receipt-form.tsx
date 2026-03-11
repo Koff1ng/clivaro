@@ -46,7 +46,8 @@ async function fetchPurchaseOrders() {
 async function fetchWarehouses() {
   const res = await fetch('/api/warehouses')
   if (!res.ok) return []
-  return res.json()
+  const data = await res.json()
+  return data.warehouses || []
 }
 
 async function fetchProducts() {
@@ -56,12 +57,12 @@ async function fetchProducts() {
   return data.products || []
 }
 
-export function ReceiptForm({ 
-  purchaseOrderId, 
-  onSuccess 
-}: { 
+export function ReceiptForm({
+  purchaseOrderId,
+  onSuccess
+}: {
   purchaseOrderId?: string | null
-  onSuccess: () => void 
+  onSuccess: () => void
 }) {
   const { toast } = useToast()
   const [loading, setLoading] = useState(false)

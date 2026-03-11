@@ -57,7 +57,8 @@ async function fetchStockLevels(page: number, search: string, warehouseId: strin
 async function fetchWarehouses(): Promise<{ id: string, name: string }[]> {
   const res = await fetch('/api/warehouses')
   if (!res.ok) throw new Error('Failed to fetch warehouses')
-  return res.json()
+  const data = await res.json()
+  return data.warehouses || []
 }
 
 export function StockLevels() {
