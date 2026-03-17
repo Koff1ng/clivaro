@@ -356,6 +356,7 @@ CREATE TABLE "QuotationItem" (
     "discount" DOUBLE PRECISION NOT NULL DEFAULT 0,
     "taxRate" DOUBLE PRECISION NOT NULL,
     "subtotal" DOUBLE PRECISION NOT NULL,
+    "zoneId" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "QuotationItem_pkey" PRIMARY KEY ("id")
@@ -392,6 +393,7 @@ CREATE TABLE "SalesOrderItem" (
     "discount" DOUBLE PRECISION NOT NULL DEFAULT 0,
     "taxRate" DOUBLE PRECISION NOT NULL,
     "subtotal" DOUBLE PRECISION NOT NULL,
+    "zoneId" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "SalesOrderItem_pkey" PRIMARY KEY ("id")
@@ -442,6 +444,7 @@ CREATE TABLE "InvoiceItem" (
     "taxRate" DOUBLE PRECISION NOT NULL DEFAULT 0,
     "subtotal" DOUBLE PRECISION NOT NULL,
     "preparationNotes" TEXT,
+    "zoneId" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "InvoiceItem_pkey" PRIMARY KEY ("id")
@@ -530,6 +533,7 @@ CREATE TABLE "ReturnItem" (
     "invoiceItemId" TEXT NOT NULL,
     "quantity" DOUBLE PRECISION NOT NULL,
     "total" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "zoneId" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "ReturnItem_pkey" PRIMARY KEY ("id")
@@ -595,6 +599,7 @@ CREATE TABLE "CreditNoteItem" (
     "discount" DOUBLE PRECISION NOT NULL DEFAULT 0,
     "taxRate" DOUBLE PRECISION NOT NULL DEFAULT 0,
     "subtotal" DOUBLE PRECISION NOT NULL,
+    "zoneId" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "CreditNoteItem_pkey" PRIMARY KEY ("id")
@@ -745,6 +750,7 @@ CREATE TABLE "PurchaseOrderItem" (
     "unitCost" DOUBLE PRECISION NOT NULL,
     "taxRate" DOUBLE PRECISION NOT NULL,
     "subtotal" DOUBLE PRECISION NOT NULL,
+    "zoneId" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "PurchaseOrderItem_pkey" PRIMARY KEY ("id")
@@ -775,6 +781,7 @@ CREATE TABLE "GoodsReceiptItem" (
     "variantId" TEXT,
     "quantity" DOUBLE PRECISION NOT NULL,
     "unitCost" DOUBLE PRECISION NOT NULL,
+    "zoneId" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "GoodsReceiptItem_pkey" PRIMARY KEY ("id")

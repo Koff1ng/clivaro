@@ -1,0 +1,36 @@
+🚀 Starting Deep Schema Audit...
+
+📊 Found 2 active tenants to audit.
+
+
+🔍 Auditing Tenant: lavanderia la presion (prueba)
+   Schema: tenant_prueba
+   ✅ Table Product is up to date
+   ✅ Table User is up to date
+   ✅ Table QuotationItem is up to date
+   ✅ Table SalesOrderItem is up to date
+   ✅ Table InvoiceItem is up to date
+   ✅ Table PurchaseOrderItem is up to date
+   ✅ Table GoodsReceiptItem is up to date
+   ✅ Table ReturnItem is up to date
+   ✅ Table CreditNoteItem is up to date
+   ✅ Table StockLevel is up to date
+   ✅ Table StockMovement is up to date
+   ✅ Table PhysicalInventoryItem is up to date
+
+🔍 Auditing Tenant: Cafe Singular (cafe-singular)
+   Schema: tenant_cml5qyzi90004qihnrbt57g6l
+   ✅ Table Product is up to date
+   ✅ Table User is up to date
+   ✅ Table QuotationItem is up to date
+   ✅ Table SalesOrderItem is up to date
+   ✅ Table InvoiceItem is up to date
+   ✅ Table PurchaseOrderItem is up to date
+   ✅ Table GoodsReceiptItem is up to date
+   ✅ Table ReturnItem is up to date
+   ✅ Table CreditNoteItem is up to date
+   ✅ Table StockLevel is up to date
+   ✅ Table StockMovement is up to date
+   ✅ Table PhysicalInventoryItem is up to date
+
+🏁 Audit complete.

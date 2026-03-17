@@ -3,6 +3,8 @@ import bcrypt from 'bcryptjs'
 import { Client } from 'pg'
 import { TENANT_SQL_STATEMENTS } from './tenant-sql-statements'
 import { getSchemaName } from './tenant-utils'
+import { initializePUC } from './accounting/service'
+import { updateAccountingConfig } from './accounting/config-service'
 
 function stripSchemaParam(databaseUrl: string): string {
   try {
@@ -322,6 +324,32 @@ async function initializePostgresTenant(databaseUrl: string, tenantId: string, t
       })
     }
     console.log('[STEP 3/4] ✓ Roles y permisos configurados')
+
+    // Step 4: Accounting Setup
+    console.log('[STEP 4/4] Configurando contabilidad (PUC y Config)...')
+    try {
+      await initializePUC(tenantId)
+      
+      const accounts = await tenantPrisma.accountingAccount.findMany()
+      const findId = (code: string) => accounts.find(a => a.code === code)?.id
+
+      const configData = {
+        cashAccountId: findId('110505'),
+        bankAccountId: findId('111005'),
+        accountsReceivableId: findId('130505'),
+        accountsPayableId: findId('2205'),
+        inventoryAccountId: findId('1435'),
+        salesRevenueId: findId('4135'),
+        vatGeneratedId: findId('240805'),
+        vatDeductibleId: findId('240810'),
+        costOfSalesId: findId('6135'),
+      }
+
+      await updateAccountingConfig(tenantId, configData)
+      console.log('[STEP 4/4] ✓ Contabilidad configurada')
+    } catch (accErr: any) {
+      console.warn(`[TENANT INIT] Warning during accounting setup: ${accErr.message}`)
+    }
 
     return { adminUsername, adminPassword: defaultPassword }
   } catch (dataError: any) {

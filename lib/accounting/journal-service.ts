@@ -1,3 +1,7 @@
+import { prisma } from '@/lib/db'
+import { logAction } from './audit-service'
+import { validatePeriodNotClosed } from './period-service'
+
 /**
  * Input data required to create a new Journal Entry.
  */
