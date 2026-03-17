@@ -213,7 +213,10 @@ export async function POST(request: Request) {
     }
     console.error('Error creating purchase order:', error)
     return NextResponse.json(
-      { error: 'Failed to create purchase order' },
+      { 
+        error: 'Failed to create purchase order', 
+        details: error instanceof Error ? error.message : String(error)
+      },
       { status: 500 }
     )
   }
