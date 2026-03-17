@@ -152,7 +152,7 @@ export async function POST(request: Request) {
           quantity: toDecimal(item.quantity),
           unitCost: toDecimal(item.unitCost),
           taxRate: toDecimal(item.taxRate),
-          total: itemTotal,
+          subtotal: itemTotal,
         })
       }
 

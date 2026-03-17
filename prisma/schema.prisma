@@ -461,6 +461,7 @@ model QuotationItem {
   discount    Float           @default(0)
   taxRate     Float
   subtotal    Float
+  zoneId      String?
   createdAt   DateTime        @default(now())
   variant     ProductVariant? @relation(fields: [variantId], references: [id])
   product     Product         @relation(fields: [productId], references: [id])
@@ -498,6 +499,7 @@ model SalesOrderItem {
   discount     Float           @default(0)
   taxRate      Float
   subtotal     Float
+  zoneId       String?
   createdAt    DateTime        @default(now())
   variant      ProductVariant? @relation(fields: [variantId], references: [id])
   product      Product         @relation(fields: [productId], references: [id])
@@ -554,6 +556,7 @@ model InvoiceItem {
   discount         Float            @default(0)
   taxRate          Float            @default(0) // Legacy: keep for simplicity or backward compat
   subtotal         Float
+  zoneId           String?
   preparationNotes String? // Customer notes: "sin cebolla", "extra queso"
   createdAt        DateTime         @default(now())
   variant          ProductVariant?  @relation(fields: [variantId], references: [id])
@@ -662,6 +665,7 @@ model ReturnItem {
   invoiceItemId String
   quantity      Float
   total         Float    @default(0) // Total devuelto por ítem (incluye IVA)
+  zoneId        String?
   createdAt     DateTime @default(now())
 
   return      Return      @relation(fields: [returnId], references: [id], onDelete: Cascade)
@@ -743,6 +747,7 @@ model CreditNoteItem {
   discount      Float    @default(0)
   taxRate       Float    @default(0)
   subtotal      Float
+  zoneId        String?
   createdAt     DateTime @default(now())
 
   creditNote  CreditNote        @relation(fields: [creditNoteId], references: [id], onDelete: Cascade)
@@ -909,6 +914,7 @@ model PurchaseOrderItem {
   unitCost        Float
   taxRate         Float
   subtotal        Float
+  zoneId          String?
   createdAt       DateTime        @default(now())
   variant         ProductVariant? @relation(fields: [variantId], references: [id])
   product         Product         @relation(fields: [productId], references: [id])
@@ -939,6 +945,7 @@ model GoodsReceiptItem {
   variantId           String?
   quantity            Float
   unitCost            Float
+  zoneId              String?
   createdAt           DateTime        @default(now())
   variant             ProductVariant? @relation(fields: [variantId], references: [id])
   product             Product         @relation(fields: [productId], references: [id])

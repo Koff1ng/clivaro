@@ -69,6 +69,7 @@ export function SupplierForm({ supplier, onSuccess }: { supplier: any; onSuccess
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['suppliers'] })
+      queryClient.invalidateQueries({ queryKey: ['purchase-order-suppliers'] })
       onSuccess()
     },
   })

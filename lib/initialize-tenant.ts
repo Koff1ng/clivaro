@@ -150,18 +150,19 @@ async function initializePostgresTenant(databaseUrl: string, tenantId: string, t
       ADD COLUMN IF NOT EXISTS "averageCost" DOUBLE PRECISION DEFAULT 0,
       ADD COLUMN IF NOT EXISTS "yieldFactor" DOUBLE PRECISION NOT NULL DEFAULT 1;
     `)
-    // PhysicalInventoryItem columns
+    // Ensure all item tables have zoneId for location tracking
     await srClient.query(`
-      ALTER TABLE "PhysicalInventoryItem"
-      ADD COLUMN IF NOT EXISTS "zoneId" TEXT;
-    `)
-
-    // Ensure StockLevel unique index includes zoneId
-    // Note: This is complex with raw SQL, but we should at least ensure columns exist
-    await srClient.query(`
+      ALTER TABLE "PhysicalInventoryItem" ADD COLUMN IF NOT EXISTS "zoneId" TEXT;
       ALTER TABLE "StockLevel" ADD COLUMN IF NOT EXISTS "zoneId" TEXT;
       ALTER TABLE "StockMovement" ADD COLUMN IF NOT EXISTS "zoneId" TEXT;
       ALTER TABLE "Product" ADD COLUMN IF NOT EXISTS "preferredZoneId" TEXT;
+      ALTER TABLE "QuotationItem" ADD COLUMN IF NOT EXISTS "zoneId" TEXT;
+      ALTER TABLE "SalesOrderItem" ADD COLUMN IF NOT EXISTS "zoneId" TEXT;
+      ALTER TABLE "InvoiceItem" ADD COLUMN IF NOT EXISTS "zoneId" TEXT;
+      ALTER TABLE "PurchaseOrderItem" ADD COLUMN IF NOT EXISTS "zoneId" TEXT;
+      ALTER TABLE "GoodsReceiptItem" ADD COLUMN IF NOT EXISTS "zoneId" TEXT;
+      ALTER TABLE "ReturnItem" ADD COLUMN IF NOT EXISTS "zoneId" TEXT;
+      ALTER TABLE "CreditNoteItem" ADD COLUMN IF NOT EXISTS "zoneId" TEXT;
     `)
 
     console.log('[STEP 2.6/4] ✓ Campos sincronizados')
