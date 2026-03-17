@@ -95,6 +95,62 @@ BEGIN
         END IF;
     END IF;
 
+    -- 6. Add zoneId to QuotationItem
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = v_schema AND table_name = 'QuotationItem') THEN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = v_schema AND table_name = 'QuotationItem' AND column_name = 'zoneId') THEN
+            ALTER TABLE "QuotationItem" ADD COLUMN "zoneId" TEXT;
+            RAISE NOTICE '✅ Added zoneId to QuotationItem';
+        END IF;
+    END IF;
+
+    -- 7. Add zoneId to SalesOrderItem
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = v_schema AND table_name = 'SalesOrderItem') THEN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = v_schema AND table_name = 'SalesOrderItem' AND column_name = 'zoneId') THEN
+            ALTER TABLE "SalesOrderItem" ADD COLUMN "zoneId" TEXT;
+            RAISE NOTICE '✅ Added zoneId to SalesOrderItem';
+        END IF;
+    END IF;
+
+    -- 8. Add zoneId to InvoiceItem
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = v_schema AND table_name = 'InvoiceItem') THEN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = v_schema AND table_name = 'InvoiceItem' AND column_name = 'zoneId') THEN
+            ALTER TABLE "InvoiceItem" ADD COLUMN "zoneId" TEXT;
+            RAISE NOTICE '✅ Added zoneId to InvoiceItem';
+        END IF;
+    END IF;
+
+    -- 9. Add zoneId to PurchaseOrderItem
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = v_schema AND table_name = 'PurchaseOrderItem') THEN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = v_schema AND table_name = 'PurchaseOrderItem' AND column_name = 'zoneId') THEN
+            ALTER TABLE "PurchaseOrderItem" ADD COLUMN "zoneId" TEXT;
+            RAISE NOTICE '✅ Added zoneId to PurchaseOrderItem';
+        END IF;
+    END IF;
+
+    -- 10. Add zoneId to GoodsReceiptItem
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = v_schema AND table_name = 'GoodsReceiptItem') THEN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = v_schema AND table_name = 'GoodsReceiptItem' AND column_name = 'zoneId') THEN
+            ALTER TABLE "GoodsReceiptItem" ADD COLUMN "zoneId" TEXT;
+            RAISE NOTICE '✅ Added zoneId to GoodsReceiptItem';
+        END IF;
+    END IF;
+
+    -- 11. Add zoneId to ReturnItem
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = v_schema AND table_name = 'ReturnItem') THEN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = v_schema AND table_name = 'ReturnItem' AND column_name = 'zoneId') THEN
+            ALTER TABLE "ReturnItem" ADD COLUMN "zoneId" TEXT;
+            RAISE NOTICE '✅ Added zoneId to ReturnItem';
+        END IF;
+    END IF;
+
+    -- 12. Add zoneId to CreditNoteItem
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = v_schema AND table_name = 'CreditNoteItem') THEN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = v_schema AND table_name = 'CreditNoteItem' AND column_name = 'zoneId') THEN
+            ALTER TABLE "CreditNoteItem" ADD COLUMN "zoneId" TEXT;
+            RAISE NOTICE '✅ Added zoneId to CreditNoteItem';
+        END IF;
+    END IF;
+
 END $$;
 `
 
