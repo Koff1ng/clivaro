@@ -48,9 +48,21 @@ export async function createCostOfSalesEntry(
     }
 
     // Get accounting config
-    const config = await getAccountingConfig(tenantId)
-    if (!config?.costOfSalesId || !config?.inventoryAccountId) {
-        throw new Error('Configuración contable incompleta. Configure las cuentas en /accounting/config')
+    const config = await getAccountingConfig(tenantId, prismaTx)
+    if (!config) {
+        throw new Error('Configuración contable no encontrada para la empresa.')
+    }
+
+    if (!config.costOfSalesId || !config.inventoryAccountId) {
+        const missing: string[] = []
+        if (!config.costOfSalesId) missing.push('Costo de Ventas')
+        if (!config.inventoryAccountId) missing.push('Inventarios')
+        throw new Error(`Configuración contable incompleta: faltan las cuentas de ${missing.join(' y ')}. Por favor, configúrelas en Configuración > Contabilidad.`)
+    }
+
+    // Verify accounts exist in the current schema
+    if (!config.costOfSales || !config.inventoryAccount) {
+        throw new Error('Las cuentas contables configuradas para Costo de Ventas o Inventarios no existen en el Plan de Cuentas de esta empresa. Ejecute la reparación de contabilidad.')
     }
 
     // Calculate total cost
@@ -131,9 +143,22 @@ export async function createInventoryPurchaseEntry(
 ) {
     const client = prismaTx || prisma
     // Get accounting config
-    const config = await getAccountingConfig(tenantId)
-    if (!config?.inventoryAccountId || !config?.accountsPayableId) {
-        throw new Error('Configuración contable incompleta')
+    const config = await getAccountingConfig(tenantId, prismaTx)
+    
+    if (!config) {
+        throw new Error('Configuración contable no encontrada para la empresa.')
+    }
+
+    if (!config.inventoryAccountId || !config.accountsPayableId) {
+        const missing: string[] = []
+        if (!config.inventoryAccountId) missing.push('Inventarios')
+        if (!config.accountsPayableId) missing.push('Cuentas por Pagar (Proveedores)')
+        throw new Error(`Configuración contable incompleta: faltan las cuentas de ${missing.join(' y ')}. Por favor, configúrelas en Configuración > Contabilidad.`)
+    }
+
+    // Verify accounts exist in the current schema
+    if (!config.inventoryAccount || !config.accountsPayable) {
+        throw new Error('Las cuentas contables configuradas para Inventarios o Cuentas por Pagar no existen en el Plan de Cuentas de esta empresa. Ejecute la reparación de contabilidad.')
     }
 
     const lines: any[] = []

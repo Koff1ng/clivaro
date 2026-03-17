@@ -47,8 +47,20 @@ export async function createJournalEntryFromPayment(
 
     // Get accounting config
     const config = await getAccountingConfig(tenantId)
-    if (!config?.cashAccountId || !config?.accountsReceivableId) {
-        throw new Error('Configuración contable incompleta. Configure las cuentas en /accounting/config')
+    if (!config) {
+        throw new Error('Configuración contable no encontrada para la empresa.')
+    }
+
+    if (!config.cashAccountId || !config.accountsReceivableId) {
+        const missing: string[] = []
+        if (!config.cashAccountId) missing.push('Caja')
+        if (!config.accountsReceivableId) missing.push('Cuentas por Cobrar (Clientes)')
+        throw new Error(`Configuración contable incompleta: faltan las cuentas de ${missing.join(' y ')}. Por favor, configúrelas en Configuración > Contabilidad.`)
+    }
+
+    // Verify accounts exist in the current schema
+    if (!config.cashAccount || !config.accountsReceivable) {
+        throw new Error('Las cuentas contables configuradas para Caja o Cuentas por Cobrar no existen en el Plan de Cuentas de esta empresa. Ejecute la reparación de contabilidad.')
     }
 
     // Determine debit account based on payment method
@@ -61,7 +73,7 @@ export async function createJournalEntryFromPayment(
         debitAccountId = config.cashAccountId // Default to cash
     }
 
-    const lines = []
+    const lines: any[] = []
 
     // DEBIT: Cash/Bank
     lines.push({

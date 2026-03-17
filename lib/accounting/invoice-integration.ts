@@ -50,9 +50,22 @@ export async function createJournalEntryFromInvoice(
     }
 
     // Get accounting config
-    const config = await getAccountingConfig(tenantId)
-    if (!config?.accountsReceivableId || !config?.salesRevenueId || !config?.vatGeneratedId) {
-        throw new Error('Configuración contable incompleta. Configure las cuentas en /accounting/config')
+    const config = await getAccountingConfig(tenantId, prismaTx)
+    if (!config) {
+        throw new Error('Configuración contable no encontrada para la empresa.')
+    }
+
+    if (!config.accountsReceivableId || !config.salesRevenueId || !config.vatGeneratedId) {
+        const missing: string[] = []
+        if (!config.accountsReceivableId) missing.push('Cuentas por Cobrar (Clientes)')
+        if (!config.salesRevenueId) missing.push('Ingresos por Ventas')
+        if (!config.vatGeneratedId) missing.push('IVA Generado')
+        throw new Error(`Configuración contable incompleta: faltan las cuentas de ${missing.join(', ')}. Por favor, configúrelas en Configuración > Contabilidad.`)
+    }
+
+    // Verify accounts exist in the current schema
+    if (!config.accountsReceivable || !config.salesRevenue || !config.vatGenerated) {
+        throw new Error('Las cuentas contables configuradas para Ventas no existen en el Plan de Cuentas de esta empresa. Ejecute la reparación de contabilidad.')
     }
 
     // Calculate amounts
