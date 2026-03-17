@@ -10,6 +10,7 @@ import { LoadingOverlay } from '@/components/ui/loading-overlay'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import { FileText, Phone, MapPin, CheckCircle, Send } from 'lucide-react'
 import { Mail } from 'iconoir-react'
+import { sendQuotationEmail } from '@/lib/supabase/client'
 
 export function QuotationDetails({ quotation }: { quotation: any }) {
   const { toast } = useToast()
@@ -51,27 +52,14 @@ export function QuotationDetails({ quotation }: { quotation: any }) {
   const sendMutation = useMutation({
     mutationFn: async () => {
       setSending(true)
-      const res = await fetch(`/api/quotations/${quotation.id}/send`, {
-        method: 'POST',
-      })
-      const data = await res.json()
-      if (!res.ok) {
-        throw new Error(data.message || data.error || 'Error al enviar cotización')
-      }
+      const data = await sendQuotationEmail(quotation.id)
       return data
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['quotations'] })
       queryClient.invalidateQueries({ queryKey: ['activity-feed'] })
       setSending(false)
-      if (data.emailSent) {
-        toast(data.message || `Cotización enviada exitosamente a ${data.email}`, 'success')
-      } else {
-        const errorDetails = data.emailError === 'SMTP not configured'
-          ? 'El servicio de email no está configurado. Configure las variables SMTP en .env'
-          : data.emailMessage || data.emailError || 'Error desconocido'
-        toast(`Error al enviar el email: ${errorDetails} - Email destino: ${data.email}`, 'error')
-      }
+      toast(data.message || `Cotización enviada exitosamente`, 'success')
     },
     onError: (error: any) => {
       setSending(false)

@@ -26,8 +26,9 @@ export async function POST(
       return NextResponse.json({ error: 'ID de cotización requerido' }, { status: 400 })
     }
 
-    const result = await withTenantTx(tenantId, async (prisma) => {
-      const quotation = await prisma.quotation.findUnique({
+    // 1. Fetch quotation data (Read-only)
+    const quotation = await withTenantTx(tenantId, async (prisma) => {
+      const q = await prisma.quotation.findUnique({
         where: { id: quotationId },
         include: {
           customer: {
@@ -48,77 +49,79 @@ export async function POST(
           },
         },
       })
+      if (!q) throw new Error('Cotización no encontrada')
+      if (!q.customer?.email) throw new Error('El cliente no tiene un email registrado')
+      return q
+    })
 
-      if (!quotation) throw new Error('Cotización no encontrada')
-      if (!quotation.customer?.email) throw new Error('El cliente no tiene un email registrado')
-
-      const quotationHtml = generateQuotationHTML(quotation)
-
-      let pdfBuffer: Buffer | null = null
-      try {
-        pdfBuffer = await generateQuotationPDF({
-          number: quotation.number,
-          customer: {
-            name: quotation.customer?.name || 'N/A',
-            email: quotation.customer?.email,
-            phone: quotation.customer?.phone || undefined,
-            address: quotation.customer?.address || undefined,
-            taxId: quotation.customer?.taxId || undefined,
+    // 2. Generate PDF and HTML (CPU heavy / Network, OUTSIDE transaction)
+    const quotationHtml = generateQuotationHTML(quotation)
+    let pdfBuffer: Buffer | null = null
+    try {
+      pdfBuffer = await generateQuotationPDF({
+        number: quotation.number,
+        customer: {
+          name: quotation.customer?.name || 'N/A',
+          email: quotation.customer?.email || '',
+          phone: quotation.customer?.phone ?? undefined,
+          address: quotation.customer?.address ?? undefined,
+          taxId: quotation.customer?.taxId ?? undefined,
+        },
+        items: quotation.items.map(item => ({
+          product: {
+            name: item.product?.name || 'Producto',
+            sku: item.product?.sku,
           },
-          items: quotation.items.map(item => ({
-            product: {
-              name: item.product?.name || 'Producto',
-              sku: item.product?.sku,
-            },
-            variant: item.variant ? { name: item.variant.name } : undefined,
-            quantity: item.quantity || 0,
-            unitPrice: item.unitPrice || 0,
-            discount: item.discount || 0,
-            subtotal: item.subtotal || 0,
-          })),
-          subtotal: quotation.subtotal || 0,
-          discount: quotation.discount || 0,
-          tax: quotation.tax || 0,
-          total: quotation.total || 0,
-          validUntil: quotation.validUntil,
-          notes: quotation.notes,
-          createdAt: quotation.createdAt,
-        })
-      } catch (pdfError) {
-        logger.warn('Error generating PDF (continuing without attachment)', { quotationId, pdfError })
-      }
-
-      const companyName = process.env.COMPANY_NAME || 'Ferretería'
-
-      const emailResult = await sendEmail({
-        to: quotation.customer.email,
-        subject: `Cotización ${quotation.number} - ${companyName}`,
-        html: quotationHtml,
-        attachments: pdfBuffer ? [{
-          filename: `Cotizacion-${quotation.number}.pdf`,
-          content: pdfBuffer,
-          contentType: 'application/pdf',
-        }] : undefined,
+          variant: item.variant ? { name: item.variant.name } : undefined,
+          quantity: item.quantity || 0,
+          unitPrice: item.unitPrice || 0,
+          discount: item.discount || 0,
+          subtotal: item.subtotal || 0,
+        })),
+        subtotal: quotation.subtotal || 0,
+        discount: quotation.discount || 0,
+        tax: quotation.tax || 0,
+        total: quotation.total || 0,
+        validUntil: quotation.validUntil,
+        notes: quotation.notes,
+        createdAt: quotation.createdAt,
       })
+    } catch (pdfError) {
+      logger.warn('Error generating PDF (continuing without attachment)', { quotationId, pdfError })
+    }
 
-      if (emailResult.success) {
-        if (quotation.status !== 'SENT') {
-          await prisma.quotation.update({
-            where: { id: quotationId },
-            data: { status: 'SENT', updatedById: (session.user as any).id },
-          })
-        }
-        return {
-          success: true,
-          message: `Cotización ${quotation.number} enviada exitosamente a ${quotation.customer.email}`,
-          email: quotation.customer.email,
-        }
-      } else {
-        throw new Error(emailResult.message || 'Error al enviar el email')
+    // 3. Send Email (Network, OUTSIDE transaction)
+    const companyName = process.env.COMPANY_NAME || 'Ferretería'
+    const emailResult = await sendEmail({
+      to: quotation.customer.email || '',
+      subject: `Cotización ${quotation.number || ''} - ${companyName}`,
+      html: quotationHtml,
+      attachments: pdfBuffer ? [{
+        filename: `Cotizacion-${quotation.number}.pdf`,
+        content: pdfBuffer,
+        contentType: 'application/pdf',
+      }] : undefined,
+    })
+
+    if (!emailResult.success) {
+      throw new Error(emailResult.message || 'Error al enviar el email')
+    }
+
+    // 4. Update status (Write, INSIDE transaction)
+    await withTenantTx(tenantId, async (prisma) => {
+      if (quotation.status !== 'SENT') {
+        await prisma.quotation.update({
+          where: { id: quotationId },
+          data: { status: 'SENT', updatedById: (session.user as any).id },
+        })
       }
     })
 
-    return NextResponse.json(result)
+    return NextResponse.json({
+      success: true,
+      message: `Cotización ${quotation.number} enviada exitosamente a ${quotation.customer.email}`,
+      email: quotation.customer.email,
+    })
   } catch (error: any) {
     logger.error('Error sending quotation', error)
     return NextResponse.json({ error: error.message || 'Error al enviar la cotización' }, { status: 500 })

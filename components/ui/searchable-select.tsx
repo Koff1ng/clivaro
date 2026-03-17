@@ -3,8 +3,14 @@
 import { useState, useMemo, useRef, useEffect } from 'react'
 import { Input } from '@/components/ui/input'
 import { useDebounce } from '@/lib/hooks/use-debounce'
-import { Search, ChevronDown, Plus } from 'lucide-react'
+import { Search, ChevronDown, Plus, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover'
+import { cn } from '@/lib/utils'
 
 interface SearchableSelectProps {
   options: Array<{ id: string; label: string;[key: string]: any }>
@@ -77,22 +83,30 @@ export function SearchableSelect({
   const selectedOption = options.find(opt => opt.id === value)
 
   return (
-    <div ref={containerRef} className={`relative ${className}`}>
-      <button
-        type="button"
-        onClick={() => !disabled && setIsOpen(!isOpen)}
-        disabled={disabled}
-        className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        <span className={selectedOption ? '' : 'text-muted-foreground'}>
-          {selectedOption ? selectedOption.label : placeholder}
-        </span>
-        <ChevronDown className={`h-4 w-4 opacity-50 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
-      </button>
-
-      {isOpen && (
-        <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover shadow-md animate-in fade-in-0 zoom-in-95">
-          <div className="p-2">
+    <div className={cn("relative w-full", className)}>
+      <Popover open={isOpen} onOpenChange={(open) => !disabled && setIsOpen(open)}>
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            disabled={disabled}
+            className={cn(
+              "flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
+              !selectedOption && "text-muted-foreground",
+              isOpen && "ring-2 ring-ring ring-offset-2"
+            )}
+          >
+            <span className="truncate">
+              {selectedOption ? selectedOption.label : placeholder}
+            </span>
+            <ChevronDown className={cn("h-4 w-4 opacity-50 transition-transform", isOpen && "rotate-180")} />
+          </button>
+        </PopoverTrigger>
+        <PopoverContent
+          className="p-0 w-[--radix-popover-trigger-width] min-w-[300px]"
+          align="start"
+          sideOffset={4}
+        >
+          <div className="p-2 border-b">
             <div className="relative">
               <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
@@ -101,18 +115,19 @@ export function SearchableSelect({
                 placeholder={searchPlaceholder}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="pl-8"
+                className="pl-8 h-9"
                 autoFocus
               />
             </div>
           </div>
-          <div className="max-h-60 overflow-auto">
+          <div className="max-h-60 overflow-auto py-1">
             {loading ? (
-              <div className="p-4 text-center text-sm text-muted-foreground">
-                Cargando...
+              <div className="p-4 flex flex-col items-center justify-center text-sm text-muted-foreground gap-2">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span>Cargando...</span>
               </div>
             ) : filteredOptions.length === 0 ? (
-              <div className="p-2 text-center text-sm text-muted-foreground space-y-2">
+              <div className="p-4 text-center text-sm text-muted-foreground space-y-3">
                 <p>{debouncedSearch ? 'No se encontraron resultados' : 'No hay opciones disponibles'}</p>
                 {onCreate && debouncedSearch && (
                   <Button
@@ -124,13 +139,13 @@ export function SearchableSelect({
                     }}
                     className="w-full"
                   >
-                    <Plus className="h-3 w-3 mr-2" />
+                    <Plus className="h-4 w-4 mr-2" />
                     {createLabel}
                   </Button>
                 )}
               </div>
             ) : (
-              <>
+              <div className="grid gap-px">
                 {filteredOptions.map((option) => (
                   <button
                     key={option.id}
@@ -140,13 +155,16 @@ export function SearchableSelect({
                       setIsOpen(false)
                       setSearch('')
                     }}
-                    className="w-full px-4 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
+                    className="w-full px-3 py-2 text-left text-sm transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground outline-none"
                   >
-                    {option.label}
+                    <div className="font-medium">{option.label}</div>
+                    {option.sku && (
+                      <div className="text-xs text-muted-foreground">SKU: {option.sku}</div>
+                    )}
                   </button>
                 ))}
                 {onCreate && (
-                  <div className="p-2 border-t">
+                  <div className="p-1 border-t mt-1">
                     <Button
                       size="sm"
                       variant="ghost"
@@ -154,23 +172,23 @@ export function SearchableSelect({
                         onCreate()
                         setIsOpen(false)
                       }}
-                      className="w-full justify-start text-muted-foreground hover:text-foreground"
+                      className="w-full justify-start text-muted-foreground hover:text-foreground h-9"
                     >
-                      <Plus className="h-3 w-3 mr-2" />
+                      <Plus className="h-4 w-4 mr-2" />
                       {createLabel}
                     </Button>
                   </div>
                 )}
-              </>
+              </div>
             )}
             {filteredOptions.length === 50 && debouncedSearch && (
-              <div className="p-2 text-center text-xs text-muted-foreground border-t">
-                Mostrando primeros 50 resultados.
+              <div className="p-2 text-center text-[10px] uppercase tracking-wider font-semibold text-muted-foreground border-t bg-muted/30">
+                Mostrando primeros 50 resultados
               </div>
             )}
           </div>
-        </div>
-      )}
+        </PopoverContent>
+      </Popover>
     </div>
   )
 }

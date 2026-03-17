@@ -1,6 +1,7 @@
 import puppeteer, { Browser } from 'puppeteer-core'
 import chromium from '@sparticuz/chromium'
 import { formatCurrency, formatDate } from './utils'
+import fs from 'fs'
 
 export interface QuotationPDFData {
   number: string
@@ -216,11 +217,25 @@ export async function generateQuotationPDF(quotation: QuotationPDFData): Promise
 
   let browser
   try {
-    // Configuración para Vercel (serverless)
+    // Configuración para Vercel (serverless) vs Local
     const isVercel = process.env.VERCEL === '1'
-    const executablePath = isVercel
-      ? await chromium.executablePath()
-      : undefined
+    let executablePath = isVercel ? await chromium.executablePath() : undefined
+
+    // Si no es Vercel y no hay ruta, intentar detectar navegadores comunes en Windows
+    if (!isVercel && !executablePath) {
+      const commonPaths = [
+        'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+        'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+        'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
+        'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe'
+      ]
+      for (const p of commonPaths) {
+        if (fs.existsSync(p)) {
+          executablePath = p
+          break
+        }
+      }
+    }
 
     const chromiumArgs = isVercel ? chromium.args || [] : []
     const args = isVercel
