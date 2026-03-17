@@ -108,23 +108,16 @@ export async function POST(request: Request) {
         },
       })
 
-      const productWhere: any = {
-        trackStock: true,
-        OR: [
-          { stockLevels: { some: { warehouseId: data.warehouseId, quantity: { gt: 0 } } } },
-          { stockLevels: { none: {} } }
-        ]
-      }
-
-      if (data.categoryIds && data.categoryIds.length > 0) {
-        productWhere.categoryId = { in: data.categoryIds }
-      }
-      if (data.brandIds && data.brandIds.length > 0) {
-        productWhere.brandId = { in: data.brandIds }
-      }
-
       const stockLevels = await prisma.stockLevel.findMany({
-        where: { warehouseId: data.warehouseId, quantity: { gt: 0 }, ...productWhere },
+        where: { 
+          warehouseId: data.warehouseId, 
+          quantity: { gt: 0 },
+          product: {
+            trackStock: true,
+            ...(data.categoryIds && data.categoryIds.length > 0 ? { categoryId: { in: data.categoryIds } } : {}),
+            ...(data.brandIds && data.brandIds.length > 0 ? { brandId: { in: data.brandIds } } : {}),
+          }
+        },
         include: {
           product: { select: { id: true, name: true, sku: true, unitOfMeasure: true } },
           variant: { select: { id: true, name: true } },

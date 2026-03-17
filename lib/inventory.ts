@@ -127,28 +127,34 @@ export async function updateStockLevel(
     hasTransaction: !!prismaTx
   })
 
-  // Atomic Upsert to prevent race conditions
-  await client.stockLevel.upsert({
+  // Manual check instead of Upsert to handle NULLs in composite key reliably
+  const existingStock = await client.stockLevel.findFirst({
     where: {
-      warehouseId_zoneId_productId_variantId: {
-        warehouseId,
-        zoneId: zoneId ?? null,
-        productId: productId ?? null,
-        variantId: variantId ?? null,
-      }
-    },
-    update: {
-      quantity: { increment: quantityChange }
-    },
-    create: {
       warehouseId,
+      zoneId: zoneId ?? null,
       productId: productId ?? null,
       variantId: variantId ?? null,
-      zoneId: zoneId ?? null,
-      quantity: quantityChange,
     }
   })
-  console.log(`[updateStockLevel] Stock actualizado/creado atómicamente con incremento: ${quantityChange}`)
+
+  if (existingStock) {
+    await client.stockLevel.update({
+      where: { id: existingStock.id },
+      data: { quantity: { increment: quantityChange } }
+    })
+    console.log(`[updateStockLevel] Stock incrementado en: ${quantityChange}`)
+  } else {
+    await client.stockLevel.create({
+      data: {
+        warehouseId,
+        productId: productId ?? null,
+        variantId: variantId ?? null,
+        zoneId: zoneId ?? null,
+        quantity: quantityChange,
+      }
+    })
+    console.log(`[updateStockLevel] Nuevo registro de stock creado con: ${quantityChange}`)
+  }
 
   // Create movement if details provided
   if (movementDetails) {

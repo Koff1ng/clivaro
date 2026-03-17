@@ -150,6 +150,20 @@ async function initializePostgresTenant(databaseUrl: string, tenantId: string, t
       ADD COLUMN IF NOT EXISTS "averageCost" DOUBLE PRECISION DEFAULT 0,
       ADD COLUMN IF NOT EXISTS "yieldFactor" DOUBLE PRECISION NOT NULL DEFAULT 1;
     `)
+    // PhysicalInventoryItem columns
+    await srClient.query(`
+      ALTER TABLE "PhysicalInventoryItem"
+      ADD COLUMN IF NOT EXISTS "zoneId" TEXT;
+    `)
+
+    // Ensure StockLevel unique index includes zoneId
+    // Note: This is complex with raw SQL, but we should at least ensure columns exist
+    await srClient.query(`
+      ALTER TABLE "StockLevel" ADD COLUMN IF NOT EXISTS "zoneId" TEXT;
+      ALTER TABLE "StockMovement" ADD COLUMN IF NOT EXISTS "zoneId" TEXT;
+      ALTER TABLE "Product" ADD COLUMN IF NOT EXISTS "preferredZoneId" TEXT;
+    `)
+
     console.log('[STEP 2.6/4] ✓ Campos sincronizados')
   } catch (srErr: any) {
     console.warn(`[TENANT INIT] Warning during SR sync: ${srErr.message}`)
@@ -310,6 +324,8 @@ async function initializePostgresTenant(databaseUrl: string, tenantId: string, t
 
     return { adminUsername, adminPassword: defaultPassword }
   } catch (dataError: any) {
+    // Log the error for better server-side debugging
+    console.error(`[TENANT_INIT] Error creating initial data:`, dataError)
     throw new Error(`Error creando datos iniciales: ${dataError?.message || dataError}`)
   } finally {
     await tenantPrisma.$disconnect()

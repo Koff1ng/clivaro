@@ -84,6 +84,8 @@ export async function POST(request: Request) {
 
     return NextResponse.json(result)
   } catch (error: unknown) {
+    // Log the error for better server-side debugging
+    console.error(`[INVENTORY_ADJUSTMENT_POST] Error:`, error)
     return handleError(error, 'INVENTORY_ADJUSTMENT_POST')
   }
 }
