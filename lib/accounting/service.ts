@@ -2,9 +2,10 @@
 import { prisma } from '@/lib/db'
 import { PUC_TEMPLATE } from './puc-data'
 
-export async function initializePUC(tenantId: string) {
+export async function initializePUC(tenantId: string, prismaTx?: any) {
+    const client = prismaTx || prisma
     // Check if accounts exist
-    const count = await prisma.accountingAccount.count({
+    const count = await client.accountingAccount.count({
         where: { tenantId }
     })
 
@@ -24,7 +25,7 @@ export async function initializePUC(tenantId: string) {
     const codeToIdMap = new Map<string, string>()
 
     for (const acc of sorted) {
-        let parentId = null
+        let parentId: string | null = null
         if (acc.code.length > 1) {
             // Determine parent code
             let parentCode = ''
@@ -39,7 +40,7 @@ export async function initializePUC(tenantId: string) {
                     parentId = codeToIdMap.get(parentCode)!
                 } else {
                     // Fallback to DB (should rarely happen if sorted correctly)
-                    const parent = await prisma.accountingAccount.findFirst({
+                    const parent = await client.accountingAccount.findFirst({
                         where: { tenantId, code: parentCode }
                     })
                     if (parent) {
@@ -50,7 +51,7 @@ export async function initializePUC(tenantId: string) {
             }
         }
 
-        const createdAcc = await prisma.accountingAccount.create({
+        const createdAcc = await client.accountingAccount.create({
             data: {
                 tenantId,
                 code: acc.code,

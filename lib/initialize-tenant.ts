@@ -328,7 +328,7 @@ async function initializePostgresTenant(databaseUrl: string, tenantId: string, t
     // Step 4: Accounting Setup
     console.log('[STEP 4/4] Configurando contabilidad (PUC y Config)...')
     try {
-      await initializePUC(tenantId)
+      await initializePUC(tenantId, tenantPrisma)
       
       const accounts = await tenantPrisma.accountingAccount.findMany()
       const findId = (code: string) => accounts.find(a => a.code === code)?.id
@@ -345,7 +345,7 @@ async function initializePostgresTenant(databaseUrl: string, tenantId: string, t
         costOfSalesId: findId('6135'),
       }
 
-      await updateAccountingConfig(tenantId, configData)
+      await updateAccountingConfig(tenantId, configData, tenantPrisma)
       console.log('[STEP 4/4] ✓ Contabilidad configurada')
     } catch (accErr: any) {
       console.warn(`[TENANT INIT] Warning during accounting setup: ${accErr.message}`)

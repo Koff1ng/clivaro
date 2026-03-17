@@ -16,8 +16,9 @@ export type AccountingConfigData = {
 /**
  * Get accounting configuration for tenant
  */
-export async function getAccountingConfig(tenantId: string) {
-    return await prisma.accountingConfig.findUnique({
+export async function getAccountingConfig(tenantId: string, prismaTx?: any) {
+    const client = prismaTx || prisma
+    return await client.accountingConfig.findUnique({
         where: { tenantId },
         include: {
             cashAccount: true,
@@ -38,9 +39,11 @@ export async function getAccountingConfig(tenantId: string) {
  */
 export async function updateAccountingConfig(
     tenantId: string,
-    data: AccountingConfigData
+    data: AccountingConfigData,
+    prismaTx?: any
 ) {
-    return await prisma.accountingConfig.upsert({
+    const client = prismaTx || prisma
+    return await client.accountingConfig.upsert({
         where: { tenantId },
         create: {
             tenantId,
