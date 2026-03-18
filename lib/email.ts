@@ -104,14 +104,71 @@ export async function sendEmail(options: EmailOptions): Promise<{
     htmlLength: options.html?.length || 0,
   })
 
+  // 1. Try Resend if API key is available (Preferred "New" method)
+  const resendApiKey = process.env.RESEND_API_KEY
+  if (resendApiKey) {
+    try {
+      console.log('Using Resend API for email delivery')
+      const fromEmail = process.env.SMTP_FROM || 'notificaciones@clivaro.com'
+      const fromName = process.env.COMPANY_NAME || 'Ferretería'
+
+      // Convert attachments to Resend format
+      const attachments = options.attachments?.map(att => {
+        let content = att.content
+        if (Buffer.isBuffer(content)) {
+          content = content.toString('base64')
+        }
+        return {
+          filename: att.filename,
+          content: content,
+          contentType: att.contentType
+        }
+      })
+
+      const response = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${resendApiKey}`,
+        },
+        body: JSON.stringify({
+          from: `${fromName} <${fromEmail}>`,
+          to: [options.to],
+          subject: options.subject,
+          html: options.html,
+          attachments: attachments && attachments.length > 0 ? attachments : undefined,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        console.log('Email sent via Resend successfully:', data.id)
+        return {
+          success: true,
+          message: `Email enviado exitosamente vía Resend a ${options.to}`,
+          messageId: data.id,
+          accepted: [options.to],
+        }
+      } else {
+        console.error('Resend API error:', data)
+        throw new Error(data.message || 'Error en API de Resend')
+      }
+    } catch (resendError: any) {
+      console.error('Failed to send via Resend, falling back to SMTP if configured:', resendError.message)
+      // Fall through to SMTP logic below
+    }
+  }
+
+  // 2. Fallback to Nodemailer/SMTP (Old method)
   const emailTransporter = getEmailTransporter()
 
   if (!emailTransporter) {
     console.error('Email transporter is null - SMTP not configured')
     return {
       success: false,
-      message: 'Servicio de email no configurado. Configure las variables SMTP en .env',
-      error: 'SMTP not configured',
+      message: 'Servicio de email no configurado. Configure RESEND_API_KEY o variables SMTP en .env',
+      error: 'No email provider configured',
     }
   }
 
@@ -119,19 +176,11 @@ export async function sendEmail(options: EmailOptions): Promise<{
     const fromEmail = process.env.SMTP_FROM || process.env.SMTP_USER || 'noreply@ferreteria.com'
     const fromName = process.env.COMPANY_NAME || 'Ferretería'
 
-    console.log('Sending email via transporter:', {
+    console.log('Sending email via SMTP transporter:', {
       from: `"${fromName}" <${fromEmail}>`,
       to: options.to,
       subject: options.subject,
     })
-
-    // Verify connection before sending (optional, but helpful for debugging)
-    try {
-      await emailTransporter.verify()
-      console.log('SMTP connection verified successfully')
-    } catch (verifyError: any) {
-      console.warn('SMTP verification failed (will still attempt to send):', verifyError.message)
-    }
 
     const mailOptions = {
       from: `"${fromName}" <${fromEmail}>`,
@@ -141,76 +190,35 @@ export async function sendEmail(options: EmailOptions): Promise<{
       attachments: options.attachments,
     }
 
-    console.log('Attempting to send email with options:', {
-      from: mailOptions.from,
-      to: mailOptions.to,
-      subject: mailOptions.subject,
-      htmlLength: mailOptions.html?.length || 0,
-    })
-
     const info = await emailTransporter.sendMail(mailOptions)
 
-    console.log('Email sendMail response:', {
+    console.log('Email SMTP sendMail response:', {
       messageId: info.messageId,
       accepted: info.accepted,
-      rejected: info.rejected,
       response: info.response,
-      envelope: info.envelope,
     })
 
-    // Check if email was actually accepted
     if (info.rejected && info.rejected.length > 0) {
-      console.error('Email was rejected:', info.rejected)
       return {
         success: false,
-        message: `El email fue rechazado por el servidor: ${info.rejected.join(', ')}`,
+        message: `El email fue rechazado por el servidor SMTP: ${info.rejected.join(', ')}`,
         error: 'Email rejected',
         rejected: info.rejected,
       }
     }
 
-    if (!info.accepted || info.accepted.length === 0) {
-      console.error('Email was not accepted by server')
-      return {
-        success: false,
-        message: 'El servidor SMTP no aceptó el email',
-        error: 'Email not accepted',
-      }
-    }
-
-    console.log('Email accepted by server, messageId:', info.messageId)
-
     return {
       success: true,
-      message: `Email enviado exitosamente a ${options.to}`,
+      message: `Email enviado exitosamente vía SMTP a ${options.to}`,
       messageId: info.messageId,
       accepted: info.accepted,
     }
   } catch (error: any) {
-    console.error('Error sending email:', error)
-    console.error('Error details:', {
-      code: error.code,
-      command: error.command,
-      response: error.response,
-      responseCode: error.responseCode,
-      message: error.message,
-      stack: error.stack,
-    })
-    
-    // Provide more specific error messages
-    let errorMessage = error.message || 'Error desconocido'
-    if (error.code === 'EAUTH') {
-      errorMessage = 'Error de autenticación. Verifique SMTP_USER y SMTP_PASSWORD'
-    } else if (error.code === 'ECONNECTION') {
-      errorMessage = 'Error de conexión. Verifique SMTP_HOST y SMTP_PORT'
-    } else if (error.code === 'ETIMEDOUT') {
-      errorMessage = 'Timeout de conexión. Verifique su conexión a internet y la configuración SMTP'
-    }
-    
+    console.error('Error sending email via SMTP:', error)
     return {
       success: false,
-      message: `Error al enviar email: ${errorMessage}`,
-      error: error.code || 'Unknown error',
+      message: `Error al enviar email vía SMTP: ${error.message}`,
+      error: error.code || 'SMTP error',
     }
   }
 }

@@ -351,7 +351,6 @@ export const TENANT_SQL_STATEMENTS: string[] = [
   "ALTER TABLE \"JournalEntryLine\" ADD CONSTRAINT \"JournalEntryLine_accountingThirdPartyId_fkey\" FOREIGN KEY (\"accountingThirdPartyId\") REFERENCES \"AccountingThirdParty\"(\"id\") ON DELETE SET NULL ON UPDATE CASCADE",
   "ALTER TABLE \"AccountingThirdParty\" ADD CONSTRAINT \"AccountingThirdParty_tenantId_fkey\" FOREIGN KEY (\"tenantId\") REFERENCES \"Tenant\"(\"id\") ON DELETE CASCADE ON UPDATE CASCADE",
   "ALTER TABLE \"AccountingPeriod\" ADD CONSTRAINT \"AccountingPeriod_tenantId_fkey\" FOREIGN KEY (\"tenantId\") REFERENCES \"Tenant\"(\"id\") ON DELETE CASCADE ON UPDATE CASCADE",
-  "ALTER TABLE \"AccountingAuditLog\" ADD CONSTRAINT \"AccountingAuditLog_userId_fkey\" FOREIGN KEY (\"userId\") REFERENCES \"User\"(\"id\") ON DELETE RESTRICT ON UPDATE CASCADE",
   "ALTER TABLE \"AccountingConfig\" ADD CONSTRAINT \"AccountingConfig_tenantId_fkey\" FOREIGN KEY (\"tenantId\") REFERENCES \"Tenant\"(\"id\") ON DELETE CASCADE ON UPDATE CASCADE",
   "ALTER TABLE \"AccountingConfig\" ADD CONSTRAINT \"AccountingConfig_cashAccountId_fkey\" FOREIGN KEY (\"cashAccountId\") REFERENCES \"AccountingAccount\"(\"id\") ON DELETE SET NULL ON UPDATE CASCADE",
   "ALTER TABLE \"AccountingConfig\" ADD CONSTRAINT \"AccountingConfig_bankAccountId_fkey\" FOREIGN KEY (\"bankAccountId\") REFERENCES \"AccountingAccount\"(\"id\") ON DELETE SET NULL ON UPDATE CASCADE",

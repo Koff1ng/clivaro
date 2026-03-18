@@ -1035,6 +1035,9 @@ model Tenant {
   employees           Employee[]
   payrollPeriods      PayrollPeriod[]
   payslips            Payslip[]
+
+  // Email Configuration
+  emailConfig         TenantEmailConfig?
 }
 
 model Plan {
@@ -1075,6 +1078,21 @@ model Subscription {
 
   // @@index([mercadoPagoPaymentId])
   // @@index([mercadoPagoPreferenceId])
+}
+
+model TenantEmailConfig {
+  id               String   @id @default(cuid())
+  tenantId         String   @unique
+  resendDomainId   String
+  domain           String
+  fromEmail        String
+  fromName         String
+  dnsRecords       Json
+  verified         Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  tenant           Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 }
 
 model TenantSettings {

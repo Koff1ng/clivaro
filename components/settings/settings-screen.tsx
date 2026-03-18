@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Users, Receipt, CreditCard, Settings as SettingsIcon, Loader2, CheckCircle2, XCircle, AlertCircle } from 'lucide-react'
+import { Users, Receipt, CreditCard, Settings as SettingsIcon, Loader2, CheckCircle2, XCircle, AlertCircle, Mail } from 'lucide-react'
 import { useToast } from '@/components/ui/toast'
 import { useSession } from 'next-auth/react'
 import { useSearchParams, useRouter } from 'next/navigation'
@@ -18,6 +18,7 @@ import { PaymentMethodsConfig } from './payment-methods-config'
 import { TaxesPage } from './taxes-page'
 import { Wallet, Percent, ShieldCheck } from 'lucide-react'
 import { PrivacyConfig } from './privacy-config'
+import { EmailConfigTab } from './email-config-tab'
 
 async function fetchSettings() {
   const res = await fetch('/api/settings')
@@ -192,6 +193,10 @@ export function SettingsScreen() {
             <Users className="h-4 w-4" />
             Usuarios
           </TabsTrigger>
+          <TabsTrigger value="email" className="flex items-center gap-2">
+            <Mail className="h-4 w-4" />
+            Email Corporativo
+          </TabsTrigger>
           <TabsTrigger value="billing" className="flex items-center gap-2">
             <Receipt className="h-4 w-4" />
             Facturación Electrónica
@@ -230,6 +235,10 @@ export function SettingsScreen() {
 
         <TabsContent value="users" className="space-y-4">
           <UsersConfig />
+        </TabsContent>
+
+        <TabsContent value="email" className="space-y-4">
+          <EmailConfigTab />
         </TabsContent>
 
         <TabsContent value="billing" className="space-y-4">

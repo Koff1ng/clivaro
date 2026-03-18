@@ -10,16 +10,18 @@ export async function logAction(
     entityId: string,
     action: string,
     userId: string,
-    changes?: any
+    changes?: any,
+    prismaTx?: any
 ) {
-    await prisma.accountingAuditLog.create({
+    const client = prismaTx || prisma
+    await client.accountingAuditLog.create({
         data: {
             tenantId,
             entityType,
             entityId,
             action,
             userId,
-            changes: changes ? JSON.stringify(changes) : null
+            changes: changes ? (typeof changes === 'string' ? changes : JSON.stringify(changes)) : null
         }
     })
 }

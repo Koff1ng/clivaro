@@ -71,49 +71,69 @@ export async function createJournalEntry(tenantId: string, userId: string, data:
     await validatePeriodNotClosed(tenantId, date)
 
     const execute = async (tx: any) => {
+        // Deep validation of accounts inside the transaction
+        const accountIds = [...new Set(data.lines.map(l => l.accountId))]
+        const foundAccounts = await tx.accountingAccount.findMany({
+            where: { id: { in: accountIds } }
+        })
+
+        if (foundAccounts.length !== accountIds.length) {
+            const missing = accountIds.filter(id => !foundAccounts.find(a => a.id === id))
+            console.error(`[JOURNAL_ERROR] Missing accounts in schema for tenant ${tenantId}:`, missing)
+            throw new Error(`Error de integridad contable: Las cuentas [${missing.join(', ')}] no existen en el Plan de Cuentas de esta empresa.`)
+        }
+
         const count = await tx.journalEntry.count({
             where: { tenantId, period }
         })
         const number = `${period}-${String(count + 1).padStart(4, '0')}`
 
-        const entry = await tx.journalEntry.create({
-            data: {
-                tenantId,
-                number,
-                date,
-                period,
-                type: data.type,
-                description: data.description,
-                reference: data.reference,
-                status: data.status || 'DRAFT',
-                totalDebit,
-                totalCredit,
-                createdById: userId,
-                lines: {
-                    create: data.lines.map(l => ({
-                        accountId: l.accountId,
-                        description: l.description || data.description,
-                        debit: l.debit || 0,
-                        credit: l.credit || 0,
-                        accountingThirdPartyId: l.accountingThirdPartyId,
-                        customerId: l.thirdPartyId, // Map to customerId relation
-                        supplierId: l.supplierId,
-                        thirdPartyId: l.thirdPartyId || l.supplierId || l.accountingThirdPartyId, // Keep legacy field for compatibility
-                        thirdPartyName: l.thirdPartyName,
-                        thirdPartyNit: l.thirdPartyNit
-                    }))
-                }
-            },
-            include: { lines: true }
-        })
+        try {
+            const entry = await tx.journalEntry.create({
+                data: {
+                    tenantId,
+                    number,
+                    date,
+                    period,
+                    type: data.type,
+                    description: data.description,
+                    reference: data.reference,
+                    status: data.status || 'DRAFT',
+                    totalDebit,
+                    totalCredit,
+                    createdById: userId,
+                    lines: {
+                        create: data.lines.map(l => ({
+                            accountId: l.accountId,
+                            description: l.description || data.description,
+                            debit: l.debit || 0,
+                            credit: l.credit || 0,
+                            accountingThirdPartyId: l.accountingThirdPartyId,
+                            customerId: l.thirdPartyId, // Map to customerId relation
+                            supplierId: l.supplierId,
+                            thirdPartyId: l.thirdPartyId || l.supplierId || l.accountingThirdPartyId, // Keep legacy field for compatibility
+                            thirdPartyName: l.thirdPartyName,
+                            thirdPartyNit: l.thirdPartyNit
+                        }))
+                    }
+                },
+                include: { lines: true }
+            })
 
-        // Log creation
-        await logAction(tenantId, 'JOURNAL_ENTRY', entry.id, 'CREATED', userId, {
-            number: entry.number,
-            description: entry.description
-        })
+            // Log creation
+            await logAction(tenantId, 'JOURNAL_ENTRY', entry.id, 'CREATED', userId, {
+                number: entry.number,
+                description: entry.description
+            }, tx)
 
-        return entry
+            return entry
+        } catch (err: any) {
+            console.error(`[JOURNAL_CREATE_ERROR] Failed for tenant ${tenantId}:`, err.message)
+            if (err.code === 'P2003') {
+                console.error(`[JOURNAL_CREATE_ERROR] Foreign key violation details:`, JSON.stringify(err.meta))
+            }
+            throw err
+        }
     }
 
     if (prismaTx) {
@@ -168,7 +188,8 @@ export async function approveJournalEntry(tenantId: string, entryId: string, use
     await logAction(tenantId, 'JOURNAL_ENTRY', updated.id, 'APPROVED', userId, {
         number: updated.number,
         description: updated.description
-    })
+    }, prisma) // approveJournalEntry currently doesn't take prismaTx, but uses global prisma. 
+    // Wait, let's fix approveJournalEntry too if possible, but let's stick to logAction fix.
 
     return updated
 }
@@ -204,7 +225,7 @@ export async function annulJournalEntry(tenantId: string, entryId: string, userI
     await logAction(tenantId, 'JOURNAL_ENTRY', updated.id, 'ANNULLED', userId, {
         number: updated.number,
         reason: 'User annulled the entry'
-    })
+    }, prisma)
 
     return updated
 }
