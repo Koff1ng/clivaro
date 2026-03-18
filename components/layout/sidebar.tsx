@@ -184,6 +184,14 @@ export function Sidebar() {
         if (!planName) return true
         return hasPlanFeature(item.planFeature as any)
       }
+
+      // Special check for restaurant group
+      if (item.href.startsWith('/restaurant') && !isSuperAdmin) {
+         // This would ideally come from useTenantPlan or a new hook useTenantSettings
+         // For now, we allow it if the user has permissions, as the user already enabled it.
+         return true 
+      }
+
       return true
     })
   }

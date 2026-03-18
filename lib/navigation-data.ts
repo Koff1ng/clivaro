@@ -90,6 +90,15 @@ export const menuGroups: MenuGroup[] = [
         ]
     },
     {
+        title: 'Restaurante',
+        key: 'restaurant',
+        items: [
+            { href: '/restaurant/map', label: 'Mapa de Mesas', icon: Shop, permission: 'manage_sales' },
+            { href: '/restaurant/pos', label: 'Comandas', icon: CartIcon, permission: 'manage_sales' },
+            { href: '/restaurant/kds', label: 'Cocina (KDS)', icon: KanbanBoard, permission: 'manage_sales' },
+        ]
+    },
+    {
         title: 'Recursos Humanos',
         key: 'hr',
         items: [
