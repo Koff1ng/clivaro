@@ -16,6 +16,7 @@ export const PERMISSIONS = {
   MANAGE_INVOICES: 'manage_sales', // Alias for now, or new permission
   MANAGE_SETTINGS: 'manage_settings',
   MANAGE_ACCOUNTING: 'manage_accounting',
+  MANAGE_RESTAURANT: 'manage_restaurant',
 } as const
 
 export const PERMISSION_LABELS: Record<Permission, string> = {
@@ -32,6 +33,7 @@ export const PERMISSION_LABELS: Record<Permission, string> = {
   [PERMISSIONS.MANAGE_CASH]: 'Gestionar Caja y Movimientos de Efectivo',
   [PERMISSIONS.MANAGE_SETTINGS]: 'Configuración del Sistema',
   [PERMISSIONS.MANAGE_ACCOUNTING]: 'Gestionar Contabilidad',
+  [PERMISSIONS.MANAGE_RESTAURANT]: 'Gestionar Restaurante y POS Gastronómico',
 }
 
 export type Permission = typeof PERMISSIONS[keyof typeof PERMISSIONS]

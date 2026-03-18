@@ -166,6 +166,7 @@ model Product {
   preferredZoneId String?
   preferredZone   WarehouseZone? @relation("PreferredZone", fields: [preferredZoneId], references: [id])
   creditNoteItems CreditNoteItem[]
+  restaurantOrderLines TableOrderLine[] @relation("RestaurantProduct")
 }
 
 model ProductVariant {
@@ -192,6 +193,7 @@ model ProductVariant {
   stockMovements         StockMovement[]
   physicalInventoryItems PhysicalInventoryItem[]
   creditNoteItems        CreditNoteItem[]
+  restaurantOrderLines   TableOrderLine[] @relation("RestaurantVariant")
 }
 
 model Warehouse {
@@ -518,6 +520,7 @@ model Invoice {
   discount                Float                           @default(0)
   tax                     Float                           @default(0) // Total tax (grand total of all applied taxes)
   total                   Float                           @default(0)
+  tipAmount               Float                           @default(0)
   balance                 Float                           @default(0) // Remaining amount to be paid
   notes                   String?
   issuedAt                DateTime?
@@ -532,6 +535,10 @@ model Invoice {
   alegraInvoiceId         String?
   createdAt               DateTime                        @default(now())
   updatedAt               DateTime                        @updatedAt
+  alegraId                String?                         @unique
+  alegraNumber            String?
+  alegraStatus            String?                         @default("DRAFT")
+  alegraUrl               String?
   createdById             String?
   updatedById             String?
   customer                Customer                        @relation(fields: [customerId], references: [id])
@@ -718,8 +725,11 @@ model CreditNote {
   issuedAt            DateTime?
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
+  alegraId            String?   @unique
+  alegraNumber        String?
+  alegraStatus        String?   @default("DRAFT")
+  alegraUrl           String?
   createdById         String?
-  alegraId            String?
 
   invoice       Invoice                 @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
   return        Return?                 @relation(fields: [returnId], references: [id])
@@ -1038,6 +1048,14 @@ model Tenant {
 
   // Email Configuration
   emailConfig         TenantEmailConfig?
+
+  // Restaurant Configuration
+  restaurantConfig    RestaurantConfig? @relation("TenantToRestaurantConfig")
+  restaurantZones     RestaurantZone[] @relation("TenantToRestaurantZones")
+  waiterProfiles      WaiterProfile[] @relation("TenantToWaiters")
+  tableSessions       TableSession[] @relation("TenantToSessions")
+  tableOrders         TableOrder[] @relation("TenantToOrders")
+  restaurantTables    RestaurantTable[] @relation("TenantToRestaurantTables")
 }
 
 model Plan {
@@ -1304,6 +1322,10 @@ model Campaign {
   description   String?
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
+  alegraId       String?       @unique
+  alegraNumber   String?
+  alegraStatus   String?       @default("DRAFT")
+  alegraUrl      String?
   createdById   String?
   opportunities Opportunity[]
   createdBy     User?         @relation("CampaignCreatedBy", fields: [createdById], references: [id])
@@ -1506,27 +1528,27 @@ model AccountingAccount {
   parentId    String?
   parent      AccountingAccount?  @relation("AccountHierarchy", fields: [parentId], references: [id], onDelete: Restrict)
   children    AccountingAccount[] @relation("AccountHierarchy")
-  
+
   // Tags for automation: CASH, BANK, VAT_GENERATED, VAT_DEDUCTIBLE, RETENTION_SOURCE, RETENTION_IVA, RETENTION_ICA
   tags        String[]  @default([])
-  
+
   // Classification
   nature              String    @default("DEBIT") // DEBIT, CREDIT
   requiresThirdParty  Boolean   @default(false)
   requiresCostCenter  Boolean   @default(false)
-  
+
   active      Boolean   @default(true)
   exogenousFormat  String?
   exogenousConcept String?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
-  
+
   bankReconciliations BankReconciliation[]
 
   // Relations
   journalLines JournalEntryLine[]
   tenant       Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  
+
   // Config relations
   configAsCash              AccountingConfig[] @relation("CashAccount")
   configAsBank              AccountingConfig[] @relation("BankAccount")
@@ -1551,7 +1573,7 @@ model JournalEntry {
   type          String    // INCOME, EXPENSE, JOURNAL, ADJUSTMENT, OPENING, CLOSING
   description   String
   status        String    @default("DRAFT") // DRAFT, APPROVED, ANNULLED
-  
+
   // Origen
   reference     String?   // Referencia externa (Fac #123)
   sourceDocId   String?   // ID Documento interno (InvoiceId, etc)
@@ -1560,7 +1582,7 @@ model JournalEntry {
   // Totales (Denormalized for performance)
   totalDebit    Float     @default(0)
   totalCredit   Float     @default(0)
-  
+
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   createdById   String?
@@ -1573,7 +1595,7 @@ model JournalEntry {
   tenant        Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   createdBy     User?     @relation("CreatedJournalEntries", fields: [createdById], references: [id])
   payrollPeriod PayrollPeriod? @relation("PayrollJournal")
-  
+
   @@unique([tenantId, number]) // Ensure unique numbering
   @@index([tenantId, period])
   @@index([tenantId, date])
@@ -1585,31 +1607,31 @@ model JournalEntryLine {
   journalEntryId String
   accountId      String
   description    String?      // Detalle de línea
-  
+
   debit          Float        @default(0)
   credit         Float        @default(0)
-  
+
   // Tercero (Beneficiario/Cliente/Proveedor)
   thirdPartyId   String?      // Puede ser Customer, Supplier, Employee (User) - Simplicidad: String Ref o relacion polimórfica (Prisma no soporta poli real)
-  // En este sistema tenemos Customer y Supplier separados. 
+  // En este sistema tenemos Customer y Supplier separados.
   // Opcion simple: Guardar ID y Name del tercero denormalizado o relacionar a un modelo "Entity" unificado si existiera.
   // Por ahora usaremos un campo de texto para ID/Nombre o relacion opcional si es cliente/proveedor.
-  // RELACION: Vamos a probar relacionar con Customer y Supplier opcionalmente. 
+  // RELACION: Vamos a probar relacionar con Customer y Supplier opcionalmente.
   // Si no es ninguno (ej. empleado u otro), se guarda en texto o se crea un modelo ThirdParty unificado.
   // DADO EL REQUISITO "SIMPLE": Usaremos campos especificos.
-  
+
   thirdPartyName String?      // Nombre snapshot
   thirdPartyNit  String?      // NIT/CC snapshot
-  
+
   // Opcional: Relations directas para integridad
   customerId     String?
   customer       Customer?    @relation(fields: [customerId], references: [id])
   supplierId     String?
   supplier       Supplier?    @relation(fields: [supplierId], references: [id])
   accountingThirdPartyId String?
-  
+
   createdAt      DateTime     @default(now())
-  
+
   // Relations
   journalEntry   JournalEntry @relation(fields: [journalEntryId], references: [id], onDelete: Cascade)
   account        AccountingAccount @relation(fields: [accountId], references: [id], onDelete: Restrict)
@@ -1634,7 +1656,7 @@ model AccountingThirdParty {
   active         Boolean  @default(true)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
-  
+
   tenant         Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   journalLines   JournalEntryLine[] @relation("AccountingThirdPartyLines")
 
@@ -1650,9 +1672,9 @@ model AccountingPeriod {
   isClosed    Boolean  @default(false)
   closedAt    DateTime?
   closedById  String?
-  
+
   tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  
+
   @@unique([tenantId, year, month])
 }
 
@@ -1665,9 +1687,9 @@ model AccountingAuditLog {
   userId      String
   changes     String?
   createdAt   DateTime @default(now())
-  
+
   user        User     @relation("AccountingAuditLogs", fields: [userId], references: [id])
-  
+
   @@index([tenantId, entityType, entityId])
   @@index([tenantId, createdAt])
 }
@@ -1743,4 +1765,132 @@ model BankStatementEntry {
   createdAt         DateTime  @default(now())
   
   @@index([reconciliationId])
+}
+
+// ============================================
+// RESTAURANT MODELS
+// ============================================
+
+model RestaurantConfig {
+  id                String   @id @default(cuid())
+  tenantId          String   @unique
+  isActive          Boolean  @default(false)
+  alegraBusinessId  String?
+  alegraEmail       String?
+  alegraToken       String?
+  alegraEnabled     Boolean  @default(false)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  tenant            Tenant   @relation("TenantToRestaurantConfig", fields: [tenantId], references: [id], onDelete: Cascade)
+}
+
+model RestaurantZone {
+  id          String   @id @default(cuid())
+  tenantId    String
+  name        String
+  description String?
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant      Tenant   @relation("TenantToRestaurantZones", fields: [tenantId], references: [id], onDelete: Cascade)
+  tables      RestaurantTable[]
+}
+
+model RestaurantTable {
+  id        String   @id @default(cuid())
+  tenantId  String
+  zoneId    String
+  name      String   // e.g. "Mesa 1", "Bar 1"
+  capacity  Int      @default(2)
+  status    String   @default("AVAILABLE") // AVAILABLE, OCCUPIED, RESERVED, DIRTY
+  x         Int      @default(0) // Position for visual map
+  y         Int      @default(0) // Position for visual map
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant    Tenant         @relation("TenantToRestaurantTables", fields: [tenantId], references: [id], onDelete: Cascade)
+  zone      RestaurantZone @relation(fields: [zoneId], references: [id], onDelete: Cascade)
+  sessions  TableSession[] @relation("TableToSessions")
+
+  @@index([tenantId])
+}
+
+model WaiterProfile {
+  id        String   @id @default(cuid())
+  tenantId  String
+  name      String
+  code      String   // unique per tenant (e.g. "M1")
+  pin       String   // hashed
+  active    Boolean  @default(true)
+  lastLogin DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant    Tenant   @relation("TenantToWaiters", fields: [tenantId], references: [id], onDelete: Cascade)
+  sessions  TableSession[] @relation("WaiterToSessions")
+  orders    TableOrder[]   @relation("WaiterToOrders")
+
+  @@unique([tenantId, code])
+  @@index([tenantId])
+}
+
+model TableSession {
+  id          String   @id @default(cuid())
+  tenantId    String
+  tableId     String
+  waiterId    String
+  status      String   @default("OPEN") // OPEN, CLOSED, CANCELLED
+  openedAt    DateTime @default(now())
+  closedAt    DateTime?
+  totalAmount Float    @default(0)
+  tipAmount   Float    @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant    Tenant          @relation("TenantToSessions", fields: [tenantId], references: [id], onDelete: Cascade)
+  table     RestaurantTable @relation("TableToSessions", fields: [tableId], references: [id])
+  waiter    WaiterProfile   @relation("WaiterToSessions", fields: [waiterId], references: [id])
+  orders    TableOrder[]    @relation("SessionToOrders")
+
+  @@index([tenantId, status])
+  @@index([tableId])
+}
+
+model TableOrder {
+  id          String   @id @default(cuid())
+  tenantId    String
+  sessionId   String
+  waiterId    String
+  status      String   @default("PENDING") // PENDING, SENT, READY, DELIVERED, CANCELLED
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant    Tenant          @relation("TenantToOrders", fields: [tenantId], references: [id], onDelete: Cascade)
+  session   TableSession    @relation("SessionToOrders", fields: [sessionId], references: [id], onDelete: Cascade)
+  waiter    WaiterProfile   @relation("WaiterToOrders", fields: [waiterId], references: [id])
+  items     TableOrderLine[] @relation("OrderToLines")
+
+  @@index([sessionId])
+}
+
+model TableOrderLine {
+  id          String   @id @default(cuid())
+  orderId     String
+  productId   String
+  variantId   String?
+  quantity    Float
+  unitPrice   Float
+  notes       String?
+  status      String   @default("PENDING") // PENDING, COOKING, READY, SERVED
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  order     TableOrder      @relation("OrderToLines", fields: [orderId], references: [id], onDelete: Cascade)
+  product   Product         @relation("RestaurantProduct", fields: [productId], references: [id])
+  variant   ProductVariant? @relation("RestaurantVariant", fields: [variantId], references: [id])
+
+  @@index([orderId])
 }

@@ -46,7 +46,7 @@ function buildTenantUrl(schema: string): string {
  * Returns (or creates and caches) a PrismaClient for the given tenant schema.
  * Safe for both reads and writes.
  */
-async function getTenantPrismaClient(tenantId: string): Promise<PrismaClient> {
+export async function getTenantPrismaClient(tenantId: string): Promise<PrismaClient> {
     if (!tenantId) {
         throw new TenancyError('Tenant context is missing. Database access denied.', 401)
     }

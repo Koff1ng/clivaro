@@ -1,0 +1,91 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
+
+:root {
+  /* Slate & Gold Premium Palette */
+  --res-bg: #0f172a; /* Slate 900 */
+  --res-surface: #1e293b; /* Slate 800 */
+  --res-surface-hover: #334155; /* Slate 700 */
+  --res-border: #475569; /* Slate 600 */
+  
+  --res-primary: #f59e0b; /* Amber 500 (Goldish) */
+  --res-primary-glow: rgba(245, 158, 11, 0.2);
+  
+  --res-text: #f8fafc; /* Slate 50 */
+  --res-text-muted: #94a3b8; /* Slate 400 */
+  
+  --res-success: #10b981; /* Emerald 500 */
+  --res-warning: #facc15; /* Yellow 400 */
+  --res-danger: #ef4444; /* Red 500 */
+  --res-info: #3b82f6; /* Blue 500 */
+
+  /* Glassmorphism */
+  --res-glass: rgba(30, 41, 59, 0.7);
+  --res-glass-border: rgba(255, 255, 255, 0.1);
+  --res-blur: blur(12px);
+
+  /* Transitions */
+  --res-ease: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.res-body {
+  font-family: 'Outfit', sans-serif;
+  background-color: var(--res-bg);
+  color: var(--res-text);
+  margin: 0;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Glass Card Component Base */
+.res-card {
+  background: var(--res-glass);
+  backdrop-filter: var(--res-blur);
+  border: 1px solid var(--res-glass-border);
+  border-radius: 1rem;
+  padding: 1.5rem;
+  transition: all 0.3s var(--res-ease);
+}
+
+.res-card:hover {
+  transform: translateY(-4px);
+  border-color: var(--res-primary);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 0 15px var(--res-primary-glow);
+}
+
+/* Premium Typography */
+.res-title {
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  background: linear-gradient(135deg, #fff 0%, #94a3b8 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.res-accent {
+  color: var(--res-primary);
+  font-weight: 600;
+}
+
+/* Animations */
+@keyframes resFadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.res-animate-in {
+  animation: resFadeIn 0.5s var(--res-ease) forwards;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--res-bg);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--res-border);
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--res-primary);
+}
