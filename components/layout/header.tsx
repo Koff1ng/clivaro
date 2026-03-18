@@ -4,7 +4,7 @@ import { useSession } from 'next-auth/react'
 import { useSidebar } from '@/lib/sidebar-context'
 import { Button } from '@/components/ui/button'
 import { Menu, Bell, User, HelpCircle } from 'lucide-react'
-import { ThemeToggle } from '@/components/theme/theme-toggle'
+// import { ThemeToggle } from '@/components/theme/theme-toggle'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -153,7 +153,7 @@ export function Header() {
   }
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-slate-800 bg-[#0F172A] text-slate-100 backdrop-blur supports-[backdrop-filter]:bg-[#0F172A]/95 print:hidden">
+    <header className="sticky top-0 z-40 w-full border-b border-slate-200 bg-white/95 text-slate-900 backdrop-blur supports-[backdrop-filter]:bg-white/95 print:hidden">
       <div className="flex h-14 sm:h-16 items-center justify-between px-3 sm:px-4 md:px-6">
         {/* Left side: Menu */}
         <div className="flex items-center gap-2 sm:gap-4">
@@ -161,7 +161,7 @@ export function Header() {
             variant="ghost"
             size="icon"
             onClick={toggle}
-            className="h-8 w-8 sm:h-9 sm:w-9 text-slate-100 hover:bg-slate-800 hover:text-white"
+            className="h-8 w-8 sm:h-9 sm:w-9 text-slate-600 hover:bg-slate-100 hover:text-slate-900"
           >
             <Menu className="h-4 w-4 sm:h-5 sm:w-5" />
           </Button>
@@ -175,16 +175,16 @@ export function Header() {
             variant="ghost"
             size="icon"
             onClick={toggleChat}
-            className="h-8 w-8 sm:h-9 sm:w-9 text-slate-100 hover:bg-slate-800 hover:text-white transition-all hover:scale-110 active:scale-95"
+            className="h-8 w-8 sm:h-9 sm:w-9 text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-all hover:scale-110 active:scale-95"
             title="Asistente de Ayuda IA"
           >
-            <HelpCircle className="h-4 w-4 sm:h-5 sm:w-5 text-sky-400" />
+            <HelpCircle className="h-4 w-4 sm:h-5 sm:w-5 text-sky-600" />
           </Button>
 
           {/* Notifications */}
           <DropdownMenu open={isDropdownOpen} onOpenChange={handleDropdownOpenChange}>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="relative h-8 w-8 sm:h-9 sm:w-9 text-slate-100 hover:bg-slate-800 hover:text-white">
+              <Button variant="ghost" size="icon" className="relative h-8 w-8 sm:h-9 sm:w-9 text-slate-600 hover:bg-slate-100 hover:text-slate-900">
                 <Bell className="h-4 w-4" />
                 {hasUnreadNotifications && (
                   <span className="absolute top-0.5 right-0.5 sm:top-1 sm:right-1 h-2 w-2 bg-red-500 rounded-full"></span>

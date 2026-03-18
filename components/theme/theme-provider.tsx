@@ -1,6 +1,7 @@
 'use client'
 
 import { createContext, useContext, useEffect, useState } from 'react'
+import { usePathname } from 'next/navigation'
 
 type Theme = 'dark' | 'light'
 
@@ -13,17 +14,28 @@ interface ThemeContextType {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined)
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setTheme] = useState<Theme>('dark')
+  const [theme, setTheme] = useState<Theme>('light')
   const [mounted, setMounted] = useState(false)
+  const pathname = usePathname()
 
   useEffect(() => {
-    // Apply theme immediately on mount to prevent flash
+    // Force light theme for ERP routes (not the landing page)
+    const isLandingPage = pathname === '/'
+    
+    if (!isLandingPage) {
+      applyTheme('light')
+      setTheme('light')
+      setMounted(true)
+      return
+    }
+
+    // Standard logic for landing page
     const savedTheme = localStorage.getItem('theme') as Theme | null
-    const initialTheme = savedTheme || 'dark'
+    const initialTheme = savedTheme || 'dark' // Landing stays dark by default if not set
     applyTheme(initialTheme)
     setTheme(initialTheme)
     setMounted(true)
-  }, [])
+  }, [pathname])
 
   const applyTheme = (newTheme: Theme) => {
     const root = document.documentElement
