@@ -29,33 +29,32 @@ export async function GET(request: Request) {
       const today = startOfDay(new Date())
       const monthStart = startOfMonth(new Date())
 
-      const [
-        salesToday,
-        salesMonth,
-        profitMonth,
-        salesCount,
-        totalProducts,
-        lowStockCount,
-        inCollection,
-      ] = await Promise.all([
+      // Ejecutar cada query de forma independiente para que un fallo no cancele todo
+      const safeQuery = async <T>(fn: () => Promise<T>, fallback: T): Promise<T> => {
+        try { return await fn() } catch { return fallback }
+      }
+
+      const [salesToday, salesMonth, profitMonth, salesCount, totalProducts, lowStockCount, inCollection] = await Promise.all([
         // salesToday
-        prisma.invoice.aggregate({
+        safeQuery(() => prisma.invoice.aggregate({
           where: {
             status: { in: ['PAGADA', 'PAID', 'EN_COBRANZA', 'PARCIAL', 'PARTIAL'] },
             createdAt: { gte: today },
           },
           _sum: { total: true },
-        }),
+        }), { _sum: { total: 0 } }),
+
         // salesMonth
-        prisma.invoice.aggregate({
+        safeQuery(() => prisma.invoice.aggregate({
           where: {
             status: { in: ['PAGADA', 'PAID', 'EN_COBRANZA', 'PARCIAL', 'PARTIAL'] },
             createdAt: { gte: monthStart },
           },
           _sum: { total: true },
-        }),
+        }), { _sum: { total: 0 } }),
+
         // profitMonth
-        (async () => {
+        safeQuery(async () => {
           const invoices = await prisma.invoice.findMany({
             where: {
               status: { in: ['PAGADA', 'PAID', 'EN_COBRANZA', 'PARCIAL', 'PARTIAL'] },
@@ -74,28 +73,19 @@ export async function GET(request: Request) {
               },
             },
           })
-
           const subtotalWithoutTaxes = invoices.reduce((sum: number, inv: any) => {
-            const invoiceSubtotal = typeof inv.subtotal === 'number' ? inv.subtotal : 0
-            const invoiceDiscount = typeof inv.discount === 'number' ? inv.discount : 0
-            if (invoiceSubtotal === 0) {
-              const calculatedSubtotal = (inv.total || 0) - (inv.tax || 0)
-              return sum + calculatedSubtotal - invoiceDiscount
-            }
-            return sum + invoiceSubtotal - invoiceDiscount
+            const s = typeof inv.subtotal === 'number' ? inv.subtotal : 0
+            const d = typeof inv.discount === 'number' ? inv.discount : 0
+            return sum + (s === 0 ? ((inv.total || 0) - (inv.tax || 0)) : s) - d
           }, 0)
+          const cogs = invoices.reduce((sum: number, inv: any) =>
+            sum + inv.items.reduce((itemSum: number, item: any) =>
+              itemSum + item.quantity * (item.product?.cost || 0), 0), 0)
+          return subtotalWithoutTaxes - cogs
+        }, 0),
 
-          const costOfGoodsSold = invoices.reduce((sum: number, inv: any) => {
-            return sum + inv.items.reduce((itemSum: number, item: any) => {
-              const cost = item.product?.cost || 0
-              return itemSum + item.quantity * cost
-            }, 0)
-          }, 0)
-
-          return subtotalWithoutTaxes - costOfGoodsSold
-        })(),
-        // salesCount
-        (async () => {
+        // salesCount (current shift)
+        safeQuery(async () => {
           const activeShift = await prisma.cashShift.findFirst({
             where: { status: 'OPEN' },
             select: { openedAt: true, userId: true },
@@ -108,11 +98,13 @@ export async function GET(request: Request) {
               status: { in: ['PAGADA', 'PAID'] },
             },
           })
-        })(),
+        }, 0),
+
         // totalProducts
-        prisma.product.count({ where: { active: true } }),
+        safeQuery(() => prisma.product.count({ where: { active: true } }), 0),
+
         // lowStockCount
-        (async () => {
+        safeQuery(async () => {
           const levels = await prisma.stockLevel.findMany({
             where: {
               product: { active: true, trackStock: true },
@@ -120,28 +112,22 @@ export async function GET(request: Request) {
             },
             select: { quantity: true, minStock: true },
           })
-          return levels.reduce((count: number, level: any) => {
-            return (level.minStock > 0 && level.quantity <= level.minStock) ? count + 1 : count
-          }, 0)
-        })(),
+          return levels.reduce((count: number, level: any) =>
+            (level.minStock > 0 && level.quantity <= level.minStock) ? count + 1 : count, 0)
+        }, 0),
+
         // inCollection
-        (async () => {
+        safeQuery(async () => {
           const unpaidInvoices = await prisma.invoice.findMany({
-            where: {
-              status: { notIn: ['PAGADA', 'PAID', 'ANULADA', 'VOID'] },
-            },
-            include: {
-              payments: { select: { amount: true } },
-            },
+            where: { status: { notIn: ['PAGADA', 'PAID', 'ANULADA', 'VOID'] } },
+            include: { payments: { select: { amount: true } } },
           })
-          let totalInCollection = 0
-          for (const invoice of unpaidInvoices) {
-            const totalPaid = invoice.payments.reduce((sum: number, p: any) => sum + p.amount, 0)
-            const pending = invoice.total - totalPaid
-            if (pending > 0) totalInCollection += pending
-          }
-          return totalInCollection
-        })(),
+          return unpaidInvoices.reduce((total: number, invoice: any) => {
+            const paid = invoice.payments.reduce((s: number, p: any) => s + p.amount, 0)
+            const pending = invoice.total - paid
+            return pending > 0 ? total + pending : total
+          }, 0)
+        }, 0),
       ])
 
       return {
