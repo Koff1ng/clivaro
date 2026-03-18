@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getTenantPrismaClient } from "@/lib/tenancy";
 import { ensureRestaurantMode } from "@/lib/restaurant";
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(req: NextRequest) {
   try {
     const tenantId = req.headers.get("x-tenant-id");

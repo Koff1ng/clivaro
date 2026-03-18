@@ -5,6 +5,8 @@ import { PERMISSIONS } from '@/lib/permissions'
 import { logger } from '@/lib/logger'
 import { getRestaurantConfig, updateRestaurantConfig, ensureRestaurantMode } from '@/lib/restaurant'
 
+export const dynamic = 'force-dynamic';
+
 /**
  * GET: Obtiene la configuración del restaurante para el tenant actual.
  */
