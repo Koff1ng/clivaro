@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
-import { toast } from 'sonner'
+import { useToast } from '@/components/ui/toast'
 
 interface EmailSetupFlowProps {
   mode: 'onboarding' | 'settings'
@@ -16,6 +16,7 @@ interface EmailSetupFlowProps {
 
 export default function EmailSetupFlow({ mode, onComplete }: EmailSetupFlowProps) {
   const router = useRouter()
+  const { toast } = useToast()
   const [step, setStep] = useState(1)
   const [loading, setLoading] = useState(false)
   const [verifying, setVerifying] = useState(false)
@@ -40,9 +41,9 @@ export default function EmailSetupFlow({ mode, onComplete }: EmailSetupFlowProps
       
       setDnsRecords(data.dns_records || [])
       setStep(2)
-      toast.success('Dominio registrado. Ahora configura tus registros DNS.')
+      toast('Dominio registrado. Ahora configura tus registros DNS.', 'success')
     } catch (error: any) {
-      toast.error(error.message)
+      toast(error.message, 'error')
     } finally {
       setLoading(false)
     }
@@ -56,12 +57,12 @@ export default function EmailSetupFlow({ mode, onComplete }: EmailSetupFlowProps
       
       if (data.verified) {
         setStep(3)
-        toast.success('¡Dominio verificado con éxito!')
+        toast('¡Dominio verificado con éxito!', 'success')
       } else {
-        toast.info('El dominio aún no está verificado. Esto puede tardar unos minutos.')
+        toast('El dominio aún no está verificado. Esto puede tardar unos minutos.', 'info')
       }
     } catch (error: any) {
-      toast.error('Error al verificar: ' + error.message)
+      toast('Error al verificar: ' + error.message, 'error')
     } finally {
       setVerifying(false)
     }
@@ -69,7 +70,7 @@ export default function EmailSetupFlow({ mode, onComplete }: EmailSetupFlowProps
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text)
-    toast.success('Copiado al portapapeles')
+    toast('Copiado al portapapeles', 'success')
   }
 
   const handleReset = async () => {
@@ -81,7 +82,7 @@ export default function EmailSetupFlow({ mode, onComplete }: EmailSetupFlowProps
       setDnsRecords([])
       setDomain('')
     } catch (error: any) {
-      toast.error('Error al reiniciar: ' + error.message)
+      toast('Error al reiniciar: ' + error.message, 'error')
     } finally {
       setLoading(false)
     }

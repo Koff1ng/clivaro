@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Loader2, Mail, CheckCircle2, AlertCircle, RefreshCw, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import EmailSetupFlow from '../email-setup/EmailSetupFlow'
-import { toast } from 'sonner'
+import { useToast } from '@/components/ui/toast'
 import { useState } from 'react'
 
 async function fetchEmailConfig() {
@@ -18,6 +18,7 @@ async function fetchEmailConfig() {
 
 export function EmailConfigTab() {
   const [resetting, setResetting] = useState(false)
+  const { toast } = useToast()
   
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['tenant-email-config'],
@@ -35,10 +36,10 @@ export function EmailConfigTab() {
     try {
       const res = await fetch('/api/tenant/email-setup', { method: 'DELETE' })
       if (!res.ok) throw new Error('Error al eliminar configuración')
-      toast.success('Configuración eliminada')
+      toast('Configuración eliminada', 'success')
       refetch()
     } catch (error: any) {
-      toast.error(error.message)
+      toast(error.message, 'error')
     } finally {
       setResetting(false)
     }
