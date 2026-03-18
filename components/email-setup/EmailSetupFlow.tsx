@@ -12,9 +12,10 @@ import { useToast } from '@/components/ui/toast'
 interface EmailSetupFlowProps {
   mode: 'onboarding' | 'settings'
   onComplete?: () => void
+  initialData?: any
 }
 
-export default function EmailSetupFlow({ mode, onComplete }: EmailSetupFlowProps) {
+export default function EmailSetupFlow({ mode, onComplete, initialData }: EmailSetupFlowProps) {
   const router = useRouter()
   const { toast } = useToast()
   const [step, setStep] = useState(1)
@@ -26,6 +27,36 @@ export default function EmailSetupFlow({ mode, onComplete }: EmailSetupFlowProps
   const [domain, setDomain] = useState('')
   const [fromPrefix, setFromPrefix] = useState('hola')
   const [fromName, setFromName] = useState('')
+
+  // Check for existing config on mount
+  useEffect(() => {
+    if (initialData) {
+      setDomain(initialData.domain || '')
+      setDnsRecords(initialData.dns_records || [])
+      if (initialData.verified) setStep(3)
+      else if (initialData.domain) setStep(2)
+      return
+    }
+
+    const checkExisting = async () => {
+      setLoading(true)
+      try {
+        const res = await fetch('/api/tenant/email-verify', { method: 'POST' })
+        const data = await res.json()
+        if (res.ok && data.domain) {
+          setDomain(data.domain)
+          setDnsRecords(data.dns_records || [])
+          if (data.verified) setStep(3)
+          else setStep(2)
+        }
+      } catch (e) {
+        console.error('Error checking setup:', e)
+      } finally {
+        setLoading(false)
+      }
+    }
+    checkExisting()
+  }, [initialData])
 
   const handleCreateDomain = async (e: React.FormEvent) => {
     e.preventDefault()

@@ -55,7 +55,7 @@ export function EmailConfigTab() {
 
   // If no config found or error returned as 404
   if (data?.not_found || data?.error === 'Configuración no encontrada') {
-    return <EmailSetupFlow mode="settings" onComplete={() => refetch()} />
+    return <EmailSetupFlow mode="settings" onComplete={() => refetch()} initialData={data} />
   }
 
   const isVerified = data?.verified
@@ -136,7 +136,7 @@ export function EmailConfigTab() {
             <h3 className="text-lg font-semibold mb-4 px-1">Registros DNS Pendientes</h3>
             <Card>
                 <CardContent className="p-0">
-                    <EmailSetupFlow mode="settings" onComplete={() => refetch()} />
+                    <EmailSetupFlow mode="settings" onComplete={() => refetch()} initialData={data} />
                 </CardContent>
             </Card>
         </div>
