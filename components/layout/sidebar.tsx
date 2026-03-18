@@ -205,27 +205,14 @@ export function Sidebar() {
       >
         {isOpen && (
           <div className={cn(
-            'flex items-center justify-center border-b border-slate-800 px-1 transition-opacity duration-300 opacity-100 h-14 sm:h-16'
+            'flex items-center justify-center border-b border-white/5 px-4 transition-opacity duration-300 opacity-100 h-12 sm:h-14 overflow-hidden'
           )}>
-            <Link href="/dashboard" prefetch scroll={false} className="w-full flex justify-center items-center h-full">
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  width: '100%',
-                  maxHeight: '100%',
-                  overflow: 'hidden',
-                }}
-              >
-                <div className="text-white w-full">
-                  <Logo
-                    size="lg"
-                    showByline={false}
-                    className="!w-48 md:!w-64 !h-auto !justify-start -ml-2 mt-4"
-                  />
-                </div>
-              </div>
+            <Link href="/dashboard" prefetch scroll={false} className="w-full flex items-center h-full">
+              <Logo
+                size="lg"
+                showByline={false}
+                className="!w-44 !h-auto !justify-start -ml-1"
+              />
             </Link>
           </div>
         )}

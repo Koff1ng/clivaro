@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Search, X, Command } from 'lucide-react'
+import { Search, X, Command, ChevronRight, Sparkles } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { menuGroups, type MenuItem } from '@/lib/navigation-data'
 import { AppIcon } from '@/components/ui/app-icon'
@@ -91,19 +91,19 @@ export function GlobalSearch() {
         <>
             <button
                 onClick={() => setIsOpen(true)}
-                className="hidden md:flex items-center gap-2 px-3 py-1.5 text-sm text-slate-400 bg-slate-800/50 border border-slate-700 rounded-lg hover:bg-slate-800 hover:text-white transition-all w-64 group"
+                className="hidden md:flex items-center gap-2 px-3 h-9 text-slate-500 bg-slate-50 border border-slate-200/60 rounded-xl hover:bg-white hover:border-sky-200 hover:shadow-sm hover:shadow-sky-500/10 transition-all w-56 group active:scale-[0.98]"
             >
-                <Search className="w-4 h-4 group-hover:scale-110 transition-transform" />
-                <span className="flex-1 text-left">Buscar módulos...</span>
-                <kbd className="hidden sm:inline-flex h-5 select-none items-center gap-1 rounded border border-slate-600 bg-slate-700 px-1.5 font-mono text-[10px] font-medium text-slate-400 opacity-100">
-                    <span className="text-xs">⌘</span>K
+                <Search className="w-4 h-4 text-slate-400 group-hover:text-sky-500 transition-colors" />
+                <span className="flex-1 text-left text-xs font-medium">Buscar...</span>
+                <kbd className="hidden sm:inline-flex h-5 select-none items-center gap-1 rounded-md border border-slate-200 bg-white px-1.5 font-mono text-[10px] font-bold text-slate-400 shadow-sm">
+                    <span className="text-[10px]">⌘</span>K
                 </kbd>
             </button>
 
             {/* Mobile Search Button */}
             <button
                 onClick={() => setIsOpen(true)}
-                className="md:hidden flex items-center justify-center h-8 w-8 text-slate-100 hover:bg-slate-800 rounded-full"
+                className="md:hidden flex items-center justify-center h-9 w-9 text-slate-600 hover:bg-slate-100 rounded-xl transition-colors"
             >
                 <Search className="h-4 w-4" />
             </button>
@@ -120,14 +120,14 @@ export function GlobalSearch() {
                         />
 
                         <motion.div
-                            initial={{ opacity: 0, scale: 0.95, y: -20 }}
+                            initial={{ opacity: 0, scale: 0.98, y: -10 }}
                             animate={{ opacity: 1, scale: 1, y: 0 }}
-                            exit={{ opacity: 0, scale: 0.95, y: -20 }}
-                            className="relative w-full max-w-xl bg-slate-900 border border-slate-800 rounded-xl shadow-2xl overflow-hidden"
+                            exit={{ opacity: 0, scale: 0.98, y: -10 }}
+                            className="relative w-full max-w-xl bg-white/90 border border-white shadow-[0_20px_50px_rgba(0,0,0,0.1)] rounded-3xl overflow-hidden backdrop-blur-2xl"
                             onKeyDown={handleKeyDown}
                         >
-                            <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-800">
-                                <Search className="w-5 h-5 text-slate-400" />
+                            <div className="flex items-center gap-3 px-5 py-4 border-b border-slate-100">
+                                <Search className="w-5 h-5 text-sky-500" />
                                 <input
                                     ref={inputRef}
                                     value={query}
@@ -135,59 +135,64 @@ export function GlobalSearch() {
                                         setQuery(e.target.value)
                                         setSelectedIndex(0)
                                     }}
-                                    placeholder="Buscar por módulo, reporte o microservicio..."
-                                    className="flex-1 bg-transparent border-none outline-none text-slate-100 placeholder:text-slate-500 text-base"
+                                    placeholder="¿Qué módulo necesitas hoy?"
+                                    className="flex-1 bg-transparent border-none outline-none text-slate-800 placeholder:text-slate-400 text-lg font-medium"
                                 />
-                                <button
-                                    onClick={() => setIsOpen(false)}
-                                    className="p-1 hover:bg-slate-800 rounded-md text-slate-400 hover:text-white transition-colors"
-                                >
-                                    <X className="w-4 h-4" />
-                                </button>
+                                <div className="flex items-center gap-2">
+                                    <kbd className="hidden sm:inline-flex h-6 items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 font-mono text-[10px] font-bold text-slate-500 shadow-sm">
+                                        ESC
+                                    </kbd>
+                                    <button
+                                        onClick={() => setIsOpen(false)}
+                                        className="p-1.5 hover:bg-slate-100 rounded-xl text-slate-400 transition-colors"
+                                    >
+                                        <X className="w-5 h-5" />
+                                    </button>
+                                </div>
                             </div>
 
-                            <div className="max-h-[400px] overflow-y-auto p-2 custom-scrollbar">
+                            <div className="max-h-[60vh] overflow-y-auto p-3 custom-scrollbar">
                                 {filteredItems.length === 0 ? (
-                                    <div className="py-12 text-center">
-                                        <Command className="w-12 h-12 text-slate-700 mx-auto mb-3 opacity-20" />
-                                        <p className="text-slate-400">No se encontraron resultados para "{query}"</p>
+                                    <div className="py-16 text-center">
+                                        <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4 border border-slate-100">
+                                            <Command className="w-8 h-8 text-slate-300" />
+                                        </div>
+                                        <p className="text-slate-500 font-medium">No hay resultados para "{query}"</p>
+                                        <p className="text-slate-400 text-xs mt-1">Intenta con una palabra clave diferente</p>
                                     </div>
                                 ) : (
-                                    <div className="space-y-1">
+                                    <div className="space-y-1.5">
                                         {filteredItems.map((item, index) => (
                                             <button
                                                 key={item.href}
                                                 onClick={() => handleSelect(item.href)}
                                                 onMouseEnter={() => setSelectedIndex(index)}
                                                 className={cn(
-                                                    "w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all group text-left",
+                                                    "w-full flex items-center gap-4 px-4 py-3 rounded-2xl transition-all group text-left relative",
                                                     index === selectedIndex
-                                                        ? "bg-sky-500 text-white shadow-lg shadow-sky-500/20"
-                                                        : "text-slate-400 hover:bg-slate-800 hover:text-slate-200"
+                                                        ? "bg-sky-500 text-white shadow-lg shadow-sky-500/25 scale-[1.01] z-10"
+                                                        : "text-slate-600 hover:bg-slate-50"
                                                 )}
                                             >
                                                 <div className={cn(
-                                                    "flex-shrink-0 p-1.5 rounded-md",
-                                                    index === selectedIndex ? "bg-white/20" : "bg-slate-800"
+                                                    "flex-shrink-0 h-10 w-10 flex items-center justify-center rounded-xl transition-colors",
+                                                    index === selectedIndex ? "bg-white/20" : "bg-slate-100 text-slate-500 group-hover:bg-sky-50 group-hover:text-sky-600"
                                                 )}>
-                                                    <AppIcon icon={item.icon} className="w-4 h-4" />
+                                                    <AppIcon icon={item.icon} className="w-5 h-5" />
                                                 </div>
                                                 <div className="flex-1 min-w-0">
-                                                    <div className="font-medium truncate">{item.label}</div>
+                                                    <div className="font-bold tracking-tight truncate">{item.label}</div>
                                                     <div className={cn(
-                                                        "text-[10px] uppercase tracking-wider opacity-70",
-                                                        index === selectedIndex ? "text-sky-100" : "text-slate-500"
+                                                        "text-[10px] font-bold uppercase tracking-[0.1em] opacity-80 mt-0.5",
+                                                        index === selectedIndex ? "text-sky-100" : "text-slate-400"
                                                     )}>
-                                                        {item.href}
+                                                        {item.href.replace('/', 'ERP / ').replace('-', ' ')}
                                                     </div>
                                                 </div>
                                                 {index === selectedIndex && (
-                                                    <motion.div
-                                                        layoutId="active-indicator"
-                                                        className="text-[10px] font-bold bg-white/20 px-1.5 py-0.5 rounded"
-                                                    >
-                                                        ENTER
-                                                    </motion.div>
+                                                    <div className="bg-white/20 px-2 py-1 rounded-lg text-[9px] font-black tracking-widest flex items-center gap-1">
+                                                        ENTER <ChevronRight className="w-3 h-3" />
+                                                    </div>
                                                 )}
                                             </button>
                                         ))}
@@ -195,13 +200,13 @@ export function GlobalSearch() {
                                 )}
                             </div>
 
-                            <div className="px-4 py-2 border-t border-slate-800 bg-slate-900/50 flex items-center justify-between text-[10px] text-slate-500">
-                                <div className="flex items-center gap-3">
-                                    <span className="flex items-center gap-1"><span className="px-1 py-0.5 rounded bg-slate-800">↑↓</span> Navegar</span>
-                                    <span className="flex items-center gap-1"><span className="px-1 py-0.5 rounded bg-slate-800">ENTER</span> Seleccionar</span>
-                                    <span className="flex items-center gap-1"><span className="px-1 py-0.5 rounded bg-slate-800">ESC</span> Cerrar</span>
+                            <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between text-[11px] font-medium text-slate-500 uppercase tracking-widest">
+                                <div className="flex items-center gap-6">
+                                    <span className="flex items-center gap-2"><span className="w-5 h-5 flex items-center justify-center rounded bg-white shadow-sm border border-slate-200 text-[10px]">↑↓</span> Navegar</span>
+                                    <span className="flex items-center gap-2"><span className="w-8 h-5 flex items-center justify-center rounded bg-white shadow-sm border border-slate-200 text-[10px] font-bold">↵</span> Ir al módulo</span>
                                 </div>
-                                <div className="hidden sm:block">
+                                <div className="hidden sm:flex items-center gap-2 text-sky-600">
+                                    <Sparkles className="w-3 h-3" />
                                     Clivaro Smart Search
                                 </div>
                             </div>
