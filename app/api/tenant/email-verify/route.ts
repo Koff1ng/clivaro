@@ -50,7 +50,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ 
       success: true, 
       verified,
-      status: resendData.status 
+      status: resendData.status,
+      domain: config.domain,
+      dns_records: resendData.records || config.dnsRecords
     })
   } catch (error: any) {
     logger.error('Error in email-verify POST', error)

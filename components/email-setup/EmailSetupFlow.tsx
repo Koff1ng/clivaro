@@ -207,7 +207,7 @@ export default function EmailSetupFlow({ mode, onComplete, initialData }: EmailS
         </Card>
       )}
 
-      {step === 2 && (dnsRecords.length > 0) && (
+      {step === 2 && (
         <Card className="border-t-4 border-t-amber-500 shadow-xl">
           <CardHeader>
             <CardTitle className="text-2xl flex items-center gap-2">
@@ -226,6 +226,7 @@ export default function EmailSetupFlow({ mode, onComplete, initialData }: EmailS
                     <th className="px-4 py-3 text-left">Tipo</th>
                     <th className="px-4 py-3 text-left">Nombre / Host</th>
                     <th className="px-4 py-3 text-left">Valor / Contenido</th>
+                    <th className="px-4 py-3 text-center">Estado</th>
                     <th className="px-4 py-3 w-10"></th>
                   </tr>
                 </thead>
@@ -235,6 +236,13 @@ export default function EmailSetupFlow({ mode, onComplete, initialData }: EmailS
                       <td className="px-4 py-3 font-mono text-xs"><span className="bg-gray-100 px-1.5 py-0.5 rounded italic">{record.type}</span></td>
                       <td className="px-4 py-3 font-mono text-xs break-all max-w-[200px]">{record.name}</td>
                       <td className="px-4 py-3 font-mono text-[10px] break-all max-w-[300px] text-gray-600">{record.value}</td>
+                      <td className="px-4 py-3 text-center">
+                        {record.status === 'verified' ? (
+                          <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded-full text-[10px] font-bold">OK</span>
+                        ) : (
+                          <span className="bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full text-[10px] font-bold">Pendiente</span>
+                        )}
+                      </td>
                       <td className="px-4 py-3">
                         <Button 
                           variant="ghost" 
