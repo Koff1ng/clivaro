@@ -64,7 +64,7 @@ export const menuGroups: MenuGroup[] = [
             { href: '/sales/invoices', label: 'Facturas', icon: Page, permission: 'manage_sales', planFeature: 'invoices' },
             { href: '/credit-notes', label: 'Notas Crédito', icon: PasteClipboard, permission: 'manage_sales', planFeature: 'invoices' },
             { href: '/dashboard/electronic-invoicing', label: 'Fact. Electrónica', icon: ShieldCheck, permission: 'manage_sales', planFeature: 'invoices' },
-            { href: '/pos/commander', label: 'Comandero 🍕', icon: LayoutGrid, permission: 'manage_sales' },
+            { href: '/pos/commander', label: 'Comandero 🍕', icon: Calculator, permission: 'manage_sales' },
         ]
     },
     {
