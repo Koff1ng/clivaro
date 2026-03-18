@@ -9,7 +9,9 @@ export async function GET(req: NextRequest) {
     const tenantId = req.headers.get("x-tenant-id");
     if (!tenantId) return NextResponse.json({ error: "Tenant ID missing" }, { status: 400 });
 
-    await ensureRestaurantMode(tenantId);
+    const restaurantCheck = await ensureRestaurantMode(tenantId);
+    if (restaurantCheck) return restaurantCheck;
+
     const prisma = await getTenantPrismaClient(tenantId);
 
     const openSessions = await prisma.tableSession.findMany({

@@ -13,7 +13,8 @@ export async function POST(
     if (!tenantId) return NextResponse.json({ error: "Tenant ID missing" }, { status: 400 });
 
     const sessionId = params.id;
-    await ensureRestaurantMode(tenantId);
+    const restaurantCheck = await ensureRestaurantMode(tenantId);
+    if (restaurantCheck) return restaurantCheck;
 
     const prisma = await getTenantPrismaClient(tenantId);
     
@@ -62,7 +63,8 @@ export async function POST(
       const invoice = await tx.invoice.create({
         data: {
           number: `RES-${Date.now()}`,
-          customerId: "GENERIC", 
+          // Get or use a default customer ID. In a real system we'd look for "Consumidor Final"
+          customerId: session.customerId || (await tx.customer.findFirst({ where: { active: true } }))?.id || "N/A", 
           status: "EMITIDA",
           total: session.totalAmount + session.tipAmount,
           tipAmount: session.tipAmount,

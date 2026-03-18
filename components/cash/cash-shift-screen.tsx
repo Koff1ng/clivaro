@@ -23,7 +23,10 @@ import {
   ArrowLeftRight,
   Printer,
   Download,
-  Receipt
+  Receipt,
+  RefreshCw,
+  MoreHorizontal,
+  Utensils,
 } from 'lucide-react'
 import { useToast } from '@/components/ui/toast'
 import { ShiftReportPrint } from './shift-report-print'
@@ -881,7 +884,10 @@ export function CashShiftScreen() {
                   )}
                 </div>
 
-                {/* Payment Methods Summary */}
+                {/* Cuentas de Restaurante si está activo */}
+      <RestaurantAccountsSection />
+
+      {/* Payment Methods Summary */}
                 {closedShiftReport.summaryItems && closedShiftReport.summaryItems.length > 0 && (
                   <div>
                     <h3 className="text-lg font-semibold mb-3">Ingresos por Método de Pago</h3>
@@ -1187,6 +1193,64 @@ export function CashShiftScreen() {
           </div>
         </DialogContent>
       </Dialog>
+    </div>
+  )
+}
+
+function RestaurantAccountsSection() {
+  const { data: accounts, isLoading } = useQuery({
+    queryKey: ['restaurant-open-accounts'],
+    queryFn: async () => {
+      const res = await fetch('/api/pos/cashier/open-accounts', {
+        headers: { 'x-tenant-id': (window as any).__TENANT_ID__ || '' }
+      })
+      if (!res.ok) return []
+      return res.json()
+    },
+    refetchInterval: 15000 
+  })
+
+  if (!accounts || accounts.length === 0) return null
+
+  return (
+    <div className="space-y-4 mb-8 bg-white p-6 rounded-2xl border-2 border-orange-100 shadow-sm relative overflow-hidden">
+      <div className="absolute top-0 right-0 w-32 h-32 bg-orange-50 rounded-full -mr-16 -mt-16 opacity-50" />
+      <div className="flex items-center gap-3 text-xl font-black text-orange-600 relative z-10">
+        <div className="p-2 bg-orange-100 rounded-lg">
+          <Utensils className="h-6 w-6" />
+        </div>
+        <span>Cuentas de Restaurante activas</span>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 relative z-10">
+        {accounts.map((session: any) => (
+          <div key={session.id} className="group p-5 border rounded-2xl bg-gradient-to-br from-orange-50/50 to-white border-orange-200 hover:border-orange-400 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+            <div className="flex justify-between items-start mb-3">
+              <div className="font-extrabold text-2xl text-gray-800 tracking-tight">Mesa {session.table?.number}</div>
+              <div className="flex flex-col items-end">
+                <span className="text-[10px] px-2 py-1 bg-orange-500 text-white rounded-full font-black uppercase tracking-widest shadow-sm">
+                  {new Date(session.openedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </span>
+                <span className="text-[9px] text-orange-400 font-bold mt-1">HACE {Math.floor((Date.now() - new Date(session.openedAt).getTime()) / 60000)} MIN</span>
+              </div>
+            </div>
+            <div className="text-sm text-gray-500 mb-5 flex items-center gap-2">
+              <div className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center text-orange-600 font-bold text-xs">
+                {session.waiter?.name?.charAt(0) || 'M'}
+              </div>
+              <div>
+                <div className="text-[10px] uppercase font-bold text-gray-400 leading-none">Atendido por</div>
+                <div className="font-bold text-gray-700">{session.waiter?.name || 'Mesero'}</div>
+              </div>
+            </div>
+            <div className="flex justify-between items-center pt-4 border-t border-orange-100">
+              <div className="text-[10px] text-gray-400 font-black uppercase tracking-widest">Total</div>
+              <div className="text-2xl font-black text-orange-600 group-hover:scale-110 transition-transform">
+                {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(session.totalAmount)}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
