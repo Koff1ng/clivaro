@@ -8,7 +8,7 @@ import { formatCurrency } from '@/lib/utils'
 import { useToast } from '@/components/ui/toast'
 import { useThermalPrint } from '@/lib/hooks/use-thermal-print'
 import { useSession } from 'next-auth/react'
-import { Search, Plus, Minus, User, ShoppingCart, X, DollarSign, CreditCard, ArrowLeftRight, Check, Printer, Copy, Bookmark, FolderOpen, Keyboard, UserPlus, Phone, MessageSquare, Smartphone, Wallet, Landmark, Coins, Receipt } from 'lucide-react'
+import { Search, Plus, Minus, User, ShoppingCart, X, DollarSign, CreditCard, ArrowLeftRight, Check, Printer, Copy, Bookmark, FolderOpen, Keyboard, UserPlus, Phone, MessageSquare, Smartphone, Wallet, Landmark, Coins, Receipt, LayoutGrid } from 'lucide-react'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -17,6 +17,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { PERMISSIONS } from '@/lib/permissions'
 import { InvoicePrint } from '@/components/sales/invoice-print'
 import { TaxSelector } from './tax-selector'
+import { RestaurantTableMap } from '@/components/restaurant/ui/table-map'
 
 interface CartItem {
   productId: string
@@ -174,7 +175,12 @@ async function openShift(startingCash: number) {
   return res.json()
 }
 
-export function POSScreen() {
+interface POSScreenProps {
+  mode?: 'retail' | 'commander'
+  waiterData?: any
+}
+
+export function POSScreen({ mode = 'retail', waiterData }: POSScreenProps) {
   const { toast } = useToast()
   const { data: session } = useSession()
   const [searchQuery, setSearchQuery] = useState('')
@@ -238,6 +244,10 @@ export function POSScreen() {
     const userId = (session?.user as any)?.id || 'no-user'
     return `pos:discountOverride:${tenantId}:${userId}`
   }, [session])
+
+  const [selectedTable, setSelectedTable] = useState<any>(null)
+  const [showTableSelector, setShowTableSelector] = useState(mode === 'commander')
+  const [activeSession, setActiveSession] = useState<any>(null)
 
   const offlineQueueKey = useMemo(() => {
     const tenantId = (session?.user as any)?.tenantId || 'no-tenant'
@@ -1285,7 +1295,68 @@ export function POSScreen() {
       return
     }
 
+    if (mode === 'commander') {
+      if (!selectedTable) {
+        toast('Debe seleccionar una mesa', 'warning')
+        setShowTableSelector(true)
+        return
+      }
+      handleSendToKitchen()
+      return
+    }
+
     saleMutation.mutate(saleData)
+  }
+
+  const handleSendToKitchen = async () => {
+    if (!selectedTable || cart.length === 0) return
+    
+    try {
+      // 1. Ensure session is open
+      let sessionId = activeSession?.id
+      if (!sessionId) {
+        const res = await fetch('/api/restaurant/sessions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tableId: selectedTable.id }),
+        })
+        const data = await res.json()
+        if (!res.ok) throw new Error(data.error)
+        sessionId = data.session.id
+        setActiveSession(data.session)
+      }
+
+      // 2. Create Order
+      const orderRes = await fetch('/api/restaurant/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId,
+          waiterId: waiterData?.id,
+          items: cart.map(item => ({
+            productId: item.productId,
+            variantId: item.variantId,
+            quantity: item.quantity,
+            price: item.unitPrice,
+            modifiers: {} // Support for modifiers later
+          }))
+        }),
+      })
+      
+      const orderData = await orderRes.json()
+      if (!orderRes.ok) throw new Error(orderData.error)
+
+      // 3. Send to Kitchen
+      await fetch(`/api/restaurant/orders/${orderData.order.id}/send-kitchen`, { method: 'POST' })
+
+      toast('Comanda enviada a cocina 🍕', 'success')
+      setCart([])
+      // Keep table selected or clear? For commander, usually clear to next table
+      setSelectedTable(null)
+      setShowTableSelector(true)
+    } catch (err: any) {
+      toast(err.message, 'error')
+    }
   }
 
   const totals = calculateTotals()
@@ -1470,6 +1541,31 @@ export function POSScreen() {
         <div className="w-full lg:w-2/3 flex flex-col border-r bg-background">
           {/* Warehouse Selector and Search Bar */}
           <div className="p-4 border-b bg-background space-y-3">
+            {/* Mode Indicator & Table Selector (Commander) */}
+            {mode === 'commander' && (
+              <div className="flex items-center justify-between gap-4 p-2 bg-sky-500/10 border border-sky-500/20 rounded-xl">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-sky-500 flex items-center justify-center text-white">
+                    <LayoutGrid className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-sky-500 uppercase tracking-widest">MODO COMANDERO</p>
+                    <p className="text-sm font-semibold text-white">
+                      {selectedTable ? `Mesa: ${selectedTable.name}` : "Seleccione una mesa"}
+                    </p>
+                  </div>
+                </div>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="bg-white/5 border-white/10 hover:bg-sky-500 hover:text-white"
+                  onClick={() => setShowTableSelector(true)}
+                >
+                  Cambiar Mesa
+                </Button>
+              </div>
+            )}
+
             {/* Warehouse Selector */}
             {warehouses.length > 1 && (
               <div className="flex items-center gap-2">

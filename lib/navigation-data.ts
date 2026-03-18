@@ -64,6 +64,7 @@ export const menuGroups: MenuGroup[] = [
             { href: '/sales/invoices', label: 'Facturas', icon: Page, permission: 'manage_sales', planFeature: 'invoices' },
             { href: '/credit-notes', label: 'Notas Crédito', icon: PasteClipboard, permission: 'manage_sales', planFeature: 'invoices' },
             { href: '/dashboard/electronic-invoicing', label: 'Fact. Electrónica', icon: ShieldCheck, permission: 'manage_sales', planFeature: 'invoices' },
+            { href: '/pos/commander', label: 'Comandero 🍕', icon: LayoutGrid, permission: 'manage_sales' },
         ]
     },
     {
@@ -87,15 +88,6 @@ export const menuGroups: MenuGroup[] = [
             { href: '/accounting/reports/exogenous', label: 'Información exógena', icon: ShieldCheck, permission: 'manage_accounting', planFeature: 'manageAccounting' },
             { href: '/accounting/fiscal-conciliator', label: 'Conciliador fiscal', icon: Calculator, permission: 'manage_accounting', planFeature: 'manageAccounting' },
             { href: '/accounting/addons', label: 'Complementos contables', icon: Box, permission: 'manage_accounting', planFeature: 'manageAccounting' },
-        ]
-    },
-    {
-        title: 'Restaurante',
-        key: 'restaurant',
-        items: [
-            { href: '/restaurant/map', label: 'Mapa de Mesas', icon: Shop, permission: 'manage_sales' },
-            { href: '/restaurant/pos', label: 'Comandas', icon: CartIcon, permission: 'manage_sales' },
-            { href: '/restaurant/kds', label: 'Cocina (KDS)', icon: KanbanBoard, permission: 'manage_sales' },
         ]
     },
     {
