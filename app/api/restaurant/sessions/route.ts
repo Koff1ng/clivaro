@@ -7,9 +7,13 @@ import { requireAnyPermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
 
 const createSessionSchema = z.object({
-  tableId: z.string().min(1),
-  waiterId: z.string().optional(), // For manager-created sessions
-})
+  tableId: z.string().optional(),
+  tableName: z.string().optional(),
+  waiterId: z.string().optional(),
+}).refine(
+  (d) => d.tableId || d.tableName,
+  { message: 'tableId or tableName is required' }
+)
 
 function apiError(status: number, message: string, details?: unknown) {
   return NextResponse.json({ status, error: message, details }, { status })
@@ -37,6 +41,50 @@ async function resolveRestaurantContext(req: Request) {
   }
 
   return { tenantId: getTenantIdFromSession(session), waiter: null }
+}
+
+const DEFAULT_ZONE_NAME = 'General'
+
+async function resolveOrCreateTable(
+  prisma: any,
+  tenantId: string,
+  tableId?: string,
+  tableName?: string
+) {
+  if (tableId) {
+    const table = await prisma.restaurantTable.findUnique({ where: { id: tableId } })
+    if (!table) throw new Error('Mesa no encontrada')
+    return table
+  }
+
+  if (!tableName) throw new Error('tableName o tableId requerido')
+
+  const normalized = tableName.trim()
+  if (!normalized) throw new Error('El nombre de la mesa no puede estar vacio')
+
+  const existing = await prisma.restaurantTable.findFirst({
+    where: { tenantId, name: normalized, active: true },
+  })
+  if (existing) return existing
+
+  let zone = await prisma.restaurantZone.findFirst({
+    where: { tenantId, name: DEFAULT_ZONE_NAME, active: true },
+  })
+  if (!zone) {
+    zone = await prisma.restaurantZone.create({
+      data: { tenantId, name: DEFAULT_ZONE_NAME },
+    })
+  }
+
+  return await prisma.restaurantTable.create({
+    data: {
+      tenantId,
+      zoneId: zone.id,
+      name: normalized,
+      capacity: 4,
+      status: 'AVAILABLE',
+    },
+  })
 }
 
 export async function GET(req: NextRequest) {
@@ -87,7 +135,6 @@ export async function POST(req: NextRequest) {
 
     const prisma = await getTenantPrismaClient(context.tenantId)
 
-    // Require an active cash shift before opening a new table
     const activeShift = await prisma.cashShift.findFirst({
       where: { status: 'OPEN' },
     })
@@ -95,33 +142,40 @@ export async function POST(req: NextRequest) {
       return apiError(403, 'No hay un turno de caja abierto. Abra un turno antes de abrir mesas.')
     }
 
-    // If an open session already exists, return it (idempotent)
+    const table = await resolveOrCreateTable(
+      prisma,
+      context.tenantId,
+      parsed.data.tableId,
+      parsed.data.tableName
+    )
+
     const existing = await prisma.tableSession.findFirst({
-      where: { tableId: parsed.data.tableId, status: 'OPEN' },
+      where: { tableId: table.id, status: 'OPEN' },
+      include: { table: { select: { id: true, name: true } } },
     })
 
     if (existing) {
-      return NextResponse.json(existing)
+      return NextResponse.json({ ...existing, reused: true })
     }
 
-    // Accept waiterId from waiter token OR from body (manager assigning to a waiter)
     const waiterId = context.waiter?.id ?? parsed.data.waiterId
     if (!waiterId) {
-      return apiError(403, 'waiterId required: use waiter token or pass waiterId in body')
+      return apiError(403, 'waiterId requerido: use waiter token o pase waiterId en el body')
     }
 
-    const session = await prisma.$transaction(async (tx) => {
+    const session = await prisma.$transaction(async (tx: any) => {
       const newSession = await tx.tableSession.create({
         data: {
           tenantId: context.tenantId,
-          tableId: parsed.data.tableId,
+          tableId: table.id,
           waiterId,
           status: 'OPEN',
         },
+        include: { table: { select: { id: true, name: true } } },
       })
 
       await tx.restaurantTable.update({
-        where: { id: parsed.data.tableId },
+        where: { id: table.id },
         data: { status: 'OCCUPIED' },
       })
 
@@ -129,7 +183,7 @@ export async function POST(req: NextRequest) {
     })
 
     emitRestaurantEvent(context.tenantId, 'TABLE_UPDATED', {
-      tableId: parsed.data.tableId,
+      tableId: table.id,
       status: 'OCCUPIED',
     })
 

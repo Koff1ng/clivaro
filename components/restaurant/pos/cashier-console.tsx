@@ -33,13 +33,6 @@ interface OpenSession {
   lines: AccountLine[];
 }
 
-interface RestaurantTable {
-  id: string;
-  name: string;
-  status: string;
-  zoneId?: string;
-}
-
 interface Waiter {
   id: string;
   name: string;
@@ -136,11 +129,12 @@ export const CashierBillingConsole: React.FC = () => {
 
   // ── ABRIR CUENTA state ────────────────────────────────────────────────────
   const [showOpenAccount, setShowOpenAccount] = useState(false);
-  const [tables, setTables] = useState<RestaurantTable[]>([]);
   const [waiters, setWaiters] = useState<Waiter[]>([]);
-  const [pickedTable, setPickedTable] = useState<RestaurantTable | null>(null);
+  const [newTableName, setNewTableName] = useState("");
   const [pickedWaiter, setPickedWaiter] = useState<string>("");
   const [opening, setOpening] = useState(false);
+  const [openError, setOpenError] = useState<string | null>(null);
+  const tableInputRef = useRef<HTMLInputElement>(null);
 
   // ── CAPTURA state ─────────────────────────────────────────────────────────
   const [showCaptura, setShowCaptura] = useState(false);
@@ -197,56 +191,56 @@ export const CashierBillingConsole: React.FC = () => {
 
   // ── Open Account ─────────────────────────────────────────────────────────
 
+  const nextTableNumber = useCallback(() => {
+    const used = new Set(sessions.map((s) => s.tableNumber));
+    for (let i = 1; i <= 999; i++) {
+      if (!used.has(String(i))) return String(i);
+    }
+    return String(sessions.length + 1);
+  }, [sessions]);
+
   const handleOpenAccountClick = async () => {
     if (hasActiveShift === false) {
       toast("No hay un turno de caja abierto. Abra un turno antes de abrir cuentas.", "error");
       return;
     }
+    setOpenError(null);
+    setNewTableName(nextTableNumber());
     try {
-      const [tablesRes, waitersRes] = await Promise.all([
-        fetch("/api/restaurant/tables"),
-        fetch("/api/restaurant/waiters"),
-      ]);
-      const tablesData = await tablesRes.json();
+      const waitersRes = await fetch("/api/restaurant/waiters");
       const waitersData = await waitersRes.json();
-
-      if (!tablesRes.ok) {
-        throw new Error(tablesData?.error || `Error cargando mesas (${tablesRes.status})`);
-      }
-      if (!waitersRes.ok) {
-        throw new Error(waitersData?.error || `Error cargando meseros (${waitersRes.status})`);
-      }
-
-      const allTables: RestaurantTable[] = Array.isArray(tablesData) ? tablesData : [];
-      const availTables = allTables.filter((t: RestaurantTable) => t.status === "AVAILABLE");
-      setTables(availTables);
+      if (!waitersRes.ok) throw new Error(waitersData?.error || "Error cargando meseros");
       const waiterList: Waiter[] = Array.isArray(waitersData) ? waitersData : [];
       setWaiters(waiterList);
-      setPickedTable(null);
       setPickedWaiter(waiterList.length > 0 ? waiterList[0].id : "");
-      setShowOpenAccount(true);
     } catch (err: any) {
-      toast(err.message || "Error al cargar mesas/meseros", "error");
+      toast(err.message || "Error al cargar meseros", "error");
+      return;
     }
+    setShowOpenAccount(true);
+    setTimeout(() => tableInputRef.current?.select(), 80);
   };
 
   const handleConfirmOpenAccount = async () => {
-    if (!pickedTable) { toast("Selecciona una mesa", "warning"); return; }
-    if (!pickedWaiter) { toast("Selecciona un mesero", "warning"); return; }
+    const name = newTableName.trim();
+    if (!name) { toast("Ingrese un numero de mesa", "warning"); return; }
+    if (!pickedWaiter) { toast("Seleccione un mesero", "warning"); return; }
     setOpening(true);
+    setOpenError(null);
     try {
       const res = await fetch("/api/restaurant/sessions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tableId: pickedTable.id, waiterId: pickedWaiter }),
+        body: JSON.stringify({ tableName: name, waiterId: pickedWaiter }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "No se pudo abrir la cuenta");
-      toast(`Cuenta abierta: Mesa ${pickedTable.name}`, "success");
+      const label = data.reused ? "Cuenta existente" : "Cuenta abierta";
+      toast(`${label}: Mesa ${name}`, "success");
       setShowOpenAccount(false);
       await fetchSessions();
     } catch (err: any) {
-      toast(err.message, "error");
+      setOpenError(err.message);
     } finally {
       setOpening(false);
     }
@@ -403,53 +397,44 @@ export const CashierBillingConsole: React.FC = () => {
       {/* ══ OPEN ACCOUNT MODAL ══════════════════════════════════════ */}
       {showOpenAccount && (
         <div style={S.overlay} onClick={() => setShowOpenAccount(false)}>
-          <div style={S.modal} onClick={(e) => e.stopPropagation()}>
-            <div style={S.modalHeader}>ABRIR CUENTA — Seleccionar Mesa y Mesero</div>
+          <div style={{ ...S.modal, minWidth: 380, maxWidth: 420 }} onClick={(e) => e.stopPropagation()}>
+            <div style={S.modalHeader}>ABRIR CUENTA</div>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 8 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 8 }}>
+              {openError && (
+                <div style={{ background: "#FFEBEE", border: "1px solid #C0392B", borderRadius: 6, padding: "8px 12px", color: "#C0392B", fontWeight: 700, fontSize: 12 }}>
+                  {openError}
+                </div>
+              )}
+
+              {/* Table number input */}
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 11, color: "#5a3c10", marginBottom: 4 }}>NUMERO DE MESA:</div>
+                <input
+                  ref={tableInputRef}
+                  value={newTableName}
+                  onChange={(e) => setNewTableName(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") handleConfirmOpenAccount(); }}
+                  placeholder="Ej: 1, 2, VIP-1..."
+                  autoFocus
+                  style={{ width: "100%", padding: "10px 14px", border: "2px solid #C8A050", borderRadius: 8, fontSize: 20, fontWeight: 900, textAlign: "center", color: "#3D2B00", background: "#FFF8E7", boxSizing: "border-box" }}
+                />
+                <div style={{ fontSize: 9, color: "#8B6914", marginTop: 4, textAlign: "center" }}>
+                  Si la mesa ya tiene cuenta abierta, se reutiliza automaticamente
+                </div>
+              </div>
+
               {/* Waiter selector */}
               <div>
                 <div style={{ fontWeight: 700, fontSize: 11, color: "#5a3c10", marginBottom: 4 }}>MESERO:</div>
                 <select
                   value={pickedWaiter}
                   onChange={(e) => setPickedWaiter(e.target.value)}
-                  style={{ ...S.inputSm, height: 30, fontSize: 13 }}
+                  style={{ ...S.inputSm, height: 34, fontSize: 13 }}
                 >
                   {waiters.length === 0 && <option value="">Sin meseros activos</option>}
                   {waiters.map((w) => <option key={w.id} value={w.id}>{w.name} ({w.code})</option>)}
                 </select>
-              </div>
-
-              {/* Table grid */}
-              <div>
-                <div style={{ fontWeight: 700, fontSize: 11, color: "#5a3c10", marginBottom: 4 }}>
-                  MESA (disponibles: {tables.length}):
-                </div>
-                {tables.length === 0 ? (
-                  <div style={{ padding: "16px 0", textAlign: "center", color: "#8B6914", fontSize: 12 }}>
-                    No hay mesas disponibles
-                  </div>
-                ) : (
-                  <div style={S.tableGrid}>
-                    {tables.map((t) => (
-                      <button
-                        key={t.id}
-                        onClick={() => setPickedTable(t)}
-                        style={{
-                          padding: "12px 6px",
-                          background: pickedTable?.id === t.id ? "#E87722" : "#F5C518",
-                          color: pickedTable?.id === t.id ? "#fff" : "#3D2B00",
-                          border: `2px solid ${pickedTable?.id === t.id ? "#E87722" : "#C8A050"}`,
-                          borderRadius: 6, fontWeight: 900, fontSize: 16, cursor: "pointer",
-                          display: "flex", flexDirection: "column", alignItems: "center",
-                        }}
-                      >
-                        {t.name}
-                        <span style={{ fontSize: 9, fontWeight: 600, marginTop: 2, opacity: 0.7 }}>DISPONIBLE</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
               </div>
 
               {/* Buttons */}
@@ -457,8 +442,8 @@ export const CashierBillingConsole: React.FC = () => {
                 <button onClick={() => setShowOpenAccount(false)} style={{ ...S.bottomBtn, minWidth: 80 }}>CANCELAR</button>
                 <button
                   onClick={handleConfirmOpenAccount}
-                  disabled={!pickedTable || !pickedWaiter || opening}
-                  style={{ ...S.bottomBtn, minWidth: 100, background: pickedTable && pickedWaiter ? "#E87722" : "#b8902a", color: "#fff", opacity: (!pickedTable || !pickedWaiter) ? 0.5 : 1 }}
+                  disabled={!newTableName.trim() || !pickedWaiter || opening}
+                  style={{ ...S.bottomBtn, minWidth: 120, background: newTableName.trim() && pickedWaiter ? "#E87722" : "#b8902a", color: "#fff", opacity: (!newTableName.trim() || !pickedWaiter) ? 0.5 : 1 }}
                 >
                   {opening ? "Abriendo..." : "ABRIR CUENTA"}
                 </button>
