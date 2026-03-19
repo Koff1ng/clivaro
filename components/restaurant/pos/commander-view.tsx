@@ -21,7 +21,7 @@ interface RestaurantTable {
 
 interface CommanderViewProps {
   waiterToken: string;
-  waiterData: { id: string; name: string; pin?: string; [k: string]: any };
+  waiterData: { id: string; name: string; tenantId?: string; pin?: string; [k: string]: any };
   onExit: () => void;
 }
 
@@ -57,7 +57,7 @@ function cellText(status: string, selected: boolean) {
 
 export function CommanderView({ waiterToken, waiterData, onExit }: CommanderViewProps) {
   const { data: session } = useSession();
-  const tenantId: string = (session?.user as any)?.tenantId ?? "";
+  const tenantId: string = (session?.user as any)?.tenantId ?? waiterData.tenantId ?? "";
 
   const [tables, setTables] = useState<RestaurantTable[]>([]);
   const [zones, setZones] = useState<Zone[]>([]);

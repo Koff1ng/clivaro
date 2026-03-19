@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getTenantIdFromSession, withTenantRead, withTenantTx } from '@/lib/tenancy'
-import { requirePermission } from '@/lib/api-middleware'
+import { requirePermission, requireAnyPermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
 import { logger } from '@/lib/logger'
 import { ensureRestaurantMode, hashPin } from '@/lib/restaurant'
@@ -9,7 +9,11 @@ import { ensureRestaurantMode, hashPin } from '@/lib/restaurant'
  * GET: Lista todos los meseros.
  */
 export async function GET(request: Request) {
-    const session = await requirePermission(request as any, PERMISSIONS.MANAGE_RESTAURANT)
+    const session = await requireAnyPermission(request as any, [
+        PERMISSIONS.MANAGE_RESTAURANT,
+        PERMISSIONS.MANAGE_SALES,
+        PERMISSIONS.MANAGE_CASH,
+    ])
     if (session instanceof NextResponse) return session
 
     const tenantId = getTenantIdFromSession(session)

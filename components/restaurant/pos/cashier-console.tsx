@@ -185,14 +185,24 @@ export const CashierBillingConsole: React.FC = () => {
       ]);
       const tablesData = await tablesRes.json();
       const waitersData = await waitersRes.json();
-      const availTables: RestaurantTable[] = (Array.isArray(tablesData) ? tablesData : []).filter((t: RestaurantTable) => t.status === "AVAILABLE");
+
+      if (!tablesRes.ok) {
+        throw new Error(tablesData?.error || `Error cargando mesas (${tablesRes.status})`);
+      }
+      if (!waitersRes.ok) {
+        throw new Error(waitersData?.error || `Error cargando meseros (${waitersRes.status})`);
+      }
+
+      const allTables: RestaurantTable[] = Array.isArray(tablesData) ? tablesData : [];
+      const availTables = allTables.filter((t: RestaurantTable) => t.status === "AVAILABLE");
       setTables(availTables);
-      setWaiters(Array.isArray(waitersData) ? waitersData : []);
+      const waiterList: Waiter[] = Array.isArray(waitersData) ? waitersData : [];
+      setWaiters(waiterList);
       setPickedTable(null);
-      setPickedWaiter(Array.isArray(waitersData) && waitersData.length > 0 ? waitersData[0].id : "");
+      setPickedWaiter(waiterList.length > 0 ? waiterList[0].id : "");
       setShowOpenAccount(true);
     } catch (err: any) {
-      toast("Error al cargar mesas/meseros", "error");
+      toast(err.message || "Error al cargar mesas/meseros", "error");
     }
   };
 

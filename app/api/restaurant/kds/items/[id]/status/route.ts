@@ -7,14 +7,15 @@ import { requireAnyPermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
 
 const statusSchema = z.object({
-  status: z.enum(['PENDING', 'COOKING', 'READY', 'SERVED']),
+  status: z.enum(['PENDING', 'COOKING', 'READY', 'SERVED', 'CANCELLED']),
 })
 
 const allowedTransitions: Record<string, string[]> = {
-  PENDING: ['COOKING', 'READY', 'SERVED'],
-  COOKING: ['READY', 'SERVED'],
+  PENDING: ['COOKING', 'READY', 'SERVED', 'CANCELLED'],
+  COOKING: ['READY', 'SERVED', 'CANCELLED'],
   READY: ['SERVED'],
   SERVED: [],
+  CANCELLED: [],
 }
 
 function apiError(status: number, message: string, details?: unknown) {

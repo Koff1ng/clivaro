@@ -118,7 +118,7 @@ export async function POST(req: NextRequest) {
       orderId: order.id,
       tableId: session.tableId,
       tableName: session.table.name,
-      waiterName: context.waiter.name,
+      waiterName: context.waiter?.name ?? 'Cajero',
       items: order.items,
     })
 
