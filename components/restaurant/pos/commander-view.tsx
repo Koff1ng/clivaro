@@ -3,6 +3,11 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useSession } from "next-auth/react";
 import { CommanderOrderScreen } from "./commander-order-screen";
+import { Plus, RefreshCw, LogOut, Clock, ChefHat, DollarSign, Search } from "lucide-react";
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   TYPES
+   ═══════════════════════════════════════════════════════════════════════════════ */
 
 interface OpenAccount {
   id: string;
@@ -22,17 +27,27 @@ interface CommanderViewProps {
   onExit: () => void;
 }
 
-function elapsedColor(min: number) {
-  if (min < 30) return "#2E7D32";
-  if (min < 60) return "#E65100";
-  return "#C0392B";
+/* ═══════════════════════════════════════════════════════════════════════════════
+   HELPERS
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+function elapsedBadge(min: number) {
+  if (min < 30) return "bg-emerald-600/20 text-emerald-400 border-emerald-600/30";
+  if (min < 60) return "bg-amber-600/20 text-amber-400 border-amber-600/30";
+  return "bg-red-600/20 text-red-400 border-red-600/30";
 }
 
 function fmtTime(iso: string) {
   return new Date(iso).toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit", hour12: true });
 }
 
-// ─── Component ────────────────────────────────────────────────────────────────
+function fmtCur(n: number) {
+  return `$${n.toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   COMPONENT
+   ═══════════════════════════════════════════════════════════════════════════════ */
 
 export function CommanderView({ waiterToken, waiterData, onExit }: CommanderViewProps) {
   const { data: sessionData } = useSession();
@@ -41,15 +56,14 @@ export function CommanderView({ waiterToken, waiterData, onExit }: CommanderView
   const [accounts, setAccounts] = useState<OpenAccount[]>([]);
   const [loading, setLoading] = useState(true);
   const [hasActiveShift, setHasActiveShift] = useState<boolean | null>(null);
+  const [searchText, setSearchText] = useState("");
 
-  // Open table dialog
   const [showOpen, setShowOpen] = useState(false);
   const [tableNumber, setTableNumber] = useState("");
   const [opening, setOpening] = useState(false);
   const [openError, setOpenError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Active order mode
   const [activeAccount, setActiveAccount] = useState<OpenAccount | null>(null);
 
   const headers: Record<string, string> = {
@@ -58,28 +72,29 @@ export function CommanderView({ waiterToken, waiterData, onExit }: CommanderView
     "x-waiter-token": waiterToken,
   };
 
-  // ── Fetch open accounts ──────────────────────────────────────────────────
+  /* ═══════════════════════════════════════════════════════════════════════════
+     DATA
+     ═══════════════════════════════════════════════════════════════════════════ */
 
   const fetchAccounts = useCallback(async () => {
     try {
       const res = await fetch("/api/pos/cashier/open-accounts");
       if (!res.ok) { setLoading(false); return; }
       const data = await res.json();
-      const arr: OpenAccount[] = (Array.isArray(data.accounts) ? data.accounts : []).map((a: any) => ({
-        id: a.id,
-        tableId: a.tableId ?? "",
-        tableName: a.tableNumber ?? a.tableName ?? "?",
-        waiterName: a.waiterName ?? "",
-        openedAt: a.openedAt,
-        elapsedMinutes: a.elapsedMinutes ?? 0,
-        itemsCount: a.itemsCount ?? 0,
-        total: a.total ?? 0,
-        lines: a.lines ?? [],
-      }));
-      setAccounts(arr);
-    } catch { /* silent */ } finally {
-      setLoading(false);
-    }
+      setAccounts(
+        (Array.isArray(data.accounts) ? data.accounts : []).map((a: any) => ({
+          id: a.id,
+          tableId: a.tableId ?? "",
+          tableName: a.tableNumber ?? a.tableName ?? "?",
+          waiterName: a.waiterName ?? "",
+          openedAt: a.openedAt,
+          elapsedMinutes: a.elapsedMinutes ?? 0,
+          itemsCount: a.itemsCount ?? 0,
+          total: a.total ?? 0,
+          lines: a.lines ?? [],
+        }))
+      );
+    } catch { /* silent */ } finally { setLoading(false); }
   }, []);
 
   const checkShift = useCallback(async () => {
@@ -98,13 +113,13 @@ export function CommanderView({ waiterToken, waiterData, onExit }: CommanderView
     return () => clearInterval(iv);
   }, [fetchAccounts, checkShift]);
 
-  // ── Open table ───────────────────────────────────────────────────────────
+  /* ═══════════════════════════════════════════════════════════════════════════
+     OPEN TABLE
+     ═══════════════════════════════════════════════════════════════════════════ */
 
   const nextTableNumber = useCallback(() => {
     const used = new Set(accounts.map((a) => a.tableName));
-    for (let i = 1; i <= 999; i++) {
-      if (!used.has(String(i))) return String(i);
-    }
+    for (let i = 1; i <= 999; i++) { if (!used.has(String(i))) return String(i); }
     return String(accounts.length + 1);
   }, [accounts]);
 
@@ -124,27 +139,17 @@ export function CommanderView({ waiterToken, waiterData, onExit }: CommanderView
     const name = tableNumber.trim();
     if (!name) return;
 
-    const existingAccount = accounts.find((a) => a.tableName === name);
-    if (existingAccount) {
-      setShowOpen(false);
-      setActiveAccount(existingAccount);
-      return;
-    }
+    const existing = accounts.find((a) => a.tableName === name);
+    if (existing) { setShowOpen(false); setActiveAccount(existing); return; }
 
     setOpening(true);
     setOpenError(null);
     try {
-      const res = await fetch("/api/restaurant/sessions", {
-        method: "POST",
-        headers,
-        body: JSON.stringify({ tableName: name }),
-      });
+      const res = await fetch("/api/restaurant/sessions", { method: "POST", headers, body: JSON.stringify({ tableName: name }) });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "No se pudo abrir la mesa");
-
       setShowOpen(false);
       await fetchAccounts();
-
       setActiveAccount({
         id: data.id,
         tableId: data.table?.id ?? data.tableId ?? "",
@@ -156,11 +161,7 @@ export function CommanderView({ waiterToken, waiterData, onExit }: CommanderView
         total: 0,
         lines: [],
       });
-    } catch (err: any) {
-      setOpenError(err.message);
-    } finally {
-      setOpening(false);
-    }
+    } catch (err: any) { setOpenError(err.message); } finally { setOpening(false); }
   };
 
   const handleBackFromOrder = () => {
@@ -168,11 +169,23 @@ export function CommanderView({ waiterToken, waiterData, onExit }: CommanderView
     fetchAccounts();
   };
 
-  // ── Active order mode ─────────────────────────────────────────────────────
+  /* ═══════════════════════════════════════════════════════════════════════════
+     FILTERED
+     ═══════════════════════════════════════════════════════════════════════════ */
+
+  const filtered = accounts.filter((a) => {
+    if (!searchText) return true;
+    const q = searchText.toLowerCase();
+    return a.tableName.toLowerCase().includes(q) || a.waiterName.toLowerCase().includes(q);
+  });
+
+  /* ═══════════════════════════════════════════════════════════════════════════
+     ACTIVE ORDER MODE
+     ═══════════════════════════════════════════════════════════════════════════ */
 
   if (activeAccount) {
     return (
-      <div style={{ height: "100vh", display: "flex", flexDirection: "column" }}>
+      <div className="h-screen flex flex-col bg-slate-950">
         <CommanderOrderScreen
           tableName={activeAccount.tableName}
           sessionId={activeAccount.id}
@@ -186,154 +199,114 @@ export function CommanderView({ waiterToken, waiterData, onExit }: CommanderView
     );
   }
 
-  // ── Main view ─────────────────────────────────────────────────────────────
+  /* ═══════════════════════════════════════════════════════════════════════════
+     MAIN VIEW
+     ═══════════════════════════════════════════════════════════════════════════ */
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100vh", background: "#2C1A0E", fontFamily: "'Segoe UI', Arial, sans-serif", overflow: "hidden" }}>
+    <div className="flex flex-col h-screen bg-slate-950 text-white font-sans overflow-hidden">
 
-      {/* ══ ABRIR MESA DIALOG ═════════════════════════════════════ */}
+      {/* ── OPEN TABLE DIALOG ──────────────────────────────────────── */}
       {showOpen && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center" }} onClick={() => setShowOpen(false)}>
-          <div style={{ background: "#FFF8E7", border: "3px solid #A07030", borderRadius: 10, minWidth: 380, boxShadow: "0 8px 32px rgba(0,0,0,0.5)" }} onClick={(e) => e.stopPropagation()}>
-            <div style={{ background: "#C8A050", color: "#3D2B00", fontWeight: 900, fontSize: 16, padding: "10px 16px", borderRadius: "7px 7px 0 0", letterSpacing: 1, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span>ABRIR MESA</span>
-              <button onClick={() => setShowOpen(false)} style={{ background: "none", border: "none", color: "#3D2B00", fontSize: 20, cursor: "pointer", fontWeight: 900 }}>&times;</button>
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={() => setShowOpen(false)}>
+          <div className="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            <div className="bg-slate-800 border-b border-slate-700 px-5 py-3 flex items-center justify-between">
+              <h3 className="text-white font-bold text-sm tracking-wide">ABRIR MESA</h3>
+              <button onClick={() => setShowOpen(false)} className="text-slate-400 hover:text-white text-lg font-bold">&times;</button>
             </div>
-            <div style={{ padding: 20 }}>
-              {openError ? (
-                <div style={{ background: "#FFEBEE", border: "2px solid #C0392B", borderRadius: 6, padding: 16, textAlign: "center", marginBottom: 12 }}>
-                  <div style={{ color: "#C0392B", fontWeight: 800, fontSize: 13 }}>{openError}</div>
-                </div>
-              ) : null}
-              {!openError || hasActiveShift !== false ? (
+            <div className="p-5">
+              {openError && (
+                <div className="bg-red-600/10 border border-red-600/30 rounded-lg p-3 mb-3 text-red-400 text-xs font-semibold">{openError}</div>
+              )}
+              {(!openError || hasActiveShift !== false) ? (
                 <>
-                  <div style={{ fontWeight: 700, fontSize: 12, color: "#5a3c10", marginBottom: 8 }}>Numero de mesa:</div>
-                  <input
-                    ref={inputRef}
-                    value={tableNumber}
-                    onChange={(e) => setTableNumber(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === "Enter") handleConfirmOpen(); }}
-                    placeholder="Ej: 1, 2, VIP-1..."
-                    autoFocus
-                    style={{ width: "100%", padding: "12px 16px", border: "2px solid #C8A050", borderRadius: 8, fontSize: 24, fontWeight: 900, textAlign: "center", color: "#3D2B00", background: "#FFF8E7", boxSizing: "border-box", outline: "none" }}
-                  />
-                  <div style={{ fontSize: 10, color: "#8B6914", marginTop: 6, textAlign: "center" }}>
-                    Si la mesa ya tiene cuenta abierta, se abrira esa cuenta
-                  </div>
-                  <button
-                    onClick={handleConfirmOpen}
-                    disabled={!tableNumber.trim() || opening}
-                    style={{ marginTop: 12, width: "100%", padding: "12px", background: tableNumber.trim() && !opening ? "#E87722" : "#b8902a", color: "#fff", border: "none", borderRadius: 8, fontWeight: 900, fontSize: 14, cursor: tableNumber.trim() && !opening ? "pointer" : "not-allowed", letterSpacing: 1 }}
-                  >
+                  <label className="block text-xs font-semibold text-slate-400 mb-1">Número de mesa</label>
+                  <input ref={inputRef} value={tableNumber} onChange={(e) => setTableNumber(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") handleConfirmOpen(); }} placeholder="1, 2, VIP-1..." autoFocus className="w-full bg-slate-800 border border-slate-600 rounded-lg px-4 py-3 text-2xl font-black text-center text-amber-400 outline-none focus:border-amber-500 mb-2" />
+                  <p className="text-[10px] text-slate-600 text-center mb-4">Si la mesa ya está abierta, se reanudará</p>
+                  <button onClick={handleConfirmOpen} disabled={!tableNumber.trim() || opening} className="w-full py-3 bg-amber-600 rounded-xl text-sm font-bold text-white hover:bg-amber-700 disabled:opacity-40 disabled:cursor-not-allowed">
                     {opening ? "Abriendo..." : "ABRIR MESA"}
                   </button>
                 </>
               ) : (
-                <button onClick={() => setShowOpen(false)} style={{ marginTop: 8, width: "100%", padding: "10px", background: "#C0392B", color: "#fff", border: "none", borderRadius: 6, fontWeight: 700, cursor: "pointer" }}>
-                  ENTENDIDO
-                </button>
+                <button onClick={() => setShowOpen(false)} className="w-full py-2.5 bg-red-600 rounded-lg text-sm font-bold text-white hover:bg-red-700">Entendido</button>
               )}
             </div>
           </div>
         </div>
       )}
 
-      {/* ── TOP BAR ─────────────────────────────────────────────── */}
-      <div style={{ background: "#3D2B00", borderBottom: "3px solid #E87722", display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", flexShrink: 0 }}>
-        <div style={{ color: "#F5C518", fontWeight: 900, fontSize: 20, letterSpacing: 2, marginRight: 12 }}>COMANDERO</div>
+      {/* ── TOP BAR ────────────────────────────────────────────────── */}
+      <div className="bg-slate-900 border-b border-slate-800 px-4 py-3 flex items-center gap-3 flex-shrink-0">
+        <span className="text-amber-500 font-black text-lg tracking-widest">COMANDERO</span>
 
-        <button onClick={handleOpenClick} style={{ background: "#E87722", color: "#fff", border: "2px solid #F5A623", borderRadius: 8, padding: "8px 18px", fontWeight: 800, fontSize: 12, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
-          <span style={{ fontSize: 18 }}>+</span> ABRIR MESA
+        <button onClick={handleOpenClick} className="flex items-center gap-1.5 px-4 py-2 bg-amber-600 rounded-xl text-xs font-bold text-white hover:bg-amber-700 border border-amber-700">
+          <Plus className="w-4 h-4" /> Abrir Mesa
         </button>
 
-        <button onClick={fetchAccounts} style={{ background: "#5a3c10", color: "#fff", border: "2px solid #7a5a2a", borderRadius: 8, padding: "8px 14px", fontWeight: 700, fontSize: 11, cursor: "pointer" }}>
-          REFRESCAR
-        </button>
-
-        <div style={{ flex: 1 }} />
-
-        {hasActiveShift === false && (
-          <div style={{ background: "#C0392B", color: "#fff", padding: "4px 10px", borderRadius: 6, fontSize: 10, fontWeight: 700 }}>SIN TURNO</div>
-        )}
-        {hasActiveShift === true && (
-          <div style={{ background: "#2E7D32", color: "#fff", padding: "4px 10px", borderRadius: 6, fontSize: 10, fontWeight: 700 }}>TURNO ACTIVO</div>
-        )}
-
-        <div style={{ color: "#ccc", fontSize: 11, fontWeight: 600, marginLeft: 8 }}>
-          {waiterData.name} &middot; {accounts.length} cuentas
+        <div className="relative">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
+          <input value={searchText} onChange={(e) => setSearchText(e.target.value)} placeholder="Buscar..." className="bg-slate-800 border border-slate-700 rounded-lg pl-8 pr-3 py-2 text-xs text-white outline-none focus:border-amber-500 w-40 placeholder:text-slate-600" />
         </div>
+
+        <button onClick={fetchAccounts} className="flex items-center gap-1.5 px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-xs font-semibold text-slate-300 hover:bg-slate-700">
+          <RefreshCw className="w-3.5 h-3.5" /> Refrescar
+        </button>
+
+        <span className="flex-1" />
+
+        {hasActiveShift === false && <span className="bg-red-600/20 text-red-400 border border-red-600/30 rounded-full px-2.5 py-1 text-[10px] font-bold">SIN TURNO</span>}
+        {hasActiveShift === true && <span className="bg-emerald-600/20 text-emerald-400 border border-emerald-600/30 rounded-full px-2.5 py-1 text-[10px] font-bold">TURNO ACTIVO</span>}
+
+        <span className="text-slate-500 text-xs font-semibold">{waiterData.name}</span>
       </div>
 
-      {/* ── ACCOUNTS GRID ──────────────────────────────────────── */}
-      <div style={{ flex: 1, overflow: "auto", padding: 12, background: "#4a3010" }}>
+      {/* ── ACCOUNTS GRID ──────────────────────────────────────────── */}
+      <div className="flex-1 overflow-auto p-4">
         {loading ? (
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", color: "#F5C518", fontWeight: 700, fontSize: 16 }}>Cargando cuentas...</div>
-        ) : accounts.length === 0 ? (
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", gap: 16 }}>
-            <div style={{ fontSize: 48, opacity: 0.4 }}>&#127869;</div>
-            <div style={{ color: "#F5C518", fontWeight: 700, fontSize: 16 }}>Sin cuentas abiertas</div>
-            <div style={{ color: "#A07030", fontSize: 12 }}>Presione ABRIR MESA para crear una cuenta</div>
-            <button onClick={handleOpenClick} style={{ marginTop: 8, background: "#E87722", color: "#fff", border: "2px solid #F5A623", borderRadius: 10, padding: "12px 32px", fontWeight: 900, fontSize: 14, cursor: "pointer", letterSpacing: 1 }}>
-              + ABRIR MESA
+          <div className="h-full flex items-center justify-center">
+            <div className="text-amber-500 font-bold text-sm animate-pulse">Cargando cuentas...</div>
+          </div>
+        ) : filtered.length === 0 && !searchText ? (
+          <div className="h-full flex flex-col items-center justify-center gap-4">
+            <div className="text-5xl opacity-20">🍽️</div>
+            <p className="text-slate-500 font-semibold">Sin cuentas abiertas</p>
+            <p className="text-slate-600 text-xs">Presione Abrir Mesa para crear una cuenta</p>
+            <button onClick={handleOpenClick} className="mt-2 flex items-center gap-2 px-6 py-3 bg-amber-600 rounded-xl text-sm font-bold text-white hover:bg-amber-700">
+              <Plus className="w-5 h-5" /> Abrir Mesa
             </button>
           </div>
         ) : (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 10 }}>
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-3">
             {/* New table card */}
-            <button
-              onClick={handleOpenClick}
-              style={{
-                border: "3px dashed #8B6914", borderRadius: 10, background: "rgba(245,197,24,0.08)",
-                display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-                gap: 8, padding: 20, cursor: "pointer", minHeight: 160, transition: "all 0.15s",
-              }}
-              onMouseOver={(e) => { e.currentTarget.style.background = "rgba(245,197,24,0.2)"; }}
-              onMouseOut={(e) => { e.currentTarget.style.background = "rgba(245,197,24,0.08)"; }}
-            >
-              <span style={{ fontSize: 36, color: "#F5C518", fontWeight: 900 }}>+</span>
-              <span style={{ color: "#F5C518", fontWeight: 800, fontSize: 12, letterSpacing: 1 }}>ABRIR MESA</span>
+            <button onClick={handleOpenClick} className="border-2 border-dashed border-slate-700 rounded-xl bg-slate-900/30 flex flex-col items-center justify-center gap-2 min-h-[170px] hover:border-amber-600/50 hover:bg-amber-600/5 group">
+              <Plus className="w-8 h-8 text-slate-600 group-hover:text-amber-500" />
+              <span className="text-slate-600 group-hover:text-amber-500 font-bold text-xs tracking-wide">ABRIR MESA</span>
             </button>
 
             {/* Account cards */}
-            {accounts.map((acc) => (
-              <div
-                key={acc.id}
-                onClick={() => setActiveAccount(acc)}
-                style={{
-                  background: "#FFF8E7", border: "2px solid #C8A050", borderRadius: 10,
-                  padding: 0, cursor: "pointer", transition: "all 0.12s", overflow: "hidden",
-                  display: "flex", flexDirection: "column", minHeight: 160,
-                  boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
-                }}
-                onMouseOver={(e) => { e.currentTarget.style.borderColor = "#E87722"; e.currentTarget.style.boxShadow = "0 4px 16px rgba(232,119,34,0.3)"; }}
-                onMouseOut={(e) => { e.currentTarget.style.borderColor = "#C8A050"; e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.15)"; }}
-              >
-                {/* Header */}
-                <div style={{ background: "#C8A050", padding: "8px 12px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <span style={{ fontWeight: 900, fontSize: 22, color: "#3D2B00" }}>Mesa {acc.tableName}</span>
-                  <div style={{ background: elapsedColor(acc.elapsedMinutes), color: "#fff", borderRadius: 12, padding: "2px 8px", fontSize: 10, fontWeight: 700 }}>
-                    {acc.elapsedMinutes} min
-                  </div>
+            {filtered.map((acc) => (
+              <div key={acc.id} onClick={() => setActiveAccount(acc)} className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden cursor-pointer hover:border-amber-600/50 hover:shadow-lg hover:shadow-amber-600/5 flex flex-col min-h-[170px]">
+                <div className="bg-slate-800 px-3 py-2.5 flex items-center justify-between">
+                  <span className="font-black text-lg text-white">Mesa {acc.tableName}</span>
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${elapsedBadge(acc.elapsedMinutes)}`}>{acc.elapsedMinutes}m</span>
                 </div>
-
-                {/* Body */}
-                <div style={{ padding: "10px 12px", flex: 1, display: "flex", flexDirection: "column", gap: 4 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11 }}>
-                    <span style={{ color: "#8B6914", fontWeight: 600 }}>Mesero:</span>
-                    <span style={{ fontWeight: 700, color: "#3D2B00" }}>{acc.waiterName}</span>
+                <div className="flex-1 px-3 py-2.5 flex flex-col gap-1.5">
+                  <div className="flex justify-between text-xs">
+                    <span className="text-slate-500">Mesero</span>
+                    <span className="text-white font-semibold">{acc.waiterName}</span>
                   </div>
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11 }}>
-                    <span style={{ color: "#8B6914", fontWeight: 600 }}>Abierta:</span>
-                    <span style={{ fontWeight: 600, color: "#3D2B00" }}>{fmtTime(acc.openedAt)}</span>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-slate-500">Abierta</span>
+                    <span className="text-slate-300">{fmtTime(acc.openedAt)}</span>
                   </div>
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11 }}>
-                    <span style={{ color: "#8B6914", fontWeight: 600 }}>Items:</span>
-                    <span style={{ fontWeight: 700, color: "#3D2B00" }}>{acc.itemsCount}</span>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-slate-500">Items</span>
+                    <span className="text-white font-semibold">{acc.itemsCount}</span>
                   </div>
-                  <div style={{ flex: 1 }} />
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid #E8D5B0", paddingTop: 6, marginTop: 4 }}>
-                    <span style={{ fontSize: 10, color: "#8B6914", fontWeight: 700 }}>TOTAL:</span>
-                    <span style={{ fontSize: 18, fontWeight: 900, color: "#C0392B" }}>${acc.total.toFixed(2)}</span>
+                  <div className="flex-1" />
+                  <div className="flex justify-between items-center border-t border-slate-800 pt-2 mt-1">
+                    <span className="text-[10px] text-slate-500 font-semibold">TOTAL</span>
+                    <span className="text-base font-black text-amber-400">{fmtCur(acc.total)}</span>
                   </div>
                 </div>
               </div>
@@ -342,13 +315,13 @@ export function CommanderView({ waiterToken, waiterData, onExit }: CommanderView
         )}
       </div>
 
-      {/* ── BOTTOM BAR ─────────────────────────────────────────── */}
-      <div style={{ height: 50, background: "#3D2B00", borderTop: "3px solid #E87722", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 16px", flexShrink: 0 }}>
-        <div style={{ color: "#F5C518", fontWeight: 700, fontSize: 12 }}>
+      {/* ── BOTTOM BAR ─────────────────────────────────────────────── */}
+      <div className="bg-slate-900 border-t border-slate-800 px-4 py-2.5 flex items-center justify-between flex-shrink-0">
+        <span className="text-slate-500 text-xs font-semibold">
           {accounts.length} cuenta{accounts.length !== 1 ? "s" : ""} abierta{accounts.length !== 1 ? "s" : ""}
-        </div>
-        <button onClick={onExit} style={{ background: "#C0392B", color: "#fff", border: "2px solid #922B21", borderRadius: 8, padding: "6px 20px", fontWeight: 800, fontSize: 11, cursor: "pointer", letterSpacing: 1 }}>
-          SALIR
+        </span>
+        <button onClick={onExit} className="flex items-center gap-1.5 px-4 py-2 bg-red-600/20 border border-red-600/30 rounded-lg text-xs font-bold text-red-400 hover:bg-red-600/30">
+          <LogOut className="w-3.5 h-3.5" /> Salir
         </button>
       </div>
     </div>

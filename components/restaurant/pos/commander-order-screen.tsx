@@ -1,8 +1,14 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
+import {
+  ArrowLeft, Send, Trash2, X, Search, ChevronLeft, ChevronRight,
+  Plus, Minus, ShoppingCart
+} from "lucide-react";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+/* ═══════════════════════════════════════════════════════════════════════════════
+   TYPES
+   ═══════════════════════════════════════════════════════════════════════════════ */
 
 interface Product {
   id: string;
@@ -10,6 +16,7 @@ interface Product {
   sku: string;
   price: number;
   taxRate: number;
+  category?: string;
 }
 
 interface OrderLine {
@@ -30,18 +37,49 @@ interface CommanderOrderScreenProps {
   onBack: () => void;
 }
 
-// ─── Constants ────────────────────────────────────────────────────────────────
+/* ═══════════════════════════════════════════════════════════════════════════════
+   CONSTANTS
+   ═══════════════════════════════════════════════════════════════════════════════ */
 
 const PRODUCTS_PER_PAGE = 12;
-const PRODUCT_COLS = 4;
 
-// ─── Component ────────────────────────────────────────────────────────────────
+/* ═══════════════════════════════════════════════════════════════════════════════
+   PRINT COMANDA
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+function printComanda(tableName: string, waiterName: string, items: OrderLine[]) {
+  const w = window.open("", "_blank", "width=320,height=500");
+  if (!w) return;
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:'Courier New',monospace;width:260px;padding:8px;font-size:12px;color:#000}
+    .c{text-align:center} .b{font-weight:bold} .line{border-top:1px dashed #000;margin:5px 0}
+    .item{padding:4px 0;border-bottom:1px dotted #ccc}
+    .notes{font-style:italic;font-size:10px;color:#666;margin-left:16px}
+    .big{font-size:18px}
+  </style></head><body>
+    <div class="c b big">*** COMANDA ***</div>
+    <div class="line"></div>
+    <div class="b">Mesa: ${tableName}</div>
+    <div>Mesero: ${waiterName}</div>
+    <div style="font-size:10px;color:#555">${new Date().toLocaleString("es-MX")}</div>
+    <div class="line"></div>
+    ${items.map((i) => `<div class="item"><span class="b">${i.quantity}x</span> ${i.productName}${i.notes ? `<div class="notes">${i.notes}</div>` : ""}</div>`).join("")}
+    <div class="line"></div>
+    <div class="c b big">PREPARAR</div>
+    <script>setTimeout(()=>{window.print()},300)</script>
+  </body></html>`);
+  w.document.close();
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   COMPONENT
+   ═══════════════════════════════════════════════════════════════════════════════ */
 
 export function CommanderOrderScreen({
   tableName, sessionId, waiterName, waiterToken, tenantId,
   onOrderSent, onBack,
 }: CommanderOrderScreenProps) {
-  // State
   const [categories, setCategories] = useState<string[]>([]);
   const [selectedCategory, setSelectedCategory] = useState("");
   const [products, setProducts] = useState<Product[]>([]);
@@ -54,28 +92,31 @@ export function CommanderOrderScreen({
   const [quantity, setQuantity] = useState(1);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
 
   const searchRef = useRef<HTMLInputElement>(null);
 
-  // ── Fetch categories ────────────────────────────────────────────────────
+  /* ═══════════════════════════════════════════════════════════════════════════
+     FETCH CATEGORIES
+     ═══════════════════════════════════════════════════════════════════════════ */
 
   const fetchCategories = useCallback(async () => {
     try {
       const res = await fetch("/api/pos/products?limit=500");
       if (!res.ok) return;
       const data = await res.json();
-      const prods: Product[] = Array.isArray(data.products) ? data.products : [];
+      const prods: any[] = Array.isArray(data.products) ? data.products : [];
       const cats = new Set<string>();
-      prods.forEach((p: any) => {
-        if (p.category) cats.add(p.category);
-      });
+      prods.forEach((p) => { if (p.category) cats.add(p.category); });
       setCategories(Array.from(cats).sort());
     } catch { /* silent */ }
   }, []);
 
   useEffect(() => { fetchCategories(); }, [fetchCategories]);
 
-  // ── Fetch products ──────────────────────────────────────────────────────
+  /* ═══════════════════════════════════════════════════════════════════════════
+     FETCH PRODUCTS
+     ═══════════════════════════════════════════════════════════════════════════ */
 
   const fetchProducts = useCallback(async () => {
     setLoadingProducts(true);
@@ -97,7 +138,9 @@ export function CommanderOrderScreen({
     return () => clearTimeout(t);
   }, [fetchProducts, searchQuery]);
 
-  // ── Cart actions ────────────────────────────────────────────────────────
+  /* ═══════════════════════════════════════════════════════════════════════════
+     CART
+     ═══════════════════════════════════════════════════════════════════════════ */
 
   const addProduct = (p: Product) => {
     const qty = quantity || 1;
@@ -109,9 +152,9 @@ export function CommanderOrderScreen({
         setSelectedCartIdx(idx);
         return updated;
       }
-      const newCart = [...prev, { productId: p.id, productName: p.name, quantity: qty, unitPrice: p.price, notes: "" }];
-      setSelectedCartIdx(newCart.length - 1);
-      return newCart;
+      const nc = [...prev, { productId: p.id, productName: p.name, quantity: qty, unitPrice: p.price, notes: "" }];
+      setSelectedCartIdx(nc.length - 1);
+      return nc;
     });
     setQuantity(1);
   };
@@ -124,19 +167,25 @@ export function CommanderOrderScreen({
 
   const clearCart = () => {
     if (cart.length === 0) return;
-    if (!confirm("Eliminar todos los productos de la comanda?")) return;
-    setCart([]);
-    setSelectedCartIdx(-1);
+    setShowClearConfirm(true);
   };
 
-  // ── Send to kitchen ─────────────────────────────────────────────────────
+  const confirmClearCart = () => {
+    setCart([]);
+    setSelectedCartIdx(-1);
+    setShowClearConfirm(false);
+  };
+
+  /* ═══════════════════════════════════════════════════════════════════════════
+     SEND TO KITCHEN
+     ═══════════════════════════════════════════════════════════════════════════ */
 
   const handleSend = async () => {
     if (cart.length === 0) return;
     setSending(true);
     setError(null);
 
-    const headers: Record<string, string> = {
+    const hdrs: Record<string, string> = {
       "Content-Type": "application/json",
       "x-tenant-id": tenantId,
       "x-waiter-token": waiterToken,
@@ -144,30 +193,22 @@ export function CommanderOrderScreen({
 
     try {
       const orderRes = await fetch("/api/restaurant/orders", {
-        method: "POST",
-        headers,
+        method: "POST", headers: hdrs,
         body: JSON.stringify({
           sessionId,
-          items: cart.map((l) => ({
-            productId: l.productId,
-            quantity: l.quantity,
-            unitPrice: l.unitPrice,
-            notes: l.notes || null,
-          })),
+          items: cart.map((l) => ({ productId: l.productId, quantity: l.quantity, unitPrice: l.unitPrice, notes: l.notes || null })),
         }),
       });
       const orderData = await orderRes.json();
       if (!orderRes.ok) throw new Error(orderData.error || "No se pudo crear la orden");
 
-      const kitchenRes = await fetch(`/api/restaurant/orders/${orderData.id}/send-kitchen`, {
-        method: "POST",
-        headers,
-      });
+      const kitchenRes = await fetch(`/api/restaurant/orders/${orderData.id}/send-kitchen`, { method: "POST", headers: hdrs });
       if (!kitchenRes.ok) {
         const kd = await kitchenRes.json();
         throw new Error(kd.error || "No se pudo enviar a cocina");
       }
 
+      printComanda(tableName, waiterName, cart);
       setCart([]);
       setSelectedCartIdx(-1);
       onOrderSent();
@@ -178,195 +219,160 @@ export function CommanderOrderScreen({
     }
   };
 
-  // ── Computed ────────────────────────────────────────────────────────────
+  /* ═══════════════════════════════════════════════════════════════════════════
+     COMPUTED
+     ═══════════════════════════════════════════════════════════════════════════ */
 
   const totalPages = Math.max(1, Math.ceil(products.length / PRODUCTS_PER_PAGE));
   const pagedProducts = products.slice(productPage * PRODUCTS_PER_PAGE, (productPage + 1) * PRODUCTS_PER_PAGE);
   const cartTotal = cart.reduce((s, l) => s + l.quantity * l.unitPrice, 0);
 
-  // Fill grid to always show PRODUCTS_PER_PAGE cells
   const gridCells: (Product | null)[] = [
     ...pagedProducts,
     ...Array(Math.max(0, PRODUCTS_PER_PAGE - pagedProducts.length)).fill(null),
   ];
 
-  // ── Render ──────────────────────────────────────────────────────────────
+  /* ═══════════════════════════════════════════════════════════════════════════
+     RENDER
+     ═══════════════════════════════════════════════════════════════════════════ */
 
   return (
-    <div style={{ display: "flex", height: "100%", fontFamily: "'Segoe UI', Arial, sans-serif", fontSize: 12, background: "#3D2B00", color: "#1a0a00", overflow: "hidden" }}>
+    <div className="flex h-full bg-slate-950 text-white font-sans overflow-hidden select-none">
 
-      {/* ══ LEFT: ORDER PANEL ══════════════════════════════════════ */}
-      <div style={{ width: 360, display: "flex", flexDirection: "column", background: "#E8D5B0", borderRight: "3px solid #A07030", flexShrink: 0 }}>
+      {/* Confirm clear cart */}
+      {showClearConfirm && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={() => setShowClearConfirm(false)}>
+          <div className="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl w-full max-w-xs overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            <div className="bg-slate-800 border-b border-slate-700 px-5 py-3">
+              <h3 className="text-white font-bold text-sm">Limpiar comanda</h3>
+            </div>
+            <div className="p-5">
+              <p className="text-slate-300 text-sm mb-4 text-center">¿Eliminar todos los productos de la comanda?</p>
+              <div className="flex gap-2">
+                <button onClick={() => setShowClearConfirm(false)} className="flex-1 py-2 bg-slate-800 border border-slate-600 rounded-lg text-sm font-semibold text-slate-300 hover:bg-slate-700">No</button>
+                <button onClick={confirmClearCart} className="flex-1 py-2 bg-red-600 rounded-lg text-sm font-bold text-white hover:bg-red-700">Limpiar</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
-        {/* Top buttons row */}
-        <div style={{ display: "flex", gap: 2, padding: "4px 4px", background: "#C8A050", borderBottom: "2px solid #A07030", flexWrap: "wrap" }}>
-          {[
-            { label: "RESUMEN", icon: "\uD83D\uDCCB", act: () => {}, dis: cart.length === 0 },
-            { label: "ENVIAR\nCOCINA", icon: "\u2705", act: handleSend, dis: cart.length === 0 || sending, primary: true },
-            { label: "CANCELAR", icon: "\u274C", act: onBack, dis: false },
-          ].map((b) => (
-            <button key={b.label} onClick={b.act} disabled={b.dis}
-              style={{
-                flex: 1, minWidth: 70, padding: "6px 4px",
-                background: b.primary ? (b.dis ? "#8B6914" : "#2E7D32") : (b.dis ? "#b8902a" : "linear-gradient(180deg,#F5D060 0%,#D4A030 100%)"),
-                color: b.primary ? "#fff" : (b.dis ? "#8B6914" : "#3D2B00"),
-                border: `1px solid ${b.dis ? "#9a7525" : "#9a7525"}`,
-                borderRadius: 4, fontWeight: 800, fontSize: 10, cursor: b.dis ? "not-allowed" : "pointer",
-                display: "flex", flexDirection: "column", alignItems: "center", gap: 1,
-                opacity: b.dis ? 0.5 : 1,
-              }}
-            >
-              <span style={{ fontSize: 16 }}>{b.icon}</span>
-              {b.label.split("\n").map((l, i) => <span key={i}>{l}</span>)}
-            </button>
-          ))}
+      {/* ═══ LEFT: ORDER PANEL ═══════════════════════════════════════════════ */}
+      <div className="w-[340px] flex-shrink-0 bg-slate-900 border-r border-slate-800 flex flex-col">
+
+        {/* Action buttons */}
+        <div className="flex gap-1.5 p-2 bg-slate-800 border-b border-slate-700">
+          <button onClick={onBack} className="flex items-center gap-1 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-[11px] font-semibold text-slate-300 hover:bg-slate-600">
+            <ArrowLeft className="w-3.5 h-3.5" /> Volver
+          </button>
+          <button onClick={handleSend} disabled={cart.length === 0 || sending} className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-emerald-600 rounded-lg text-[11px] font-bold text-white hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed">
+            <Send className="w-3.5 h-3.5" /> {sending ? "Enviando..." : "Enviar a Cocina"}
+          </button>
         </div>
 
-        {/* Quantity control */}
-        <div style={{ display: "flex", alignItems: "center", gap: 4, padding: "6px 8px", background: "#F0E0B0", borderBottom: "1px solid #C8A050" }}>
-          <button onClick={() => setQuantity((q) => Math.max(1, q - 1))} style={{ width: 32, height: 32, borderRadius: 6, background: "#C0392B", color: "#fff", border: "none", fontWeight: 900, fontSize: 16, cursor: "pointer" }}>-</button>
-          <div style={{ flex: 0, minWidth: 60, textAlign: "center", fontSize: 22, fontWeight: 900, color: "#3D2B00", background: "#fff", border: "2px solid #C8A050", borderRadius: 6, padding: "2px 8px" }}>{quantity.toFixed(2)}</div>
-          <button onClick={() => setQuantity((q) => q + 1)} style={{ width: 32, height: 32, borderRadius: 6, background: "#2E7D32", color: "#fff", border: "none", fontWeight: 900, fontSize: 16, cursor: "pointer" }}>+</button>
-          <div style={{ flex: 1 }} />
-          <button onClick={removeSelected} disabled={selectedCartIdx < 0} style={{ padding: "4px 10px", background: selectedCartIdx >= 0 ? "#C0392B" : "#b8902a", color: "#fff", border: "none", borderRadius: 4, fontWeight: 700, fontSize: 10, cursor: selectedCartIdx >= 0 ? "pointer" : "not-allowed", opacity: selectedCartIdx >= 0 ? 1 : 0.4 }}>
-            ELIMINAR
+        {/* Quantity controls */}
+        <div className="flex items-center gap-2 px-3 py-2 bg-slate-900 border-b border-slate-800">
+          <button onClick={() => setQuantity((q) => Math.max(1, q - 1))} className="w-8 h-8 flex items-center justify-center bg-red-600/20 border border-red-600/30 rounded-lg text-red-400 font-bold hover:bg-red-600/30">
+            <Minus className="w-4 h-4" />
           </button>
-          <button onClick={clearCart} disabled={cart.length === 0} style={{ padding: "4px 10px", background: cart.length > 0 ? "#8B0000" : "#b8902a", color: "#fff", border: "none", borderRadius: 4, fontWeight: 700, fontSize: 10, cursor: cart.length > 0 ? "pointer" : "not-allowed", opacity: cart.length > 0 ? 1 : 0.4 }}>
-            LIMPIAR
+          <div className="w-16 text-center text-xl font-black text-amber-400 bg-slate-800 border border-slate-700 rounded-lg py-1">{quantity}</div>
+          <button onClick={() => setQuantity((q) => q + 1)} className="w-8 h-8 flex items-center justify-center bg-emerald-600/20 border border-emerald-600/30 rounded-lg text-emerald-400 font-bold hover:bg-emerald-600/30">
+            <Plus className="w-4 h-4" />
+          </button>
+          <span className="flex-1" />
+          <button onClick={removeSelected} disabled={selectedCartIdx < 0} className="flex items-center gap-1 px-2 py-1.5 bg-red-600/20 border border-red-600/30 rounded-lg text-[10px] font-bold text-red-400 hover:bg-red-600/30 disabled:opacity-30">
+            <Trash2 className="w-3 h-3" /> Eliminar
+          </button>
+          <button onClick={clearCart} disabled={cart.length === 0} className="flex items-center gap-1 px-2 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-[10px] font-semibold text-slate-400 hover:bg-slate-700 disabled:opacity-30">
+            <X className="w-3 h-3" /> Limpiar
           </button>
         </div>
 
         {/* Order list header */}
-        <div style={{ display: "flex", background: "#C8A050", borderBottom: "1px solid #A07030" }}>
-          {[{ label: "#", w: 30 }, { label: "CANT.", w: 50 }, { label: "DESCRIPCION", w: 0, flex: 1 }, { label: "IMPORTE", w: 70 }].map((col) => (
-            <div key={col.label} style={{ width: col.w || undefined, flex: (col as any).flex, padding: "4px 6px", fontWeight: 800, fontSize: 10, color: "#3D2B00", borderRight: "1px solid #A07030", textAlign: col.label === "IMPORTE" ? "right" : "left" }}>{col.label}</div>
-          ))}
+        <div className="flex bg-slate-800 text-amber-500/70 text-[10px] font-bold uppercase tracking-wider border-b border-slate-700">
+          <div className="w-8 px-2 py-1.5 text-center">#</div>
+          <div className="w-12 px-2 py-1.5 text-center">Cant</div>
+          <div className="flex-1 px-2 py-1.5">Producto</div>
+          <div className="w-16 px-2 py-1.5 text-right">Importe</div>
         </div>
 
         {/* Order items */}
-        <div style={{ flex: 1, overflow: "auto", background: "#fff" }}>
+        <div className="flex-1 overflow-y-auto">
           {cart.length === 0 ? (
-            <div style={{ padding: 20, textAlign: "center", color: "#8B6914", fontSize: 11 }}>
+            <div className="p-6 text-center text-slate-600 text-xs">
+              <ShoppingCart className="w-8 h-8 mx-auto mb-2 opacity-30" />
               Seleccione productos del panel derecho
             </div>
           ) : cart.map((line, idx) => (
-            <div
-              key={`${line.productId}-${idx}`}
-              onClick={() => setSelectedCartIdx(idx)}
-              style={{
-                display: "flex", borderBottom: "1px solid #E8D5B0", cursor: "pointer",
-                background: selectedCartIdx === idx ? "#1565C0" : idx % 2 === 0 ? "#FFF8E7" : "#fff",
-                color: selectedCartIdx === idx ? "#fff" : "#1a0a00",
-              }}
-            >
-              <div style={{ width: 30, padding: "6px", textAlign: "center", fontWeight: 700, borderRight: "1px solid #E8D5B0" }}>{idx + 1}</div>
-              <div style={{ width: 50, padding: "6px", textAlign: "center", fontWeight: 700, borderRight: "1px solid #E8D5B0" }}>{line.quantity}</div>
-              <div style={{ flex: 1, padding: "6px", borderRight: "1px solid #E8D5B0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: 600 }}>{line.productName}</div>
-              <div style={{ width: 70, padding: "6px", textAlign: "right", fontWeight: 700 }}>${(line.quantity * line.unitPrice).toFixed(2)}</div>
+            <div key={`${line.productId}-${idx}`} onClick={() => setSelectedCartIdx(idx)} className={`flex cursor-pointer border-b border-slate-800/60 ${selectedCartIdx === idx ? "bg-amber-600/15 border-l-2 border-l-amber-500" : "hover:bg-slate-800/30"}`}>
+              <div className="w-8 px-2 py-2 text-center text-slate-500 text-xs font-semibold">{idx + 1}</div>
+              <div className="w-12 px-2 py-2 text-center text-white text-xs font-bold">{line.quantity}</div>
+              <div className="flex-1 px-2 py-2 text-xs text-white font-medium truncate">{line.productName}</div>
+              <div className="w-16 px-2 py-2 text-right text-xs text-white font-bold">${(line.quantity * line.unitPrice).toFixed(2)}</div>
             </div>
           ))}
         </div>
 
-        {/* Total bar */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 12px", background: "#C8A050", borderTop: "2px solid #A07030" }}>
-          <div style={{ fontWeight: 900, fontSize: 13, color: "#3D2B00" }}>TOTAL:</div>
-          <div style={{ fontWeight: 900, fontSize: 20, color: "#C0392B" }}>${cartTotal.toFixed(2)}</div>
+        {/* Total */}
+        <div className="flex items-center justify-between px-4 py-3 bg-slate-800 border-t border-slate-700">
+          <span className="text-sm font-bold text-slate-400">TOTAL</span>
+          <span className="text-xl font-black text-amber-400">${cartTotal.toFixed(2)}</span>
         </div>
 
         {/* Error */}
         {error && (
-          <div style={{ padding: "6px 12px", background: "#FFEBEE", color: "#C0392B", fontSize: 11, fontWeight: 700, borderTop: "1px solid #C0392B" }}>
-            {error}
-          </div>
+          <div className="px-3 py-2 bg-red-600/10 border-t border-red-600/30 text-red-400 text-[11px] font-semibold">{error}</div>
         )}
 
-        {/* Mesa / Mesero info */}
-        <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 10px", background: "#3D2B00", color: "#F5C518", fontSize: 10, fontWeight: 700 }}>
-          <span>Mesa: {tableName}</span>
-          <span>{waiterName}</span>
+        {/* Footer info */}
+        <div className="flex justify-between px-3 py-2 bg-slate-950 border-t border-slate-800 text-[10px] font-semibold">
+          <span className="text-amber-500">Mesa {tableName}</span>
+          <span className="text-slate-500">{waiterName}</span>
         </div>
       </div>
 
-      {/* ══ RIGHT: PRODUCT PANEL ═══════════════════════════════════ */}
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+      {/* ═══ RIGHT: PRODUCT PANEL ═══════════════════════════════════════════ */}
+      <div className="flex-1 flex flex-col overflow-hidden">
 
-        {/* Category tabs row 1 */}
-        <div style={{ display: "flex", gap: 2, padding: "4px 4px", background: "#C8A050", borderBottom: "2px solid #A07030", flexWrap: "wrap" }}>
-          <button
-            onClick={() => { setSelectedCategory(""); setSearchQuery(""); }}
-            style={{
-              padding: "8px 12px", borderRadius: 4, fontWeight: 800, fontSize: 11, cursor: "pointer",
-              border: `2px solid ${!selectedCategory ? "#E87722" : "#A07030"}`,
-              background: !selectedCategory ? "#E87722" : "#F5D060",
-              color: !selectedCategory ? "#fff" : "#3D2B00",
-              minWidth: 80,
-            }}
-          >
+        {/* Category tabs */}
+        <div className="flex gap-1.5 p-2 bg-slate-900 border-b border-slate-800 flex-wrap">
+          <button onClick={() => { setSelectedCategory(""); setSearchQuery(""); }} className={`px-3 py-2 rounded-lg text-[11px] font-bold border ${!selectedCategory ? "bg-amber-600 border-amber-700 text-white" : "bg-slate-800 border-slate-700 text-slate-400 hover:text-white hover:border-slate-600"}`}>
             TODOS
           </button>
           {categories.map((cat) => (
-            <button
-              key={cat}
-              onClick={() => { setSelectedCategory(cat); setSearchQuery(""); }}
-              style={{
-                padding: "8px 12px", borderRadius: 4, fontWeight: 800, fontSize: 11, cursor: "pointer",
-                border: `2px solid ${selectedCategory === cat ? "#E87722" : "#A07030"}`,
-                background: selectedCategory === cat ? "#E87722" : "#F5D060",
-                color: selectedCategory === cat ? "#fff" : "#3D2B00",
-                minWidth: 80, whiteSpace: "nowrap",
-              }}
-            >
+            <button key={cat} onClick={() => { setSelectedCategory(cat); setSearchQuery(""); }} className={`px-3 py-2 rounded-lg text-[11px] font-bold border whitespace-nowrap ${selectedCategory === cat ? "bg-amber-600 border-amber-700 text-white" : "bg-slate-800 border-slate-700 text-slate-400 hover:text-white hover:border-slate-600"}`}>
               {cat.toUpperCase()}
             </button>
           ))}
         </div>
 
-        {/* Search bar */}
-        <div style={{ display: "flex", gap: 4, padding: "4px 6px", background: "#E8D5B0", borderBottom: "1px solid #C8A050" }}>
-          <input
-            ref={searchRef}
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Buscar producto..."
-            style={{ flex: 1, padding: "6px 10px", border: "2px solid #C8A050", borderRadius: 6, fontSize: 13, fontWeight: 600, background: "#fff", color: "#3D2B00", outline: "none" }}
-          />
-          {searchQuery && (
-            <button onClick={() => setSearchQuery("")} style={{ padding: "4px 10px", background: "#C0392B", color: "#fff", border: "none", borderRadius: 4, fontWeight: 700, cursor: "pointer" }}>X</button>
-          )}
+        {/* Search */}
+        <div className="px-3 py-2 bg-slate-900/50 border-b border-slate-800">
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+            <input ref={searchRef} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Buscar producto..." className="w-full bg-slate-800 border border-slate-700 rounded-lg pl-9 pr-8 py-2 text-sm text-white outline-none focus:border-amber-500 placeholder:text-slate-600" />
+            {searchQuery && (
+              <button onClick={() => setSearchQuery("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white">
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Product grid */}
-        <div style={{ flex: 1, display: "grid", gridTemplateColumns: `repeat(${PRODUCT_COLS}, 1fr)`, gridTemplateRows: "repeat(3, 1fr)", gap: 4, padding: 6, background: "#4a3010", overflow: "hidden" }}>
+        <div className="flex-1 grid grid-cols-4 grid-rows-3 gap-2 p-3 overflow-hidden">
           {loadingProducts ? (
-            <div style={{ gridColumn: "1 / -1", gridRow: "1 / -1", display: "flex", alignItems: "center", justifyContent: "center", color: "#F5C518", fontWeight: 700, fontSize: 14 }}>
-              Cargando...
-            </div>
+            <div className="col-span-4 row-span-3 flex items-center justify-center text-amber-500 font-semibold text-sm animate-pulse">Cargando...</div>
           ) : pagedProducts.length === 0 ? (
-            <div style={{ gridColumn: "1 / -1", gridRow: "1 / -1", display: "flex", alignItems: "center", justifyContent: "center", color: "#A07030", fontWeight: 700, fontSize: 13 }}>
-              {searchQuery ? "Sin resultados" : "Sin productos en esta categoria"}
+            <div className="col-span-4 row-span-3 flex items-center justify-center text-slate-600 font-semibold text-sm">
+              {searchQuery ? "Sin resultados" : "Sin productos en esta categoría"}
             </div>
           ) : gridCells.map((product, idx) => (
-            <button
-              key={product ? product.id : `empty-${idx}`}
-              onClick={() => product && addProduct(product)}
-              disabled={!product}
-              style={{
-                background: product ? "#F5D060" : "#5a3c10",
-                border: product ? "2px solid #C8A050" : "1px solid #4a3010",
-                borderRadius: 8, cursor: product ? "pointer" : "default",
-                display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-                gap: 4, padding: 6, overflow: "hidden", transition: "all 0.1s",
-                opacity: product ? 1 : 0.3,
-              }}
-              onMouseOver={(e) => { if (product) { e.currentTarget.style.background = "#E87722"; e.currentTarget.style.color = "#fff"; } }}
-              onMouseOut={(e) => { if (product) { e.currentTarget.style.background = "#F5D060"; e.currentTarget.style.color = "#3D2B00"; } }}
-            >
+            <button key={product ? product.id : `empty-${idx}`} onClick={() => product && addProduct(product)} disabled={!product} className={`rounded-xl border flex flex-col items-center justify-center gap-1.5 p-2 overflow-hidden ${product ? "bg-slate-800 border-slate-700 cursor-pointer hover:bg-amber-600/20 hover:border-amber-600/40 active:scale-[0.97]" : "bg-slate-900/50 border-slate-900 cursor-default opacity-20"}`}>
               {product && (
                 <>
-                  <span style={{ fontSize: 13, fontWeight: 800, textAlign: "center", lineHeight: 1.2, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" as any, wordBreak: "break-word" }}>
-                    {product.name}
-                  </span>
-                  <span style={{ fontSize: 14, fontWeight: 900, color: "#C0392B" }}>${product.price.toFixed(2)}</span>
+                  <span className="text-xs font-bold text-center text-white leading-tight line-clamp-2">{product.name}</span>
+                  <span className="text-sm font-black text-amber-400">${product.price.toFixed(2)}</span>
                 </>
               )}
             </button>
@@ -374,31 +380,15 @@ export function CommanderOrderScreen({
         </div>
 
         {/* Pagination */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 8px", background: "#C8A050", borderTop: "2px solid #A07030", flexShrink: 0 }}>
-          <button
-            onClick={() => setProductPage((p) => Math.max(0, p - 1))}
-            disabled={productPage === 0}
-            style={{
-              padding: "8px 20px", borderRadius: 6, fontWeight: 900, fontSize: 14, cursor: productPage === 0 ? "not-allowed" : "pointer",
-              background: productPage === 0 ? "#D4B870" : "#E87722", color: productPage === 0 ? "#A07030" : "#fff",
-              border: "2px solid #A07030", display: "flex", alignItems: "center", gap: 6,
-            }}
-          >
-            &#8592; RETROCEDER
+        <div className="flex items-center justify-between px-3 py-2 bg-slate-900 border-t border-slate-800 flex-shrink-0">
+          <button onClick={() => setProductPage((p) => Math.max(0, p - 1))} disabled={productPage === 0} className="flex items-center gap-1 px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-xs font-bold text-slate-300 hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed">
+            <ChevronLeft className="w-4 h-4" /> Anterior
           </button>
-          <span style={{ fontWeight: 700, fontSize: 11, color: "#3D2B00" }}>
-            {productPage + 1} / {totalPages} &middot; {products.length} productos
+          <span className="text-xs font-semibold text-slate-500">
+            {productPage + 1} / {totalPages} · {products.length} productos
           </span>
-          <button
-            onClick={() => setProductPage((p) => Math.min(totalPages - 1, p + 1))}
-            disabled={productPage >= totalPages - 1}
-            style={{
-              padding: "8px 20px", borderRadius: 6, fontWeight: 900, fontSize: 14, cursor: productPage >= totalPages - 1 ? "not-allowed" : "pointer",
-              background: productPage >= totalPages - 1 ? "#D4B870" : "#E87722", color: productPage >= totalPages - 1 ? "#A07030" : "#fff",
-              border: "2px solid #A07030", display: "flex", alignItems: "center", gap: 6,
-            }}
-          >
-            AVANZAR &#8594;
+          <button onClick={() => setProductPage((p) => Math.min(totalPages - 1, p + 1))} disabled={productPage >= totalPages - 1} className="flex items-center gap-1 px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-xs font-bold text-slate-300 hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed">
+            Siguiente <ChevronRight className="w-4 h-4" />
           </button>
         </div>
       </div>
