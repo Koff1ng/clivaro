@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getTenantPrismaClient } from "@/lib/tenancy";
+import { getTenantIdFromSession, getTenantPrismaClient } from "@/lib/tenancy";
+import { requirePermission } from "@/lib/api-middleware";
+import { PERMISSIONS } from "@/lib/permissions";
 import { ensureRestaurantMode, hashPin } from "@/lib/restaurant";
 
 export const dynamic = 'force-dynamic';
@@ -8,13 +10,14 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const session = await requirePermission(req as any, PERMISSIONS.MANAGE_RESTAURANT);
+  if (session instanceof NextResponse) return session;
+
+  const tenantId = getTenantIdFromSession(session);
+  const restaurantCheck = await ensureRestaurantMode(tenantId);
+  if (restaurantCheck) return restaurantCheck;
+
   try {
-    const tenantId = req.headers.get("x-tenant-id");
-    if (!tenantId) return NextResponse.json({ error: "Tenant ID missing" }, { status: 400 });
-
-    const restaurantCheck = await ensureRestaurantMode(tenantId);
-    if (restaurantCheck) return restaurantCheck;
-
     const body = await req.json();
     const { name, code, pin, active } = body;
 
@@ -33,7 +36,7 @@ export async function PATCH(
 
     return NextResponse.json({ waiter });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 400 });
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
 
@@ -41,13 +44,14 @@ export async function DELETE(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const session = await requirePermission(req as any, PERMISSIONS.MANAGE_RESTAURANT);
+  if (session instanceof NextResponse) return session;
+
+  const tenantId = getTenantIdFromSession(session);
+  const restaurantCheck = await ensureRestaurantMode(tenantId);
+  if (restaurantCheck) return restaurantCheck;
+
   try {
-    const tenantId = req.headers.get("x-tenant-id");
-    if (!tenantId) return NextResponse.json({ error: "Tenant ID missing" }, { status: 400 });
-
-    const restaurantCheck = await ensureRestaurantMode(tenantId);
-    if (restaurantCheck) return restaurantCheck;
-
     const prisma = await getTenantPrismaClient(tenantId);
     
     // Soft delete
@@ -58,6 +62,6 @@ export async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 400 });
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
