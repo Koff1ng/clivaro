@@ -14,7 +14,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { toast } from 'react-toastify'
+import { useToast } from '@/components/ui/toast'
 import { cn } from '@/lib/utils'
 
 interface Table {
@@ -34,6 +34,7 @@ interface RestaurantTableMapProps {
 }
 
 export function RestaurantTableMap({ zoneId, isEditMode = false, onTableClick }: RestaurantTableMapProps) {
+  const { toast } = useToast()
   const [tables, setTables] = useState<Table[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -46,7 +47,7 @@ export function RestaurantTableMap({ zoneId, isEditMode = false, onTableClick }:
       const data = await res.json()
       setTables(data)
     } catch (error) {
-      toast.error('No se pudieron cargar las mesas')
+      toast('No se pudieron cargar las mesas', 'error')
     } finally {
       setLoading(false)
     }
@@ -100,7 +101,7 @@ export function RestaurantTableMap({ zoneId, isEditMode = false, onTableClick }:
       })
       if (!res.ok) throw new Error()
     } catch (error) {
-      toast.error('Error al guardar posición')
+      toast('Error al guardar posición', 'error')
       fetchTables() // Revert
     }
   }
