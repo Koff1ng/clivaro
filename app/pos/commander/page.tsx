@@ -7,7 +7,7 @@ import { useSession } from "next-auth/react";
 import { redirect } from "next/navigation";
 
 export default function CommanderPage() {
-  const { data: session, status } = useSession();
+  const { status } = useSession();
   const [waiter, setWaiter] = useState<{ token: string; data: any } | null>(null);
 
   useEffect(() => {
@@ -26,10 +26,10 @@ export default function CommanderPage() {
     return <CommanderPINLogin onLogin={handleLogin} />;
   }
 
-  // After login, show the POS interface in commander mode
   return (
     <div className="h-screen bg-background">
-      <POSScreen mode="commander" waiterData={waiter.data} />
+      <POSScreen mode="commander" waiterData={waiter.data} waiterToken={waiter.token} />
     </div>
   );
 }
+

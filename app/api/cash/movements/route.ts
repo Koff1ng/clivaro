@@ -84,6 +84,15 @@ export async function POST(request: Request) {
         throw new Error('Cash shift is not open')
       }
 
+      const currentUser = session.user as any
+      const canManageAllShifts =
+        currentUser?.isSuperAdmin ||
+        (currentUser?.permissions || []).includes(PERMISSIONS.MANAGE_SALES)
+
+      if (!canManageAllShifts && shift.userId !== currentUser.id) {
+        throw new Error('You cannot register movements on another user\'s open shift')
+      }
+
       // Create movement
       const movement = await prisma.cashMovement.create({
         data: {
@@ -130,3 +139,6 @@ export async function POST(request: Request) {
     )
   }
 }
+
+
+

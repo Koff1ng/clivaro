@@ -7,12 +7,10 @@ import { toDecimal } from '@/lib/numbers'
 import { updateStockLevel, checkStock } from '@/lib/inventory'
 import { logActivity } from '@/lib/activity'
 import { resolveAllIngredients } from '@/lib/recipes'
-import { enqueueJob } from '@/lib/jobs/queue'
 import jwt from 'jsonwebtoken'
 import { prisma as masterPrisma } from '@/lib/db'
 import { withTenantTx } from '@/lib/tenancy'
 import { calculateGranularTaxes, TaxRateInfo } from '@/lib/taxes'
-import { handleError } from '@/lib/error-handler'
 
 // Función helper para ejecutar consultas con retry y manejo de errores de conexión
 async function executeWithRetry<T>(
@@ -478,8 +476,20 @@ export async function POST(request: Request) {
 
         const isRestaurant = tenantSettings?.enableRestaurantMode
         if (isRestaurant && (product as any).enableRecipeConsumption) {
-          const ingredients = await resolveAllIngredients(tx, item.productId, item.quantity)
+          const ingredients = await resolveAllIngredients(tx, item.productId, item.quantity, item.variantId || null)
           for (const ing of ingredients) {
+            const enoughIngredientStock = await checkStock(
+              data.warehouseId,
+              ing.ingredientId,
+              null,
+              ing.quantity,
+              tx as any
+            )
+
+            if (!enoughIngredientStock) {
+              throw new Error(`Stock insuficiente para ingrediente (${ing.ingredientId}) en receta de ${product.name}`)
+            }
+
             await updateStockLevel(data.warehouseId, ing.ingredientId, null, -ing.quantity, tx, {
               type: 'OUT',
               reason: `Receta: ${product.name}`,
@@ -489,6 +499,18 @@ export async function POST(request: Request) {
             })
           }
         } else {
+          const enoughStock = await checkStock(
+            data.warehouseId,
+            item.productId,
+            item.variantId || null,
+            item.quantity,
+            tx as any
+          )
+
+          if (!enoughStock) {
+            throw new Error(`Stock insuficiente para ${product?.name || item.productId}`)
+          }
+
           await updateStockLevel(data.warehouseId, item.productId, item.variantId || null, -item.quantity, tx, {
             type: 'OUT',
             reason: 'POS Sale',
@@ -499,27 +521,14 @@ export async function POST(request: Request) {
         }
       }
 
-      // 10. Accounting Integration (Non-blocking)
-      // Fire-and-forget to avoid blocking sales if accounting config is incomplete
+      // 10. Accounting Integration
+      // Keep accounting in the same request flow so we do not persist paid invoices without entries.
       if (isPaid) {
-        // Import at runtime to avoid circular dependencies
-        import('@/lib/accounting/invoice-integration').then(async ({ createJournalEntryFromInvoice }) => {
-          try {
-            await createJournalEntryFromInvoice(invoice.id, (session.user as any).tenantId, (session.user as any).id)
-          } catch (error) {
-            console.error('[Accounting] Failed to create journal entry from invoice:', error)
-            // Don't throw - sale should succeed even if accounting fails
-          }
-        }).catch(e => console.error('[Accounting] Import failed:', e))
+        const { createJournalEntryFromInvoice } = await import('@/lib/accounting/invoice-integration')
+        const { createCostOfSalesEntry } = await import('@/lib/accounting/inventory-integration')
 
-        import('@/lib/accounting/inventory-integration').then(async ({ createCostOfSalesEntry }) => {
-          try {
-            await createCostOfSalesEntry(invoice.id, (session.user as any).tenantId, (session.user as any).id)
-          } catch (error) {
-            console.error('[Accounting] Failed to create cost of sales entry:', error)
-            // Don't throw - sale should succeed even if accounting fails
-          }
-        }).catch(e => console.error('[Accounting] Import failed:', e))
+        await createJournalEntryFromInvoice(invoice.id, (session.user as any).tenantId, (session.user as any).id)
+        await createCostOfSalesEntry(invoice.id, (session.user as any).tenantId, (session.user as any).id)
       }
 
       return NextResponse.json({
@@ -541,4 +550,9 @@ export async function POST(request: Request) {
     )
   }
 }
+
+
+
+
+
 

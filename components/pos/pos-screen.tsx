@@ -142,6 +142,20 @@ async function fetchWarehouses() {
   return data.warehouses || []
 }
 
+async function fetchRestaurantTables(tenantId?: string | null, waiterToken?: string | null) {
+  const headers: Record<string, string> = {}
+  if (tenantId) headers['x-tenant-id'] = tenantId
+  if (waiterToken) headers['x-waiter-token'] = waiterToken
+
+  const res = await fetch('/api/restaurant/tables', { headers })
+  const data = await res.json().catch(() => ([] as any[]))
+  if (!res.ok) {
+    const msg = (data as any)?.error || 'No se pudieron cargar las mesas'
+    throw new Error(msg)
+  }
+  return Array.isArray(data) ? data : []
+}
+
 async function fetchActiveShift() {
   const res = await fetch('/api/cash/shifts?active=true')
   if (!res.ok) throw new Error('Failed to fetch shift')
@@ -175,12 +189,21 @@ async function openShift(startingCash: number) {
   return res.json()
 }
 
+interface RestaurantTable {
+  id: string
+  name: string
+  status: string
+  x: number
+  y: number
+}
+
 interface POSScreenProps {
   mode?: 'retail' | 'commander'
   waiterData?: any
+  waiterToken?: string
 }
 
-export function POSScreen({ mode = 'retail', waiterData }: POSScreenProps) {
+export function POSScreen({ mode = 'retail', waiterData, waiterToken }: POSScreenProps) {
   const { toast } = useToast()
   const { data: session } = useSession()
   const [searchQuery, setSearchQuery] = useState('')
@@ -245,7 +268,7 @@ export function POSScreen({ mode = 'retail', waiterData }: POSScreenProps) {
     return `pos:discountOverride:${tenantId}:${userId}`
   }, [session])
 
-  const [selectedTable, setSelectedTable] = useState<any>(null)
+  const [selectedTable, setSelectedTable] = useState<RestaurantTable | null>(null)
   const [showTableSelector, setShowTableSelector] = useState(mode === 'commander')
   const [activeSession, setActiveSession] = useState<any>(null)
 
@@ -732,11 +755,35 @@ export function POSScreen({ mode = 'retail', waiterData }: POSScreenProps) {
     gcTime: 30 * 60 * 1000,
   })
 
+  const commanderTenantId = (session?.user as any)?.tenantId as string | undefined
+  const { data: restaurantTables = [], isLoading: loadingTables, refetch: refetchTables } = useQuery<RestaurantTable[]>({
+    queryKey: ['restaurant-tables', commanderTenantId, waiterData?.id],
+    queryFn: () => fetchRestaurantTables(commanderTenantId, waiterToken),
+    enabled: mode === 'commander' && !!commanderTenantId,
+    staleTime: 10 * 1000,
+    refetchInterval: mode === 'commander' ? 30 * 1000 : false,
+    retry: 1,
+  })
+
   useEffect(() => {
     if (warehouses.length > 0 && !selectedWarehouse) {
       setSelectedWarehouse(warehouses[0].id)
     }
   }, [warehouses, selectedWarehouse])
+
+  useEffect(() => {
+    if (mode !== 'commander') return
+
+    if (restaurantTables.length === 0) {
+      setSelectedTable(null)
+      return
+    }
+
+    if (!selectedTable || !restaurantTables.some((t) => t.id === selectedTable.id)) {
+      const available = restaurantTables.find((t) => t.status === 'AVAILABLE') || restaurantTables[0]
+      setSelectedTable(available)
+    }
+  }, [mode, restaurantTables, selectedTable])
 
   const { data: settings } = useQuery({
     queryKey: ['pos-settings'],
@@ -1312,24 +1359,37 @@ export function POSScreen({ mode = 'retail', waiterData }: POSScreenProps) {
     if (!selectedTable || cart.length === 0) return
     
     try {
+      const tenantId = (session?.user as any)?.tenantId
+      if (!tenantId) {
+        throw new Error('No se encontró el tenant de la sesión')
+      }
+
+      const restaurantHeaders: Record<string, string> = {
+        'Content-Type': 'application/json',
+        'x-tenant-id': tenantId,
+      }
+      if (waiterToken) {
+        restaurantHeaders['x-waiter-token'] = waiterToken
+      }
+
       // 1. Ensure session is open
       let sessionId = activeSession?.id
       if (!sessionId) {
         const res = await fetch('/api/restaurant/sessions', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: restaurantHeaders,
           body: JSON.stringify({ tableId: selectedTable.id }),
         })
-        const data = await res.json()
-        if (!res.ok) throw new Error(data.error)
-        sessionId = data.session.id
-        setActiveSession(data.session)
+        const data = await res.json().catch(() => ({} as any))
+        if (!res.ok) throw new Error(data.error || 'No se pudo abrir sesión de mesa')
+        sessionId = data.id
+        setActiveSession(data)
       }
 
       // 2. Create Order
       const orderRes = await fetch('/api/restaurant/orders', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: restaurantHeaders,
         body: JSON.stringify({
           sessionId,
           waiterId: waiterData?.id,
@@ -1337,19 +1397,27 @@ export function POSScreen({ mode = 'retail', waiterData }: POSScreenProps) {
             productId: item.productId,
             variantId: item.variantId,
             quantity: item.quantity,
-            price: item.unitPrice,
-            modifiers: {} // Support for modifiers later
+            unitPrice: item.unitPrice,
+            notes: item.preparationNotes || null,
           }))
         }),
       })
-      
-      const orderData = await orderRes.json()
-      if (!orderRes.ok) throw new Error(orderData.error)
+
+      const orderData = await orderRes.json().catch(() => ({} as any))
+      if (!orderRes.ok) throw new Error(orderData.error || 'No se pudo crear la orden')
 
       // 3. Send to Kitchen
-      await fetch(`/api/restaurant/orders/${orderData.order.id}/send-kitchen`, { method: 'POST' })
+      const sendKitchenRes = await fetch(`/api/restaurant/orders/${orderData.id}/send-kitchen`, {
+        method: 'POST',
+        headers: {
+          'x-tenant-id': tenantId,
+          ...(waiterToken ? { 'x-waiter-token': waiterToken } : {}),
+        },
+      })
+      const sendKitchenData = await sendKitchenRes.json().catch(() => ({} as any))
+      if (!sendKitchenRes.ok) throw new Error(sendKitchenData.error || 'No se pudo enviar a cocina')
 
-      toast('Comanda enviada a cocina ðŸ•', 'success')
+      toast('Comanda enviada a cocina', 'success')
       setCart([])
       // Keep table selected or clear? For commander, usually clear to next table
       setSelectedTable(null)
@@ -1532,6 +1600,40 @@ export function POSScreen({ mode = 'retail', waiterData }: POSScreenProps) {
             >
               {openShiftMutation.isPending ? 'Abriendo...' : 'Abrir Turno'}
             </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={mode === 'commander' && showTableSelector} onOpenChange={setShowTableSelector}>
+        <DialogContent className="max-w-5xl">
+          <DialogHeader>
+            <DialogTitle>Seleccionar mesa</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            {loadingTables ? (
+              <div className="py-10 text-center text-sm text-muted-foreground">Cargando mesas...</div>
+            ) : restaurantTables.length === 0 ? (
+              <div className="py-10 text-center text-sm text-muted-foreground">No hay mesas disponibles para este tenant.</div>
+            ) : (
+              <>
+                <RestaurantTableMap
+                  tables={restaurantTables}
+                  onTableClick={(table) => {
+                    if (table.status !== 'AVAILABLE' && (!selectedTable || selectedTable.id !== table.id)) {
+                      toast(`La mesa ${table.name} no está disponible`, 'warning')
+                      return
+                    }
+                    setSelectedTable(table)
+                    setShowTableSelector(false)
+                  }}
+                />
+                <div className="flex justify-end">
+                  <Button variant="outline" onClick={() => refetchTables()}>
+                    Recargar mesas
+                  </Button>
+                </div>
+              </>
+            )}
           </div>
         </DialogContent>
       </Dialog>
@@ -2799,4 +2901,12 @@ ${saleResult.change > 0 ? `Cambio: ${formatCurrency(saleResult.change)}` : ''}
     </div>
   )
 }
+
+
+
+
+
+
+
+
 

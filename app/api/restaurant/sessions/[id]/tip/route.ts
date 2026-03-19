@@ -1,39 +1,83 @@
-import { NextRequest, NextResponse } from "next/server";
-import { getTenantPrismaClient } from "@/lib/tenancy";
-import { ensureRestaurantMode } from "@/lib/restaurant";
+import { NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
+import { getTenantPrismaClient, getTenantIdFromSession } from '@/lib/tenancy'
+import { ensureRestaurantMode, getWaiterFromToken } from '@/lib/restaurant'
+import { requireAnyPermission } from '@/lib/api-middleware'
+import { PERMISSIONS } from '@/lib/permissions'
+
+const tipSchema = z.object({
+  tipAmount: z.number().min(0),
+})
+
+function apiError(status: number, message: string, details?: unknown) {
+  return NextResponse.json({ status, error: message, details }, { status })
+}
+
+async function resolveRestaurantContext(req: Request) {
+  const tenantIdHeader = req.headers.get('x-tenant-id')
+  const waiterToken = req.headers.get('x-waiter-token')
+
+  if (tenantIdHeader && waiterToken) {
+    const waiter = await getWaiterFromToken(waiterToken, tenantIdHeader)
+    if (!waiter) {
+      return { error: apiError(401, 'Invalid waiter token') }
+    }
+    return { tenantId: tenantIdHeader, waiter }
+  }
+
+  const session = await requireAnyPermission(req as any, [
+    PERMISSIONS.MANAGE_SALES,
+    PERMISSIONS.MANAGE_RESTAURANT,
+    PERMISSIONS.MANAGE_CASH,
+  ])
+  if (session instanceof NextResponse) {
+    return { error: session }
+  }
+
+  return { tenantId: getTenantIdFromSession(session), waiter: null }
+}
 
 export async function PATCH(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const tenantId = req.headers.get("x-tenant-id");
-    if (!tenantId) return NextResponse.json({ error: "Tenant ID missing" }, { status: 400 });
+    const context = await resolveRestaurantContext(req)
+    if ('error' in context) return context.error
 
-    const sessionId = params.id;
-    const body = await req.json();
-    const { tipAmount } = body;
-
-    if (typeof tipAmount !== "number" || tipAmount < 0) {
-      return NextResponse.json({ error: "Invalid tip amount" }, { status: 400 });
+    const sessionId = params.id
+    const parsed = tipSchema.safeParse(await req.json())
+    if (!parsed.success) {
+      return apiError(400, 'Validation error', parsed.error.flatten())
     }
 
-    await ensureRestaurantMode(tenantId);
+    const restaurantCheck = await ensureRestaurantMode(context.tenantId)
+    if (restaurantCheck) return restaurantCheck
 
-    const prisma = await getTenantPrismaClient(tenantId);
-    
-    const session = await prisma.tableSession.update({
+    const prisma = await getTenantPrismaClient(context.tenantId)
+
+    const existing = await prisma.tableSession.findUnique({ where: { id: sessionId } })
+    if (!existing || existing.tenantId !== context.tenantId) {
+      return apiError(404, 'Session not found')
+    }
+
+    if (existing.status !== 'OPEN') {
+      return apiError(400, 'Cannot update tip for a closed session')
+    }
+
+    if (context.waiter && existing.waiterId !== context.waiter.id) {
+      return apiError(403, 'Waiter cannot edit tip for another waiter session')
+    }
+
+    await prisma.tableSession.update({
       where: { id: sessionId },
       data: {
-        tipAmount: tipAmount
-      }
-    });
+        tipAmount: parsed.data.tipAmount,
+      },
+    })
 
-    // Since I need to add 'tipAmount' to the schema, I'll do it in the next step.
-    // For now, I'll use a transaction to update a hypothetical 'tip' field if I added it.
-
-    return NextResponse.json({ success: true, tipAmount });
+    return NextResponse.json({ success: true, tipAmount: parsed.data.tipAmount })
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 400 });
+    return apiError(400, error.message || 'Failed to update tip')
   }
 }

@@ -1,57 +1,94 @@
-import { NextRequest, NextResponse } from "next/server";
-import { getTenantPrismaClient } from "@/lib/tenancy";
-import { ensureRestaurantMode } from "@/lib/restaurant";
-import { emitRestaurantEvent } from "@/lib/events";
+import { NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
+import { getTenantPrismaClient, getTenantIdFromSession } from '@/lib/tenancy'
+import { ensureRestaurantMode } from '@/lib/restaurant'
+import { emitRestaurantEvent } from '@/lib/events'
+import { requireAnyPermission } from '@/lib/api-middleware'
+import { PERMISSIONS } from '@/lib/permissions'
+
+const statusSchema = z.object({
+  status: z.enum(['PENDING', 'COOKING', 'READY', 'SERVED']),
+})
+
+const allowedTransitions: Record<string, string[]> = {
+  PENDING: ['COOKING', 'READY', 'SERVED'],
+  COOKING: ['READY', 'SERVED'],
+  READY: ['SERVED'],
+  SERVED: [],
+}
+
+function apiError(status: number, message: string, details?: unknown) {
+  return NextResponse.json({ status, error: message, details }, { status })
+}
 
 export async function PATCH(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const tenantId = req.headers.get("x-tenant-id");
-    if (!tenantId) return NextResponse.json({ error: "Tenant ID missing" }, { status: 400 });
+    const session = await requireAnyPermission(req as any, [
+      PERMISSIONS.MANAGE_RESTAURANT,
+      PERMISSIONS.MANAGE_SALES,
+    ])
+    if (session instanceof NextResponse) return session
 
-    const itemId = params.id;
-    if (!itemId) return NextResponse.json({ error: "Item ID missing" }, { status: 400 });
+    const tenantId = getTenantIdFromSession(session)
+    const itemId = params.id
+    if (!itemId) return apiError(400, 'Item ID missing')
 
-    const body = await req.json();
-    const { status } = body; // PENDING, COOKING, READY, SERVED
-
-    if (!["PENDING", "COOKING", "READY", "SERVED"].includes(status)) {
-      return NextResponse.json({ error: "Invalid status" }, { status: 400 });
+    const parsed = statusSchema.safeParse(await req.json())
+    if (!parsed.success) {
+      return apiError(400, 'Validation error', parsed.error.flatten())
     }
 
-    await ensureRestaurantMode(tenantId);
+    const restaurantCheck = await ensureRestaurantMode(tenantId)
+    if (restaurantCheck) return restaurantCheck
 
-    const prisma = await getTenantPrismaClient(tenantId);
-    
-    const updatedItem = await prisma.tableOrderLine.update({
+    const prisma = await getTenantPrismaClient(tenantId)
+
+    const existing = await prisma.tableOrderLine.findUnique({
       where: { id: itemId },
-      data: { status },
       include: {
         order: {
           include: {
-            session: { include: { table: true } }
-          }
+            session: { include: { table: true } },
+          },
         },
-        product: { select: { name: true } }
-      }
-    });
+      },
+    })
 
-    // Notify all listeners
-    emitRestaurantEvent(tenantId, "ITEM_STATUS_UPDATED", {
+    if (!existing || existing.order.tenantId !== tenantId) {
+      return apiError(404, 'Order item not found')
+    }
+
+    if (!allowedTransitions[existing.status]?.includes(parsed.data.status) && existing.status !== parsed.data.status) {
+      return apiError(409, `Invalid status transition from ${existing.status} to ${parsed.data.status}`)
+    }
+
+    const updatedItem = await prisma.tableOrderLine.update({
+      where: { id: itemId },
+      data: { status: parsed.data.status },
+      include: {
+        order: {
+          include: {
+            session: { include: { table: true } },
+          },
+        },
+        product: { select: { name: true } },
+      },
+    })
+
+    emitRestaurantEvent(tenantId, 'ITEM_STATUS_UPDATED', {
       itemId: updatedItem.id,
       orderId: updatedItem.orderId,
       status: updatedItem.status,
       productName: updatedItem.product.name,
       tableName: updatedItem.order.session.table.name,
-      timestamp: new Date()
-    });
+      timestamp: new Date(),
+    })
 
-    // If item is READY, maybe notify waiter via a specific channel
-    
-    return NextResponse.json(updatedItem);
+    return NextResponse.json(updatedItem)
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 400 });
+    return apiError(400, error.message || 'Failed to update item status')
   }
 }

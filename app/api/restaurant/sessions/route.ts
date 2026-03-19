@@ -1,102 +1,129 @@
-import { NextRequest, NextResponse } from "next/server";
-import { getTenantPrismaClient } from "@/lib/tenancy";
-import { ensureRestaurantMode, getWaiterFromToken } from "@/lib/restaurant";
-import { emitRestaurantEvent } from "@/lib/events";
+﻿import { NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
+import { getTenantPrismaClient, getTenantIdFromSession } from '@/lib/tenancy'
+import { ensureRestaurantMode, getWaiterFromToken } from '@/lib/restaurant'
+import { emitRestaurantEvent } from '@/lib/events'
+import { requireAnyPermission } from '@/lib/api-middleware'
+import { PERMISSIONS } from '@/lib/permissions'
 
-export async function GET(
-  req: NextRequest,
-  { params }: { params: { tableId?: string } }
-) {
+const createSessionSchema = z.object({
+  tableId: z.string().min(1),
+})
+
+function apiError(status: number, message: string, details?: unknown) {
+  return NextResponse.json({ status, error: message, details }, { status })
+}
+
+async function resolveRestaurantContext(req: Request) {
+  const tenantIdHeader = req.headers.get('x-tenant-id')
+  const waiterToken = req.headers.get('x-waiter-token')
+
+  if (tenantIdHeader && waiterToken) {
+    const waiter = await getWaiterFromToken(waiterToken, tenantIdHeader)
+    if (!waiter) {
+      return { error: apiError(401, 'Invalid waiter token') }
+    }
+    return { tenantId: tenantIdHeader, waiter }
+  }
+
+  const session = await requireAnyPermission(req as any, [
+    PERMISSIONS.MANAGE_SALES,
+    PERMISSIONS.MANAGE_RESTAURANT,
+    PERMISSIONS.MANAGE_CASH,
+  ])
+  if (session instanceof NextResponse) {
+    return { error: session }
+  }
+
+  return { tenantId: getTenantIdFromSession(session), waiter: null }
+}
+
+export async function GET(req: NextRequest) {
   try {
-    const tenantId = req.headers.get("x-tenant-id");
-    if (!tenantId) return NextResponse.json({ error: "Tenant ID missing" }, { status: 400 });
+    const context = await resolveRestaurantContext(req)
+    if ('error' in context) return context.error
 
-    const tableId = req.nextUrl.searchParams.get("tableId");
-    if (!tableId) return NextResponse.json({ error: "Table ID missing" }, { status: 400 });
+    const tableId = req.nextUrl.searchParams.get('tableId')
+    if (!tableId) return apiError(400, 'Table ID missing')
 
-    await ensureRestaurantMode(tenantId);
+    const restaurantCheck = await ensureRestaurantMode(context.tenantId)
+    if (restaurantCheck) return restaurantCheck
 
-    const prisma = await getTenantPrismaClient(tenantId);
+    const prisma = await getTenantPrismaClient(context.tenantId)
     const session = await prisma.tableSession.findFirst({
       where: {
         tableId,
-        status: "OPEN",
+        status: 'OPEN',
       },
       include: {
-        waiter: {
-          select: { name: true, code: true }
-        },
+        waiter: { select: { id: true, name: true, code: true } },
         orders: {
           include: {
-            items: true
-          }
-        }
-      }
-    });
+            items: true,
+          },
+        },
+      },
+    })
 
-    return NextResponse.json(session);
+    return NextResponse.json(session)
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 400 });
+    return apiError(400, error.message || 'Failed to fetch table session')
   }
 }
 
 export async function POST(req: NextRequest) {
   try {
-    const tenantId = req.headers.get("x-tenant-id");
-    if (!tenantId) return NextResponse.json({ error: "Tenant ID missing" }, { status: 400 });
+    const context = await resolveRestaurantContext(req)
+    if ('error' in context) return context.error
 
-    const waiterToken = req.headers.get("x-waiter-token");
-    if (!waiterToken) return NextResponse.json({ error: "Waiter token missing" }, { status: 401 });
+    const restaurantCheck = await ensureRestaurantMode(context.tenantId)
+    if (restaurantCheck) return restaurantCheck
 
-    await ensureRestaurantMode(tenantId);
-    
-    const waiter = await getWaiterFromToken(waiterToken, tenantId);
-    if (!waiter) return NextResponse.json({ error: "Invalid waiter token" }, { status: 401 });
+    const parsed = createSessionSchema.safeParse(await req.json())
+    if (!parsed.success) {
+      return apiError(400, 'Validation error', parsed.error.flatten())
+    }
 
-    const body = await req.json();
-    const { tableId } = body;
+    const prisma = await getTenantPrismaClient(context.tenantId)
 
-    if (!tableId) return NextResponse.json({ error: "Table ID required" }, { status: 400 });
-
-    const prisma = await getTenantPrismaClient(tenantId);
-    
-    // Check if there's already an open session
     const existing = await prisma.tableSession.findFirst({
-      where: { tableId, status: "OPEN" }
-    });
+      where: { tableId: parsed.data.tableId, status: 'OPEN' },
+    })
 
     if (existing) {
-      return NextResponse.json({ error: "Table already has an open session" }, { status: 400 });
+      return apiError(409, 'Table already has an open session')
+    }
+
+    const waiterId = context.waiter?.id
+    if (!waiterId) {
+      return apiError(403, 'Waiter context is required to open a table session')
     }
 
     const session = await prisma.$transaction(async (tx) => {
-      // Create session
       const newSession = await tx.tableSession.create({
         data: {
-          tenantId,
-          tableId,
-          waiterId: waiter.id,
-          status: "OPEN",
-        }
-      });
+          tenantId: context.tenantId,
+          tableId: parsed.data.tableId,
+          waiterId,
+          status: 'OPEN',
+        },
+      })
 
-      // Update table status
       await tx.restaurantTable.update({
-        where: { id: tableId },
-        data: { status: "OCCUPIED" }
-      });
+        where: { id: parsed.data.tableId },
+        data: { status: 'OCCUPIED' },
+      })
 
-      return newSession;
-    });
+      return newSession
+    })
 
-    // Notify real-time
-    emitRestaurantEvent(tenantId, "TABLE_UPDATED", {
-      tableId,
-      status: "OCCUPIED"
-    });
+    emitRestaurantEvent(context.tenantId, 'TABLE_UPDATED', {
+      tableId: parsed.data.tableId,
+      status: 'OCCUPIED',
+    })
 
-    return NextResponse.json(session);
+    return NextResponse.json(session)
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 400 });
+    return apiError(400, error.message || 'Failed to open table session')
   }
 }
