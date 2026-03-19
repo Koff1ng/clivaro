@@ -3,12 +3,14 @@ import { getTenantIdFromSession } from '@/lib/tenancy'
 import { requirePermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
 import { logger } from '@/lib/logger'
-import { getRestaurantConfig, updateRestaurantConfig, ensureRestaurantMode } from '@/lib/restaurant'
+import { getRestaurantConfig, updateRestaurantConfig } from '@/lib/restaurant'
+import { prisma as masterPrisma } from '@/lib/db'
 
 export const dynamic = 'force-dynamic';
 
 /**
- * GET: Obtiene la configuración del restaurante para el tenant actual.
+ * GET: Obtiene la configuracion del restaurante para el tenant actual.
+ * Merges enableRestaurantMode from TenantSettings into the response.
  */
 export async function GET(request: Request) {
     const session = await requirePermission(request as any, PERMISSIONS.MANAGE_RESTAURANT)
@@ -17,10 +19,17 @@ export async function GET(request: Request) {
     const tenantId = getTenantIdFromSession(session)
 
     try {
-        // En este caso, permitimos el GET de la configuración aunque enableRestaurantMode sea false 
-        // para que la UI pueda activarla.
-        const config = await getRestaurantConfig(tenantId)
-        return NextResponse.json(config)
+        const [config, tenantSettings] = await Promise.all([
+            getRestaurantConfig(tenantId),
+            masterPrisma.tenantSettings.findUnique({
+                where: { tenantId },
+                select: { enableRestaurantMode: true },
+            }),
+        ])
+        return NextResponse.json({
+            ...config,
+            enableRestaurantMode: tenantSettings?.enableRestaurantMode ?? false,
+        })
     } catch (error: any) {
         logger.error('Error in api/restaurant/config GET', error)
         return NextResponse.json({ error: error.message }, { status: 500 })
@@ -28,18 +37,47 @@ export async function GET(request: Request) {
 }
 
 /**
- * POST: Crea o actualiza la configuración del restaurante.
+ * POST: Crea o actualiza la configuracion del restaurante.
+ * enableRestaurantMode goes to TenantSettings, the rest to RestaurantConfig.
  */
 export async function POST(request: Request) {
     const session = await requirePermission(request as any, PERMISSIONS.MANAGE_RESTAURANT)
     if (session instanceof NextResponse) return session
 
     const tenantId = getTenantIdFromSession(session)
-    const data = await request.json()
+    const body = await request.json()
 
     try {
-        const config = await updateRestaurantConfig(tenantId, data)
-        return NextResponse.json({ success: true, config })
+        const { enableRestaurantMode, ...restaurantData } = body
+
+        if (typeof enableRestaurantMode === 'boolean') {
+            await masterPrisma.tenantSettings.upsert({
+                where: { tenantId },
+                create: { tenantId, enableRestaurantMode },
+                update: { enableRestaurantMode },
+            })
+        }
+
+        const hasRestaurantData = Object.keys(restaurantData).length > 0
+        let config
+        if (hasRestaurantData) {
+            config = await updateRestaurantConfig(tenantId, restaurantData)
+        } else {
+            config = await getRestaurantConfig(tenantId)
+        }
+
+        const tenantSettings = await masterPrisma.tenantSettings.findUnique({
+            where: { tenantId },
+            select: { enableRestaurantMode: true },
+        })
+
+        return NextResponse.json({
+            success: true,
+            config: {
+                ...config,
+                enableRestaurantMode: tenantSettings?.enableRestaurantMode ?? false,
+            },
+        })
     } catch (error: any) {
         logger.error('Error in api/restaurant/config POST', error)
         return NextResponse.json({ error: error.message }, { status: 500 })
