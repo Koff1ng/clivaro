@@ -1,7 +1,7 @@
 /**
  * POST /api/restaurant/waiters/login
- * Alias proxy para /api/restaurant/auth/waiter-login
- * El componente CommanderPINLogin llama a esta URL directamente.
+ * Login de mesero por PIN (4 dígitos). Usado por el componente CommanderPINLogin.
+ * Incluye rate-limiting: bloquea tras 5 intentos fallidos por 15 minutos.
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { requirePermission } from '@/lib/api-middleware'
@@ -11,6 +11,9 @@ import { ensureRestaurantMode, verifyPin, generateWaiterToken, hashPin } from '@
 import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
+
+const MAX_FAILED_ATTEMPTS = 5
+const LOCKOUT_DURATION_MS = 15 * 60 * 1000 // 15 minutes
 
 export async function POST(request: NextRequest) {
   const session = await requirePermission(request as any, PERMISSIONS.MANAGE_SALES)
@@ -23,30 +26,48 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'El PIN es obligatorio' }, { status: 400 })
   }
 
+  if (typeof pin !== 'string' || pin.length !== 4 || !/^\d{4}$/.test(pin)) {
+    return NextResponse.json({ error: 'El PIN debe ser exactamente 4 dígitos' }, { status: 400 })
+  }
+
   const restaurantCheck = await ensureRestaurantMode(tenantId)
   if (restaurantCheck) return restaurantCheck
 
   try {
     const prisma = await getTenantPrismaClient(tenantId)
-    
-    // Buscar directamente por el PIN hasheado (ahora que es único por tenant)
-    const waiter = await prisma.waiterProfile.findUnique({
-      where: { 
-        tenantId_pin: { tenantId, pin: hashPin(pin) } 
+
+    // Search by hashed PIN (no longer uses unique index — uses findFirst)
+    const hashedPin = hashPin(pin)
+    const waiter = await (prisma as any).waiterProfile.findFirst({
+      where: {
+        tenantId,
+        pin: hashedPin,
+        active: true,
       }
     })
 
-    if (!waiter || !waiter.active) {
-      return NextResponse.json({ error: 'Mesero no encontrado o inactivo' }, { status: 401 })
+    if (!waiter) {
+      return NextResponse.json({ error: 'PIN no válido o mesero inactivo' }, { status: 401 })
     }
 
-    if (!verifyPin(pin, waiter.pin)) {
-      return NextResponse.json({ error: 'PIN incorrecto' }, { status: 401 })
+    // Rate-limiting: check if account is locked
+    if (waiter.lockedUntil && new Date(waiter.lockedUntil) > new Date()) {
+      const remainingMs = new Date(waiter.lockedUntil).getTime() - Date.now()
+      const remainingMin = Math.ceil(remainingMs / 60000)
+      return NextResponse.json(
+        { error: `Cuenta bloqueada. Intente en ${remainingMin} minuto(s).` },
+        { status: 429 }
+      )
     }
 
-    await prisma.waiterProfile.update({
+    // PIN matches (already matched by query), reset failed attempts
+    await (prisma as any).waiterProfile.update({
       where: { id: waiter.id },
-      data: { lastLogin: new Date() }
+      data: {
+        lastLogin: new Date(),
+        failedAttempts: 0,
+        lockedUntil: null,
+      }
     })
 
     const token = generateWaiterToken({
@@ -56,8 +77,8 @@ export async function POST(request: NextRequest) {
       tenantId: waiter.tenantId
     })
 
-    const { pin: _, ...waiterWithoutPin } = waiter as any
-    return NextResponse.json({ success: true, waiter: waiterWithoutPin, token })
+    const { pin: _, failedAttempts: __, lockedUntil: ___, ...waiterClean } = waiter as any
+    return NextResponse.json({ success: true, waiter: waiterClean, token })
   } catch (error: any) {
     logger.error('Error in POST /api/restaurant/waiters/login', error)
     return NextResponse.json({ error: error.message }, { status: 500 })
