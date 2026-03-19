@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useSession } from "next-auth/react";
-import { POSScreen } from "@/components/pos/pos-screen";
+import { CommanderOrderScreen } from "./commander-order-screen";
 
 interface OpenAccount {
   id: string;
@@ -171,43 +171,17 @@ export function CommanderView({ waiterToken, waiterData, onExit }: CommanderView
   // ── Active order mode ─────────────────────────────────────────────────────
 
   if (activeAccount) {
-    const preselectedTable = {
-      id: activeAccount.tableId,
-      name: activeAccount.tableName,
-      status: "OCCUPIED" as const,
-      x: 0, y: 0,
-    };
-
     return (
-      <div className="h-screen bg-background">
-        <div
-          style={{
-            height: 48, background: "#3D2B00", display: "flex",
-            alignItems: "center", padding: "0 16px", gap: 12,
-          }}
-        >
-          <button
-            onClick={handleBackFromOrder}
-            style={{
-              background: "#E87722", color: "#fff", border: "none", borderRadius: 6,
-              padding: "6px 16px", fontWeight: 700, fontSize: 13, cursor: "pointer",
-            }}
-          >
-            &#8592; CUENTAS
-          </button>
-          <span style={{ color: "#F5C518", fontWeight: 700, fontSize: 15 }}>
-            Mesa {activeAccount.tableName} &middot; {waiterData.name}
-          </span>
-        </div>
-        <div style={{ height: "calc(100vh - 48px)" }}>
-          <POSScreen
-            mode="commander"
-            waiterData={waiterData}
-            waiterToken={waiterToken}
-            preselectedTable={preselectedTable}
-            onOrderSent={handleBackFromOrder}
-          />
-        </div>
+      <div style={{ height: "100vh", display: "flex", flexDirection: "column" }}>
+        <CommanderOrderScreen
+          tableName={activeAccount.tableName}
+          sessionId={activeAccount.id}
+          waiterName={waiterData.name}
+          waiterToken={waiterToken}
+          tenantId={tenantId}
+          onOrderSent={handleBackFromOrder}
+          onBack={handleBackFromOrder}
+        />
       </div>
     );
   }
