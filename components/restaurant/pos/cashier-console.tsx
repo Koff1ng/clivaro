@@ -153,7 +153,22 @@ export const CashierBillingConsole: React.FC = () => {
   // ── CANCELAR PROD state ───────────────────────────────────────────────────
   const [cancellingLine, setCancellingLine] = useState<string | null>(null);
 
+  // ── Cash shift state ───────────────────────────────────────────────────
+  const [hasActiveShift, setHasActiveShift] = useState<boolean | null>(null);
+
   // ── Data ──────────────────────────────────────────────────────────────────
+
+  const checkActiveShift = useCallback(async () => {
+    try {
+      const res = await fetch("/api/cash/shifts?active=true");
+      if (!res.ok) { setHasActiveShift(false); return; }
+      const data = await res.json();
+      const shifts = Array.isArray(data.shifts) ? data.shifts : [];
+      setHasActiveShift(shifts.length > 0);
+    } catch {
+      setHasActiveShift(false);
+    }
+  }, []);
 
   const fetchSessions = useCallback(async () => {
     try {
@@ -173,11 +188,20 @@ export const CashierBillingConsole: React.FC = () => {
     }
   }, []);
 
-  useEffect(() => { fetchSessions(); const iv = setInterval(fetchSessions, 20_000); return () => clearInterval(iv); }, [fetchSessions]);
+  useEffect(() => {
+    fetchSessions();
+    checkActiveShift();
+    const iv = setInterval(fetchSessions, 20_000);
+    return () => clearInterval(iv);
+  }, [fetchSessions, checkActiveShift]);
 
   // ── Open Account ─────────────────────────────────────────────────────────
 
   const handleOpenAccountClick = async () => {
+    if (hasActiveShift === false) {
+      toast("No hay un turno de caja abierto. Abra un turno antes de abrir cuentas.", "error");
+      return;
+    }
     try {
       const [tablesRes, waitersRes] = await Promise.all([
         fetch("/api/restaurant/tables"),
@@ -231,6 +255,7 @@ export const CashierBillingConsole: React.FC = () => {
   // ── Captura (add products to session) ────────────────────────────────────
 
   const handleCapturaClick = () => {
+    if (hasActiveShift === false) { toast("No hay un turno de caja abierto", "error"); return; }
     if (!selectedSession) { toast("Selecciona una cuenta primero", "warning"); return; }
     setCapturaCart([]);
     setProductSearch("");
@@ -530,6 +555,16 @@ export const CashierBillingConsole: React.FC = () => {
       {/* ══ LEFT PANEL ══════════════════════════════════════════════ */}
       <div style={S.leftPanel}>
         <div style={S.leftHeader}>COMEDOR</div>
+        {hasActiveShift === false && (
+          <div style={{ background: "#C0392B", color: "#fff", padding: "4px 8px", fontSize: 9, fontWeight: 700, textAlign: "center", letterSpacing: 0.5 }}>
+            SIN TURNO DE CAJA
+          </div>
+        )}
+        {hasActiveShift === true && (
+          <div style={{ background: "#2E7D32", color: "#fff", padding: "4px 8px", fontSize: 9, fontWeight: 700, textAlign: "center", letterSpacing: 0.5 }}>
+            TURNO ACTIVO
+          </div>
+        )}
         <div style={S.leftSection}>
           <div style={S.labelSm}>Area activa</div>
           <select style={{ ...S.inputSm, cursor: "pointer" }} defaultValue="TODAS">

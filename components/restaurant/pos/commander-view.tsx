@@ -69,6 +69,13 @@ export function CommanderView({ waiterToken, waiterData, onExit }: CommanderView
   const [page, setPage] = useState(0);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
+  // ── Shift check state ───────────────────────────────────────────────────
+  const [hasActiveShift, setHasActiveShift] = useState<boolean | null>(null);
+
+  // ── ABRIR MESA dialog state ─────────────────────────────────────────────
+  const [showOpenDialog, setShowOpenDialog] = useState(false);
+  const [dialogError, setDialogError] = useState<string | null>(null);
+
   // ── Data fetching ──────────────────────────────────────────────────────────
 
   const fetchTables = useCallback(async () => {
@@ -86,14 +93,6 @@ export function CommanderView({ waiterToken, waiterData, onExit }: CommanderView
       if (!res.ok) throw new Error(data.error || "Error cargando mesas");
       const arr: RestaurantTable[] = Array.isArray(data) ? data : [];
       setTables(arr);
-
-      // Derive zones from tables
-      const zoneMap = new Map<string, string>();
-      arr.forEach((t) => {
-        if (t.zoneId && !(zoneMap.has(t.zoneId))) {
-          zoneMap.set(t.zoneId, t.zoneId);
-        }
-      });
       setError(null);
     } catch (e: any) {
       setError(e.message);
@@ -102,7 +101,6 @@ export function CommanderView({ waiterToken, waiterData, onExit }: CommanderView
     }
   }, [tenantId, waiterToken, selectedZoneId]);
 
-  // Fetch zones with waiter token support
   const fetchZones = useCallback(async () => {
     if (!tenantId) return;
     try {
@@ -116,16 +114,31 @@ export function CommanderView({ waiterToken, waiterData, onExit }: CommanderView
       const data = await res.json();
       if (Array.isArray(data)) setZones(data.map((z: any) => ({ id: z.id, name: z.name })));
     } catch {
-      // Silently fail – zones panel will just show nothing
+      // zones panel will just show nothing
     }
   }, [tenantId, waiterToken]);
+
+  const checkActiveShift = useCallback(async () => {
+    try {
+      const res = await fetch("/api/cash/shifts?active=true");
+      if (!res.ok) {
+        setHasActiveShift(false);
+        return;
+      }
+      const data = await res.json();
+      const shifts = Array.isArray(data.shifts) ? data.shifts : [];
+      setHasActiveShift(shifts.length > 0);
+    } catch {
+      setHasActiveShift(false);
+    }
+  }, []);
 
   useEffect(() => {
     fetchTables();
     fetchZones();
-  }, [fetchTables, fetchZones]);
+    checkActiveShift();
+  }, [fetchTables, fetchZones, checkActiveShift]);
 
-  // Poll for table status updates every 15 s
   useEffect(() => {
     intervalRef.current = setInterval(fetchTables, 15_000);
     return () => {
@@ -139,12 +152,13 @@ export function CommanderView({ waiterToken, waiterData, onExit }: CommanderView
     ? tables.filter((t) => t.zoneId === selectedZoneId)
     : tables;
 
+  const availableTables = tables.filter((t) => t.status === "AVAILABLE");
+
   const ROWS_PER_PAGE = 4;
   const CELLS_PER_PAGE = COLS * ROWS_PER_PAGE;
   const totalPages = Math.max(1, Math.ceil(visibleTables.length / CELLS_PER_PAGE));
   const pagedTables = visibleTables.slice(page * CELLS_PER_PAGE, (page + 1) * CELLS_PER_PAGE);
 
-  // Fill remaining cells with nulls so the grid is always full
   const grid: (RestaurantTable | null)[] = [
     ...pagedTables,
     ...Array(Math.max(0, CELLS_PER_PAGE - pagedTables.length)).fill(null),
@@ -157,15 +171,30 @@ export function CommanderView({ waiterToken, waiterData, onExit }: CommanderView
     setSelectedTable((prev) => (prev?.id === table.id ? null : table));
   }
 
-  function handleOpenTable() {
-    if (!selectedTable) return;
-    setOpenOrderTable(selectedTable);
+  function handleOpenTableClick() {
+    if (hasActiveShift === false) {
+      setDialogError("No hay un turno de caja abierto. Pida al cajero que abra turno antes de atender mesas.");
+      setShowOpenDialog(true);
+      return;
+    }
+    if (selectedTable) {
+      setOpenOrderTable(selectedTable);
+    } else {
+      setDialogError(null);
+      setShowOpenDialog(true);
+    }
+  }
+
+  function handleDialogTableSelect(table: RestaurantTable) {
+    setShowOpenDialog(false);
+    setSelectedTable(table);
+    setOpenOrderTable(table);
   }
 
   function handleBackFromOrder() {
     setOpenOrderTable(null);
     setSelectedTable(null);
-    fetchTables(); // Refresh after returning
+    fetchTables();
   }
 
   // ── If in order mode, show POS ─────────────────────────────────────────────
@@ -173,7 +202,6 @@ export function CommanderView({ waiterToken, waiterData, onExit }: CommanderView
   if (openOrderTable) {
     return (
       <div className="h-screen bg-background">
-        {/* Mini header */}
         <div
           style={{
             height: 48,
@@ -198,10 +226,10 @@ export function CommanderView({ waiterToken, waiterData, onExit }: CommanderView
               letterSpacing: 1,
             }}
           >
-            ← MESAS
+            &#8592; MESAS
           </button>
           <span style={{ color: "#F5C518", fontWeight: 700, fontSize: 15 }}>
-            Mesa {openOrderTable.name} · {waiterData.name}
+            Mesa {openOrderTable.name} &middot; {waiterData.name}
           </span>
         </div>
         <div style={{ height: "calc(100vh - 48px)" }}>
@@ -230,6 +258,111 @@ export function CommanderView({ waiterToken, waiterData, onExit }: CommanderView
         overflow: "hidden",
       }}
     >
+      {/* ══ ABRIR MESA DIALOG ══════════════════════════════════════ */}
+      {showOpenDialog && (
+        <div
+          style={{
+            position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 1000,
+            display: "flex", alignItems: "center", justifyContent: "center",
+          }}
+          onClick={() => setShowOpenDialog(false)}
+        >
+          <div
+            style={{
+              background: "#FFF8E7", border: "3px solid #A07030", borderRadius: 10,
+              padding: 0, minWidth: 460, maxWidth: 600, maxHeight: "75vh",
+              display: "flex", flexDirection: "column",
+              boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div
+              style={{
+                background: "#C8A050", color: "#3D2B00", fontWeight: 900, fontSize: 16,
+                padding: "10px 16px", borderRadius: "7px 7px 0 0", letterSpacing: 1,
+                display: "flex", justifyContent: "space-between", alignItems: "center",
+              }}
+            >
+              <span>ABRIR MESA</span>
+              <button
+                onClick={() => setShowOpenDialog(false)}
+                style={{
+                  background: "none", border: "none", color: "#3D2B00", fontSize: 20,
+                  cursor: "pointer", fontWeight: 900, lineHeight: 1,
+                }}
+              >
+                &times;
+              </button>
+            </div>
+
+            <div style={{ padding: 16, overflowY: "auto" }}>
+              {dialogError ? (
+                <div
+                  style={{
+                    background: "#FFEBEE", border: "2px solid #C0392B", borderRadius: 6,
+                    padding: "16px 20px", textAlign: "center",
+                  }}
+                >
+                  <div style={{ fontSize: 28, marginBottom: 8 }}>&#9888;&#65039;</div>
+                  <div style={{ color: "#C0392B", fontWeight: 800, fontSize: 14, marginBottom: 4 }}>
+                    Sin turno de caja activo
+                  </div>
+                  <div style={{ color: "#5a3c10", fontSize: 12 }}>{dialogError}</div>
+                  <button
+                    onClick={() => setShowOpenDialog(false)}
+                    style={{
+                      marginTop: 12, padding: "8px 24px", background: "#C0392B", color: "#fff",
+                      border: "none", borderRadius: 6, fontWeight: 700, fontSize: 12, cursor: "pointer",
+                    }}
+                  >
+                    ENTENDIDO
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <div style={{ fontWeight: 700, fontSize: 12, color: "#5a3c10", marginBottom: 8 }}>
+                    Seleccione una mesa disponible ({availableTables.length}):
+                  </div>
+                  {availableTables.length === 0 ? (
+                    <div style={{ padding: 20, textAlign: "center", color: "#8B6914", fontSize: 12 }}>
+                      No hay mesas disponibles en este momento
+                    </div>
+                  ) : (
+                    <div
+                      style={{
+                        display: "grid", gridTemplateColumns: "repeat(4, 1fr)",
+                        gap: 8, maxHeight: 280, overflowY: "auto",
+                      }}
+                    >
+                      {availableTables.map((t) => (
+                        <button
+                          key={t.id}
+                          onClick={() => handleDialogTableSelect(t)}
+                          style={{
+                            padding: "16px 8px", background: "#F5C518", color: "#3D2B00",
+                            border: "2px solid #C8A050", borderRadius: 8,
+                            fontWeight: 900, fontSize: 18, cursor: "pointer",
+                            display: "flex", flexDirection: "column", alignItems: "center",
+                            transition: "all 0.12s",
+                          }}
+                          onMouseOver={(e) => { e.currentTarget.style.background = "#E87722"; e.currentTarget.style.color = "#fff"; }}
+                          onMouseOut={(e) => { e.currentTarget.style.background = "#F5C518"; e.currentTarget.style.color = "#3D2B00"; }}
+                        >
+                          {t.name}
+                          <span style={{ fontSize: 9, fontWeight: 600, marginTop: 3, opacity: 0.7 }}>
+                            DISPONIBLE
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── TOP ACTION BAR ─────────────────────────────────────── */}
       <div
         style={{
@@ -242,7 +375,6 @@ export function CommanderView({ waiterToken, waiterData, onExit }: CommanderView
           flexShrink: 0,
         }}
       >
-        {/* Logo/Title */}
         <div
           style={{
             color: "#F5C518",
@@ -256,13 +388,12 @@ export function CommanderView({ waiterToken, waiterData, onExit }: CommanderView
           COMANDERO
         </div>
 
-        {/* Action buttons */}
         {[
-          { label: "ABRIR MESA", icon: "🪑", action: handleOpenTable, primary: true, disabled: !selectedTable },
-          { label: "RESERVACION", icon: "📋", action: () => {}, primary: false, disabled: false },
-          { label: "MI VENTA", icon: "🧾", action: () => {}, primary: false, disabled: false },
-          { label: "VER PRECIOS", icon: "💰", action: () => {}, primary: false, disabled: false },
-          { label: "MONEDERO", icon: "💳", action: () => {}, primary: false, disabled: false },
+          { label: "ABRIR MESA", icon: "\uD83E\uDE91", action: handleOpenTableClick, primary: true, disabled: false },
+          { label: "RESERVACION", icon: "\uD83D\uDCCB", action: () => {}, primary: false, disabled: false },
+          { label: "MI VENTA", icon: "\uD83E\uDDFE", action: () => {}, primary: false, disabled: false },
+          { label: "VER PRECIOS", icon: "\uD83D\uDCB0", action: () => {}, primary: false, disabled: false },
+          { label: "MONEDERO", icon: "\uD83D\uDCB3", action: () => {}, primary: false, disabled: false },
         ].map((btn) => (
           <button
             key={btn.label}
@@ -293,10 +424,32 @@ export function CommanderView({ waiterToken, waiterData, onExit }: CommanderView
           </button>
         ))}
 
-        {/* Spacer */}
         <div style={{ flex: 1 }} />
 
-        {/* Status legend */}
+        {/* Shift status indicator */}
+        {hasActiveShift === false && (
+          <div
+            style={{
+              background: "#C0392B", color: "#fff", padding: "4px 10px",
+              borderRadius: 6, fontSize: 10, fontWeight: 700, marginRight: 8,
+              display: "flex", alignItems: "center", gap: 4,
+            }}
+          >
+            <span>&#9888;&#65039;</span> SIN TURNO DE CAJA
+          </div>
+        )}
+        {hasActiveShift === true && (
+          <div
+            style={{
+              background: "#2E7D32", color: "#fff", padding: "4px 10px",
+              borderRadius: 6, fontSize: 10, fontWeight: 700, marginRight: 8,
+              display: "flex", alignItems: "center", gap: 4,
+            }}
+          >
+            <span>&#9989;</span> TURNO ACTIVO
+          </div>
+        )}
+
         <div style={{ display: "flex", gap: 12, alignItems: "center", marginRight: 8 }}>
           {[
             { color: "#F5C518", label: "Disponible" },
@@ -310,7 +463,6 @@ export function CommanderView({ waiterToken, waiterData, onExit }: CommanderView
           ))}
         </div>
 
-        {/* Refresh indicator */}
         {loading && (
           <span style={{ color: "#F5C518", fontSize: 11, fontWeight: 600 }}>Actualizando...</span>
         )}
@@ -336,7 +488,23 @@ export function CommanderView({ waiterToken, waiterData, onExit }: CommanderView
             return (
               <div
                 key={table ? table.id : `empty-${idx}`}
-                onClick={() => handleCellClick(table)}
+                onClick={() => {
+                  if (!table) return;
+                  if (table.status === "AVAILABLE") {
+                    setSelectedTable((prev) => (prev?.id === table.id ? null : table));
+                  } else {
+                    setSelectedTable(table);
+                  }
+                }}
+                onDoubleClick={() => {
+                  if (table && table.status === "AVAILABLE") {
+                    if (hasActiveShift === false) {
+                      handleOpenTableClick();
+                      return;
+                    }
+                    setOpenOrderTable(table);
+                  }
+                }}
                 style={{
                   background: table ? cellBg(table.status, isSelected) : "#3D2B00",
                   border: isSelected
@@ -415,7 +583,6 @@ export function CommanderView({ waiterToken, waiterData, onExit }: CommanderView
             flexShrink: 0,
           }}
         >
-          {/* Waiter info */}
           <div
             style={{
               background: "#C8A050",
@@ -452,7 +619,6 @@ export function CommanderView({ waiterToken, waiterData, onExit }: CommanderView
             </div>
           </div>
 
-          {/* Areas */}
           <div
             style={{
               background: "#D4B870",
@@ -472,7 +638,6 @@ export function CommanderView({ waiterToken, waiterData, onExit }: CommanderView
             >
               AREAS
             </div>
-            {/* All areas button */}
             <button
               onClick={() => { setSelectedZoneId(null); setPage(0); }}
               style={{
@@ -492,7 +657,6 @@ export function CommanderView({ waiterToken, waiterData, onExit }: CommanderView
               TODAS LAS<br />AREAS
             </button>
 
-            {/* Zone buttons */}
             {zones.map((zone) => (
               <button
                 key={zone.id}
@@ -517,10 +681,8 @@ export function CommanderView({ waiterToken, waiterData, onExit }: CommanderView
             ))}
           </div>
 
-          {/* Spacer */}
           <div style={{ flex: 1 }} />
 
-          {/* Navigation */}
           <div
             style={{
               display: "flex",
@@ -545,7 +707,7 @@ export function CommanderView({ waiterToken, waiterData, onExit }: CommanderView
                 cursor: page === 0 ? "not-allowed" : "pointer",
               }}
             >
-              ←
+              &#8592;
             </button>
             <button
               onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
@@ -562,11 +724,10 @@ export function CommanderView({ waiterToken, waiterData, onExit }: CommanderView
                 cursor: page >= totalPages - 1 ? "not-allowed" : "pointer",
               }}
             >
-              →
+              &#8594;
             </button>
           </div>
 
-          {/* Exit button */}
           <button
             onClick={onExit}
             style={{
@@ -586,7 +747,7 @@ export function CommanderView({ waiterToken, waiterData, onExit }: CommanderView
               gap: 4,
             }}
           >
-            <span style={{ fontSize: 20 }}>🚪</span>
+            <span style={{ fontSize: 20 }}>{"\uD83D\uDEAA"}</span>
             ABANDONAR
           </button>
         </div>
@@ -605,45 +766,40 @@ export function CommanderView({ waiterToken, waiterData, onExit }: CommanderView
           flexShrink: 0,
         }}
       >
-        {/* Selected table info */}
         <div style={{ color: "#F5C518", fontWeight: 700, fontSize: 13 }}>
           {selectedTable
-            ? `Mesa seleccionada: ${selectedTable.name} — ${STATUS_LABELS[selectedTable.status] ?? selectedTable.status}`
-            : `${visibleTables.length} mesas · Página ${page + 1} / ${totalPages}`}
+            ? `Mesa seleccionada: ${selectedTable.name} \u2014 ${STATUS_LABELS[selectedTable.status] ?? selectedTable.status}`
+            : `${visibleTables.length} mesas \u00B7 P\u00E1gina ${page + 1} / ${totalPages}`}
         </div>
 
-        {/* Error */}
         {error && (
           <span style={{ color: "#ff7070", fontSize: 12, fontWeight: 600 }}>
             {error}
           </span>
         )}
 
-        {/* SIGUIENTE button */}
         <button
-          onClick={handleOpenTable}
-          disabled={!selectedTable}
+          onClick={handleOpenTableClick}
           style={{
-            background: selectedTable ? "#E87722" : "#5a3c10",
-            color: selectedTable ? "#fff" : "#888",
-            border: `2px solid ${selectedTable ? "#F5A623" : "#5a3c10"}`,
+            background: "#E87722",
+            color: "#fff",
+            border: "2px solid #F5A623",
             borderRadius: 8,
             padding: "10px 32px",
             fontWeight: 900,
             fontSize: 15,
             letterSpacing: 2,
-            cursor: selectedTable ? "pointer" : "not-allowed",
+            cursor: "pointer",
             display: "flex",
             alignItems: "center",
             gap: 8,
             transition: "all 0.15s",
           }}
         >
-          SIGUIENTE →
+          {selectedTable ? `ABRIR MESA ${selectedTable.name}` : "ABRIR MESA"} &#8594;
         </button>
       </div>
 
-      {/* Pulse animation for occupied indicator */}
       <style>{`
         @keyframes pulse {
           0%, 100% { opacity: 1; transform: scale(1); }

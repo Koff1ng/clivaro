@@ -87,6 +87,14 @@ export async function POST(req: NextRequest) {
 
     const prisma = await getTenantPrismaClient(context.tenantId)
 
+    // Require an active cash shift before opening a new table
+    const activeShift = await prisma.cashShift.findFirst({
+      where: { status: 'OPEN' },
+    })
+    if (!activeShift) {
+      return apiError(403, 'No hay un turno de caja abierto. Abra un turno antes de abrir mesas.')
+    }
+
     // If an open session already exists, return it (idempotent)
     const existing = await prisma.tableSession.findFirst({
       where: { tableId: parsed.data.tableId, status: 'OPEN' },
