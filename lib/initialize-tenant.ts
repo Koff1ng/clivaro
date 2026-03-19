@@ -174,6 +174,46 @@ async function initializePostgresTenant(databaseUrl: string, tenantId: string, t
     await srClient.end()
   }
 
+  // Step 2.7: Sync restaurant module columns (rate-limiting, fiscal)
+  console.log(`[STEP 2.7/4] Sincronizando campos de restaurante y fiscal en "${schemaName}"...`)
+  const restClient = new Client({ connectionString: tenantSchemaUrl })
+  try {
+    await restClient.connect()
+    await restClient.query(`SET search_path TO "${schemaName}"`)
+
+    // WaiterProfile rate-limiting columns
+    await restClient.query(`
+      DO $$ BEGIN
+        ALTER TABLE "WaiterProfile" ADD COLUMN IF NOT EXISTS "failedAttempts" INTEGER NOT NULL DEFAULT 0;
+        ALTER TABLE "WaiterProfile" ADD COLUMN IF NOT EXISTS "lockedUntil" TIMESTAMP(3);
+      EXCEPTION WHEN undefined_table THEN NULL;
+      END $$;
+    `)
+
+    // Customer fiscal field
+    await restClient.query(`
+      ALTER TABLE "Customer" ADD COLUMN IF NOT EXISTS "isRetentionAgent" BOOLEAN NOT NULL DEFAULT false;
+    `)
+
+    // Invoice tip amount
+    await restClient.query(`
+      ALTER TABLE "Invoice" ADD COLUMN IF NOT EXISTS "tipAmount" DOUBLE PRECISION NOT NULL DEFAULT 0;
+    `)
+
+    // Drop pin uniqueness if it exists (two waiters CAN have same PIN)
+    await restClient.query(`
+      DO $$ BEGIN
+        DROP INDEX IF EXISTS "WaiterProfile_tenantId_pin_key";
+      END $$;
+    `)
+
+    console.log('[STEP 2.7/4] ✓ Campos de restaurante sincronizados')
+  } catch (restErr: any) {
+    console.warn(`[TENANT INIT] Warning during restaurant sync: ${restErr.message}`)
+  } finally {
+    await restClient.end()
+  }
+
   // Step 3: Seed initial data (admin user, warehouse) via PrismaClient
   console.log('[STEP 3/4] Creando datos iniciales (admin, roles, almacén)...')
 
