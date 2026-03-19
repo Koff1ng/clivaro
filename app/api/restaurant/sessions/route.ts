@@ -8,6 +8,7 @@ import { PERMISSIONS } from '@/lib/permissions'
 
 const createSessionSchema = z.object({
   tableId: z.string().min(1),
+  waiterId: z.string().optional(), // For manager-created sessions
 })
 
 function apiError(status: number, message: string, details?: unknown) {
@@ -95,9 +96,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(existing)
     }
 
-    const waiterId = context.waiter?.id
+    // Accept waiterId from waiter token OR from body (manager assigning to a waiter)
+    const waiterId = context.waiter?.id ?? parsed.data.waiterId
     if (!waiterId) {
-      return apiError(403, 'Waiter context required to open a table session')
+      return apiError(403, 'waiterId required: use waiter token or pass waiterId in body')
     }
 
     const session = await prisma.$transaction(async (tx) => {

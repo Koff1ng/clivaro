@@ -1,8 +1,7 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useToast } from "@/components/ui/toast";
-import { formatCurrency } from "@/lib/utils";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -34,344 +33,95 @@ interface OpenSession {
   lines: AccountLine[];
 }
 
+interface RestaurantTable {
+  id: string;
+  name: string;
+  status: string;
+  zoneId?: string;
+}
+
+interface Waiter {
+  id: string;
+  name: string;
+  code: string;
+}
+
+interface Product {
+  id: string;
+  name: string;
+  sku: string;
+  price: number;
+  taxRate: number;
+}
+
+interface CartLine {
+  productId: string;
+  productName: string;
+  quantity: number;
+  unitPrice: number;
+  notes: string;
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function fmtTime(iso: string) {
   return new Date(iso).toLocaleString("es-MX", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: true,
+    day: "2-digit", month: "2-digit", year: "numeric",
+    hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: true,
   });
 }
 
-function fmtCur(n: number) {
-  return `$${n.toFixed(2)}`;
-}
+function fmtCur(n: number) { return `$${n.toFixed(2)}`; }
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const S = {
-  root: {
-    display: "flex",
-    height: "100vh",
-    background: "#C8A050",
-    fontFamily: "'Segoe UI', Arial, sans-serif",
-    fontSize: 12,
-    overflow: "hidden",
-    color: "#1a0a00",
-  } as React.CSSProperties,
+  root: { display: "flex", height: "100vh", background: "#C8A050", fontFamily: "'Segoe UI', Arial, sans-serif", fontSize: 12, overflow: "hidden", color: "#1a0a00" } as React.CSSProperties,
+  leftPanel: { width: 210, background: "#E8D5B0", borderRight: "2px solid #A07030", display: "flex", flexDirection: "column", flexShrink: 0 } as React.CSSProperties,
+  leftHeader: { background: "#C8A050", color: "#3D2B00", fontWeight: 900, fontSize: 14, padding: "6px 10px", borderBottom: "2px solid #A07030", letterSpacing: 1, textAlign: "center" } as React.CSSProperties,
+  leftSection: { padding: "6px 8px", borderBottom: "1px solid #C8A050", background: "#F0E0B0" } as React.CSSProperties,
+  labelSm: { fontSize: 11, fontWeight: 700, color: "#5a3c10", marginBottom: 2 } as React.CSSProperties,
+  inputSm: { width: "100%", padding: "3px 6px", border: "1px solid #A07030", borderRadius: 3, background: "#fff", fontSize: 11, color: "#1a0a00", boxSizing: "border-box" } as React.CSSProperties,
+  accountTable: { flex: 1, overflow: "auto" } as React.CSSProperties,
+  accountTableHead: { background: "#C8A050", position: "sticky", top: 0 } as React.CSSProperties,
+  th: { padding: "4px 6px", fontWeight: 800, fontSize: 10, color: "#3D2B00", borderRight: "1px solid #A07030", whiteSpace: "nowrap", textAlign: "left" } as React.CSSProperties,
+  main: { flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" } as React.CSSProperties,
+  actionBar: { background: "#D4A030", borderBottom: "2px solid #A07030", padding: "4px 6px", display: "flex", gap: 3, flexWrap: "wrap", flexShrink: 0 } as React.CSSProperties,
+  detailForm: { background: "#FFF8E7", borderBottom: "1px solid #C8A050", padding: "6px 10px", flexShrink: 0 } as React.CSSProperties,
+  formGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "3px 16px" } as React.CSSProperties,
+  formRow: { display: "flex", alignItems: "center", gap: 4 } as React.CSSProperties,
+  formLabel: { fontSize: 10, fontWeight: 700, color: "#5a3c10", whiteSpace: "nowrap", minWidth: 80 } as React.CSSProperties,
+  formValue: { padding: "2px 6px", border: "1px solid #C8A050", borderRadius: 2, background: "#fff", fontSize: 11, color: "#1a0a00", flex: 1, minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" } as React.CSSProperties,
+  formValueHL: { padding: "2px 6px", border: "1px solid #C8A050", borderRadius: 2, background: "#FFF3CD", fontSize: 11, fontWeight: 700, color: "#1a0a00", flex: 1, minWidth: 0 } as React.CSSProperties,
+  itemsWrapper: { flex: 1, overflow: "auto", background: "#fff", borderBottom: "1px solid #C8A050" } as React.CSSProperties,
+  itemsTable: { width: "100%", borderCollapse: "collapse" as const, fontSize: 11 } as React.CSSProperties,
+  itemsTh: { background: "#C8A050", padding: "4px 8px", fontWeight: 800, color: "#3D2B00", borderRight: "1px solid #A07030", position: "sticky" as const, top: 0, whiteSpace: "nowrap", textAlign: "left" as const } as React.CSSProperties,
+  bottom: { display: "flex", background: "#E8D5B0", borderTop: "2px solid #A07030", flexShrink: 0, height: 180 } as React.CSSProperties,
+  bottomLeft: { flex: 1, display: "flex", flexDirection: "column", borderRight: "2px solid #A07030", padding: "4px 6px", gap: 4 } as React.CSSProperties,
+  bottomBtnRow: { display: "flex", gap: 3 } as React.CSSProperties,
+  bottomBtn: { background: "linear-gradient(180deg,#F5D060 0%,#D4A030 100%)", color: "#3D2B00", border: "1px solid #9a7525", borderRadius: 4, padding: "4px 8px", cursor: "pointer", fontWeight: 700, fontSize: 10, letterSpacing: 0.2, display: "flex", flexDirection: "column" as const, alignItems: "center", gap: 1, minWidth: 68, boxShadow: "0 1px 0 #fff4 inset" } as React.CSSProperties,
+  bottomRight: { width: 240, background: "#FFF8E7", padding: "8px 12px", display: "flex", flexDirection: "column", gap: 2, justifyContent: "center" } as React.CSSProperties,
+  totalRow: { display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #E0C880", paddingBottom: 2 } as React.CSSProperties,
+  totalLabel: { fontSize: 11, fontWeight: 700, color: "#5a3c10" } as React.CSSProperties,
+  totalValue: { fontSize: 11, fontWeight: 700, color: "#1a0a00" } as React.CSSProperties,
+  // Modal
+  overlay: { position: "fixed" as const, inset: 0, background: "rgba(0,0,0,0.55)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center" } as React.CSSProperties,
+  modal: { background: "#FFF8E7", border: "3px solid #A07030", borderRadius: 8, padding: 20, minWidth: 420, maxWidth: 680, maxHeight: "80vh", display: "flex", flexDirection: "column" as const, gap: 12, boxShadow: "0 8px 32px rgba(0,0,0,0.4)" } as React.CSSProperties,
+  modalHeader: { background: "#C8A050", color: "#3D2B00", fontWeight: 900, fontSize: 15, padding: "8px 14px", margin: "-20px -20px 0", borderRadius: "5px 5px 0 0", letterSpacing: 1 } as React.CSSProperties,
+  tableGrid: { display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 6, overflowY: "auto" as const, maxHeight: 240 } as React.CSSProperties,
+};
 
-  // ── Left panel ──
-  leftPanel: {
-    width: 210,
-    background: "#E8D5B0",
-    borderRight: "2px solid #A07030",
-    display: "flex",
-    flexDirection: "column",
-    flexShrink: 0,
-  } as React.CSSProperties,
-
-  leftHeader: {
-    background: "#C8A050",
-    color: "#3D2B00",
-    fontWeight: 900,
-    fontSize: 14,
-    padding: "6px 10px",
-    borderBottom: "2px solid #A07030",
-    letterSpacing: 1,
-    textAlign: "center",
-  } as React.CSSProperties,
-
-  leftSection: {
-    padding: "6px 8px",
-    borderBottom: "1px solid #C8A050",
-    background: "#F0E0B0",
-  } as React.CSSProperties,
-
-  labelSm: {
-    fontSize: 11,
-    fontWeight: 700,
-    color: "#5a3c10",
-    marginBottom: 2,
-  } as React.CSSProperties,
-
-  inputSm: {
-    width: "100%",
-    padding: "3px 6px",
-    border: "1px solid #A07030",
-    borderRadius: 3,
-    background: "#fff",
-    fontSize: 11,
-    color: "#1a0a00",
-    boxSizing: "border-box",
-  } as React.CSSProperties,
-
-  accountTable: {
-    flex: 1,
-    overflow: "auto",
-  } as React.CSSProperties,
-
-  accountTableHead: {
-    background: "#C8A050",
-    position: "sticky",
-    top: 0,
-  } as React.CSSProperties,
-
-  th: {
-    padding: "4px 6px",
-    fontWeight: 800,
-    fontSize: 10,
-    color: "#3D2B00",
-    borderRight: "1px solid #A07030",
-    whiteSpace: "nowrap",
-    textAlign: "left",
-  } as React.CSSProperties,
-
-  // ── Main content ──
-  main: {
-    flex: 1,
-    display: "flex",
-    flexDirection: "column",
-    overflow: "hidden",
-  } as React.CSSProperties,
-
-  // ── Action bar ──
-  actionBar: {
-    background: "#D4A030",
-    borderBottom: "2px solid #A07030",
-    padding: "4px 6px",
-    display: "flex",
-    gap: 3,
-    flexWrap: "wrap",
-    flexShrink: 0,
-  } as React.CSSProperties,
-
-  actionBtn: (disabled?: boolean, primary?: boolean) => ({
-    background: disabled
-      ? "#b8902a"
-      : primary
-      ? "#E87722"
-      : "linear-gradient(180deg, #F5D060 0%, #D4A030 100%)",
+function actionBtn(disabled = false, primary = false): React.CSSProperties {
+  return {
+    background: disabled ? "#b8902a" : primary ? "#E87722" : "linear-gradient(180deg,#F5D060 0%,#D4A030 100%)",
     color: disabled ? "#8B6914" : "#3D2B00",
     border: `1px solid ${disabled ? "#9a7525" : "#9a7525"}`,
-    borderRadius: 4,
-    padding: "4px 8px",
-    cursor: disabled ? "not-allowed" : "pointer",
-    fontWeight: 700,
-    fontSize: 10,
-    letterSpacing: 0.3,
-    display: "flex",
-    flexDirection: "column" as const,
-    alignItems: "center",
-    gap: 1,
-    minWidth: 72,
-    boxShadow: disabled ? "none" : "0 1px 0 #fff4 inset",
-    opacity: disabled ? 0.6 : 1,
-    transition: "opacity 0.1s",
-  } as React.CSSProperties),
-
-  // ── Detail form ──
-  detailForm: {
-    background: "#FFF8E7",
-    borderBottom: "1px solid #C8A050",
-    padding: "6px 10px",
-    flexShrink: 0,
-  } as React.CSSProperties,
-
-  formGrid: {
-    display: "grid",
-    gridTemplateColumns: "1fr 1fr",
-    gap: "3px 16px",
-  } as React.CSSProperties,
-
-  formRow: {
-    display: "flex",
-    alignItems: "center",
-    gap: 4,
-  } as React.CSSProperties,
-
-  formLabel: {
-    fontSize: 10,
-    fontWeight: 700,
-    color: "#5a3c10",
-    whiteSpace: "nowrap",
-    minWidth: 80,
-  } as React.CSSProperties,
-
-  formValue: {
-    padding: "2px 6px",
-    border: "1px solid #C8A050",
-    borderRadius: 2,
-    background: "#fff",
-    fontSize: 11,
-    color: "#1a0a00",
-    flex: 1,
-    minWidth: 0,
-    whiteSpace: "nowrap",
-    overflow: "hidden",
-    textOverflow: "ellipsis",
-  } as React.CSSProperties,
-
-  formValueHL: {
-    padding: "2px 6px",
-    border: "1px solid #C8A050",
-    borderRadius: 2,
-    background: "#FFF3CD",
-    fontSize: 11,
-    fontWeight: 700,
-    color: "#1a0a00",
-    flex: 1,
-    minWidth: 0,
-  } as React.CSSProperties,
-
-  // ── Items table ──
-  itemsWrapper: {
-    flex: 1,
-    overflow: "auto",
-    background: "#fff",
-    borderBottom: "1px solid #C8A050",
-  } as React.CSSProperties,
-
-  itemsTable: {
-    width: "100%",
-    borderCollapse: "collapse" as const,
-    fontSize: 11,
-  } as React.CSSProperties,
-
-  itemsTh: {
-    background: "#C8A050",
-    padding: "4px 8px",
-    fontWeight: 800,
-    color: "#3D2B00",
-    borderRight: "1px solid #A07030",
-    position: "sticky" as const,
-    top: 0,
-    whiteSpace: "nowrap",
-    textAlign: "left" as const,
-  } as React.CSSProperties,
-
-  // ── Bottom ──
-  bottom: {
-    display: "flex",
-    background: "#E8D5B0",
-    borderTop: "2px solid #A07030",
-    flexShrink: 0,
-    height: 180,
-  } as React.CSSProperties,
-
-  bottomLeft: {
-    flex: 1,
-    display: "flex",
-    flexDirection: "column",
-    borderRight: "2px solid #A07030",
-    padding: "4px 6px",
-    gap: 4,
-  } as React.CSSProperties,
-
-  observRow: {
-    display: "flex",
-    gap: 4,
-    alignItems: "flex-start",
-  } as React.CSSProperties,
-
-  observLabel: {
-    fontSize: 11,
-    fontWeight: 700,
-    color: "#5a3c10",
-    whiteSpace: "nowrap",
-    paddingTop: 3,
-  } as React.CSSProperties,
-
-  observInput: {
-    flex: 1,
-    padding: "3px 6px",
-    border: "1px solid #A07030",
-    borderRadius: 3,
-    background: "#fff",
-    fontSize: 11,
-    resize: "none",
-    height: 36,
-  } as React.CSSProperties,
-
-  bottomBtnRow: {
-    display: "flex",
-    gap: 3,
-  } as React.CSSProperties,
-
-  bottomBtn: {
-    background: "linear-gradient(180deg, #F5D060 0%, #D4A030 100%)",
-    color: "#3D2B00",
-    border: "1px solid #9a7525",
-    borderRadius: 4,
-    padding: "4px 8px",
-    cursor: "pointer",
-    fontWeight: 700,
-    fontSize: 10,
-    letterSpacing: 0.2,
-    display: "flex",
-    flexDirection: "column" as const,
-    alignItems: "center",
-    gap: 1,
-    minWidth: 68,
-    boxShadow: "0 1px 0 #fff4 inset",
-  } as React.CSSProperties,
-
-  bottomRight: {
-    width: 240,
-    background: "#FFF8E7",
-    padding: "8px 12px",
-    display: "flex",
-    flexDirection: "column",
-    gap: 2,
-    justifyContent: "center",
-  } as React.CSSProperties,
-
-  totalRow: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    borderBottom: "1px solid #E0C880",
-    paddingBottom: 2,
-  } as React.CSSProperties,
-
-  totalLabel: {
-    fontSize: 11,
-    fontWeight: 700,
-    color: "#5a3c10",
-  } as React.CSSProperties,
-
-  totalValue: {
-    fontSize: 11,
-    fontWeight: 700,
-    color: "#1a0a00",
-  } as React.CSSProperties,
-
-  totalFinalRow: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginTop: 4,
-    paddingTop: 4,
-    borderTop: "2px solid #A07030",
-  } as React.CSSProperties,
-
-  totalFinalLabel: {
-    fontSize: 16,
-    fontWeight: 900,
-    color: "#3D2B00",
-    letterSpacing: 1,
-  } as React.CSSProperties,
-
-  totalFinalValue: {
-    fontSize: 18,
-    fontWeight: 900,
-    color: "#C0392B",
-  } as React.CSSProperties,
-};
+    borderRadius: 4, padding: "4px 8px", cursor: disabled ? "not-allowed" : "pointer",
+    fontWeight: 700, fontSize: 10, letterSpacing: 0.3,
+    display: "flex", flexDirection: "column", alignItems: "center", gap: 1,
+    minWidth: 72, boxShadow: disabled ? "none" : "0 1px 0 #fff4 inset", opacity: disabled ? 0.6 : 1,
+  };
+}
 
 // ─── Main Component ────────────────────────────────────────────────────────────
 
@@ -384,6 +134,25 @@ export const CashierBillingConsole: React.FC = () => {
   const [observations, setObservations] = useState("");
   const { toast } = useToast();
 
+  // ── ABRIR CUENTA state ────────────────────────────────────────────────────
+  const [showOpenAccount, setShowOpenAccount] = useState(false);
+  const [tables, setTables] = useState<RestaurantTable[]>([]);
+  const [waiters, setWaiters] = useState<Waiter[]>([]);
+  const [pickedTable, setPickedTable] = useState<RestaurantTable | null>(null);
+  const [pickedWaiter, setPickedWaiter] = useState<string>("");
+  const [opening, setOpening] = useState(false);
+
+  // ── CAPTURA state ─────────────────────────────────────────────────────────
+  const [showCaptura, setShowCaptura] = useState(false);
+  const [productSearch, setProductSearch] = useState("");
+  const [products, setProducts] = useState<Product[]>([]);
+  const [capturaCart, setCapturaCart] = useState<CartLine[]>([]);
+  const [sendingOrder, setSendingOrder] = useState(false);
+  const searchRef = useRef<HTMLInputElement>(null);
+
+  // ── CANCELAR PROD state ───────────────────────────────────────────────────
+  const [cancellingLine, setCancellingLine] = useState<string | null>(null);
+
   // ── Data ──────────────────────────────────────────────────────────────────
 
   const fetchSessions = useCallback(async () => {
@@ -393,12 +162,8 @@ export const CashierBillingConsole: React.FC = () => {
       if (!res.ok) throw new Error(data.error || "No se pudieron cargar las cuentas");
       const arr: OpenSession[] = Array.isArray(data.accounts) ? data.accounts : [];
       setSessions(arr);
-      // Auto-select first if none selected
       setSelectedSession((prev) => {
-        if (prev) {
-          const refreshed = arr.find((s) => s.id === prev.id);
-          return refreshed ?? (arr[0] ?? null);
-        }
+        if (prev) { const r = arr.find((s) => s.id === prev.id); return r ?? (arr[0] ?? null); }
         return arr[0] ?? null;
       });
     } catch (err: any) {
@@ -408,13 +173,148 @@ export const CashierBillingConsole: React.FC = () => {
     }
   }, []);
 
-  useEffect(() => {
-    fetchSessions();
-    const iv = setInterval(fetchSessions, 20_000);
-    return () => clearInterval(iv);
-  }, [fetchSessions]);
+  useEffect(() => { fetchSessions(); const iv = setInterval(fetchSessions, 20_000); return () => clearInterval(iv); }, [fetchSessions]);
 
-  // ── Actions ───────────────────────────────────────────────────────────────
+  // ── Open Account ─────────────────────────────────────────────────────────
+
+  const handleOpenAccountClick = async () => {
+    try {
+      const [tablesRes, waitersRes] = await Promise.all([
+        fetch("/api/restaurant/tables"),
+        fetch("/api/restaurant/waiters"),
+      ]);
+      const tablesData = await tablesRes.json();
+      const waitersData = await waitersRes.json();
+      const availTables: RestaurantTable[] = (Array.isArray(tablesData) ? tablesData : []).filter((t: RestaurantTable) => t.status === "AVAILABLE");
+      setTables(availTables);
+      setWaiters(Array.isArray(waitersData) ? waitersData : []);
+      setPickedTable(null);
+      setPickedWaiter(Array.isArray(waitersData) && waitersData.length > 0 ? waitersData[0].id : "");
+      setShowOpenAccount(true);
+    } catch (err: any) {
+      toast("Error al cargar mesas/meseros", "error");
+    }
+  };
+
+  const handleConfirmOpenAccount = async () => {
+    if (!pickedTable) { toast("Selecciona una mesa", "warning"); return; }
+    if (!pickedWaiter) { toast("Selecciona un mesero", "warning"); return; }
+    setOpening(true);
+    try {
+      const res = await fetch("/api/restaurant/sessions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tableId: pickedTable.id, waiterId: pickedWaiter }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "No se pudo abrir la cuenta");
+      toast(`Cuenta abierta: Mesa ${pickedTable.name}`, "success");
+      setShowOpenAccount(false);
+      await fetchSessions();
+    } catch (err: any) {
+      toast(err.message, "error");
+    } finally {
+      setOpening(false);
+    }
+  };
+
+  // ── Captura (add products to session) ────────────────────────────────────
+
+  const handleCapturaClick = () => {
+    if (!selectedSession) { toast("Selecciona una cuenta primero", "warning"); return; }
+    setCapturaCart([]);
+    setProductSearch("");
+    setProducts([]);
+    setShowCaptura(true);
+    setTimeout(() => searchRef.current?.focus(), 100);
+  };
+
+  const searchProducts = useCallback(async (q: string) => {
+    if (!q.trim()) { setProducts([]); return; }
+    try {
+      const res = await fetch(`/api/pos/products?search=${encodeURIComponent(q)}&limit=20`);
+      const data = await res.json();
+      setProducts(Array.isArray(data.products) ? data.products : []);
+    } catch { setProducts([]); }
+  }, []);
+
+  useEffect(() => {
+    const t = setTimeout(() => searchProducts(productSearch), 250);
+    return () => clearTimeout(t);
+  }, [productSearch, searchProducts]);
+
+  const addToCaptura = (product: Product) => {
+    setCapturaCart((prev) => {
+      const ex = prev.find((l) => l.productId === product.id);
+      if (ex) return prev.map((l) => l.productId === product.id ? { ...l, quantity: l.quantity + 1 } : l);
+      return [...prev, { productId: product.id, productName: product.name, quantity: 1, unitPrice: product.price, notes: "" }];
+    });
+  };
+
+  const removeFromCaptura = (productId: string) => {
+    setCapturaCart((prev) => prev.filter((l) => l.productId !== productId));
+  };
+
+  const handleSendCaptura = async () => {
+    if (!selectedSession || capturaCart.length === 0) return;
+    setSendingOrder(true);
+    try {
+      const res = await fetch("/api/restaurant/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sessionId: selectedSession.id,
+          items: capturaCart.map((l) => ({
+            productId: l.productId,
+            quantity: l.quantity,
+            unitPrice: l.unitPrice,
+            notes: l.notes || null,
+          })),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "No se pudo crear la orden");
+
+      // Send to kitchen
+      const kitchenRes = await fetch(`/api/restaurant/orders/${data.id}/send-kitchen`, { method: "POST" });
+      if (!kitchenRes.ok) {
+        const kd = await kitchenRes.json();
+        throw new Error(kd.error || "No se pudo enviar a cocina");
+      }
+
+      toast("Productos enviados a cocina", "success");
+      setShowCaptura(false);
+      await fetchSessions();
+    } catch (err: any) {
+      toast(err.message, "error");
+    } finally {
+      setSendingOrder(false);
+    }
+  };
+
+  // ── Cancel product line ───────────────────────────────────────────────────
+
+  const handleCancelLine = async (lineId: string) => {
+    if (!confirm("Cancelar este producto de la cuenta?")) return;
+    setCancellingLine(lineId);
+    try {
+      const res = await fetch(`/api/restaurant/kds/items/${lineId}/status`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "CANCELLED" }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "No se pudo cancelar el producto");
+      toast("Producto cancelado", "success");
+      await fetchSessions();
+    } catch (err: any) {
+      toast(err.message, "error");
+    } finally {
+      setCancellingLine(null);
+    }
+  };
+
+  // ── Bill ─────────────────────────────────────────────────────────────────
 
   const handleBill = async () => {
     if (!selectedSession) return;
@@ -428,34 +328,23 @@ export const CashierBillingConsole: React.FC = () => {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "No se pudo cerrar la sesion");
-      toast(`Mesa ${selectedSession.tableNumber} cerrada y facturada`, "success");
+      toast(`Mesa ${selectedSession.tableNumber} cerrada`, "success");
       setObservations("");
       await fetchSessions();
     } catch (err: any) {
-      toast(err.message || "Error al facturar", "error");
+      toast(err.message, "error");
     } finally {
       setBilling(false);
     }
   };
 
-  const handlePrintAccount = () => {
-    if (!selectedSession) return;
-    toast("Imprimiendo cuenta...", "info");
-  };
-
-  // ── Filtered list ─────────────────────────────────────────────────────────
+  // ── Computed ──────────────────────────────────────────────────────────────
 
   const filtered = sessions.filter((s) => {
     if (!searchText) return true;
     const q = searchText.toLowerCase();
-    return (
-      s.tableNumber.toLowerCase().includes(q) ||
-      s.waiterName.toLowerCase().includes(q) ||
-      s.zoneName.toLowerCase().includes(q)
-    );
+    return s.tableNumber.toLowerCase().includes(q) || s.waiterName.toLowerCase().includes(q) || s.zoneName.toLowerCase().includes(q);
   });
-
-  // ── Totals for selected ───────────────────────────────────────────────────
 
   const sel = selectedSession;
   const subtotal = sel?.subtotal ?? 0;
@@ -467,19 +356,7 @@ export const CashierBillingConsole: React.FC = () => {
 
   if (loading) {
     return (
-      <div
-        style={{
-          height: "100vh",
-          background: "#C8A050",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          color: "#3D2B00",
-          fontWeight: 700,
-          fontSize: 16,
-          letterSpacing: 2,
-        }}
-      >
+      <div style={{ height: "100vh", background: "#C8A050", display: "flex", alignItems: "center", justifyContent: "center", color: "#3D2B00", fontWeight: 700, fontSize: 16, letterSpacing: 2 }}>
         Cargando cuentas...
       </div>
     );
@@ -487,489 +364,352 @@ export const CashierBillingConsole: React.FC = () => {
 
   return (
     <div style={S.root}>
-      {/* ══ LEFT PANEL ══════════════════════════════════════════ */}
+
+      {/* ══ OPEN ACCOUNT MODAL ══════════════════════════════════════ */}
+      {showOpenAccount && (
+        <div style={S.overlay} onClick={() => setShowOpenAccount(false)}>
+          <div style={S.modal} onClick={(e) => e.stopPropagation()}>
+            <div style={S.modalHeader}>ABRIR CUENTA — Seleccionar Mesa y Mesero</div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 8 }}>
+              {/* Waiter selector */}
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 11, color: "#5a3c10", marginBottom: 4 }}>MESERO:</div>
+                <select
+                  value={pickedWaiter}
+                  onChange={(e) => setPickedWaiter(e.target.value)}
+                  style={{ ...S.inputSm, height: 30, fontSize: 13 }}
+                >
+                  {waiters.length === 0 && <option value="">Sin meseros activos</option>}
+                  {waiters.map((w) => <option key={w.id} value={w.id}>{w.name} ({w.code})</option>)}
+                </select>
+              </div>
+
+              {/* Table grid */}
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 11, color: "#5a3c10", marginBottom: 4 }}>
+                  MESA (disponibles: {tables.length}):
+                </div>
+                {tables.length === 0 ? (
+                  <div style={{ padding: "16px 0", textAlign: "center", color: "#8B6914", fontSize: 12 }}>
+                    No hay mesas disponibles
+                  </div>
+                ) : (
+                  <div style={S.tableGrid}>
+                    {tables.map((t) => (
+                      <button
+                        key={t.id}
+                        onClick={() => setPickedTable(t)}
+                        style={{
+                          padding: "12px 6px",
+                          background: pickedTable?.id === t.id ? "#E87722" : "#F5C518",
+                          color: pickedTable?.id === t.id ? "#fff" : "#3D2B00",
+                          border: `2px solid ${pickedTable?.id === t.id ? "#E87722" : "#C8A050"}`,
+                          borderRadius: 6, fontWeight: 900, fontSize: 16, cursor: "pointer",
+                          display: "flex", flexDirection: "column", alignItems: "center",
+                        }}
+                      >
+                        {t.name}
+                        <span style={{ fontSize: 9, fontWeight: 600, marginTop: 2, opacity: 0.7 }}>DISPONIBLE</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Buttons */}
+              <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 4 }}>
+                <button onClick={() => setShowOpenAccount(false)} style={{ ...S.bottomBtn, minWidth: 80 }}>CANCELAR</button>
+                <button
+                  onClick={handleConfirmOpenAccount}
+                  disabled={!pickedTable || !pickedWaiter || opening}
+                  style={{ ...S.bottomBtn, minWidth: 100, background: pickedTable && pickedWaiter ? "#E87722" : "#b8902a", color: "#fff", opacity: (!pickedTable || !pickedWaiter) ? 0.5 : 1 }}
+                >
+                  {opening ? "Abriendo..." : "ABRIR CUENTA"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══ CAPTURA MODAL ═══════════════════════════════════════════ */}
+      {showCaptura && (
+        <div style={S.overlay} onClick={() => setShowCaptura(false)}>
+          <div style={{ ...S.modal, maxWidth: 700, minWidth: 600 }} onClick={(e) => e.stopPropagation()}>
+            <div style={S.modalHeader}>CAPTURA — Mesa {sel?.tableNumber} · Agregar Productos</div>
+
+            <div style={{ display: "flex", gap: 12, flex: 1, minHeight: 0, marginTop: 8 }}>
+              {/* Left: search */}
+              <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 8 }}>
+                <input
+                  ref={searchRef}
+                  style={{ ...S.inputSm, fontSize: 13, padding: "6px 10px" }}
+                  placeholder="Buscar producto por nombre o codigo..."
+                  value={productSearch}
+                  onChange={(e) => setProductSearch(e.target.value)}
+                />
+                <div style={{ flex: 1, overflowY: "auto", maxHeight: 300, border: "1px solid #C8A050", borderRadius: 4 }}>
+                  {products.length === 0 ? (
+                    <div style={{ padding: 16, textAlign: "center", color: "#8B6914", fontSize: 11 }}>
+                      {productSearch ? "Sin resultados" : "Escribe para buscar..."}
+                    </div>
+                  ) : (
+                    products.map((p) => (
+                      <div
+                        key={p.id}
+                        onClick={() => addToCaptura(p)}
+                        style={{
+                          padding: "8px 10px", cursor: "pointer", borderBottom: "1px solid #E8D5B0",
+                          display: "flex", justifyContent: "space-between", alignItems: "center",
+                          background: "#FFF8E7",
+                        }}
+                        onMouseOver={(e) => (e.currentTarget.style.background = "#F5C518")}
+                        onMouseOut={(e) => (e.currentTarget.style.background = "#FFF8E7")}
+                      >
+                        <div>
+                          <div style={{ fontWeight: 700, fontSize: 12 }}>{p.name}</div>
+                          <div style={{ fontSize: 10, color: "#8B6914" }}>{p.sku}</div>
+                        </div>
+                        <div style={{ fontWeight: 800, color: "#C0392B", fontSize: 13 }}>${p.price.toFixed(2)}</div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              {/* Right: cart */}
+              <div style={{ width: 240, display: "flex", flexDirection: "column", gap: 8 }}>
+                <div style={{ fontWeight: 700, fontSize: 11, color: "#5a3c10" }}>
+                  ORDEN ({capturaCart.reduce((s, l) => s + l.quantity, 0)} items):
+                </div>
+                <div style={{ flex: 1, overflowY: "auto", maxHeight: 280, border: "1px solid #C8A050", borderRadius: 4 }}>
+                  {capturaCart.length === 0 ? (
+                    <div style={{ padding: 12, textAlign: "center", color: "#8B6914", fontSize: 11 }}>
+                      Click en un producto para agregar
+                    </div>
+                  ) : capturaCart.map((l) => (
+                    <div key={l.productId} style={{ padding: "6px 8px", borderBottom: "1px solid #E8D5B0", display: "flex", alignItems: "center", gap: 6 }}>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontWeight: 700, fontSize: 11 }}>{l.productName}</div>
+                        <div style={{ fontSize: 10, color: "#8B6914" }}>{l.quantity} x ${l.unitPrice.toFixed(2)}</div>
+                      </div>
+                      <button onClick={() => removeFromCaptura(l.productId)} style={{ color: "#C0392B", fontWeight: 900, background: "none", border: "none", cursor: "pointer", fontSize: 14 }}>×</button>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ fontWeight: 900, fontSize: 14, color: "#C0392B", textAlign: "right" }}>
+                  Total: ${capturaCart.reduce((s, l) => s + l.quantity * l.unitPrice, 0).toFixed(2)}
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                  <button onClick={() => setShowCaptura(false)} style={{ ...S.bottomBtn, width: "100%" }}>CANCELAR</button>
+                  <button
+                    onClick={handleSendCaptura}
+                    disabled={capturaCart.length === 0 || sendingOrder}
+                    style={{ ...S.bottomBtn, width: "100%", background: capturaCart.length > 0 ? "#E87722" : "#b8902a", color: "#fff", opacity: capturaCart.length === 0 ? 0.5 : 1 }}
+                  >
+                    {sendingOrder ? "Enviando..." : "ENVIAR A COCINA"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══ LEFT PANEL ══════════════════════════════════════════════ */}
       <div style={S.leftPanel}>
         <div style={S.leftHeader}>COMEDOR</div>
-
-        {/* Area activa */}
         <div style={S.leftSection}>
           <div style={S.labelSm}>Area activa</div>
-          <select
-            style={{ ...S.inputSm, cursor: "pointer" }}
-            defaultValue="TODAS"
-          >
+          <select style={{ ...S.inputSm, cursor: "pointer" }} defaultValue="TODAS">
             <option value="TODAS">(TODAS)</option>
           </select>
         </div>
-
-        {/* Search + count */}
         <div style={{ ...S.leftSection, display: "flex", flexDirection: "column", gap: 4 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <span style={S.labelSm}>Buscar cuenta:</span>
-            <span
-              style={{
-                fontSize: 10,
-                fontWeight: 700,
-                color: "#5a3c10",
-                background: "#F5C518",
-                borderRadius: 3,
-                padding: "1px 6px",
-              }}
-            >
+            <span style={{ fontSize: 10, fontWeight: 700, color: "#5a3c10", background: "#F5C518", borderRadius: 3, padding: "1px 6px" }}>
               Cuentas: {filtered.length}
             </span>
           </div>
-          <input
-            style={S.inputSm}
-            value={searchText}
-            onChange={(e) => setSearchText(e.target.value)}
-            placeholder="Mesa o mesero..."
-          />
+          <input style={S.inputSm} value={searchText} onChange={(e) => setSearchText(e.target.value)} placeholder="Mesa o mesero..." />
         </div>
 
-        {/* Account list */}
         <div style={S.accountTable}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
             <thead style={S.accountTableHead as any}>
               <tr>
-                <th style={S.th}>Cuenta</th>
-                <th style={{ ...S.th, textAlign: "center" }}>Imp.</th>
+                <th style={S.th}>Mesa</th>
                 <th style={S.th}>Mesero</th>
                 <th style={{ ...S.th, textAlign: "right" }}>Items</th>
               </tr>
             </thead>
             <tbody>
               {filtered.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan={4}
-                    style={{
-                      padding: "16px 8px",
-                      textAlign: "center",
-                      color: "#8B6914",
-                      fontSize: 10,
-                    }}
-                  >
-                    Sin cuentas abiertas
-                  </td>
-                </tr>
-              ) : (
-                filtered.map((s, i) => {
-                  const isSelected = sel?.id === s.id;
-                  return (
-                    <tr
-                      key={s.id}
-                      onClick={() => setSelectedSession(s)}
-                      style={{
-                        background: isSelected ? "#1565C0" : i % 2 === 0 ? "#FFF8E7" : "#F0E0B0",
-                        cursor: "pointer",
-                        userSelect: "none",
-                      }}
-                    >
-                      <td
-                        style={{
-                          padding: "4px 6px",
-                          fontWeight: isSelected ? 800 : 600,
-                          color: isSelected ? "#fff" : "#1a0a00",
-                          borderBottom: "1px solid #D4B870",
-                        }}
-                      >
-                        {s.tableNumber}
-                      </td>
-                      <td
-                        style={{
-                          padding: "4px 4px",
-                          textAlign: "center",
-                          color: isSelected ? "#fff" : "#5a3c10",
-                          borderBottom: "1px solid #D4B870",
-                        }}
-                      >
-                        <input
-                          type="checkbox"
-                          readOnly
-                          checked={false}
-                          style={{ margin: 0 }}
-                          onClick={(e) => e.stopPropagation()}
-                        />
-                      </td>
-                      <td
-                        style={{
-                          padding: "4px 6px",
-                          color: isSelected ? "#fff" : "#1a0a00",
-                          borderBottom: "1px solid #D4B870",
-                          fontSize: 10,
-                        }}
-                      >
-                        {s.waiterCode ?? s.waiterName.slice(0, 8)}
-                      </td>
-                      <td
-                        style={{
-                          padding: "4px 6px",
-                          textAlign: "right",
-                          color: isSelected ? "#fff" : "#1a0a00",
-                          borderBottom: "1px solid #D4B870",
-                          fontWeight: 700,
-                        }}
-                      >
-                        {s.itemsCount}
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
+                <tr><td colSpan={3} style={{ padding: "16px 8px", textAlign: "center", color: "#8B6914", fontSize: 10 }}>Sin cuentas abiertas</td></tr>
+              ) : filtered.map((s, i) => {
+                const isSel = sel?.id === s.id;
+                return (
+                  <tr key={s.id} onClick={() => setSelectedSession(s)} style={{ background: isSel ? "#1565C0" : i % 2 === 0 ? "#FFF8E7" : "#F0E0B0", cursor: "pointer", userSelect: "none" }}>
+                    <td style={{ padding: "5px 6px", fontWeight: isSel ? 800 : 600, color: isSel ? "#fff" : "#1a0a00", borderBottom: "1px solid #D4B870" }}>{s.tableNumber}</td>
+                    <td style={{ padding: "5px 6px", color: isSel ? "#fff" : "#1a0a00", borderBottom: "1px solid #D4B870", fontSize: 10 }}>{s.waiterName}</td>
+                    <td style={{ padding: "5px 6px", textAlign: "right", color: isSel ? "#fff" : "#1a0a00", borderBottom: "1px solid #D4B870", fontWeight: 700 }}>{s.itemsCount}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
 
-        {/* Bottom left mini buttons */}
-        <div
-          style={{
-            padding: "6px 8px",
-            display: "flex",
-            gap: 4,
-            borderTop: "2px solid #A07030",
-            background: "#D4B870",
-          }}
-        >
-          {["🍽️ RESERVA", "👤 COMIS."].map((label) => (
-            <button key={label} style={{ ...S.bottomBtn, flex: 1, fontSize: 9, minWidth: 0 }}>
-              {label}
-            </button>
+        <div style={{ padding: "6px 8px", display: "flex", gap: 4, borderTop: "2px solid #A07030", background: "#D4B870" }}>
+          {["Reserva", "Comis."].map((label) => (
+            <button key={label} style={{ ...S.bottomBtn, flex: 1, fontSize: 9, minWidth: 0 }}>{label}</button>
           ))}
         </div>
       </div>
 
-      {/* ══ MAIN CONTENT ════════════════════════════════════════ */}
+      {/* ══ MAIN CONTENT ════════════════════════════════════════════ */}
       <div style={S.main}>
 
-        {/* ── Action bar row 1 ─── */}
+        {/* Action bar row 1 */}
         <div style={S.actionBar}>
           {[
-            { label: "ABRIR\nCUENTA",     icon: "📂", act: () => {},          dis: false },
-            { label: "CANCELAR\nPROD.",   icon: "❌", act: () => {},          dis: !sel },
-            { label: "CAMBIAR\nCUENTA",   icon: "🔄", act: () => {},          dis: !sel },
-            { label: "JUNTAR\nCUENTAS",   icon: "🔗", act: () => {},          dis: !sel },
-            { label: "DESCTO.\nGENERAL",  icon: "🏷️", act: () => {},          dis: !sel },
-            { label: "DIVIDIR\nCUENTA",   icon: "✂️", act: () => {},          dis: !sel },
-            { label: "IMPRIMIR\nCUENTA",  icon: "🖨️", act: handlePrintAccount, dis: !sel },
-            { label: "CERRAR",            icon: "🚪", act: () => window.history.back(), dis: false, primary: true },
-          ].map((btn) => (
-            <button
-              key={btn.label}
-              onClick={btn.act}
-              disabled={btn.dis}
-              style={S.actionBtn(btn.dis, btn.primary)}
-            >
-              <span style={{ fontSize: 16 }}>{btn.icon}</span>
-              {btn.label.split("\n").map((l, i) => <span key={i}>{l}</span>)}
-            </button>
-          ))}
-        </div>
-
-        {/* ── Action bar row 2 ─── */}
-        <div style={{ ...S.actionBar, paddingTop: 2 }}>
-          {[
-            { label: "CAPTURA",           icon: "📝", dis: !sel },
-            { label: "CLIENTE",           icon: "👥", dis: !sel },
-            { label: "CAMBIAR\nMESERO",   icon: "🔀", dis: !sel },
-            { label: "TRANSFER.\nPROD.",  icon: "↔️", dis: !sel },
-            { label: "DESCTO.\nPROD.",    icon: "💲", dis: !sel },
-            { label: "PROPINA\nINCLUIDAS",icon: "💰", dis: !sel },
-            { label: "PAGAR\nCUENTA",     icon: "✅", dis: !sel, primary: true, act: handleBill },
-            { label: "ACREDITAR\nCUENTA", icon: "📋", dis: !sel },
+            { label: "ABRIR\nCUENTA",    icon: "📂", act: handleOpenAccountClick, dis: false },
+            { label: "CANCELAR\nPROD.",  icon: "❌", act: () => { if(sel?.lines?.[0]) handleCancelLine(sel.lines[0].id); }, dis: !sel || !sel.lines?.length },
+            { label: "CAMBIAR\nCUENTA",  icon: "🔄", act: () => {}, dis: !sel },
+            { label: "JUNTAR\nCUENTAS",  icon: "🔗", act: () => {}, dis: !sel },
+            { label: "DESCTO.\nGENERAL", icon: "🏷️", act: () => {}, dis: !sel },
+            { label: "DIVIDIR\nCUENTA",  icon: "✂️", act: () => {}, dis: !sel },
+            { label: "IMPRIMIR\nCUENTA", icon: "🖨️", act: () => toast("Imprimiendo...", "info"), dis: !sel },
+            { label: "CERRAR",           icon: "🚪", act: () => window.history.back(), dis: false, primary: true },
           ].map((btn: any) => (
-            <button
-              key={btn.label}
-              onClick={btn.act ?? (() => {})}
-              disabled={btn.dis || billing}
-              style={S.actionBtn(btn.dis || billing, btn.primary)}
-            >
+            <button key={btn.label} onClick={btn.act} disabled={btn.dis} style={actionBtn(btn.dis, btn.primary)}>
               <span style={{ fontSize: 16 }}>{btn.icon}</span>
               {btn.label.split("\n").map((l: string, i: number) => <span key={i}>{l}</span>)}
             </button>
           ))}
         </div>
 
-        {/* ── Detail form ─── */}
+        {/* Action bar row 2 */}
+        <div style={{ ...S.actionBar, paddingTop: 2 }}>
+          {[
+            { label: "CAPTURA",          icon: "📝", act: handleCapturaClick,       dis: !sel },
+            { label: "CLIENTE",          icon: "👥", act: () => {},                  dis: !sel },
+            { label: "CAMBIAR\nMESERO",  icon: "🔀", act: () => {},                  dis: !sel },
+            { label: "TRANSFER.\nPROD.", icon: "↔️", act: () => {},                  dis: !sel },
+            { label: "DESCTO.\nPROD.",   icon: "💲", act: () => {},                  dis: !sel },
+            { label: "PROPINA\nINCLUIDAS",icon: "💰",act: () => {},                  dis: !sel },
+            { label: "PAGAR\nCUENTA",    icon: "✅", act: handleBill,                dis: !sel, primary: true },
+            { label: "ACREDITAR\nCUENTA",icon: "📋", act: () => {},                  dis: !sel },
+          ].map((btn: any) => (
+            <button key={btn.label} onClick={btn.act} disabled={btn.dis || billing} style={actionBtn(btn.dis || billing, btn.primary)}>
+              <span style={{ fontSize: 16 }}>{btn.icon}</span>
+              {btn.label.split("\n").map((l: string, i: number) => <span key={i}>{l}</span>)}
+            </button>
+          ))}
+        </div>
+
+        {/* Detail form */}
         <div style={S.detailForm}>
           <div style={S.formGrid}>
-            {/* Left column */}
             <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-              <div style={S.formRow}>
-                <span style={S.formLabel}>CUENTA:</span>
-                <span style={S.formValueHL}>{sel?.tableNumber ?? "—"}</span>
-                <span style={{ ...S.formLabel, minWidth: 40 }}>AREA:</span>
-                <span style={{ ...S.formValue, maxWidth: 30, textAlign: "center" }}>
-                  {sel?.zoneId ? sel.zoneId.slice(0, 3) : "—"}
-                </span>
-                <span style={{ ...S.formValue, flex: 2, fontWeight: 700 }}>
-                  {sel?.zoneName ?? ""}
-                </span>
-              </div>
-              <div style={S.formRow}>
-                <span style={S.formLabel}>MESA:</span>
-                <span style={S.formValue}>{sel?.tableNumber ?? "—"}</span>
-                <span style={{ ...S.formLabel, minWidth: 50 }}>MESERO:</span>
-                <span style={{ ...S.formValue, maxWidth: 30, textAlign: "center" }}>1</span>
-                <span style={{ ...S.formValue, flex: 2, fontWeight: 700 }}>
-                  {sel?.waiterName ?? ""}
-                </span>
-              </div>
-              <div style={S.formRow}>
-                <span style={S.formLabel}>PERSONAS:</span>
-                <span style={{ ...S.formValue, maxWidth: 40 }}>—</span>
-                <span style={{ ...S.formLabel, minWidth: 50 }}>RESERVA</span>
-                <span style={{ ...S.formValue, flex: 2 }} />
-              </div>
-              <div style={S.formRow}>
-                <span style={S.formLabel}>COMISIONISTA:</span>
-                <span style={S.formValue} />
-              </div>
-              <div style={S.formRow}>
-                <span style={S.formLabel}>CLIENTE:</span>
-                <span style={S.formValue} />
-              </div>
+              <div style={S.formRow}><span style={S.formLabel}>CUENTA:</span><span style={S.formValueHL}>{sel?.tableNumber ?? "—"}</span><span style={{ ...S.formLabel, minWidth: 40 }}>AREA:</span><span style={{ ...S.formValue, flex: 2 }}>{sel?.zoneName ?? ""}</span></div>
+              <div style={S.formRow}><span style={S.formLabel}>MESA:</span><span style={S.formValue}>{sel?.tableNumber ?? "—"}</span><span style={{ ...S.formLabel, minWidth: 50 }}>MESERO:</span><span style={{ ...S.formValue, flex: 2, fontWeight: 700 }}>{sel?.waiterName ?? ""}</span></div>
+              <div style={S.formRow}><span style={S.formLabel}>PERSONAS:</span><span style={{ ...S.formValue, maxWidth: 40 }}>—</span><span style={{ ...S.formLabel, minWidth: 50 }}>RESERVA</span><span style={{ ...S.formValue, flex: 2 }} /></div>
+              <div style={S.formRow}><span style={S.formLabel}>CLIENTE:</span><span style={S.formValue} /></div>
             </div>
-
-            {/* Right column */}
             <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-              <div style={S.formRow}>
-                <span style={S.formLabel}>FOLIO:</span>
-                <span style={S.formValue}>0</span>
-              </div>
-              <div style={S.formRow}>
-                <span style={S.formLabel}>ORDEN:</span>
-                <span style={S.formValueHL}>{sel?.itemsCount ?? 0}</span>
-              </div>
-              <div style={S.formRow}>
-                <span style={S.formLabel}>APERTURA:</span>
-                <span style={{ ...S.formValue, flex: 2, fontWeight: 600, fontSize: 10 }}>
-                  {sel ? fmtTime(sel.openedAt) : "—"}
-                </span>
-              </div>
-              <div style={S.formRow}>
-                <span style={S.formLabel}>CIERRE:</span>
-                <span style={{ ...S.formValue, flex: 2 }}>
-                  {sel?.status === "CLOSED" ? "Cerrada" : "// :: AM"}
-                </span>
-              </div>
-              <div style={{ ...S.formRow, justifyContent: "flex-end" }}>
-                <label style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 10, color: "#5a3c10", cursor: "pointer" }}>
-                  <input type="checkbox" readOnly checked={false} />
-                  Impreso
-                </label>
-              </div>
+              <div style={S.formRow}><span style={S.formLabel}>ORDEN:</span><span style={S.formValueHL}>{sel?.itemsCount ?? 0}</span></div>
+              <div style={S.formRow}><span style={S.formLabel}>APERTURA:</span><span style={{ ...S.formValue, flex: 2, fontSize: 10 }}>{sel ? fmtTime(sel.openedAt) : "—"}</span></div>
+              <div style={S.formRow}><span style={S.formLabel}>TIEMPO:</span><span style={S.formValue}>{sel ? `${sel.elapsedMinutes} min` : "—"}</span></div>
+              <div style={S.formRow}><span style={S.formLabel}>CIERRE:</span><span style={{ ...S.formValue, flex: 2 }}>{sel?.status === "CLOSED" ? "Cerrada" : "Abierta"}</span></div>
             </div>
           </div>
         </div>
 
-        {/* ── Items table ─── */}
+        {/* Items table */}
         <div style={S.itemsWrapper}>
           {sel ? (
             <table style={S.itemsTable}>
               <thead>
                 <tr>
-                  {["MOV.", "CANT.", "CLAVE", "DESCRIPCION", "DESC.", "PRECIO", "IMPORTE", "ESTADO"].map(
-                    (h) => (
-                      <th key={h} style={{ ...S.itemsTh, textAlign: h === "DESCRIPCION" ? "left" : "right" }}>
-                        {h}
-                      </th>
-                    )
-                  )}
+                  {["#", "CANT.", "DESCRIPCION", "PRECIO", "IMPORTE", "ESTADO", ""].map((h, i) => (
+                    <th key={i} style={{ ...S.itemsTh, textAlign: h === "DESCRIPCION" ? "left" : "right", width: i === 0 ? 30 : i === 6 ? 32 : undefined }}>{h}</th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
                 {sel.lines.length === 0 ? (
-                  <tr>
-                    <td
-                      colSpan={8}
-                      style={{ padding: "20px", textAlign: "center", color: "#8B6914", fontSize: 12 }}
-                    >
-                      Sin productos en esta cuenta
+                  <tr><td colSpan={7} style={{ padding: "20px", textAlign: "center", color: "#8B6914" }}>Sin productos — use CAPTURA para agregar</td></tr>
+                ) : sel.lines.map((line, idx) => (
+                  <tr key={line.id} style={{ background: idx % 2 === 0 ? "#FFF8E7" : "#fff", borderBottom: "1px solid #E8D5B0" }}>
+                    <td style={{ padding: "4px 8px", textAlign: "right", fontWeight: 700, color: "#1a0a00", borderRight: "1px solid #E8D5B0" }}>{idx + 1}</td>
+                    <td style={{ padding: "4px 8px", textAlign: "right", borderRight: "1px solid #E8D5B0" }}>{line.quantity.toFixed(3)}</td>
+                    <td style={{ padding: "4px 8px", borderRight: "1px solid #E8D5B0", maxWidth: 240, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {line.productName}
+                      {line.notes ? <span style={{ marginLeft: 6, fontSize: 9, color: "#C0392B", fontStyle: "italic" }}>[{line.notes}]</span> : null}
+                    </td>
+                    <td style={{ padding: "4px 8px", textAlign: "right", borderRight: "1px solid #E8D5B0", fontWeight: 600 }}>{fmtCur(line.unitPrice)}</td>
+                    <td style={{ padding: "4px 8px", textAlign: "right", borderRight: "1px solid #E8D5B0", fontWeight: 700 }}>{fmtCur(line.quantity * line.unitPrice)}</td>
+                    <td style={{ padding: "4px 8px", textAlign: "center", fontSize: 9, fontWeight: 700, borderRight: "1px solid #E8D5B0", color: line.status === "SERVED" ? "#2E7D32" : line.status === "COOKING" ? "#E65100" : line.status === "CANCELLED" ? "#C0392B" : "#1565C0" }}>{line.status}</td>
+                    <td style={{ padding: "2px 4px", textAlign: "center" }}>
+                      {line.status === "PENDING" || line.status === "COOKING" ? (
+                        <button
+                          onClick={() => handleCancelLine(line.id)}
+                          disabled={cancellingLine === line.id}
+                          style={{ background: "#C0392B", color: "#fff", border: "none", borderRadius: 3, cursor: "pointer", fontSize: 10, padding: "2px 4px", fontWeight: 700 }}
+                          title="Cancelar producto"
+                        >
+                          ✕
+                        </button>
+                      ) : null}
                     </td>
                   </tr>
-                ) : (
-                  sel.lines.map((line, idx) => (
-                    <tr
-                      key={line.id}
-                      style={{
-                        background: idx === 0 ? "#BBDEFB" : idx % 2 === 0 ? "#FFF8E7" : "#fff",
-                        borderBottom: "1px solid #E8D5B0",
-                        cursor: "pointer",
-                      }}
-                    >
-                      <td
-                        style={{
-                          padding: "4px 8px",
-                          textAlign: "right",
-                          fontWeight: 700,
-                          color: idx === 0 ? "#0D47A1" : "#1a0a00",
-                          borderRight: "1px solid #E8D5B0",
-                        }}
-                      >
-                        {idx + 1}
-                      </td>
-                      <td
-                        style={{
-                          padding: "4px 8px",
-                          textAlign: "right",
-                          borderRight: "1px solid #E8D5B0",
-                          color: idx === 0 ? "#0D47A1" : "#1a0a00",
-                        }}
-                      >
-                        {line.quantity.toFixed(3)}
-                      </td>
-                      <td
-                        style={{
-                          padding: "4px 8px",
-                          textAlign: "right",
-                          fontFamily: "monospace",
-                          borderRight: "1px solid #E8D5B0",
-                          color: idx === 0 ? "#0D47A1" : "#1a0a00",
-                        }}
-                      >
-                        {line.productId?.slice(-4) ?? "----"}
-                      </td>
-                      <td
-                        style={{
-                          padding: "4px 8px",
-                          fontWeight: idx === 0 ? 700 : 400,
-                          borderRight: "1px solid #E8D5B0",
-                          color: idx === 0 ? "#0D47A1" : "#1a0a00",
-                          whiteSpace: "nowrap",
-                          maxWidth: 220,
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                        }}
-                      >
-                        {line.productName}
-                        {line.notes ? (
-                          <span style={{ marginLeft: 6, fontSize: 9, color: "#C0392B", fontStyle: "italic" }}>
-                            [{line.notes}]
-                          </span>
-                        ) : null}
-                      </td>
-                      <td
-                        style={{
-                          padding: "4px 8px",
-                          textAlign: "right",
-                          borderRight: "1px solid #E8D5B0",
-                          color: idx === 0 ? "#0D47A1" : "#5a3c10",
-                        }}
-                      >
-                        0.00
-                      </td>
-                      <td
-                        style={{
-                          padding: "4px 8px",
-                          textAlign: "right",
-                          borderRight: "1px solid #E8D5B0",
-                          fontWeight: 600,
-                          color: idx === 0 ? "#0D47A1" : "#1a0a00",
-                        }}
-                      >
-                        {fmtCur(line.unitPrice)}
-                      </td>
-                      <td
-                        style={{
-                          padding: "4px 8px",
-                          textAlign: "right",
-                          borderRight: "1px solid #E8D5B0",
-                          fontWeight: 700,
-                          color: idx === 0 ? "#0D47A1" : "#1a0a00",
-                        }}
-                      >
-                        {fmtCur(line.quantity * line.unitPrice)}
-                      </td>
-                      <td
-                        style={{
-                          padding: "4px 8px",
-                          textAlign: "center",
-                          fontSize: 9,
-                          fontWeight: 700,
-                          color:
-                            line.status === "SERVED"
-                              ? "#2E7D32"
-                              : line.status === "COOKING"
-                              ? "#E65100"
-                              : "#1565C0",
-                        }}
-                      >
-                        {line.status}
-                      </td>
-                    </tr>
-                  ))
-                )}
+                ))}
               </tbody>
             </table>
           ) : (
-            <div
-              style={{
-                height: "100%",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: "#8B6914",
-                fontSize: 13,
-                fontWeight: 600,
-              }}
-            >
-              Seleccione una cuenta del panel izquierdo
+            <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#8B6914", fontSize: 13, fontWeight: 600 }}>
+              Seleccione una cuenta del panel izquierdo o use ABRIR CUENTA
             </div>
           )}
         </div>
 
-        {/* ── Bottom section ─── */}
+        {/* Bottom section */}
         <div style={S.bottom}>
-          {/* Left: observations + buttons */}
           <div style={S.bottomLeft}>
-            <div style={S.observRow}>
-              <span style={S.observLabel}>OBSERV:</span>
-              <textarea
-                style={S.observInput}
-                value={observations}
-                onChange={(e) => setObservations(e.target.value)}
-                placeholder="Observaciones..."
-              />
+            <div style={{ display: "flex", gap: 4, alignItems: "flex-start" }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: "#5a3c10", whiteSpace: "nowrap", paddingTop: 3 }}>OBSERV:</span>
+              <textarea style={{ flex: 1, padding: "3px 6px", border: "1px solid #A07030", borderRadius: 3, background: "#fff", fontSize: 11, resize: "none", height: 36 }} value={observations} onChange={(e) => setObservations(e.target.value)} placeholder="Observaciones..." />
             </div>
-
             <div style={S.bottomBtnRow}>
               {[
-                { label: "CARGO A\nCUENTA",   icon: "💳", dis: !sel },
-                { label: "OBSERVA-\nCIONES",  icon: "📝", dis: false },
-                { label: "TARJETA\nDSCTO.",   icon: "🏷️", dis: !sel },
-                { label: "PERSONAS",          icon: "👥", dis: !sel },
-                { label: "F12\nFACT. RAPIDA", icon: "⚡", dis: !sel, primary: !sel ? false : true, act: handleBill },
-                { label: "ENVIAR\nMENSAJE",   icon: "✉️", dis: !sel },
-                { label: "REIMPRIMIR\nCUENTA",icon: "🖨️", dis: !sel, act: handlePrintAccount },
+                { label: "CARGO A\nCUENTA",    icon: "💳", dis: !sel },
+                { label: "OBSERVA-\nCIONES",   icon: "📝", dis: false },
+                { label: "TARJETA\nDSCTO.",    icon: "🏷️", dis: !sel },
+                { label: "CAPTURA\nPRODUCTO",  icon: "📝", act: handleCapturaClick, dis: !sel, primary: true },
+                { label: "FACTURA\nRAPIDAS",   icon: "⚡", dis: !sel, act: handleBill },
+                { label: "ABRIR\nCUENTA",      icon: "📂", act: handleOpenAccountClick, dis: false, primary: false },
+                { label: "REIMPRIMIR\nCUENTA", icon: "🖨️", dis: !sel, act: () => toast("Imprimiendo...", "info") },
               ].map((btn: any) => (
-                <button
-                  key={btn.label}
-                  disabled={btn.dis || billing}
-                  onClick={btn.act ?? (() => {})}
-                  style={{ ...S.bottomBtn, minWidth: 62, fontSize: 9, opacity: btn.dis ? 0.5 : 1 }}
-                >
+                <button key={btn.label} disabled={btn.dis || billing} onClick={btn.act ?? (() => {})} style={{ ...S.bottomBtn, minWidth: 62, fontSize: 9, opacity: btn.dis ? 0.5 : 1, background: btn.primary && !btn.dis ? "#E87722" : undefined, color: btn.primary && !btn.dis ? "#fff" : undefined }}>
                   <span style={{ fontSize: 14 }}>{btn.icon}</span>
                   {btn.label.split("\n").map((l: string, i: number) => <span key={i}>{l}</span>)}
                 </button>
               ))}
             </div>
-
             <div style={S.bottomBtnRow}>
               {[
                 { label: "CONSULTA\nCTAS.",    icon: "🔍" },
-                { label: "CAMBIAR\nDE AREA",   icon: "🔀" },
+                { label: "REFRESCAR",          icon: "🔄", act: fetchSessions },
                 { label: "PAGO CON\nPUNTOS",   icon: "⭐" },
                 { label: "RESUMEN\nCUENTA",    icon: "📊" },
                 { label: "REIMPRIMIR\nPRODU.", icon: "🔁" },
                 { label: "CANCELAR\nFOLIO",    icon: "🗑️", dis: !sel },
-                { label: "Ctrl+B\nBILLAR",     icon: "🎱" },
+                { label: "VER\nMESAS",         icon: "🗺️" },
               ].map((btn: any) => (
-                <button
-                  key={btn.label}
-                  disabled={btn.dis}
-                  style={{ ...S.bottomBtn, minWidth: 62, fontSize: 9, opacity: btn.dis ? 0.5 : 1 }}
-                >
+                <button key={btn.label} disabled={btn.dis} onClick={btn.act ?? (() => {})} style={{ ...S.bottomBtn, minWidth: 62, fontSize: 9, opacity: btn.dis ? 0.5 : 1 }}>
                   <span style={{ fontSize: 14 }}>{btn.icon}</span>
                   {btn.label.split("\n").map((l: string, i: number) => <span key={i}>{l}</span>)}
                 </button>
@@ -977,55 +717,25 @@ export const CashierBillingConsole: React.FC = () => {
             </div>
           </div>
 
-          {/* Right: totals */}
           <div style={S.bottomRight}>
-            <div style={S.totalRow}>
-              <span style={S.totalLabel}>SUBTOTAL:</span>
-              <span style={S.totalValue}>{fmtCur(subtotal)}</span>
+            {[
+              { label: "SUBTOTAL:", value: fmtCur(subtotal) },
+              { label: "-MONEDERO:", value: "$0.00" },
+              { label: "-DESCUENTO: 0%", value: "$0.00" },
+              { label: "IMPUESTOS:", value: fmtCur(taxAmount) },
+              { label: "PROPINA:", value: fmtCur(tipAmount), red: true },
+              { label: "CARGO:", value: "$0.00" },
+            ].map((row) => (
+              <div key={row.label} style={S.totalRow}>
+                <span style={S.totalLabel}>{row.label}</span>
+                <span style={{ ...S.totalValue, color: row.red ? "#C0392B" : undefined }}>{row.value}</span>
+              </div>
+            ))}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 4, paddingTop: 4, borderTop: "2px solid #A07030" }}>
+              <span style={{ fontSize: 16, fontWeight: 900, color: "#3D2B00", letterSpacing: 1 }}>TOTAL:</span>
+              <span style={{ fontSize: 18, fontWeight: 900, color: "#C0392B" }}>{fmtCur(total)}</span>
             </div>
-            <div style={S.totalRow}>
-              <span style={S.totalLabel}>-MONEDERO:</span>
-              <span style={S.totalValue}>$0.00</span>
-            </div>
-            <div style={S.totalRow}>
-              <span style={S.totalLabel}>-DESCUENTO: 0.0000%</span>
-              <span style={S.totalValue}>$0.00</span>
-            </div>
-            <div style={S.totalRow}>
-              <span style={S.totalLabel}>IMPUESTOS:</span>
-              <span style={S.totalValue}>{fmtCur(taxAmount)}</span>
-            </div>
-            <div style={S.totalRow}>
-              <span style={S.totalLabel}>PROPINA:</span>
-              <span style={{ ...S.totalValue, color: "#C0392B" }}>{fmtCur(tipAmount)}</span>
-            </div>
-            <div style={S.totalRow}>
-              <span style={S.totalLabel}>CARGO:</span>
-              <span style={S.totalValue}>$0.00</span>
-            </div>
-            <div style={S.totalFinalRow}>
-              <span style={S.totalFinalLabel}>TOTAL:</span>
-              <span style={S.totalFinalValue}>{fmtCur(total)}</span>
-            </div>
-
-            {/* Bill button */}
-            <button
-              onClick={handleBill}
-              disabled={!sel || billing}
-              style={{
-                marginTop: 8,
-                width: "100%",
-                padding: "8px 12px",
-                background: sel && !billing ? "#E87722" : "#b8902a",
-                color: sel && !billing ? "#fff" : "#8B6914",
-                border: "2px solid #9a7525",
-                borderRadius: 5,
-                fontWeight: 900,
-                fontSize: 13,
-                letterSpacing: 1,
-                cursor: sel && !billing ? "pointer" : "not-allowed",
-              }}
-            >
+            <button onClick={handleBill} disabled={!sel || billing} style={{ marginTop: 8, width: "100%", padding: "8px 12px", background: sel && !billing ? "#E87722" : "#b8902a", color: sel && !billing ? "#fff" : "#8B6914", border: "2px solid #9a7525", borderRadius: 5, fontWeight: 900, fontSize: 13, letterSpacing: 1, cursor: sel && !billing ? "pointer" : "not-allowed" }}>
               {billing ? "Procesando..." : "BILLAR / COBRAR"}
             </button>
           </div>

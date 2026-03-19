@@ -60,10 +60,6 @@ export async function POST(req: NextRequest) {
       return apiError(400, 'Validation error', parsed.error.flatten())
     }
 
-    if (!context.waiter?.id) {
-      return apiError(403, 'Waiter context is required to create orders')
-    }
-
     const prisma = await getTenantPrismaClient(context.tenantId)
 
     const session = await prisma.tableSession.findUnique({
@@ -75,6 +71,12 @@ export async function POST(req: NextRequest) {
       return apiError(400, 'Session is not open')
     }
 
+    // Use the authenticated waiter, or fall back to the session's assigned waiter
+    const orderWaiterId = context.waiter?.id ?? session.waiterId
+    if (!orderWaiterId) {
+      return apiError(403, 'Cannot determine waiter for this order')
+    }
+
     const orderTotal = parsed.data.items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0)
 
     const order = await prisma.$transaction(async (tx) => {
@@ -82,7 +84,7 @@ export async function POST(req: NextRequest) {
         data: {
           tenantId: context.tenantId,
           sessionId: parsed.data.sessionId,
-          waiterId: context.waiter!.id,
+          waiterId: orderWaiterId,
           status: 'PENDING',
           items: {
             create: parsed.data.items.map((item) => ({
