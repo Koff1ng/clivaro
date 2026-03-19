@@ -3,22 +3,46 @@
 import { useState, useEffect, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Users, Receipt, CreditCard, Settings as SettingsIcon, Loader2, CheckCircle2, XCircle, AlertCircle, Mail } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { 
+  Users, 
+  Receipt, 
+  CreditCard, 
+  Settings as SettingsIcon, 
+  Loader2, 
+  CheckCircle2, 
+  XCircle, 
+  AlertCircle, 
+  Mail,
+  Building2,
+  MapPin,
+  Hash,
+  Printer,
+  Wallet,
+  Percent,
+  ShieldCheck,
+  Warehouse,
+  Database,
+  UtensilsCrossed,
+  Globe,
+  ChevronRight,
+  LayoutDashboard
+} from 'lucide-react'
 import { useToast } from '@/components/ui/toast'
 import { useSession } from 'next-auth/react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { UsersConfig } from './users-config'
-import { ElectronicBillingConfig } from './electronic-billing-config'
 import { SubscriptionConfig } from './subscription-config'
 import { GeneralConfig } from './general-config'
 import { DataConfig } from './data-config'
 import { AlegraConfig } from './alegra-config'
 import { PaymentMethodsConfig } from './payment-methods-config'
 import { TaxesPage } from './taxes-page'
-import { Wallet, Percent, ShieldCheck } from 'lucide-react'
 import { PrivacyConfig } from './privacy-config'
 import { EmailConfigTab } from './email-config-tab'
+import { RestaurantSettingsView } from './restaurant-settings-view'
+import { cn } from '@/lib/utils'
+import { motion } from 'framer-motion'
 
 async function fetchSettings() {
   const res = await fetch('/api/settings')
@@ -32,14 +56,14 @@ export function SettingsScreen() {
   const { data: session } = useSession()
   const searchParams = useSearchParams()
   const router = useRouter()
-  const [activeTab, setActiveTab] = useState('users')
+  
+  // New state for unified navigation
+  const [activeSection, setActiveSection] = useState('identity')
 
   const isSuperAdmin = (session?.user as any)?.isSuperAdmin || false
 
-  // Referencia para rastrear si ya se procesaron los parámetros de pago
   const processedPaymentRef = useRef<string | null>(null)
 
-  // Manejar parámetros de redirección de Mercado Pago
   useEffect(() => {
     const paymentStatus = searchParams.get('payment')
     const externalReference = searchParams.get('external_reference')
@@ -49,86 +73,43 @@ export function SettingsScreen() {
     const paymentId = searchParams.get('payment_id')
     const status = searchParams.get('status')
 
-    // Función helper para verificar si un valor es válido (no es 'null' string)
     const isValidValue = (value: string | null) => value && value !== 'null' && value.trim() !== ''
-
-    // Crear una clave única para este conjunto de parámetros
     const paymentKey = `${paymentStatus || ''}-${externalReference || ''}-${preferenceId || ''}-${collectionId || ''}`
 
-    // Si ya procesamos estos parámetros, no hacer nada
-    if (processedPaymentRef.current === paymentKey) {
-      return
-    }
+    if (processedPaymentRef.current === paymentKey) return
 
     if (paymentStatus || (externalReference && isValidValue(externalReference))) {
-      // Marcar como procesado ANTES de hacer cualquier cosa
       processedPaymentRef.current = paymentKey
+      setActiveSection('subscription')
 
-      // Cambiar a la pestaña de suscripción
-      setActiveTab('subscription')
-
-      // Invalidar queries para actualizar datos
       queryClient.invalidateQueries({ queryKey: ['tenant-plan'] })
       queryClient.invalidateQueries({ queryKey: ['subscription-payments'] })
 
-      // Mostrar mensaje según el estado del pago
       if (paymentStatus === 'success') {
         toast('¡Pago procesado exitosamente! Tu suscripción ha sido activada.', 'success')
       } else if (paymentStatus === 'failure') {
-        // Construir mensaje de error más informativo
         let errorMessage = 'El pago no pudo ser procesado.'
-
-        if (isValidValue(paymentId)) {
-          errorMessage = `El pago fue rechazado. ID de pago: ${paymentId}.`
-        } else if (isValidValue(collectionStatus)) {
-          errorMessage = `El pago no pudo ser procesado. Estado: ${collectionStatus}.`
-        } else if (isValidValue(status)) {
-          errorMessage = `El pago no pudo ser procesado. Estado: ${status}.`
-        }
-
-        errorMessage += ' Puedes intentar nuevamente desde la sección de suscripción.'
-        toast(errorMessage, 'error')
+        if (isValidValue(paymentId)) errorMessage = `El pago fue rechazado. ID de pago: ${paymentId}.`
+        else if (isValidValue(collectionStatus)) errorMessage = `El pago no pudo ser procesado. Estado: ${collectionStatus}.`
+        else if (isValidValue(status)) errorMessage = `El pago no pudo ser procesado. Estado: ${status}.`
+        toast(errorMessage + ' Puedes intentar nuevamente desde la sección de suscripción.', 'error')
       } else if (paymentStatus === 'pending') {
         toast('Tu pago está siendo procesado. Te notificaremos cuando se complete.', 'info')
-      } else if (!paymentStatus && isValidValue(externalReference)) {
-        // Si hay external_reference pero no payment status, puede ser una redirección incompleta
-        // El webhook debería procesar el pago, pero mostramos un mensaje informativo
-        toast('Procesando información del pago. Por favor, espera unos momentos...', 'info')
       }
 
-      // Limpiar los parámetros de la URL INMEDIATAMENTE para evitar re-ejecuciones
       const newUrl = new URL(window.location.href)
-      newUrl.searchParams.delete('payment')
-      newUrl.searchParams.delete('external_reference')
-      newUrl.searchParams.delete('preference_id')
-      newUrl.searchParams.delete('collection_id')
-      newUrl.searchParams.delete('collection_status')
-      newUrl.searchParams.delete('payment_id')
-      newUrl.searchParams.delete('status')
-      newUrl.searchParams.delete('payment_type')
-      newUrl.searchParams.delete('merchant_order_id')
-      newUrl.searchParams.delete('site_id')
-      newUrl.searchParams.delete('processing_mode')
-      newUrl.searchParams.delete('merchant_account_id')
-
-      // Mantener solo el tab si está presente
-      const tabParam = newUrl.searchParams.get('tab')
-      if (tabParam) {
-        newUrl.searchParams.set('tab', 'subscription')
-      }
-
-      // Reemplazar la URL inmediatamente para evitar re-ejecuciones del efecto
+      const paramsToDelete = ['payment', 'external_reference', 'preference_id', 'collection_id', 'collection_status', 'payment_id', 'status', 'payment_type', 'merchant_order_id', 'site_id', 'processing_mode', 'merchant_account_id']
+      paramsToDelete.forEach(p => newUrl.searchParams.delete(p))
       router.replace(newUrl.pathname + newUrl.search, { scroll: false })
     } else if (searchParams.get('tab')) {
-      // Si hay un parámetro tab, cambiar a esa pestaña
-      setActiveTab(searchParams.get('tab') || 'users')
+      setActiveSection(searchParams.get('tab') || 'identity')
     }
   }, [searchParams, queryClient, router, toast])
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['settings'],
     queryFn: fetchSettings,
-    staleTime: 5 * 60 * 1000, // 5 minutos
+    staleTime: 5 * 60 * 1000,
   })
 
   const updateSettingsMutation = useMutation({
@@ -164,10 +145,12 @@ export function SettingsScreen() {
   if (error) {
     return (
       <div className="p-6">
-        <Card>
+        <Card className="border-red-200 bg-red-50">
           <CardHeader>
-            <CardTitle>Error</CardTitle>
-            <CardDescription>
+            <CardTitle className="text-red-700 flex items-center gap-2 font-bold">
+              <AlertCircle size={20} /> Error de Carga
+            </CardTitle>
+            <CardDescription className="text-red-600">
               No se pudieron cargar las configuraciones. Por favor, intenta de nuevo.
             </CardDescription>
           </CardHeader>
@@ -178,146 +161,193 @@ export function SettingsScreen() {
 
   const settings = data?.settings || null
 
+  const navigationGroups = [
+    {
+      title: 'Empresa',
+      items: [
+        { id: 'identity', label: 'Identidad', icon: Building2, desc: 'Logo y datos fiscales' },
+        { id: 'localization', label: 'Regional', icon: Globe, desc: 'Moneda y zona horaria' },
+        { id: 'email', label: 'Email Corporativo', icon: Mail, desc: 'Notificaciones y envíos' },
+      ]
+    },
+    {
+      title: 'Operaciones',
+      items: [
+        { id: 'numbering', label: 'Folios y Prefijos', icon: Hash, desc: 'Control de documentos' },
+        { id: 'printing', label: 'Impresión POS', icon: Printer, desc: 'Tickets y estaciones' },
+        { id: 'restaurant', label: 'Restaurante', icon: UtensilsCrossed, desc: 'Zonas, mesas y cocina' },
+        { id: 'billing', label: 'Facturación Elect.', icon: Receipt, desc: 'Integración Alegra' },
+      ]
+    },
+    {
+      title: 'Finanzas e Inventario',
+      items: [
+        { id: 'payments-methods', label: 'Métodos de Pago', icon: Wallet, desc: 'Cajas y formas de cobro' },
+        { id: 'taxes', label: 'Impuestos', icon: Percent, desc: 'IVA y retenciones' },
+        { id: 'warehouses', label: 'Almacenes', icon: Warehouse, desc: 'Puntos físicos de stock' },
+      ]
+    },
+    {
+      title: 'Suscripción y Cuenta',
+      items: [
+        { id: 'subscription', label: 'Plan y Pagos', icon: CreditCard, desc: 'Estado de tu cuenta' },
+        { id: 'users', label: 'Accesos y Roles', icon: Users, desc: 'Equipo y permisos' },
+        { id: 'privacy', label: 'Privacidad', icon: ShieldCheck, desc: 'Seguridad y datos' },
+        { id: 'data', label: 'Backups', icon: Database, desc: 'Historial y exportación' },
+      ]
+    }
+  ]
+
+  if (isSuperAdmin) {
+    navigationGroups.push({
+      title: 'Administración Global',
+      items: [
+        { id: 'payments', label: 'Mercado Pago', icon: CreditCard, desc: 'Pasarela del sistema' }
+      ]
+    })
+  }
+
+  const renderContent = () => {
+    switch (activeSection) {
+      case 'identity':
+      case 'localization':
+      case 'numbering':
+      case 'printing':
+      case 'warehouses':
+        return (
+          <GeneralConfig 
+            settings={settings} 
+            onSave={(data) => updateSettingsMutation.mutate(data)} 
+            isLoading={updateSettingsMutation.isPending}
+            initialTab={activeSection}
+          />
+        )
+      
+      case 'restaurant':
+        return <RestaurantSettingsView />
+
+      case 'users': return <UsersConfig />
+      case 'email': return <EmailConfigTab />
+      case 'billing': return <AlegraConfig tenantId={(session?.user as any)?.tenantId} />
+      case 'payments': return (
+        <Card className="border-blue-200 bg-blue-50/10 backdrop-blur-sm">
+          <CardHeader>
+            <CardTitle className="text-blue-700">Mercado Pago - Administración</CardTitle>
+            <CardDescription>Credenciales globales del sistema Clivaro.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+             <div className="p-4 bg-white/50 border rounded-xl flex items-center justify-between">
+                <span className="font-medium">Estado de Conexión</span>
+                <span className="text-green-600 font-bold flex items-center gap-1">
+                   <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                   Activa
+                </span>
+             </div>
+          </CardContent>
+        </Card>
+      )
+      case 'subscription': return <SubscriptionConfig settings={settings} onSave={(data) => updateSettingsMutation.mutate(data)} isLoading={updateSettingsMutation.isPending} />
+      case 'payments-methods': return <PaymentMethodsConfig />
+      case 'taxes': return <TaxesPage />
+      case 'data': return <DataConfig settings={settings} onSave={(data) => updateSettingsMutation.mutate(data)} isLoading={updateSettingsMutation.isPending} />
+      case 'privacy': return <PrivacyConfig />
+      default: return null
+    }
+  }
+
   return (
-    <div className="container mx-auto py-6 space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Configuración</h1>
-        <p className="text-muted-foreground mt-2">
-          Gestiona las configuraciones de tu empresa
-        </p>
+    <div className="flex flex-col h-full overflow-hidden bg-[#F8FAFC]">
+      {/* Header Premium con Glassmorphism */}
+      <header className="h-20 border-b bg-white/80 backdrop-blur-md sticky top-0 z-50 flex items-center justify-between px-8">
+        <div className="flex items-center gap-4">
+          <div className="h-10 w-10 rounded-xl bg-primary flex items-center justify-center text-white shadow-lg shadow-primary/20">
+            <SettingsIcon size={24} />
+          </div>
+          <div>
+            <h1 className="text-xl font-black text-slate-800 tracking-tight">Configuración del Sistema</h1>
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Centro de Control • {session?.user?.name}</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3">
+          <Button variant="outline" className="rounded-xl font-bold text-xs px-6 border-slate-200 hover:bg-slate-50 transition-all" onClick={() => router.push('/dashboard')}>
+             <LayoutDashboard size={14} className="mr-2" />
+             Ir al Dashboard
+          </Button>
+        </div>
+      </header>
+
+      <div className="flex flex-1 overflow-hidden h-[calc(100vh-80px)]">
+        {/* Sidebar Lateral Premium */}
+        <aside className="w-80 h-full border-r bg-white overflow-y-auto py-8 px-4 flex flex-col gap-8 scrollbar-hide">
+          {navigationGroups.map((group) => (
+            <div key={group.title} className="flex flex-col gap-2">
+              <h3 className="px-4 text-[11px] font-black uppercase text-slate-400 tracking-[0.15em] mb-2 leading-none">
+                {group.title}
+              </h3>
+              <div className="flex flex-col gap-1">
+                {group.items.map((item) => (
+                  <button
+                    key={item.id}
+                    onClick={() => setActiveSection(item.id)}
+                    className={cn(
+                      "group flex items-center gap-4 px-4 py-3 rounded-2xl transition-all duration-300 relative",
+                      activeSection === item.id 
+                        ? "bg-slate-900 text-white shadow-xl shadow-slate-200" 
+                        : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
+                    )}
+                  >
+                    <div className={cn(
+                      "p-2 rounded-xl transition-all duration-300",
+                      activeSection === item.id 
+                        ? "bg-white/10 text-white scale-110" 
+                        : "bg-slate-100 text-slate-400 group-hover:bg-white group-hover:text-primary"
+                    )}>
+                      <item.icon size={18} strokeWidth={2.5} />
+                    </div>
+                    <div className="flex flex-col items-start gap-0.5">
+                      <span className="text-sm font-bold leading-tight tracking-tight">{item.label}</span>
+                      <span className={cn(
+                        "text-[10px] font-medium leading-none transition-colors",
+                        activeSection === item.id ? "text-slate-400" : "text-slate-400"
+                      )}>{item.desc}</span>
+                    </div>
+                    {activeSection === item.id && (
+                      <motion.div 
+                        layoutId="active-indicator" 
+                        className="absolute right-3 w-1.5 h-1.5 rounded-full bg-primary"
+                      />
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
+        </aside>
+
+        {/* Content Area con Scroll Suave */}
+        <main className="flex-1 overflow-y-auto bg-slate-50 relative p-8 lg:p-12 scroll-smooth">
+          <div className="max-w-4xl mx-auto pb-20">
+            {renderContent()}
+          </div>
+        </main>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="flex w-full overflow-x-auto h-auto p-1 gap-1 bg-muted/20">
-          <TabsTrigger value="users" className="flex items-center gap-2">
-            <Users className="h-4 w-4" />
-            Usuarios
-          </TabsTrigger>
-          <TabsTrigger value="email" className="flex items-center gap-2">
-            <Mail className="h-4 w-4" />
-            Email Corporativo
-          </TabsTrigger>
-          <TabsTrigger value="billing" className="flex items-center gap-2">
-            <Receipt className="h-4 w-4" />
-            Facturación Electrónica
-          </TabsTrigger>
-          {isSuperAdmin && (
-            <TabsTrigger value="payments" className="flex items-center gap-2">
-              <CreditCard className="h-4 w-4" />
-              Mercado Pago
-            </TabsTrigger>
-          )}
-          <TabsTrigger value="subscription" className="flex items-center gap-2">
-            <CreditCard className="h-4 w-4" />
-            Suscripción
-          </TabsTrigger>
-          <TabsTrigger value="general" className="flex items-center gap-2">
-            <SettingsIcon className="h-4 w-4" />
-            General
-          </TabsTrigger>
-          <TabsTrigger value="payments-methods" className="flex items-center gap-2">
-            <Wallet className="h-4 w-4" />
-            Pagos
-          </TabsTrigger>
-          <TabsTrigger value="taxes" className="flex items-center gap-2">
-            <Percent className="h-4 w-4" />
-            Impuestos
-          </TabsTrigger>
-          <TabsTrigger value="data" className="flex items-center gap-2">
-            <SettingsIcon className="h-4 w-4" />
-            Datos / Backups
-          </TabsTrigger>
-          <TabsTrigger value="privacy" className="flex items-center gap-2">
-            <ShieldCheck className="h-4 w-4" />
-            Privacidad
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="users" className="space-y-4">
-          <UsersConfig />
-        </TabsContent>
-
-        <TabsContent value="email" className="space-y-4">
-          <EmailConfigTab />
-        </TabsContent>
-
-        <TabsContent value="billing" className="space-y-4">
-          <AlegraConfig tenantId={(session?.user as any)?.tenantId} />
-        </TabsContent>
-
-        {isSuperAdmin && (
-          <TabsContent value="payments" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Mercado Pago - Configuración Global</CardTitle>
-                <CardDescription>
-                  Las credenciales de Mercado Pago se configuran mediante variables de entorno.
-                  Los tenants no tienen acceso a esta configuración ya que los pagos se procesan
-                  directamente a Clivaro.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-                    <p className="text-sm text-blue-900 dark:text-blue-100 mb-2">
-                      <strong>Variables de entorno requeridas:</strong>
-                    </p>
-                    <ul className="text-sm text-blue-800 dark:text-blue-200 space-y-1 list-disc list-inside">
-                      <li><code>MERCADOPAGO_ACCESS_TOKEN</code> - Token de acceso de Mercado Pago</li>
-                      <li><code>MERCADOPAGO_PUBLIC_KEY</code> - Clave pública de Mercado Pago (opcional)</li>
-                    </ul>
-                  </div>
-                  <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
-                    <p className="text-sm text-green-900 dark:text-green-100">
-                      <strong>Estado:</strong> {process.env.NEXT_PUBLIC_MERCADOPAGO_ACCESS_TOKEN ? '✅ Configurado' : '⚠️ No configurado'}
-                    </p>
-                    <p className="text-xs text-green-800 dark:text-green-200 mt-1">
-                      Las credenciales se cargan desde las variables de entorno del servidor.
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        )}
-
-        <TabsContent value="subscription" className="space-y-4">
-          <SubscriptionConfig
-            settings={settings}
-            onSave={(data) => updateSettingsMutation.mutate(data)}
-            isLoading={updateSettingsMutation.isPending}
-          />
-        </TabsContent>
-
-        <TabsContent value="general" className="space-y-4">
-          <GeneralConfig
-            settings={settings}
-            onSave={(data) => updateSettingsMutation.mutate(data)}
-            isLoading={updateSettingsMutation.isPending}
-          />
-        </TabsContent>
-
-        <TabsContent value="payments-methods" className="space-y-4">
-          <PaymentMethodsConfig />
-        </TabsContent>
-
-        <TabsContent value="taxes" className="space-y-4">
-          <TaxesPage />
-        </TabsContent>
-
-        <TabsContent value="data" className="space-y-4">
-          <DataConfig
-            settings={settings}
-            onSave={(data) => updateSettingsMutation.mutate(data)}
-            isLoading={updateSettingsMutation.isPending}
-          />
-        </TabsContent>
-
-        <TabsContent value="privacy" className="space-y-4">
-          <PrivacyConfig />
-        </TabsContent>
-      </Tabs>
+      {/* Nav Móvil Refactorizado */}
+      <nav className="md:hidden h-16 border-t bg-white flex items-center px-4 overflow-x-auto gap-2 scrollbar-hide shadow-[0_-4px_20px_-5px_rgba(0,0,0,0.1)]">
+         {navigationGroups.flatMap(g => g.items).map(item => (
+            <button
+              key={item.id}
+              onClick={() => setActiveSection(item.id)}
+              className={cn(
+                "flex items-center gap-2 px-4 py-2 rounded-full whitespace-nowrap text-sm font-bold transition-all",
+                activeSection === item.id ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-500"
+              )}
+            >
+              <item.icon size={14} />
+              {item.label}
+            </button>
+         ))}
+      </nav>
     </div>
   )
 }
-
