@@ -341,6 +341,7 @@ model Customer {
   idType             String?                      // CC, NIT, CE, TI, PP, etc.
   isCompany          Boolean                      @default(false) // Natural vs Juridica
   taxRegime          String?                      // Responsable de IVA (COMMON) o No Responsable (SIMPLIFIED)
+  isRetentionAgent   Boolean                      @default(false) // Agente retenedor (retefuente, reteIVA)
   createdAt          DateTime                     @default(now())
   updatedAt          DateTime                     @updatedAt
   createdById        String?
@@ -1819,22 +1820,23 @@ model RestaurantTable {
 }
 
 model WaiterProfile {
-  id        String   @id @default(cuid())
-  tenantId  String
-  name      String
-  code      String   // unique per tenant (e.g. "M1")
-  pin       String   // hashed
-  active    Boolean  @default(true)
-  lastLogin DateTime?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id             String    @id @default(cuid())
+  tenantId       String
+  name           String
+  code           String    // unique per tenant (e.g. "M1")
+  pin            String    // hashed
+  active         Boolean   @default(true)
+  lastLogin      DateTime?
+  failedAttempts Int       @default(0) // Rate-limiting: tracks failed login attempts
+  lockedUntil    DateTime? // Rate-limiting: lock waiter after too many failed attempts
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
   tenant    Tenant   @relation("TenantToWaiters", fields: [tenantId], references: [id], onDelete: Cascade)
   sessions  TableSession[] @relation("WaiterToSessions")
   orders    TableOrder[]   @relation("WaiterToOrders")
 
   @@unique([tenantId, code])
-  @@unique([tenantId, pin])
   @@index([tenantId])
 }
 

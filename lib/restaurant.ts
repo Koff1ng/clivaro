@@ -93,6 +93,7 @@ export function generateWaiterToken(waiter: { id: string, name: string, code: st
             name: waiter.name,
             code: waiter.code,
             tenantId: waiter.tenantId,
+            type: 'waiter_session',
             role: 'WAITER',
             iat: Math.floor(Date.now() / 1000),
         },

@@ -245,6 +245,45 @@ BEGIN
         RAISE NOTICE '✅ Added tipAmount to Invoice';
     END IF;
 
+    -- =====================================================
+    -- 10. WaiterProfile — rate-limiting columns
+    -- =====================================================
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = v_schema AND table_name = 'WaiterProfile' AND column_name = 'failedAttempts'
+    ) THEN
+        ALTER TABLE "WaiterProfile" ADD COLUMN "failedAttempts" INTEGER NOT NULL DEFAULT 0;
+        RAISE NOTICE '✅ Added failedAttempts to WaiterProfile';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = v_schema AND table_name = 'WaiterProfile' AND column_name = 'lockedUntil'
+    ) THEN
+        ALTER TABLE "WaiterProfile" ADD COLUMN "lockedUntil" TIMESTAMP(3);
+        RAISE NOTICE '✅ Added lockedUntil to WaiterProfile';
+    END IF;
+
+    -- Drop pin uniqueness (two waiters CAN have same PIN)
+    IF EXISTS (
+        SELECT 1 FROM pg_indexes
+        WHERE schemaname = v_schema AND tablename = 'WaiterProfile' AND indexname = 'WaiterProfile_tenantId_pin_key'
+    ) THEN
+        DROP INDEX "WaiterProfile_tenantId_pin_key";
+        RAISE NOTICE '✅ Dropped pin unique index from WaiterProfile';
+    END IF;
+
+    -- =====================================================
+    -- 11. Customer — isRetentionAgent column
+    -- =====================================================
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = v_schema AND table_name = 'Customer' AND column_name = 'isRetentionAgent'
+    ) THEN
+        ALTER TABLE "Customer" ADD COLUMN "isRetentionAgent" BOOLEAN NOT NULL DEFAULT false;
+        RAISE NOTICE '✅ Added isRetentionAgent to Customer';
+    END IF;
+
 END $$;
 `
 

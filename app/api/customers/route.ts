@@ -15,6 +15,7 @@ const createCustomerSchema = z.object({
   isCompany: z.boolean().default(false).optional(),
   taxRegime: z.string().optional(),
   idType: z.string().optional(),
+  isRetentionAgent: z.boolean().default(false).optional(),
 })
 
 export async function GET(request: Request) {
@@ -92,6 +93,16 @@ export async function POST(request: Request) {
     const data = createCustomerSchema.parse(body)
 
     const customer = await withTenantTx(tenantId, async (prisma) => {
+      // Check for duplicate by taxId
+      if (data.taxId) {
+        const existing = await prisma.customer.findFirst({
+          where: { taxId: data.taxId, active: true }
+        })
+        if (existing) {
+          throw { code: 'CUSTOMER_DUPLICATE', message: `Ya existe un cliente con el documento ${data.taxId}` }
+        }
+      }
+
       return prisma.customer.create({
         data: {
           ...data,
@@ -104,13 +115,20 @@ export async function POST(request: Request) {
           isCompany: data.isCompany || false,
           taxRegime: data.taxRegime || null,
           idType: data.idType || null,
+          isRetentionAgent: data.isRetentionAgent || false,
           createdById: (session.user as any).id,
         },
       })
     })
 
     return NextResponse.json(customer, { status: 201 })
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.code === 'CUSTOMER_DUPLICATE') {
+      return NextResponse.json(
+        { error: error.message, code: 'CUSTOMER_DUPLICATE' },
+        { status: 409 }
+      )
+    }
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: 'Validation error', details: error.errors },
