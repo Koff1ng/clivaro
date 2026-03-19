@@ -2,16 +2,33 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import { POSScreen } from '@/components/pos/pos-screen'
+import { CashierBillingConsole } from '@/components/restaurant/pos/cashier-console'
+import { prisma } from '@/lib/db'
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Card } from '@/components/ui/card'
 
 export default async function POSPage() {
   const session = await getServerSession(authOptions)
-  
+
   if (!session) {
     redirect('/login')
+  }
+
+  const tenantId = (session.user as any)?.tenantId as string | undefined
+
+  // Check if restaurant mode is enabled for this tenant
+  let restaurantMode = false
+  if (tenantId) {
+    const settings = await prisma.tenantSettings.findUnique({
+      where: { tenantId },
+      select: { enableRestaurantMode: true },
+    })
+    restaurantMode = settings?.enableRestaurantMode ?? false
+  }
+
+  if (restaurantMode) {
+    return <CashierBillingConsole />
   }
 
   return (
@@ -27,11 +44,10 @@ export default async function POSPage() {
           <h1 className="text-sm font-medium text-foreground">
             Punto de Venta
           </h1>
-          <div className="w-16" /> {/* Spacer para centrar */}
+          <div className="w-16" />
         </div>
       </div>
       <POSScreen />
     </div>
   )
 }
-

@@ -202,9 +202,10 @@ interface POSScreenProps {
   waiterData?: any
   waiterToken?: string
   preselectedTable?: RestaurantTable | null
+  onOrderSent?: () => void
 }
 
-export function POSScreen({ mode = 'retail', waiterData, waiterToken, preselectedTable }: POSScreenProps) {
+export function POSScreen({ mode = 'retail', waiterData, waiterToken, preselectedTable, onOrderSent }: POSScreenProps) {
   const { toast } = useToast()
   const { data: session } = useSession()
   const [searchQuery, setSearchQuery] = useState('')
@@ -1428,9 +1429,13 @@ export function POSScreen({ mode = 'retail', waiterData, waiterToken, preselecte
 
       toast('Comanda enviada a cocina', 'success')
       setCart([])
-      // Keep table selected or clear? For commander, usually clear to next table
-      setSelectedTable(null)
-      setShowTableSelector(true)
+      setActiveSession(null)
+      if (onOrderSent) {
+        onOrderSent()
+      } else {
+        setSelectedTable(null)
+        setShowTableSelector(true)
+      }
     } catch (err: any) {
       toast(err.message, 'error')
     }

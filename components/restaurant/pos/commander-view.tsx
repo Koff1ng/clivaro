@@ -210,6 +210,7 @@ export function CommanderView({ waiterToken, waiterData, onExit }: CommanderView
             waiterData={waiterData}
             waiterToken={waiterToken}
             preselectedTable={openOrderTable}
+            onOrderSent={handleBackFromOrder}
           />
         </div>
       </div>

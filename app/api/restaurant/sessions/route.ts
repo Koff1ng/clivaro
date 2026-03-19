@@ -86,17 +86,18 @@ export async function POST(req: NextRequest) {
 
     const prisma = await getTenantPrismaClient(context.tenantId)
 
+    // If an open session already exists, return it (idempotent)
     const existing = await prisma.tableSession.findFirst({
       where: { tableId: parsed.data.tableId, status: 'OPEN' },
     })
 
     if (existing) {
-      return apiError(409, 'Table already has an open session')
+      return NextResponse.json(existing)
     }
 
     const waiterId = context.waiter?.id
     if (!waiterId) {
-      return apiError(403, 'Waiter context is required to open a table session')
+      return apiError(403, 'Waiter context required to open a table session')
     }
 
     const session = await prisma.$transaction(async (tx) => {
