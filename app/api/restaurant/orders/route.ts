@@ -1,4 +1,4 @@
-﻿import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getTenantPrismaClient, getTenantIdFromSession } from '@/lib/tenancy'
 import { ensureRestaurantMode, getWaiterFromToken } from '@/lib/restaurant'

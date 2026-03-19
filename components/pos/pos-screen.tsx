@@ -1361,7 +1361,7 @@ export function POSScreen({ mode = 'retail', waiterData, waiterToken }: POSScree
     try {
       const tenantId = (session?.user as any)?.tenantId
       if (!tenantId) {
-        throw new Error('No se encontró el tenant de la sesión')
+        throw new Error('No se encontro el tenant de la sesion')
       }
 
       const restaurantHeaders: Record<string, string> = {
@@ -1381,7 +1381,7 @@ export function POSScreen({ mode = 'retail', waiterData, waiterToken }: POSScree
           body: JSON.stringify({ tableId: selectedTable.id }),
         })
         const data = await res.json().catch(() => ({} as any))
-        if (!res.ok) throw new Error(data.error || 'No se pudo abrir sesión de mesa')
+        if (!res.ok) throw new Error(data.error || 'No se pudo abrir sesion de mesa')
         sessionId = data.id
         setActiveSession(data)
       }
@@ -1620,7 +1620,7 @@ export function POSScreen({ mode = 'retail', waiterData, waiterToken }: POSScree
                   tables={restaurantTables}
                   onTableClick={(table) => {
                     if (table.status !== 'AVAILABLE' && (!selectedTable || selectedTable.id !== table.id)) {
-                      toast(`La mesa ${table.name} no está disponible`, 'warning')
+                      toast(`La mesa ${table.name} no esta disponible`, 'warning')
                       return
                     }
                     setSelectedTable(table)

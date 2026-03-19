@@ -7,7 +7,7 @@ import { ensureRestaurantMode, getWaiterFromToken } from '@/lib/restaurant'
 
 /**
  * GET: Lista todas las mesas (opcionalmente filtradas por zona).
- * Permite acceso por sesión con permiso de restaurante o por token de mesero.
+ * Permite acceso por sesion con permiso de restaurante o por token de mesero.
  */
 export async function GET(request: Request) {
   const waiterToken = request.headers.get('x-waiter-token')
