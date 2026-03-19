@@ -190,14 +190,14 @@ function WaiterForm({ waiter, onSuccess }: { waiter?: any, onSuccess: () => void
           />
         </div>
         <div className="space-y-2">
-          <label className="text-sm font-medium">PIN (6 dígitos)</label>
+          <label className="text-sm font-medium">PIN (4 dígitos)</label>
           <Input 
             required={!waiter}
             type="password"
-            maxLength={6}
+            maxLength={4}
             value={formData.pin} 
             onChange={e => setFormData({...formData, pin: e.target.value})} 
-            placeholder="******"
+            placeholder="****"
           />
         </div>
       </div>

@@ -1834,6 +1834,7 @@ model WaiterProfile {
   orders    TableOrder[]   @relation("WaiterToOrders")
 
   @@unique([tenantId, code])
+  @@unique([tenantId, pin])
   @@index([tenantId])
 }
 

@@ -7,7 +7,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requirePermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
 import { getTenantIdFromSession, getTenantPrismaClient } from '@/lib/tenancy'
-import { ensureRestaurantMode, verifyPin, generateWaiterToken } from '@/lib/restaurant'
+import { ensureRestaurantMode, verifyPin, generateWaiterToken, hashPin } from '@/lib/restaurant'
 import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
@@ -17,10 +17,10 @@ export async function POST(request: NextRequest) {
   if (session instanceof NextResponse) return session
 
   const tenantId = getTenantIdFromSession(session)
-  const { code, pin } = await request.json()
+  const { pin } = await request.json()
 
-  if (!code || !pin) {
-    return NextResponse.json({ error: 'Código y PIN son obligatorios' }, { status: 400 })
+  if (!pin) {
+    return NextResponse.json({ error: 'El PIN es obligatorio' }, { status: 400 })
   }
 
   const restaurantCheck = await ensureRestaurantMode(tenantId)
@@ -29,8 +29,11 @@ export async function POST(request: NextRequest) {
   try {
     const prisma = await getTenantPrismaClient(tenantId)
     
+    // Buscar directamente por el PIN hasheado (ahora que es único por tenant)
     const waiter = await prisma.waiterProfile.findUnique({
-      where: { tenantId_code: { tenantId, code } }
+      where: { 
+        tenantId_pin: { tenantId, pin: hashPin(pin) } 
+      }
     })
 
     if (!waiter || !waiter.active) {

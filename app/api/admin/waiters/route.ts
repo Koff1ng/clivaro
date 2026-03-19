@@ -53,6 +53,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ waiter });
   } catch (error: any) {
     if (error.code === 'P2002') {
+      const field = error.meta?.target || '';
+      if (field.includes('pin')) {
+        return NextResponse.json({ error: "Este PIN ya está asignado a otro mesero" }, { status: 400 });
+      }
       return NextResponse.json({ error: "El código de mesero ya existe" }, { status: 400 });
     }
     return NextResponse.json({ error: error.message }, { status: 400 });
