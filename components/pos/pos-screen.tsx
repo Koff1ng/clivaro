@@ -201,9 +201,10 @@ interface POSScreenProps {
   mode?: 'retail' | 'commander'
   waiterData?: any
   waiterToken?: string
+  preselectedTable?: RestaurantTable | null
 }
 
-export function POSScreen({ mode = 'retail', waiterData, waiterToken }: POSScreenProps) {
+export function POSScreen({ mode = 'retail', waiterData, waiterToken, preselectedTable }: POSScreenProps) {
   const { toast } = useToast()
   const { data: session } = useSession()
   const [searchQuery, setSearchQuery] = useState('')
@@ -268,9 +269,17 @@ export function POSScreen({ mode = 'retail', waiterData, waiterToken }: POSScree
     return `pos:discountOverride:${tenantId}:${userId}`
   }, [session])
 
-  const [selectedTable, setSelectedTable] = useState<RestaurantTable | null>(null)
-  const [showTableSelector, setShowTableSelector] = useState(mode === 'commander')
+  const [selectedTable, setSelectedTable] = useState<RestaurantTable | null>(preselectedTable ?? null)
+  const [showTableSelector, setShowTableSelector] = useState(mode === 'commander' && !preselectedTable)
   const [activeSession, setActiveSession] = useState<any>(null)
+
+  // Sync if parent changes the preselected table
+  useEffect(() => {
+    if (preselectedTable) {
+      setSelectedTable(preselectedTable)
+      setShowTableSelector(false)
+    }
+  }, [preselectedTable?.id])
 
   const offlineQueueKey = useMemo(() => {
     const tenantId = (session?.user as any)?.tenantId || 'no-tenant'
@@ -287,11 +296,11 @@ export function POSScreen({ mode = 'retail', waiterData, waiterToken }: POSScree
   })
 
   useEffect(() => {
-    // Solo mostrar el diÃ¡logo si NO hay turno activo
+    // Solo mostrar el diálogo si NO hay turno activo
     if (!activeShift) {
       setShowShiftDialog(true)
     } else {
-      // Si hay turno activo, asegurarse de que el diÃ¡logo estÃ© cerrado
+      // Si hay turno activo, asegurarse de que el diálogo esté cerrado
       setShowShiftDialog(false)
     }
   }, [activeShift])
@@ -472,8 +481,8 @@ export function POSScreen({ mode = 'retail', waiterData, waiterToken }: POSScree
 
   const scanLookup = useCallback(async (raw: string) => {
     const code = String(raw || '').trim()
-    if (!code) throw new Error('CÃ³digo vacÃ­o')
-    if (!selectedWarehouse) throw new Error('Seleccione un almacÃ©n antes de escanear')
+    if (!code) throw new Error('Código vacío')
+    if (!selectedWarehouse) throw new Error('Seleccione un almacén antes de escanear')
 
     const res = await fetch(
       `/api/pos/scan?code=${encodeURIComponent(code)}&warehouseId=${encodeURIComponent(selectedWarehouse)}`
@@ -488,7 +497,7 @@ export function POSScreen({ mode = 'retail', waiterData, waiterToken }: POSScree
       const data = await scanLookup(raw)
 
       if (data.kind === 'VARIANT') {
-        const displayName = `${data.product.name} â€¢ ${data.variant.name}`
+        const displayName = `${data.product.name} ??? ${data.variant.name}`
         const sku = data.variant.sku || data.product.sku
         const unitPrice = typeof data.variant.price === 'number' ? data.variant.price : data.product.price
         addCartLine({
@@ -657,13 +666,13 @@ export function POSScreen({ mode = 'retail', waiterData, waiterToken }: POSScree
 
     removeQueuedSale(id)
     setShowOfflineQueue(false)
-    toast('Venta cargada al POS para correcciÃ³n', 'success')
+    toast('Venta cargada al POS para corrección', 'success')
     searchInputRef.current?.focus()
   }, [offlineQueue, removeQueuedSale, selectedWarehouse, toast, isOnline, keyOfStock])
 
   const syncSingleQueuedSale = useCallback(async (id: string) => {
     if (!isOnline) {
-      toast('No hay conexiÃ³n a internet', 'warning')
+      toast('No hay conexión a internet', 'warning')
       return
     }
     const item = offlineQueue.find((x) => x.id === id)
@@ -957,7 +966,7 @@ export function POSScreen({ mode = 'retail', waiterData, waiterToken }: POSScree
 
   const syncOfflineQueue = useCallback(async () => {
     if (!isOnline) {
-      toast('No hay conexiÃ³n a internet', 'warning')
+      toast('No hay conexión a internet', 'warning')
       return
     }
     if (offlineQueue.length === 0) {
@@ -1023,9 +1032,9 @@ export function POSScreen({ mode = 'retail', waiterData, waiterToken }: POSScree
       refetchShift()
 
       if (kept.length === 0) {
-        toast('SincronizaciÃ³n completada', 'success')
+        toast('Sincronización completada', 'success')
       } else {
-        toast(`SincronizaciÃ³n: OK ${okCount} Â· quedan ${kept.length} pendiente(s)`, 'warning')
+        toast(`Sincronización: OK ${okCount} · quedan ${kept.length} pendiente(s)`, 'warning')
       }
     } finally {
       setSyncingQueue(false)
@@ -1249,16 +1258,16 @@ export function POSScreen({ mode = 'retail', waiterData, waiterToken }: POSScree
   const handleCheckout = () => {
     // Validations
     if (cart.length === 0) {
-      toast('El carrito estÃ¡ vacÃ­o', 'warning')
+      toast('El carrito está vacío', 'warning')
       return
     }
 
     if (!selectedWarehouse) {
-      toast('Seleccione un almacÃ©n', 'warning')
+      toast('Seleccione un almacén', 'warning')
       return
     }
 
-    // Todos los mÃ©todos de pago requieren turno de caja abierto (quedan registrados en el cierre)
+    // Todos los métodos de pago requieren turno de caja abierto (quedan registrados en el cierre)
     if (!activeShift) {
       toast('Debes abrir un turno de caja primero', 'warning')
       setShowShiftDialog(true)
@@ -1276,7 +1285,7 @@ export function POSScreen({ mode = 'retail', waiterData, waiterToken }: POSScree
       }
     } else if (paymentMode === 'SINGLE' && selectedMethod?.type === 'CREDIT') {
       if (!selectedCustomer || !selectedCustomer.id || selectedCustomer.name === 'Cliente General') {
-        toast('Debe seleccionar un cliente vÃ¡lido para ventas a crÃ©dito', 'warning')
+        toast('Debe seleccionar un cliente válido para ventas a crédito', 'warning')
         return
       }
     }
@@ -1284,7 +1293,7 @@ export function POSScreen({ mode = 'retail', waiterData, waiterToken }: POSScree
     // Validate cart items
     const validItems = cart.map(item => {
       if (!item.productId || !item.quantity || !item.unitPrice) {
-        throw new Error(`Item invÃ¡lido: ${item.productName}`)
+        throw new Error(`Item inválido: ${item.productName}`)
       }
       return {
         productId: item.productId,
@@ -1316,7 +1325,7 @@ export function POSScreen({ mode = 'retail', waiterData, waiterToken }: POSScree
         .filter((p) => !isNaN(p.amount) && p.amount > 0)
 
       if (normalized.length === 0) {
-        toast('Agrega al menos un pago vÃ¡lido', 'warning')
+        toast('Agrega al menos un pago válido', 'warning')
         return
       }
 
@@ -1448,7 +1457,7 @@ export function POSScreen({ mode = 'retail', waiterData, waiterToken }: POSScree
     }
   }, [])
 
-  // Buscar por teclado: Enter agrega (SKU/cÃ³digo exacto si existe; si no, agrega el primer resultado por nombre)
+  // Buscar por teclado: Enter agrega (SKU/código exacto si existe; si no, agrega el primer resultado por nombre)
   const handleSearchKeyDown = (e: React.KeyboardEvent) => {
     if (e.key !== 'Enter') return
     const q = (searchQuery || '').trim()
@@ -1488,7 +1497,7 @@ export function POSScreen({ mode = 'retail', waiterData, waiterToken }: POSScree
         warehouseId: selectedWarehouse,
       },
       ...parkedSales,
-    ].slice(0, 20) // lÃ­mite simple para evitar crecer infinito
+    ].slice(0, 20) // límite simple para evitar crecer infinito
     persistParked(next)
     setShowParkDialog(false)
     setCart([])
@@ -1512,7 +1521,7 @@ export function POSScreen({ mode = 'retail', waiterData, waiterToken }: POSScree
       setCart(found.cart || [])
       setSelectedCustomer(found.customer || null)
       setSelectedWarehouse(found.warehouseId || selectedWarehouse)
-      // remover al cargar (evita duplicados y confusiÃ³n)
+      // remover al cargar (evita duplicados y confusión)
       persistParked(parkedSales.filter((p) => p.id !== id))
       setShowParkedDialog(false)
       toast(`Ticket cargado: ${found.name}`, 'success')
@@ -1542,7 +1551,7 @@ export function POSScreen({ mode = 'retail', waiterData, waiterToken }: POSScree
         return
       }
 
-      // F4 -> checkout (aunque estÃ© escribiendo)
+      // F4 -> checkout (aunque esté escribiendo)
       if (e.key === 'F4') {
         e.preventDefault()
         handleCheckout()
@@ -1671,7 +1680,7 @@ export function POSScreen({ mode = 'retail', waiterData, waiterToken }: POSScree
             {/* Warehouse Selector */}
             {warehouses.length > 1 && (
               <div className="flex items-center gap-2">
-                <label className="text-sm font-medium whitespace-nowrap">AlmacÃ©n:</label>
+                <label className="text-sm font-medium whitespace-nowrap">Almacén:</label>
                 <select
                   value={selectedWarehouse}
                   onChange={(e) => setSelectedWarehouse(e.target.value)}
@@ -1691,7 +1700,7 @@ export function POSScreen({ mode = 'retail', waiterData, waiterToken }: POSScree
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
               <Input
                 ref={searchInputRef}
-                placeholder="Buscar por nombre, SKU o cÃ³digo de barras... (Enter para agregar)"
+                placeholder="Buscar por nombre, SKU o código de barras... (Enter para agregar)"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onKeyDown={handleSearchKeyDown}
@@ -1740,7 +1749,7 @@ export function POSScreen({ mode = 'retail', waiterData, waiterToken }: POSScree
               <div className="text-center text-gray-500 py-12">Cargando productos...</div>
             ) : products.length === 0 ? (
               <div className="text-center text-gray-500 py-12">
-                {searchQuery ? 'No se encontraron productos' : 'Selecciona una categorÃ­a o busca un producto'}
+                {searchQuery ? 'No se encontraron productos' : 'Selecciona una categoría o busca un producto'}
               </div>
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
@@ -1827,7 +1836,7 @@ export function POSScreen({ mode = 'retail', waiterData, waiterToken }: POSScree
                     size="sm"
                     className="h-7 px-2"
                     onClick={() => setShowOfflineQueue(true)}
-                    title={isOnline ? 'Ventas pendientes de sincronizar' : 'Sin conexiÃ³n'}
+                    title={isOnline ? 'Ventas pendientes de sincronizar' : 'Sin conexión'}
                   >
                     Pendientes ({offlineQueue.length})
                   </Button>
@@ -1859,7 +1868,7 @@ export function POSScreen({ mode = 'retail', waiterData, waiterToken }: POSScree
               {cart.length === 0 ? (
                 <div className="text-center text-gray-500 py-12">
                   <ShoppingCart className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-                  <p>El carrito estÃ¡ vacÃ­o</p>
+                  <p>El carrito está vacío</p>
                   <p className="text-sm mt-2">Agrega productos desde el panel izquierdo</p>
                 </div>
               ) : (
@@ -1896,8 +1905,8 @@ export function POSScreen({ mode = 'retail', waiterData, waiterToken }: POSScree
                               <div className="mt-2 rounded-md border border-red-200 bg-background p-2">
                                 <div className="text-xs font-semibold text-red-700">Conflicto: stock insuficiente</div>
                                 <div className="text-xs text-red-700 mt-0.5">
-                                  Disponible: <span className="font-semibold">{typeof availableNow === 'number' ? availableNow : conflict?.available ?? 'â€”'}</span>{' '}
-                                  Â· Solicitado: <span className="font-semibold">{conflict?.requested ?? item.quantity}</span>
+                                  Disponible: <span className="font-semibold">{typeof availableNow === 'number' ? availableNow : conflict?.available ?? '???'}</span>{' '}
+                                  · Solicitado: <span className="font-semibold">{conflict?.requested ?? item.quantity}</span>
                                 </div>
                                 <div className="mt-2 flex items-center gap-2">
                                   {typeof suggestedQty === 'number' && (
@@ -1953,7 +1962,7 @@ export function POSScreen({ mode = 'retail', waiterData, waiterToken }: POSScree
                                 size="sm"
                                 className={`h-7 px-2 text-xs ${item.preparationNotes ? 'bg-orange-500 hover:bg-orange-600' : ''}`}
                                 onClick={() => openPreparationNotesDialog(item)}
-                                title="Notas de preparaciÃ³n"
+                                title="Notas de preparación"
                               >
                                 <MessageSquare className="h-3.5 w-3.5 mr-1" />
                                 {item.preparationNotes ? 'Editar notas' : 'Agregar notas'}
@@ -2066,7 +2075,7 @@ export function POSScreen({ mode = 'retail', waiterData, waiterToken }: POSScree
 
             {/* Payment Mode Toggle */}
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-foreground">MÃ©todo de Pago</span>
+              <span className="text-sm font-medium text-foreground">Método de Pago</span>
               <Button
                 variant={paymentMode === 'SPLIT' ? 'default' : 'outline'}
                 size="sm"
@@ -2165,7 +2174,7 @@ export function POSScreen({ mode = 'retail', waiterData, waiterToken }: POSScree
                         }}
                       >
                         <SelectTrigger className="flex-1 h-10">
-                          <SelectValue placeholder="MÃ©todo" />
+                          <SelectValue placeholder="Método" />
                         </SelectTrigger>
                         <SelectContent>
                           {paymentMethods.map(m => (
@@ -2280,7 +2289,7 @@ export function POSScreen({ mode = 'retail', waiterData, waiterToken }: POSScree
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Buscar por nombre, NIT o telÃ©fono..."
+                  placeholder="Buscar por nombre, NIT o teléfono..."
                   value={customerSearch}
                   onChange={(e) => setCustomerSearch(e.target.value)}
                   className="pl-9"
@@ -2334,8 +2343,8 @@ export function POSScreen({ mode = 'retail', waiterData, waiterToken }: POSScree
               ) : customerSearch.length > 2 ? (
                 <div className="p-8 text-center border-2 border-dashed rounded-lg bg-muted/30">
                   <UserPlus className="h-8 w-8 mx-auto mb-2 text-muted-foreground opacity-50" />
-                  <p className="text-sm font-medium mb-1">No se encontrÃ³ el cliente</p>
-                  <p className="text-xs text-muted-foreground mb-4">Â¿Deseas registrarlo como nuevo?</p>
+                  <p className="text-sm font-medium mb-1">No se encontró el cliente</p>
+                  <p className="text-xs text-muted-foreground mb-4">¿Deseas registrarlo como nuevo?</p>
                   <Button
                     size="sm"
                     onClick={() => {
@@ -2417,7 +2426,7 @@ export function POSScreen({ mode = 'retail', waiterData, waiterToken }: POSScree
                 </svg>
               </div>
               <DialogTitle className="text-2xl font-bold text-green-700 dark:text-green-400">
-                Â¡Venta Completada!
+                ¡Venta Completada!
               </DialogTitle>
               {saleResult?.offline && (
                 <div className="mt-2 inline-block px-3 py-1 text-xs font-semibold text-orange-700 bg-orange-100 dark:bg-orange-900/30 dark:text-orange-400 rounded-full">
@@ -2475,7 +2484,7 @@ export function POSScreen({ mode = 'retail', waiterData, waiterToken }: POSScree
                   </div>
                 )}
                 <div className="flex flex-col pt-2 border-t">
-                  <span className="text-muted-foreground text-xs mb-1">MÃ©todo de Pago</span>
+                  <span className="text-muted-foreground text-xs mb-1">Método de Pago</span>
                   {saleResult.paymentMode === 'SPLIT' && Array.isArray(saleResult.payments) ? (
                     <div>
                       <span className="font-medium text-foreground">Mixto</span>
@@ -2562,12 +2571,12 @@ export function POSScreen({ mode = 'retail', waiterData, waiterToken }: POSScree
                     className="w-full"
                     disabled={voiding || !saleResult?.invoiceId}
                     onClick={async () => {
-                      const reason = prompt('Motivo de anulaciÃ³n/devoluciÃ³n (obligatorio):') || ''
+                      const reason = prompt('Motivo de anulación/devolución (obligatorio):') || ''
                       if (reason.trim().length < 3) {
-                        toast('Motivo invÃ¡lido', 'warning')
+                        toast('Motivo inválido', 'warning')
                         return
                       }
-                      if (!confirm(`Â¿Anular la factura ${saleResult.invoiceNumber}?`)) return
+                      if (!confirm(`¿Anular la factura ${saleResult.invoiceNumber}?`)) return
                       try {
                         setVoiding(true)
                         const res = await fetch(`/api/invoices/${saleResult.invoiceId}/void`, {
@@ -2592,7 +2601,7 @@ export function POSScreen({ mode = 'retail', waiterData, waiterToken }: POSScree
                       }
                     }}
                   >
-                    {voiding ? 'Anulandoâ€¦' : 'Anular'}
+                    {voiding ? 'Anulando???' : 'Anular'}
                   </Button>
                   <Button
                     variant="outline"
@@ -2600,7 +2609,7 @@ export function POSScreen({ mode = 'retail', waiterData, waiterToken }: POSScree
                     onClick={() => {
                       // Copy receipt info
                       const receiptText = `
-FerreterÃ­a - Punto de Venta
+Ferretería - Punto de Venta
 Factura: ${saleResult.invoiceNumber}
 Fecha: ${new Date().toLocaleString('es-CO')}
 ${saleResult.customer ? `Cliente: ${saleResult.customer.name}` : ''}
@@ -2608,7 +2617,7 @@ Total: ${formatCurrency(saleResult.total)}
 ${saleResult.change > 0 ? `Cambio: ${formatCurrency(saleResult.change)}` : ''}
                     `.trim()
                       navigator.clipboard.writeText(receiptText)
-                      toast('InformaciÃ³n copiada al portapapeles', 'success')
+                      toast('Información copiada al portapapeles', 'success')
                     }}
                   >
                     <Copy className="h-4 w-4 mr-2" />
@@ -2638,7 +2647,7 @@ ${saleResult.change > 0 ? `Cambio: ${formatCurrency(saleResult.change)}` : ''}
           </DialogHeader>
           <div className="space-y-3">
             <div className="text-sm text-gray-600">
-              Guarda el carrito actual como ticket para retomarlo despuÃ©s.
+              Guarda el carrito actual como ticket para retomarlo después.
             </div>
             <div>
               <label className="text-xs font-medium">Nombre del ticket</label>
@@ -2678,7 +2687,7 @@ ${saleResult.change > 0 ? `Cambio: ${formatCurrency(saleResult.change)}` : ''}
                     <div className="min-w-0">
                       <div className="font-medium truncate">{p.name}</div>
                       <div className="text-xs text-gray-500">
-                        {new Date(p.createdAt).toLocaleString('es-CO')} Â· {p.cart?.length || 0} items
+                        {new Date(p.createdAt).toLocaleString('es-CO')} · {p.cart?.length || 0} items
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
@@ -2707,14 +2716,14 @@ ${saleResult.change > 0 ? `Cambio: ${formatCurrency(saleResult.change)}` : ''}
           <div className="space-y-3">
             <div className="flex items-center justify-between text-sm">
               <div className="text-muted-foreground">
-                Estado: {isOnline ? 'Conectado' : 'Sin conexiÃ³n'} Â· Pendientes: <b>{offlineQueue.length}</b>
+                Estado: {isOnline ? 'Conectado' : 'Sin conexión'} · Pendientes: <b>{offlineQueue.length}</b>
               </div>
               <Button
                 variant="outline"
                 onClick={() => syncOfflineQueue()}
                 disabled={!isOnline || syncingQueue || offlineQueue.length === 0}
               >
-                {syncingQueue ? 'Sincronizandoâ€¦' : 'Sincronizar'}
+                {syncingQueue ? 'Sincronizando???' : 'Sincronizar'}
               </Button>
             </div>
 
@@ -2727,10 +2736,10 @@ ${saleResult.change > 0 ? `Cambio: ${formatCurrency(saleResult.change)}` : ''}
                     <div className="min-w-0">
                       <div className="font-medium truncate">{s.receipt.provisionalInvoiceNumber}</div>
                       <div className="text-xs text-gray-500">
-                        {new Date(s.createdAt).toLocaleString('es-CO')} Â· {s.receipt.items?.length || 0} items Â· Total {formatCurrency(s.receipt.total)}
+                        {new Date(s.createdAt).toLocaleString('es-CO')} · {s.receipt.items?.length || 0} items · Total {formatCurrency(s.receipt.total)}
                       </div>
                       <div className="text-[11px] text-gray-400 mt-1">
-                        Intentos: {Number(s.attempts || 0)}{s.lastAttemptAt ? ` Â· Ãšltimo: ${new Date(s.lastAttemptAt).toLocaleString('es-CO')}` : ''}
+                        Intentos: {Number(s.attempts || 0)}{s.lastAttemptAt ? ` · ??ltimo: ${new Date(s.lastAttemptAt).toLocaleString('es-CO')}` : ''}
                       </div>
                       {s.status === 'FAILED' && (
                         <div className="text-xs text-red-600 mt-1">
@@ -2746,7 +2755,7 @@ ${saleResult.change > 0 ? `Cambio: ${formatCurrency(saleResult.change)}` : ''}
                     <div className="flex items-center gap-2">
                       <div className="text-xs font-semibold">
                         {s.status === 'FAILED' ? (
-                          <span className="text-red-600">FALLÃ“</span>
+                          <span className="text-red-600">FALL??</span>
                         ) : (
                           <span className="text-orange-600">PENDIENTE</span>
                         )}
@@ -2787,7 +2796,7 @@ ${saleResult.change > 0 ? `Cambio: ${formatCurrency(saleResult.change)}` : ''}
       <Dialog open={showPreparationNotesDialog} onOpenChange={setShowPreparationNotesDialog}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Notas de PreparaciÃ³n</DialogTitle>
+            <DialogTitle>Notas de Preparación</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div className="text-sm text-muted-foreground">
@@ -2837,7 +2846,7 @@ ${saleResult.change > 0 ? `Cambio: ${formatCurrency(saleResult.change)}` : ''}
           </DialogHeader>
           <div className="space-y-3">
             <div className="text-sm text-muted-foreground">
-              Ingresa credenciales de un usuario con permisos para autorizar descuentos. La autorizaciÃ³n dura <b>5 minutos</b>.
+              Ingresa credenciales de un usuario con permisos para autorizar descuentos. La autorización dura <b>5 minutos</b>.
             </div>
             <div className="space-y-2">
               <div>
@@ -2845,7 +2854,7 @@ ${saleResult.change > 0 ? `Cambio: ${formatCurrency(saleResult.change)}` : ''}
                 <Input value={overrideUsername} onChange={(e) => setOverrideUsername(e.target.value)} autoFocus />
               </div>
               <div>
-                <label className="text-xs font-medium">ContraseÃ±a</label>
+                <label className="text-xs font-medium">Contraseña</label>
                 <Input type="password" value={overridePassword} onChange={(e) => setOverridePassword(e.target.value)} />
               </div>
             </div>

@@ -7,12 +7,27 @@ import { ensureRestaurantMode } from '@/lib/restaurant'
 
 /**
  * GET: Lista todas las zonas del restaurante.
+ * Allows waiter token or session with restaurant permission.
  */
 export async function GET(request: Request) {
-    const session = await requirePermission(request as any, PERMISSIONS.MANAGE_RESTAURANT)
-    if (session instanceof NextResponse) return session
+    const waiterToken = request.headers.get('x-waiter-token')
+    const tenantIdHeader = request.headers.get('x-tenant-id')
 
-    const tenantId = getTenantIdFromSession(session)
+    let tenantId: string
+
+    if (waiterToken && tenantIdHeader) {
+        // Waiter access via token
+        const { getWaiterFromToken } = await import('@/lib/restaurant')
+        const waiter = await getWaiterFromToken(waiterToken, tenantIdHeader)
+        if (!waiter) {
+            return NextResponse.json({ error: 'Invalid waiter token' }, { status: 401 })
+        }
+        tenantId = tenantIdHeader
+    } else {
+        const session = await requirePermission(request as any, PERMISSIONS.MANAGE_RESTAURANT)
+        if (session instanceof NextResponse) return session
+        tenantId = getTenantIdFromSession(session)
+    }
 
     // Validar que el modo restaurante esté activo
     const errorResponse = await ensureRestaurantMode(tenantId)

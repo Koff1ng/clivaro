@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { CommanderPINLogin } from "@/components/restaurant/pos/commander-login";
-import { POSScreen } from "@/components/pos/pos-screen";
+import { CommanderView } from "@/components/restaurant/pos/commander-view";
 import { useSession } from "next-auth/react";
 import { redirect } from "next/navigation";
 
@@ -16,10 +16,32 @@ export default function CommanderPage() {
     }
   }, [status]);
 
-  if (status === "loading") return <div className="h-screen bg-[#0F172A] flex items-center justify-center text-white">Iniciando Comandero...</div>;
+  if (status === "loading") {
+    return (
+      <div
+        style={{
+          height: "100vh",
+          background: "#2C1A0E",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          color: "#F5C518",
+          fontSize: 20,
+          fontWeight: 700,
+          letterSpacing: 2,
+        }}
+      >
+        Iniciando Comandero...
+      </div>
+    );
+  }
 
   const handleLogin = (token: string, data: any) => {
     setWaiter({ token, data });
+  };
+
+  const handleExit = () => {
+    setWaiter(null);
   };
 
   if (!waiter) {
@@ -27,9 +49,10 @@ export default function CommanderPage() {
   }
 
   return (
-    <div className="h-screen bg-background">
-      <POSScreen mode="commander" waiterData={waiter.data} waiterToken={waiter.token} />
-    </div>
+    <CommanderView
+      waiterToken={waiter.token}
+      waiterData={waiter.data}
+      onExit={handleExit}
+    />
   );
 }
-
