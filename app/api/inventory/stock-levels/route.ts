@@ -43,16 +43,20 @@ export async function GET(request: Request) {
         }
       }
 
-      const existingStockLevels = await tx.stockLevel.findMany({
-        where: stockLevelWhere,
-        include: {
-          product: true,
-          warehouse: true,
-          zone: true,
-        },
-      })
-
-      const total = await tx.stockLevel.count({ where: stockLevelWhere })
+      const [existingStockLevels, total] = await Promise.all([
+        tx.stockLevel.findMany({
+          where: stockLevelWhere,
+          skip,
+          take: limit,
+          include: {
+            product: true,
+            warehouse: true,
+            zone: true,
+          },
+          orderBy: { product: { name: 'asc' } },
+        }),
+        tx.stockLevel.count({ where: stockLevelWhere }),
+      ])
 
       return { existingStockLevels, total }
     })
@@ -75,10 +79,9 @@ export async function GET(request: Request) {
       trackStock: sl.product?.trackStock ?? true,
     }))
 
-    const paginated = allStockLevels.slice(skip, skip + limit)
 
     return NextResponse.json({
-      stockLevels: paginated,
+      stockLevels: allStockLevels,
       pagination: {
         page,
         limit,

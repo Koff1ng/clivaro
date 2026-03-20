@@ -111,7 +111,6 @@ export async function POST(request: Request) {
       const stockLevels = await prisma.stockLevel.findMany({
         where: { 
           warehouseId: data.warehouseId, 
-          quantity: { gt: 0 },
           product: {
             trackStock: true,
             ...(data.categoryIds && data.categoryIds.length > 0 ? { categoryId: { in: data.categoryIds } } : {}),

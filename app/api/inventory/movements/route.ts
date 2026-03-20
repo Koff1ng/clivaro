@@ -58,6 +58,7 @@ export async function GET(request: Request) {
           take: limit,
           include: {
             product: { select: { id: true, name: true, sku: true } },
+            variant: { select: { id: true, name: true } },
             warehouse: { select: { id: true, name: true } },
             createdBy: { select: { id: true, name: true } },
           },
@@ -71,6 +72,8 @@ export async function GET(request: Request) {
         warehouseName: m.warehouse.name,
         productName: m.product?.name || 'Unknown',
         productSku: m.product?.sku || '',
+        variantId: (m as any).variant?.id || null,
+        variantName: (m as any).variant?.name || null,
         type: m.type,
         quantity: m.quantity,
         cost: m.cost,

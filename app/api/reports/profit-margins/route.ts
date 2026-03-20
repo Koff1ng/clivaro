@@ -31,7 +31,7 @@ export async function GET(request: Request) {
             // Fetch invoices with details for cost calculation
             const invoices = await prisma.invoice.findMany({
                 where: {
-                    status: { in: ['PAID', 'PARTIAL'] },
+                    status: { in: ['PAGADA', 'EN_COBRANZA', 'EMITIDA', 'PAID', 'PARTIAL'] },
                     issuedAt: {
                         gte: fromDate,
                         lte: toDate,

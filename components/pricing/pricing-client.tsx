@@ -153,35 +153,14 @@ export function PricingClient() {
   const [showContactForm, setShowContactForm] = useState(false)
   const [selectedPlan, setSelectedPlan] = useState<string | undefined>(undefined)
 
-  // Force system theme preference for Pricing Page
+  // Force light mode for the landing page
   useEffect(() => {
-    // Save current state
     const wasDark = document.documentElement.classList.contains('dark')
+    document.documentElement.classList.remove('dark')
 
-    const applySystemTheme = () => {
-      const isSystemDark = window.matchMedia('(prefers-color-scheme: dark)').matches
-      if (isSystemDark) {
-        document.documentElement.classList.add('dark')
-      } else {
-        document.documentElement.classList.remove('dark')
-      }
-    }
-
-    // Apply initially
-    applySystemTheme()
-
-    // Listen for system changes
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
-    const handler = () => applySystemTheme()
-    mediaQuery.addEventListener('change', handler)
-
-    // Cleanup: Restore previous state (approximate)
     return () => {
-      mediaQuery.removeEventListener('change', handler)
       if (wasDark) {
         document.documentElement.classList.add('dark')
-      } else {
-        document.documentElement.classList.remove('dark')
       }
     }
   }, [])

@@ -34,7 +34,7 @@ export async function GET(request: Request) {
             // Fetch invoices in the date range
             const invoices = await prisma.invoice.findMany({
                 where: {
-                    status: { in: ['PAID', 'PARTIAL'] },
+                    status: { in: ['PAGADA', 'EN_COBRANZA', 'EMITIDA', 'PAID', 'PARTIAL'] },
                     issuedAt: {
                         gte: fromDate,
                         lte: toDate,
