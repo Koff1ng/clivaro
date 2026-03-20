@@ -59,12 +59,27 @@ Cuando se crea un nuevo tenant desde el Panel Admin (`/admin/tenants`), el siste
 
 1. ✅ Crea el **schema PostgreSQL** del tenant (`tenant_{id}`)
 2. ✅ Ejecuta el DDL embebido en `lib/tenant-sql-statements.ts` (generado desde `prisma/supabase-init.sql` con `npm run generate:tenant-sql`)
-3. ✅ Sincroniza columnas adicionales (legal, SoftRestaurant, **Invoice.tipAmount**, restaurante)
+3. ✅ Sincroniza columnas adicionales (legal, SoftRestaurant, **Invoice.tipAmount**, **Invoice/CreditNote Alegra** (`alegraId`, `alegraNumber`, `alegraStatus`, `alegraUrl`), restaurante)
 4. ✅ Crea permisos y roles (incluye **`manage_restaurant`** para ADMIN, cajero y rol de mesero)
 5. ✅ Crea un usuario administrador por defecto
 6. ✅ Crea un almacén principal y configuración contable base
 
 **Si cambias el modelo Prisma / tablas de tenant:** actualiza `prisma/supabase-init.sql`, ejecuta `npm run generate:tenant-sql` y vuelve a desplegar, para que los **próximos** tenants reciban el DDL nuevo. Los tenants ya existentes pueden alinearse con `POST /api/admin/migrate-tenants` (super admin) o los scripts en `scripts/`.
+
+**Error Prisma `alegraStatus` / columnas Alegra en `Invoice`:** el schema de Prisma incluye campos de integración Alegra que faltaban en DDL antiguo de tenants. Tras desplegar este cambio, ejecuta **`POST /api/admin/migrate-tenants`** (sesión super admin) o aplica manualmente en cada schema `tenant_*` los `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` equivalentes a los del endpoint. Los nuevos tenants creados con la inicialización estándar ya reciben las columnas vía `tenant-sql-statements.ts` regenerado.
+
+### Supabase CLI (migraciones en la nube)
+
+El proyecto incluye el CLI como dependencia de desarrollo (`supabase`) y `supabase/config.toml` (vía `npx supabase init`). La migración **`supabase/migrations/20260320120000_tenant_invoice_alegra_columns.sql`** recorre todos los esquemas `tenant_*` y añade columnas/índices Alegra en `Invoice` y `CreditNote`.
+
+```bash
+npm install
+npx supabase login
+npx supabase link --project-ref <TU_PROJECT_REF>
+npm run supabase:db:push
+```
+
+Scripts útiles: `npm run supabase:start` (Postgres local), `npm run supabase:db:reset` (reaplica migraciones en local), `npm run supabase:db:push` (remoto enlazado).
 
 **Credenciales por Defecto:**
 - **Usuario**: `admin`

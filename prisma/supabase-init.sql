@@ -427,6 +427,10 @@ CREATE TABLE "Invoice" (
     "alegraInvoiceId" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
+    "alegraId" TEXT,
+    "alegraNumber" TEXT,
+    "alegraStatus" TEXT DEFAULT 'DRAFT',
+    "alegraUrl" TEXT,
     "createdById" TEXT,
     "updatedById" TEXT,
 
@@ -581,8 +585,11 @@ CREATE TABLE "CreditNote" (
     "issuedAt" TIMESTAMP(3),
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
-    "createdById" TEXT,
     "alegraId" TEXT,
+    "alegraNumber" TEXT,
+    "alegraStatus" TEXT DEFAULT 'DRAFT',
+    "alegraUrl" TEXT,
+    "createdById" TEXT,
 
     CONSTRAINT "CreditNote_pkey" PRIMARY KEY ("id")
 );
@@ -1509,6 +1516,9 @@ CREATE UNIQUE INDEX "Invoice_number_key" ON "Invoice"("number");
 CREATE UNIQUE INDEX "Invoice_cufe_key" ON "Invoice"("cufe");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "Invoice_alegraId_key" ON "Invoice"("alegraId");
+
+-- CreateIndex
 CREATE INDEX "InvoiceLineTax_invoiceItemId_idx" ON "InvoiceLineTax"("invoiceItemId");
 
 -- CreateIndex
@@ -1546,6 +1556,9 @@ CREATE UNIQUE INDEX "CreditNote_returnId_key" ON "CreditNote"("returnId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "CreditNote_cufe_key" ON "CreditNote"("cufe");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "CreditNote_alegraId_key" ON "CreditNote"("alegraId");
 
 -- CreateIndex
 CREATE INDEX "CreditNote_invoiceId_idx" ON "CreditNote"("invoiceId");

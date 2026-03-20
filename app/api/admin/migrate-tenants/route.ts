@@ -80,6 +80,31 @@ export async function POST(req: Request) {
                         ADD COLUMN IF NOT EXISTS "tipAmount" DOUBLE PRECISION NOT NULL DEFAULT 0;
                     `)
 
+                    // Alegra / factura electrónica (alineado con Prisma: alegraStatus, alegraId, etc.)
+                    await client.query(`
+                        ALTER TABLE "${schemaName}"."Invoice"
+                        ADD COLUMN IF NOT EXISTS "alegraId" TEXT,
+                        ADD COLUMN IF NOT EXISTS "alegraNumber" TEXT,
+                        ADD COLUMN IF NOT EXISTS "alegraStatus" TEXT DEFAULT 'DRAFT',
+                        ADD COLUMN IF NOT EXISTS "alegraUrl" TEXT;
+                    `)
+                    await client.query(`
+                        CREATE UNIQUE INDEX IF NOT EXISTS "Invoice_alegraId_key"
+                        ON "${schemaName}"."Invoice" ("alegraId");
+                    `)
+
+                    await client.query(`
+                        ALTER TABLE "${schemaName}"."CreditNote"
+                        ADD COLUMN IF NOT EXISTS "alegraId" TEXT,
+                        ADD COLUMN IF NOT EXISTS "alegraNumber" TEXT,
+                        ADD COLUMN IF NOT EXISTS "alegraStatus" TEXT DEFAULT 'DRAFT',
+                        ADD COLUMN IF NOT EXISTS "alegraUrl" TEXT;
+                    `)
+                    await client.query(`
+                        CREATE UNIQUE INDEX IF NOT EXISTS "CreditNote_alegraId_key"
+                        ON "${schemaName}"."CreditNote" ("alegraId");
+                    `)
+
                     results.push({ tenant: tenant.slug, status: 'success' })
                 } catch (err: any) {
                     console.error(`[MIGRATE] Error updating ${schemaName}:`, err.message)

@@ -200,6 +200,28 @@ async function initializePostgresTenant(databaseUrl: string, tenantId: string, t
       ALTER TABLE "Invoice" ADD COLUMN IF NOT EXISTS "tipAmount" DOUBLE PRECISION NOT NULL DEFAULT 0;
     `)
 
+    // Invoice / CreditNote — campos Alegra (deben coincidir con prisma/schema.prisma)
+    await restClient.query(`
+      ALTER TABLE "Invoice"
+        ADD COLUMN IF NOT EXISTS "alegraId" TEXT,
+        ADD COLUMN IF NOT EXISTS "alegraNumber" TEXT,
+        ADD COLUMN IF NOT EXISTS "alegraStatus" TEXT DEFAULT 'DRAFT',
+        ADD COLUMN IF NOT EXISTS "alegraUrl" TEXT;
+    `)
+    await restClient.query(`
+      CREATE UNIQUE INDEX IF NOT EXISTS "Invoice_alegraId_key" ON "Invoice" ("alegraId");
+    `)
+    await restClient.query(`
+      ALTER TABLE "CreditNote"
+        ADD COLUMN IF NOT EXISTS "alegraId" TEXT,
+        ADD COLUMN IF NOT EXISTS "alegraNumber" TEXT,
+        ADD COLUMN IF NOT EXISTS "alegraStatus" TEXT DEFAULT 'DRAFT',
+        ADD COLUMN IF NOT EXISTS "alegraUrl" TEXT;
+    `)
+    await restClient.query(`
+      CREATE UNIQUE INDEX IF NOT EXISTS "CreditNote_alegraId_key" ON "CreditNote" ("alegraId");
+    `)
+
     // Drop pin uniqueness if it exists (two waiters CAN have same PIN)
     await restClient.query(`
       DO $$ BEGIN
