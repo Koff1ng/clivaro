@@ -72,7 +72,7 @@ export function ScrollNavbar({ onContactClick }: ScrollNavbarProps) {
       <div className="container mx-auto px-4 md:px-6 flex items-center justify-between h-16">
         <Link href="/" className="flex items-center hover:opacity-80 transition-opacity">
           <div className="flex items-center h-full">
-            <Logo size="lg" showByline={false} className="!w-48 md:!w-64 !h-auto !justify-start -ml-2 mt-1 invert brightness-0" />
+            <Logo size="lg" showByline={false} className="!w-48 md:!w-64 !h-auto !justify-start mt-2 invert brightness-0" />
           </div>
         </Link>
 

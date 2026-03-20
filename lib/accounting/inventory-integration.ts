@@ -50,14 +50,14 @@ export async function createCostOfSalesEntry(
     // Get accounting config
     const config = await getAccountingConfig(tenantId, prismaTx)
     if (!config) {
-        throw new Error('Configuración contable no encontrada para la empresa.')
+        throw new Error('[ACCOUNTING_CONFIG_ERROR] Configuración contable no encontrada para la empresa.')
     }
 
     if (!config.costOfSalesId || !config.inventoryAccountId) {
         const missing: string[] = []
         if (!config.costOfSalesId) missing.push('Costo de Ventas')
         if (!config.inventoryAccountId) missing.push('Inventarios')
-        throw new Error(`Configuración contable incompleta: faltan las cuentas de ${missing.join(' y ')}. Por favor, configúrelas en Configuración > Contabilidad.`)
+        throw new Error(`[ACCOUNTING_CONFIG_ERROR] Configuración contable incompleta: faltan las cuentas de ${missing.join(' y ')}. Por favor, configúrelas en Configuración > Contabilidad.`)
     }
 
     // Verify accounts exist in the current schema

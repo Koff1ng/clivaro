@@ -192,7 +192,7 @@ async function openShift(startingCash: number) {
 interface RestaurantTable {
   id: string
   name: string
-  status: string
+  status: 'AVAILABLE' | 'OCCUPIED' | 'RESERVED' | 'CLEANING' | string
   x: number
   y: number
 }
@@ -1063,7 +1063,7 @@ export function POSScreen({ mode = 'retail', waiterData, waiterToken, preselecte
       })
       if (!res.ok) {
         const error = await res.json()
-        throw new Error(error.error || 'Failed to create sale')
+        throw new Error(error.details || error.error || 'Failed to create sale')
       }
       return res.json()
     },

@@ -52,7 +52,7 @@ export async function createJournalEntryFromInvoice(
     // Get accounting config
     const config = await getAccountingConfig(tenantId, prismaTx)
     if (!config) {
-        throw new Error('Configuración contable no encontrada para la empresa.')
+        throw new Error('[ACCOUNTING_CONFIG_ERROR] Configuración contable no encontrada para la empresa. Por favor, inicialice la configuración en Configuración > Contabilidad.')
     }
 
     if (!config.accountsReceivableId || !config.salesRevenueId || !config.vatGeneratedId) {
@@ -60,7 +60,7 @@ export async function createJournalEntryFromInvoice(
         if (!config.accountsReceivableId) missing.push('Cuentas por Cobrar (Clientes)')
         if (!config.salesRevenueId) missing.push('Ingresos por Ventas')
         if (!config.vatGeneratedId) missing.push('IVA Generado')
-        throw new Error(`Configuración contable incompleta: faltan las cuentas de ${missing.join(', ')}. Por favor, configúrelas en Configuración > Contabilidad.`)
+        throw new Error(`[ACCOUNTING_CONFIG_ERROR] Configuración contable incompleta: faltan las cuentas de ${missing.join(', ')}. Por favor, configúrelas en Configuración > Contabilidad.`)
     }
 
     // Verify accounts exist in the current schema

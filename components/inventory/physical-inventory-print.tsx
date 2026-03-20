@@ -72,11 +72,11 @@ export function PhysicalInventoryPrint({ inventory }: { inventory: any }) {
         {/* Header */}
         <div className="text-center border-b-2 border-gray-800 pb-3">
           <h1 className="text-2xl font-bold mb-2">INVENTARIO FÍSICO</h1>
-          <div className="grid grid-cols-2 gap-2 text-sm max-w-md mx-auto">
-            <div className="text-left"><strong>Número:</strong> {inventory.number}</div>
-            <div className="text-right"><strong>Fecha:</strong> {formatDate(inventory.createdAt)}</div>
-            <div className="text-left"><strong>Almacén:</strong> {inventory.warehouse?.name || '-'}</div>
-            <div className="text-right">
+          <div className="flex flex-wrap justify-between text-sm max-w-2xl mx-auto gap-y-1">
+            <div className="w-1/2 text-left"><strong>Número:</strong> {inventory.number}</div>
+            <div className="w-1/2 text-right"><strong>Fecha:</strong> {formatDate(inventory.createdAt)}</div>
+            <div className="w-1/2 text-left"><strong>Almacén:</strong> {inventory.warehouse?.name || '-'}</div>
+            <div className="w-1/2 text-right">
               <strong>Estado:</strong>{' '}
               {inventory.status === 'PENDING' ? 'Pendiente' :
                 inventory.status === 'COUNTING' ? 'En Conteo' :
@@ -142,18 +142,18 @@ export function PhysicalInventoryPrint({ inventory }: { inventory: any }) {
         {/* Summary */}
         <div className="border-2 border-gray-700 rounded-lg p-4 space-y-2">
           <div className="font-semibold text-base mb-3">RESUMEN:</div>
-          <div className="grid grid-cols-3 gap-4 text-sm">
-            <div className="flex justify-between border-b border-gray-300 pb-1">
+          <div className="flex flex-wrap gap-4 text-sm">
+            <div className="flex-1 min-w-[150px] flex justify-between border-b border-gray-300 pb-1">
               <span>Total Productos:</span>
               <span className="font-bold">{inventory.items?.length || 0}</span>
             </div>
-            <div className="flex justify-between border-b border-gray-300 pb-1">
+            <div className="flex-1 min-w-[150px] flex justify-between border-b border-gray-300 pb-1">
               <span>Contados:</span>
               <span className="font-bold">
                 {inventory.items?.filter((item: any) => item.countedQuantity !== null).length || 0}
               </span>
             </div>
-            <div className="flex justify-between border-b border-gray-300 pb-1">
+            <div className="flex-1 min-w-[150px] flex justify-between border-b border-gray-300 pb-1">
               <span>Con Diferencias:</span>
               <span className="font-bold text-orange-600">
                 {inventory.items?.filter((item: any) =>
@@ -166,16 +166,16 @@ export function PhysicalInventoryPrint({ inventory }: { inventory: any }) {
 
         {/* Footer */}
         <div className="text-center text-sm text-gray-700 border-t-2 border-gray-800 pt-4 mt-8">
-          <div className="grid grid-cols-3 gap-8 max-w-2xl mx-auto">
-            <div>
+          <div className="flex justify-between gap-8 max-w-4xl mx-auto">
+            <div className="flex-1">
               <div className="mb-2">Conteo realizado por:</div>
               <div className="border-b-2 border-black min-h-[30px]"></div>
             </div>
-            <div>
+            <div className="flex-1">
               <div className="mb-2">Firma:</div>
               <div className="border-b-2 border-black min-h-[30px]"></div>
             </div>
-            <div>
+            <div className="flex-1">
               <div className="mb-2">Fecha:</div>
               <div className="border-b-2 border-black min-h-[30px]"></div>
             </div>

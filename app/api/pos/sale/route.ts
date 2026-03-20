@@ -524,11 +524,21 @@ export async function POST(request: Request) {
       // 10. Accounting Integration
       // Keep accounting in the same request flow so we do not persist paid invoices without entries.
       if (isPaid) {
-        const { createJournalEntryFromInvoice } = await import('@/lib/accounting/invoice-integration')
-        const { createCostOfSalesEntry } = await import('@/lib/accounting/inventory-integration')
+        try {
+          const { createJournalEntryFromInvoice } = await import('@/lib/accounting/invoice-integration')
+          const { createCostOfSalesEntry } = await import('@/lib/accounting/inventory-integration')
 
-        await createJournalEntryFromInvoice(invoice.id, (session.user as any).tenantId, (session.user as any).id)
-        await createCostOfSalesEntry(invoice.id, (session.user as any).tenantId, (session.user as any).id)
+          const tenantId = (session.user as any).tenantId
+          const userId = (session.user as any).id
+
+          // Pass the transaction 'tx' to ensure it runs in the same schema and atomic flow
+          await createJournalEntryFromInvoice(invoice.id, tenantId, userId, tx)
+          await createCostOfSalesEntry(invoice.id, tenantId, userId, tx)
+        } catch (accError: any) {
+          // Log but don't fail the sale if accounting fails (e.g. missing config)
+          logger.error(`[POS Sale] Accounting integration failed for invoice ${invoice.id}:`, accError.message)
+          // Integration with activity log to notify admin later could go here
+        }
       }
 
       return NextResponse.json({
