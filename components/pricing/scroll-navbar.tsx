@@ -70,9 +70,9 @@ export function ScrollNavbar({ onContactClick }: ScrollNavbarProps) {
         }`}
     >
       <div className="container mx-auto px-4 md:px-6 flex items-center justify-between h-16">
-        <Link href="/marketing" className="flex items-center hover:opacity-80 transition-opacity">
+        <Link href="/" className="flex items-center hover:opacity-80 transition-opacity">
           <div className="flex items-center h-full">
-            <Logo size="lg" showByline={false} className="!w-48 md:!w-64 !h-auto !justify-start -ml-2 invert brightness-0" />
+            <Logo size="lg" showByline={false} className="!w-48 md:!w-64 !h-auto !justify-start -ml-2 mt-1 invert brightness-0" />
           </div>
         </Link>
 
@@ -129,7 +129,7 @@ export function ScrollNavbar({ onContactClick }: ScrollNavbarProps) {
       {mobileMenuOpen && (
         <div className="md:hidden border-t border-blue-500/30 bg-blue-600">
           <div className="container mx-auto px-6 py-4 space-y-3">
-            {navItems.map((item) => (
+            {navItems.filter(item => item.label !== 'Vista Previa').map((item) => (
               <button
                 key={item.label}
                 onClick={item.action}

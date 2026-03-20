@@ -73,10 +73,6 @@ export function HeroPreview({ onContactClick, onViewPreview }: HeroPreviewProps)
           {/* Left Side - Text and CTA */}
           <div className="space-y-8 relative z-10">
             <div>
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-100 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 mb-6">
-                <Sparkles className="w-4 h-4 text-blue-600 animate-pulse" />
-                <span className="text-xs font-bold text-blue-700 dark:text-blue-400 uppercase tracking-wider">Potenciado por IA</span>
-              </div>
               <h1 className="text-4xl lg:text-5xl xl:text-6xl font-bold tracking-tight text-gray-900 dark:text-white leading-tight">
                 Gestione su Negocio con <br />
                 <span className="text-blue-600 dark:text-blue-400">
