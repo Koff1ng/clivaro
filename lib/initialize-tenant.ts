@@ -286,6 +286,7 @@ async function initializePostgresTenant(databaseUrl: string, tenantId: string, t
       'manage_returns',
       'void_invoices',
       'apply_discounts',
+      'manage_restaurant',
     ]
 
     // Define all default roles with descriptions and permissions
@@ -298,7 +299,7 @@ async function initializePostgresTenant(databaseUrl: string, tenantId: string, t
       {
         name: 'CAJERO_POS',
         description: 'Cajero de punto de venta. Puede realizar ventas, devoluciones, manejar caja y cierres de turno.',
-        permissions: ['view_dashboard', 'manage_pos', 'manage_sales', 'manage_cash', 'manage_returns', 'void_invoices', 'apply_discounts', 'manage_customers'],
+        permissions: ['view_dashboard', 'manage_pos', 'manage_sales', 'manage_cash', 'manage_returns', 'void_invoices', 'apply_discounts', 'manage_customers', 'manage_restaurant'],
       },
       {
         name: 'VENDEDOR_COMERCIAL',
@@ -323,7 +324,7 @@ async function initializePostgresTenant(databaseUrl: string, tenantId: string, t
       {
         name: 'REST_MESERO',
         description: 'Mesero (Restaurantes). Toma de pedidos y atención en mesa.',
-        permissions: ['view_dashboard', 'manage_pos'],
+        permissions: ['view_dashboard', 'manage_pos', 'manage_restaurant'],
       },
     ]
 

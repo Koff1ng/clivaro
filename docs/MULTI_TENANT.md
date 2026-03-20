@@ -57,11 +57,14 @@ El sistema identifica el tenant de tres formas:
 
 Cuando se crea un nuevo tenant desde el Panel Admin (`/admin/tenants`), el sistema automáticamente:
 
-1. ✅ Crea la base de datos del tenant
-2. ✅ Ejecuta las migraciones Prisma
-3. ✅ Crea permisos y roles (ADMIN, MANAGER, CASHIER, SALES, WAREHOUSE)
-4. ✅ Crea un usuario administrador por defecto
-5. ✅ Crea un almacén principal
+1. ✅ Crea el **schema PostgreSQL** del tenant (`tenant_{id}`)
+2. ✅ Ejecuta el DDL embebido en `lib/tenant-sql-statements.ts` (generado desde `prisma/supabase-init.sql` con `npm run generate:tenant-sql`)
+3. ✅ Sincroniza columnas adicionales (legal, SoftRestaurant, **Invoice.tipAmount**, restaurante)
+4. ✅ Crea permisos y roles (incluye **`manage_restaurant`** para ADMIN, cajero y rol de mesero)
+5. ✅ Crea un usuario administrador por defecto
+6. ✅ Crea un almacén principal y configuración contable base
+
+**Si cambias el modelo Prisma / tablas de tenant:** actualiza `prisma/supabase-init.sql`, ejecuta `npm run generate:tenant-sql` y vuelve a desplegar, para que los **próximos** tenants reciban el DDL nuevo. Los tenants ya existentes pueden alinearse con `POST /api/admin/migrate-tenants` (super admin) o los scripts en `scripts/`.
 
 **Credenciales por Defecto:**
 - **Usuario**: `admin`

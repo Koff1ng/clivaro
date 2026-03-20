@@ -288,6 +288,22 @@ export const CashierBillingConsole: React.FC = () => {
   const activeLines = sel?.lines.filter((l) => l.status !== "CANCELLED") ?? [];
   const discountAmt = sel ? (sessionDiscount[sel.id] || 0) : 0;
 
+  const filtered = sessions.filter((s) => {
+    if (!searchText) return true;
+    const q = searchText.toLowerCase();
+    return s.tableNumber.toLowerCase().includes(q) || s.waiterName.toLowerCase().includes(q);
+  });
+
+  const subtotal = sel?.subtotal ?? 0;
+  const taxAmount = sel?.taxAmount ?? 0;
+  const total = sel?.total ?? 0;
+  const tip = sel?.tipAmount ?? 0;
+  const grandTotal = total + tip - discountAmt;
+  const customer = sel ? sessionCustomer[sel.id] : undefined;
+
+  const payEntriesTotal = payEntries.reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
+  const payEntriesOk = payEntriesTotal >= grandTotal && payEntries.every((e) => (parseFloat(e.amount) || 0) > 0);
+
   useEffect(() => { setSelectedLineId(null); }, [sel?.id]);
 
   /* ====================================================================
@@ -758,9 +774,6 @@ export const CashierBillingConsole: React.FC = () => {
     setPayEntries((prev) => prev.map((e, i) => i === idx ? { ...e, [field]: value } : e));
   };
 
-  const payEntriesTotal = payEntries.reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
-  const payEntriesOk = payEntriesTotal >= grandTotal && payEntries.every((e) => (parseFloat(e.amount) || 0) > 0);
-
   const handleCobrarClick = () => {
     if (!sel) return;
     setPayEntries([{ method: "CASH", amount: String(grandTotal.toFixed(2)), reference: "" }]);
@@ -843,23 +856,6 @@ export const CashierBillingConsole: React.FC = () => {
     } catch (err: any) { toast(err.message, "error"); }
     finally { setCancellingFolio(false); }
   };
-
-  /* ====================================================================
-     COMPUTED
-     ==================================================================== */
-
-  const filtered = sessions.filter((s) => {
-    if (!searchText) return true;
-    const q = searchText.toLowerCase();
-    return s.tableNumber.toLowerCase().includes(q) || s.waiterName.toLowerCase().includes(q);
-  });
-
-  const subtotal = sel?.subtotal ?? 0;
-  const taxAmount = sel?.taxAmount ?? 0;
-  const total = sel?.total ?? 0;
-  const tip = sel?.tipAmount ?? 0;
-  const grandTotal = total + tip - discountAmt;
-  const customer = sel ? sessionCustomer[sel.id] : undefined;
 
   /* ====================================================================
      LOADING

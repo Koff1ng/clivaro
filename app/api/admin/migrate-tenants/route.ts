@@ -74,6 +74,12 @@ export async function POST(req: Request) {
                         ADD COLUMN IF NOT EXISTS "yieldFactor" DOUBLE PRECISION NOT NULL DEFAULT 1;
                     `)
 
+                    // Restaurant POS: propina en factura de cierre de mesa + pagos mixtos
+                    await client.query(`
+                        ALTER TABLE "${schemaName}"."Invoice"
+                        ADD COLUMN IF NOT EXISTS "tipAmount" DOUBLE PRECISION NOT NULL DEFAULT 0;
+                    `)
+
                     results.push({ tenant: tenant.slug, status: 'success' })
                 } catch (err: any) {
                     console.error(`[MIGRATE] Error updating ${schemaName}:`, err.message)

@@ -24,6 +24,7 @@
     "db:sync-tenants": "npx tsx scripts/sync-tenant-schema.ts",
     "db:migrate-tenants": "npx tsx scripts/migrate-tenants.ts",
     "db:sync-all-tenants": "npx tsx scripts/sync-all-tenants.ts",
+    "generate:tenant-sql": "node scripts/generate-tenant-sql.js",
     "db:studio": "prisma studio",
     "test": "vitest",
     "test:e2e": "playwright test",

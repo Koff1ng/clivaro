@@ -808,6 +808,9 @@ export function POSScreen({ mode = 'retail', waiterData, waiterToken, preselecte
     staleTime: 5 * 60 * 1000,
   })
 
+  /** Debe declararse aquí: useCallback/useMutation más abajo lo referencian (evita TDZ "before initialization"). */
+  const selectedMethod = paymentMethods.find((m) => m.id === paymentMethodId)
+
   // Set default payment method when methods are loaded
   useEffect(() => {
     if (paymentMethods.length > 0 && !paymentMethodId) {
@@ -961,6 +964,7 @@ export function POSScreen({ mode = 'retail', waiterData, waiterToken, preselecte
     paymentMode,
     persistOfflineQueue,
     selectedCustomer,
+    selectedMethod,
     splitPayments,
     toast,
   ])
@@ -1275,7 +1279,6 @@ export function POSScreen({ mode = 'retail', waiterData, waiterToken, preselecte
       return
     }
 
-    const selectedMethod = paymentMethods.find(m => m.id === paymentMethodId)
     if (paymentMode === 'SINGLE' && selectedMethod?.type === 'CASH') {
       const total = calculateTotals().total
       const received = parseFloat(cashReceived || '0')
@@ -1447,7 +1450,6 @@ export function POSScreen({ mode = 'retail', waiterData, waiterToken, preselecte
     .filter((n) => !isNaN(n) && n > 0)
     .reduce((sum, n) => sum + n, 0)
 
-  const selectedMethod = paymentMethods.find((m) => m.id === paymentMethodId)
   const change =
     paymentMode === 'SPLIT'
       ? Math.max(0, splitPaid - totals.total)
