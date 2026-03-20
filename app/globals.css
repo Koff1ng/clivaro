@@ -240,6 +240,35 @@
   }
 }
 
+@keyframes bounce-slow {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translate(0, 0);
+  }
+  33% {
+    transform: translate(5px, -10px);
+  }
+  66% {
+    transform: translate(-5px, -5px);
+  }
+}
+
+.animate-bounce-slow {
+  animation: bounce-slow 4s ease-in-out infinite;
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
 /* Estilos personalizados para scrollbars */
 /* Webkit (Chrome, Safari, Edge) */
 ::-webkit-scrollbar {

@@ -66,13 +66,13 @@ export function ScrollNavbar({ onContactClick }: ScrollNavbarProps) {
 
   return (
     <header
-      className={`fixed top-0 left-0 right-0 z-50 w-full border-b border-gray-200/50 dark:border-gray-800/50 bg-white/95 backdrop-blur-md supports-[backdrop-filter]:bg-white/80 dark:bg-gray-900/95 dark:supports-[backdrop-filter]:bg-gray-900/80 shadow-sm transition-transform duration-300 ${shouldShow ? 'translate-y-0' : '-translate-y-full'
+      className={`fixed top-0 left-0 right-0 z-50 w-full border-b border-blue-500/30 bg-blue-600 shadow-md transition-transform duration-300 ${shouldShow ? 'translate-y-0' : '-translate-y-full'
         }`}
     >
       <div className="container mx-auto px-4 md:px-6 flex items-center justify-between h-16">
         <Link href="/marketing" className="flex items-center hover:opacity-80 transition-opacity">
           <div className="flex items-center h-full">
-            <Logo size="lg" showByline={false} className="!w-48 md:!w-64 !h-auto !justify-start -ml-2 mt-4 " />
+            <Logo size="lg" showByline={false} className="!w-48 md:!w-64 !h-auto !justify-start -ml-2 invert brightness-0" />
           </div>
         </Link>
 
@@ -82,7 +82,7 @@ export function ScrollNavbar({ onContactClick }: ScrollNavbarProps) {
             <button
               key={item.label}
               onClick={item.action}
-              className="text-sm font-semibold text-gray-700 hover:text-blue-600 dark:text-gray-300 dark:hover:text-blue-400 transition-colors relative group"
+              className="text-sm font-semibold text-blue-50 hover:text-white transition-colors relative group"
             >
               {item.label}
               <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-gradient-to-r from-blue-600 to-indigo-600 group-hover:w-full transition-all duration-300"></span>
@@ -94,14 +94,14 @@ export function ScrollNavbar({ onContactClick }: ScrollNavbarProps) {
         <div className="hidden md:flex items-center gap-4 flex-shrink-0">
           <Link
             href="/login"
-            className="text-sm font-medium text-gray-600 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400 transition-colors"
+            className="text-sm font-medium text-blue-100 hover:text-white transition-colors"
           >
             Iniciar Sesión
           </Link>
           <Button
             onClick={onContactClick}
             size="sm"
-            className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg shadow-blue-500/50"
+            className="bg-white text-blue-600 hover:bg-blue-50 shadow-lg shadow-blue-800/20 border-none"
           >
             Contactar
           </Button>
@@ -118,7 +118,7 @@ export function ScrollNavbar({ onContactClick }: ScrollNavbarProps) {
           </Button>
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100"
+            className="p-2 text-blue-100 hover:text-white"
           >
             {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
           </button>
@@ -127,20 +127,20 @@ export function ScrollNavbar({ onContactClick }: ScrollNavbarProps) {
 
       {/* Mobile Menu */}
       {mobileMenuOpen && (
-        <div className="md:hidden border-t bg-white dark:bg-gray-900">
+        <div className="md:hidden border-t border-blue-500/30 bg-blue-600">
           <div className="container mx-auto px-6 py-4 space-y-3">
             {navItems.map((item) => (
               <button
                 key={item.label}
                 onClick={item.action}
-                className="block w-full text-left text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100 transition-colors py-2"
+                className="block w-full text-left text-sm font-medium text-blue-50 hover:text-white transition-colors py-2 font-semibold"
               >
                 {item.label}
               </button>
             ))}
             <Link
               href="/login"
-              className="block text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100 transition-colors py-2"
+              className="block text-sm font-medium text-blue-100 hover:text-white transition-colors py-2 font-semibold"
               onClick={() => setMobileMenuOpen(false)}
             >
               Iniciar Sesión
@@ -150,7 +150,7 @@ export function ScrollNavbar({ onContactClick }: ScrollNavbarProps) {
                 onContactClick()
                 setMobileMenuOpen(false)
               }}
-              className="w-full mt-2"
+              className="w-full mt-2 bg-white text-blue-600 hover:bg-blue-50 font-bold border-none"
             >
               Contactar
             </Button>

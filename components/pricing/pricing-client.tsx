@@ -490,7 +490,7 @@ export function PricingClient() {
 
       {/* Software Preview */}
       <ScrollReveal delay={100}>
-        <div id="preview" className="mx-auto max-w-7xl px-6 py-16 lg:px-8">
+        <div id="preview" className="mx-auto max-w-7xl px-6 py-16 lg:px-8 hidden md:block">
           <SoftwarePreview />
         </div>
       </ScrollReveal>
