@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { PERMISSIONS } from '@/lib/permissions'
 import { InvoicePrint } from '@/components/sales/invoice-print'
 import { TaxSelector } from './tax-selector'
@@ -2424,7 +2424,7 @@ export function POSScreen({ mode = 'retail', waiterData, waiterToken, preselecte
 
       {/* Receipt Dialog */}
       <Dialog open={showReceipt} onOpenChange={setShowReceipt}>
-        <DialogContent className="max-w-lg p-0 gap-0 overflow-hidden">
+        <DialogContent className="max-w-lg p-0 gap-0 overflow-y-auto max-h-[90vh]">
           <DialogHeader className="px-6 pt-6 pb-4 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20 border-b">
             <div className="text-center space-y-2">
               <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-100 dark:bg-green-900/30 mb-2">
@@ -2435,6 +2435,9 @@ export function POSScreen({ mode = 'retail', waiterData, waiterToken, preselecte
               <DialogTitle className="text-2xl font-bold text-green-700 dark:text-green-400">
                 ¡Venta Completada!
               </DialogTitle>
+              <DialogDescription className="sr-only">
+                Resumen de la venta completada exitosamente.
+              </DialogDescription>
               {saleResult?.offline && (
                 <div className="mt-2 inline-block px-3 py-1 text-xs font-semibold text-orange-700 bg-orange-100 dark:bg-orange-900/30 dark:text-orange-400 rounded-full">
                   PENDIENTE DE SINCRONIZAR
