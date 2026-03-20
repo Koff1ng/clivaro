@@ -293,7 +293,7 @@ export async function POST(request: Request) {
               subtotal: pi.subtotal,
               lineTaxes: {
                 create: pi.taxes.map(t => ({
-                  ...(t.taxRateId !== 'legacy' ? { taxRate: { connect: { id: t.taxRateId } } } : {}),
+                  ...((t.taxRateId !== 'legacy' && t.taxRateId !== 'default') ? { taxRate: { connect: { id: t.taxRateId } } } : {}),
                   name: t.name,
                   rate: t.rate,
                   taxAmount: t.amount,
@@ -304,7 +304,7 @@ export async function POST(request: Request) {
           },
           taxSummary: {
             create: Array.from(taxSummariesByRate.values()).map(ts => ({
-              ...(ts.taxRateId !== 'legacy' ? { taxRate: { connect: { id: ts.taxRateId } } } : {}),
+              ...((ts.taxRateId !== 'legacy' && ts.taxRateId !== 'default') ? { taxRate: { connect: { id: ts.taxRateId } } } : {}),
               name: ts.name,
               rate: ts.rate,
               baseAmount: ts.base,
