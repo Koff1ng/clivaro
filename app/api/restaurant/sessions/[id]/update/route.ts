@@ -7,6 +7,7 @@ import { PERMISSIONS } from '@/lib/permissions'
 
 const updateSchema = z.object({
   waiterId: z.string().min(1).optional(),
+  tableName: z.string().min(1).optional(),
 })
 
 function apiError(status: number, message: string, details?: unknown) {
@@ -45,28 +46,43 @@ export async function PATCH(
       return apiError(404, 'Session not found or not open')
     }
 
-    const updateData: Record<string, string> = {}
+    const sessionUpdateData: Record<string, string> = {}
 
     if (parsed.data.waiterId) {
       const waiter = await prisma.waiterProfile.findUnique({
         where: { id: parsed.data.waiterId },
       })
       if (!waiter) return apiError(404, 'Waiter not found')
-      updateData.waiterId = parsed.data.waiterId
+      sessionUpdateData.waiterId = parsed.data.waiterId
     }
 
-    if (Object.keys(updateData).length === 0) {
+    if (parsed.data.tableName) {
+      await prisma.restaurantTable.update({
+        where: { id: tableSession.tableId },
+        data: { name: parsed.data.tableName },
+      })
+    }
+
+    if (Object.keys(sessionUpdateData).length === 0 && !parsed.data.tableName) {
       return apiError(400, 'No fields to update')
     }
 
-    const updated = await prisma.tableSession.update({
-      where: { id: sessionId },
-      data: updateData,
-      include: {
-        waiter: { select: { id: true, name: true, code: true } },
-        table: { select: { id: true, name: true } },
-      },
-    })
+    const updated = Object.keys(sessionUpdateData).length > 0
+      ? await prisma.tableSession.update({
+          where: { id: sessionId },
+          data: sessionUpdateData,
+          include: {
+            waiter: { select: { id: true, name: true, code: true } },
+            table: { select: { id: true, name: true } },
+          },
+        })
+      : await prisma.tableSession.findUnique({
+          where: { id: sessionId },
+          include: {
+            waiter: { select: { id: true, name: true, code: true } },
+            table: { select: { id: true, name: true } },
+          },
+        })
 
     return NextResponse.json(updated)
   } catch (error: any) {

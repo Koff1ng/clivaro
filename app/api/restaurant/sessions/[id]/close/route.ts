@@ -6,8 +6,16 @@ import { emitRestaurantEvent } from '@/lib/events'
 import { requireAnyPermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
 
+const paymentEntrySchema = z.object({
+  method: z.enum(['CASH', 'CARD', 'TRANSFER', 'OTHER']),
+  amount: z.number().positive(),
+  reference: z.string().optional().nullable(),
+})
+
 const closeSessionSchema = z.object({
   customerId: z.string().optional().nullable(),
+  discountAmount: z.number().min(0).optional(),
+  payments: z.array(paymentEntrySchema).optional(),
 })
 
 function apiError(status: number, message: string, details?: unknown) {
@@ -97,22 +105,57 @@ export async function POST(
       return sum + (i.unitPrice * i.quantity - base)
     }, 0)
 
+    const discountAmount = parsed.data.discountAmount || 0
+    const tipAmt = (tableSession as any).tipAmount ?? 0
+    const invoiceSubtotal = Math.round(computedSubtotal * 100) / 100
+    const invoiceTotal = Math.max(0, Math.round((computedSubtotal - discountAmount + tipAmt) * 100) / 100)
+
+    const paymentsData = parsed.data.payments && parsed.data.payments.length > 0
+      ? parsed.data.payments
+      : null
+
     const result = await prisma.$transaction(async (tx) => {
       const customerId = parsed.data.customerId || (await resolveFallbackCustomerId(tx, (session.user as any)?.id))
 
-      const invoice = await tx.invoice.create({
-        data: {
-          number: `RES-${Date.now()}`,
-          customerId,
-          status: 'EMITIDA',
-          subtotal: Math.round(computedSubtotal * 100) / 100,
-          tax: Math.round(computedTax * 100) / 100,
-          total: Math.round((computedSubtotal + tableSession.tipAmount) * 100) / 100,
-          tipAmount: tableSession.tipAmount,
-          issuedAt: new Date(),
-          createdById: (session.user as any)?.id || null,
-        },
+      // Build invoice data — tipAmount may not exist in older tenant schemas
+      const invoiceCreateData: any = {
+        number: `RES-${Date.now()}`,
+        customerId,
+        status: 'EMITIDA',
+        subtotal: invoiceSubtotal,
+        tax: Math.round(computedTax * 100) / 100,
+        total: invoiceTotal,
+        issuedAt: new Date(),
+        createdById: (session.user as any)?.id || null,
+      }
+
+      // Safely include tipAmount — field may not exist in older tenant DBs
+      if (tipAmt > 0) {
+        invoiceCreateData.tipAmount = tipAmt
+      }
+
+      const invoice = await tx.invoice.create({ data: invoiceCreateData }).catch(async (err: any) => {
+        // If tipAmount column doesn't exist yet, retry without it
+        if (err?.code === 'P2022' && err?.message?.includes('tipAmount')) {
+          delete invoiceCreateData.tipAmount
+          return tx.invoice.create({ data: invoiceCreateData })
+        }
+        throw err
       })
+
+      // Register payment records if provided
+      if (paymentsData) {
+        for (const p of paymentsData) {
+          await tx.payment.create({
+            data: {
+              invoiceId: invoice.id,
+              amount: p.amount,
+              method: p.method,
+              reference: p.reference || null,
+            },
+          })
+        }
+      }
 
       const closedSession = await tx.tableSession.update({
         where: { id: sessionId },
@@ -138,7 +181,6 @@ export async function POST(
     emitRestaurantEvent(tenantId, 'SESSION_CLOSED', {
       sessionId: tableSession.id,
       totalAmount: tableSession.totalAmount,
-      tipAmount: tableSession.tipAmount,
     })
 
     return NextResponse.json({

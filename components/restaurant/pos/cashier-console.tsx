@@ -6,12 +6,13 @@ import {
   Plus, Pencil, X, DollarSign, Receipt, Printer,
   UserCheck, Ban, RefreshCw, LogOut, Search, Coins,
   Clock, ChefHat, AlertTriangle, CreditCard, Banknote,
-  ArrowLeftRight, Check
+  ArrowLeftRight, Check, Percent, Scissors,
+  Merge, ArrowRightLeft, UserCircle, FileText
 } from "lucide-react";
 
-/* ═══════════════════════════════════════════════════════════════════════════════
+/* ======================================================================
    TYPES
-   ═══════════════════════════════════════════════════════════════════════════════ */
+   ====================================================================== */
 
 interface AccountLine {
   id: string;
@@ -42,14 +43,17 @@ interface OpenSession {
 interface Waiter { id: string; name: string; code: string; }
 interface Product { id: string; name: string; sku: string; price: number; taxRate: number; }
 interface CartLine { productId: string; productName: string; quantity: number; unitPrice: number; notes: string; }
+interface CustomerResult { id: string; name: string; taxId?: string; phone?: string; email?: string; }
 
 type ModalType =
   | null | "open" | "captura" | "cobrar" | "factura"
-  | "propina" | "mesero" | "cancelFolio" | "confirmCancelLine";
+  | "propina" | "mesero" | "cancelFolio" | "confirmCancelLine"
+  | "cambiarCuenta" | "juntarCuentas" | "desctoGeneral"
+  | "dividirCuenta" | "cliente" | "transferirProd" | "desctoProd";
 
-/* ═══════════════════════════════════════════════════════════════════════════════
+/* ======================================================================
    HELPERS
-   ═══════════════════════════════════════════════════════════════════════════════ */
+   ====================================================================== */
 
 function fmtTime(iso: string) {
   return new Date(iso).toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit", hour12: true });
@@ -86,12 +90,13 @@ function statusLabel(status: string) {
   }
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════════
+/* ======================================================================
    PRINT
-   ═══════════════════════════════════════════════════════════════════════════════ */
+   ====================================================================== */
 
-function printReceipt(sel: OpenSession, paymentMethod?: string) {
+function printReceipt(sel: OpenSession, paymentMethod?: string, discount?: number) {
   const activeLines = sel.lines.filter((l) => l.status !== "CANCELLED");
+  const discountAmt = discount || 0;
   const w = window.open("", "_blank", "width=350,height=600");
   if (!w) return;
   w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><style>
@@ -115,10 +120,11 @@ function printReceipt(sel: OpenSession, paymentMethod?: string) {
     </table>
     <div class="line"></div>
     <div class="row"><span>Subtotal:</span><span>${fmtCur(sel.subtotal)}</span></div>
+    ${discountAmt > 0 ? `<div class="row"><span>Descuento:</span><span>-${fmtCur(discountAmt)}</span></div>` : ""}
     <div class="row"><span>Impuestos:</span><span>${fmtCur(sel.taxAmount || 0)}</span></div>
     ${sel.tipAmount > 0 ? `<div class="row"><span>Propina:</span><span>${fmtCur(sel.tipAmount)}</span></div>` : ""}
     <div class="line"></div>
-    <div class="row b big"><span>TOTAL:</span><span>${fmtCur(sel.total + sel.tipAmount)}</span></div>
+    <div class="row b big"><span>TOTAL:</span><span>${fmtCur(sel.total + sel.tipAmount - discountAmt)}</span></div>
     <div class="line"></div>
     <div class="c sm" style="margin-top:8px">Gracias por su preferencia</div>
     <script>setTimeout(()=>{window.print()},300)</script>
@@ -151,9 +157,9 @@ function printComanda(tableName: string, waiterName: string, items: CartLine[]) 
   w.document.close();
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════════
+/* ======================================================================
    REUSABLE UI
-   ═══════════════════════════════════════════════════════════════════════════════ */
+   ====================================================================== */
 
 function Backdrop({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
   return (
@@ -175,9 +181,29 @@ function ModalCard({ title, children, width = "max-w-md", onClose }: { title: st
   );
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════════
+function ToolBtn({ label, Icon, onClick, disabled, variant = "default" }: {
+  label: string; Icon: any; onClick: () => void; disabled?: boolean;
+  variant?: "default" | "accent" | "success" | "danger";
+}) {
+  const base = "flex flex-col items-center justify-center gap-0.5 px-2 py-2 rounded-lg text-[10px] font-semibold border min-w-[72px]";
+  const styles = {
+    default: "bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700",
+    accent: "bg-amber-600 border-amber-700 text-white hover:bg-amber-700",
+    success: "bg-emerald-600 border-emerald-700 text-white hover:bg-emerald-700",
+    danger: "bg-red-600/20 border-red-600/30 text-red-400 hover:bg-red-600/30",
+  };
+  return (
+    <button onClick={onClick} disabled={disabled}
+      className={`${base} ${disabled ? "opacity-30 cursor-not-allowed bg-slate-800 border-slate-800 text-slate-600" : styles[variant]}`}>
+      <Icon className="w-4 h-4" />
+      <span className="leading-tight text-center">{label}</span>
+    </button>
+  );
+}
+
+/* ======================================================================
    COMPONENT
-   ═══════════════════════════════════════════════════════════════════════════════ */
+   ====================================================================== */
 
 export const CashierBillingConsole: React.FC = () => {
   const { toast } = useToast();
@@ -208,9 +234,8 @@ export const CashierBillingConsole: React.FC = () => {
   const [sendingOrder, setSendingOrder] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
 
-  // ── Cobrar ──
-  const [payMethod, setPayMethod] = useState<"cash" | "card" | "transfer">("cash");
-  const [cashReceived, setCashReceived] = useState("");
+  // ── Cobrar / Split payment ──
+  const [payEntries, setPayEntries] = useState<{ method: "CASH" | "CARD" | "TRANSFER"; amount: string; reference: string }[]>([{ method: "CASH", amount: "", reference: "" }]);
   const [billing, setBilling] = useState(false);
   const [billSuccess, setBillSuccess] = useState(false);
 
@@ -228,16 +253,46 @@ export const CashierBillingConsole: React.FC = () => {
   const [cancellingLine, setCancellingLine] = useState(false);
   const [cancellingFolio, setCancellingFolio] = useState(false);
 
-  // Derived: selected line object
+  // ── Cambiar Cuenta (rename table) ──
+  const [renameValue, setRenameValue] = useState("");
+  const [renaming, setRenaming] = useState(false);
+
+  // ── Juntar Cuentas ──
+  const [mergeTargetId, setMergeTargetId] = useState("");
+  const [merging, setMerging] = useState(false);
+
+  // ── Descto General ──
+  const [discountPercent, setDiscountPercent] = useState("");
+  const [sessionDiscount, setSessionDiscount] = useState<Record<string, number>>({});
+
+  // ── Dividir Cuenta ──
+  const [splitItems, setSplitItems] = useState<Set<string>>(new Set());
+  const [splitting, setSplitting] = useState(false);
+
+  // ── Cliente ──
+  const [customerSearch, setCustomerSearch] = useState("");
+  const [customerResults, setCustomerResults] = useState<CustomerResult[]>([]);
+  const [sessionCustomer, setSessionCustomer] = useState<Record<string, CustomerResult>>({});
+
+  // ── Transferir Prod ──
+  const [transferTargetId, setTransferTargetId] = useState("");
+  const [transferring, setTransferring] = useState(false);
+
+  // ── Descto Prod ──
+  const [prodDiscountPercent, setProdDiscountPercent] = useState("");
+  const [applyingProdDiscount, setApplyingProdDiscount] = useState(false);
+
+  // Derived
   const selectedLine = sel?.lines.find((l) => l.id === selectedLineId) ?? null;
   const isCancellable = selectedLine && (selectedLine.status === "PENDING" || selectedLine.status === "COOKING");
+  const activeLines = sel?.lines.filter((l) => l.status !== "CANCELLED") ?? [];
+  const discountAmt = sel ? (sessionDiscount[sel.id] || 0) : 0;
 
-  // Reset line selection when account changes
   useEffect(() => { setSelectedLineId(null); }, [sel?.id]);
 
-  /* ═══════════════════════════════════════════════════════════════════════════
+  /* ====================================================================
      DATA FETCHING
-     ═══════════════════════════════════════════════════════════════════════════ */
+     ==================================================================== */
 
   const checkShift = useCallback(async () => {
     try {
@@ -271,9 +326,18 @@ export const CashierBillingConsole: React.FC = () => {
     return () => clearInterval(iv);
   }, [fetchSessions, checkShift]);
 
-  /* ═══════════════════════════════════════════════════════════════════════════
-     ABRIR CUENTA
-     ═══════════════════════════════════════════════════════════════════════════ */
+  const fetchWaiters = async () => {
+    const res = await fetch("/api/restaurant/waiters");
+    const d = await res.json();
+    if (!res.ok) throw new Error(d.error || "Error cargando meseros");
+    const wl: Waiter[] = Array.isArray(d) ? d : [];
+    setWaiters(wl);
+    return wl;
+  };
+
+  /* ====================================================================
+     1. ABRIR CUENTA
+     ==================================================================== */
 
   const nextTableNumber = useCallback(() => {
     const used = new Set(sessions.map((s) => s.tableNumber));
@@ -285,14 +349,8 @@ export const CashierBillingConsole: React.FC = () => {
     if (hasActiveShift === false) { toast("Abra un turno de caja primero", "error"); return; }
     setOpenError(null);
     setNewTableName(nextTableNumber());
-    try {
-      const res = await fetch("/api/restaurant/waiters");
-      const d = await res.json();
-      if (!res.ok) throw new Error(d.error || "Error cargando meseros");
-      const wl: Waiter[] = Array.isArray(d) ? d : [];
-      setWaiters(wl);
-      setPickedWaiter(wl[0]?.id ?? "");
-    } catch (err: any) { toast(err.message, "error"); return; }
+    try { const wl = await fetchWaiters(); setPickedWaiter(wl[0]?.id ?? ""); }
+    catch (err: any) { toast(err.message, "error"); return; }
     setModal("open");
     setTimeout(() => tableInputRef.current?.select(), 80);
   };
@@ -300,12 +358,10 @@ export const CashierBillingConsole: React.FC = () => {
   const handleConfirmOpen = async () => {
     const name = newTableName.trim();
     if (!name || !pickedWaiter) return;
-    setOpening(true);
-    setOpenError(null);
+    setOpening(true); setOpenError(null);
     try {
       const res = await fetch("/api/restaurant/sessions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+        method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ tableName: name, waiterId: pickedWaiter }),
       });
       const d = await res.json();
@@ -317,16 +373,174 @@ export const CashierBillingConsole: React.FC = () => {
     finally { setOpening(false); }
   };
 
-  /* ═══════════════════════════════════════════════════════════════════════════
-     CAPTURA
-     ═══════════════════════════════════════════════════════════════════════════ */
+  /* ====================================================================
+     2. CANCELAR PROD
+     ==================================================================== */
+
+  const handleCancelLineClick = () => {
+    if (!selectedLine || !isCancellable) { toast("Seleccione un producto cancelable", "warning"); return; }
+    setModal("confirmCancelLine");
+  };
+
+  const handleConfirmCancelLine = async () => {
+    if (!selectedLineId) return;
+    setCancellingLine(true);
+    try {
+      const res = await fetch(`/api/restaurant/kds/items/${selectedLineId}/status`, {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "CANCELLED" }),
+      });
+      if (!res.ok) { const d = await res.json(); throw new Error(d.error || "Error cancelando"); }
+      // Immediately update local state so the product disappears without waiting for the poll
+      setSessions((prev) => prev.map((s) => ({
+        ...s,
+        lines: s.lines.map((l) => l.id === selectedLineId ? { ...l, status: "CANCELLED" } : l),
+        itemsCount: s.lines.filter((l) => l.id !== selectedLineId && l.status !== "CANCELLED").length,
+      })));
+      setSel((prev) => prev ? {
+        ...prev,
+        lines: prev.lines.map((l) => l.id === selectedLineId ? { ...l, status: "CANCELLED" } : l),
+        itemsCount: prev.lines.filter((l) => l.id !== selectedLineId && l.status !== "CANCELLED").length,
+      } : prev);
+      toast("Producto cancelado", "success");
+      setSelectedLineId(null); setModal(null);
+    } catch (err: any) { toast(err.message, "error"); }
+    finally { setCancellingLine(false); }
+  };
+
+  /* ====================================================================
+     3. CAMBIAR CUENTA (rename table number)
+     ==================================================================== */
+
+  const handleCambiarCuentaClick = () => {
+    if (!sel) { toast("Seleccione una cuenta", "warning"); return; }
+    setRenameValue(sel.tableNumber);
+    setModal("cambiarCuenta");
+  };
+
+  const handleConfirmRename = async () => {
+    if (!sel || !renameValue.trim()) return;
+    setRenaming(true);
+    try {
+      const res = await fetch(`/api/restaurant/sessions/${sel.id}/update`, {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tableName: renameValue.trim() }),
+      });
+      if (!res.ok) { const d = await res.json(); throw new Error(d.error || "Error renombrando"); }
+      toast(`Mesa renombrada a ${renameValue.trim()}`, "success");
+      setModal(null);
+      await fetchSessions();
+    } catch (err: any) { toast(err.message, "error"); }
+    finally { setRenaming(false); }
+  };
+
+  /* ====================================================================
+     4. JUNTAR CUENTAS
+     ==================================================================== */
+
+  const handleJuntarClick = () => {
+    if (!sel) { toast("Seleccione la cuenta destino", "warning"); return; }
+    if (sessions.length < 2) { toast("Se necesitan al menos 2 cuentas", "warning"); return; }
+    setMergeTargetId("");
+    setModal("juntarCuentas");
+  };
+
+  const handleConfirmJuntar = async () => {
+    if (!sel || !mergeTargetId) return;
+    setMerging(true);
+    try {
+      const source = sessions.find((s) => s.id === mergeTargetId);
+      if (!source) throw new Error("Cuenta no encontrada");
+      const transferableItems = source.lines.filter((l) => l.status !== "CANCELLED");
+      if (transferableItems.length === 0) throw new Error("La cuenta seleccionada no tiene productos activos");
+      const res = await fetch(`/api/restaurant/sessions/${mergeTargetId}/transfer-items`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ targetSessionId: sel.id, itemIds: transferableItems.map((l) => l.id) }),
+      });
+      if (!res.ok) { const d = await res.json(); throw new Error(d.error || "Error juntando"); }
+      await fetch(`/api/restaurant/sessions/${mergeTargetId}/cancel`, { method: "POST" });
+      toast(`Cuentas juntadas en Mesa ${sel.tableNumber}`, "success");
+      setModal(null);
+      await fetchSessions();
+    } catch (err: any) { toast(err.message, "error"); }
+    finally { setMerging(false); }
+  };
+
+  /* ====================================================================
+     5. DESCTO GENERAL
+     ==================================================================== */
+
+  const handleDesctoGeneralClick = () => {
+    if (!sel) { toast("Seleccione una cuenta", "warning"); return; }
+    setDiscountPercent("");
+    setModal("desctoGeneral");
+  };
+
+  const handleApplyDesctoGeneral = () => {
+    if (!sel) return;
+    const pct = parseFloat(discountPercent) || 0;
+    if (pct <= 0 || pct > 100) { toast("Ingrese un porcentaje entre 1 y 100", "warning"); return; }
+    const amount = Math.round(sel.total * pct) / 100;
+    setSessionDiscount((prev) => ({ ...prev, [sel.id]: amount }));
+    toast(`Descuento de ${pct}% (${fmtCur(amount)}) aplicado`, "success");
+    setModal(null);
+  };
+
+  /* ====================================================================
+     6. DIVIDIR CUENTA
+     ==================================================================== */
+
+  const handleDividirClick = () => {
+    if (!sel) { toast("Seleccione una cuenta", "warning"); return; }
+    if (activeLines.length < 2) { toast("Se necesitan al menos 2 productos para dividir", "warning"); return; }
+    setSplitItems(new Set());
+    setModal("dividirCuenta");
+  };
+
+  const toggleSplitItem = (id: string) => {
+    setSplitItems((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const handleConfirmDividir = async () => {
+    if (!sel || splitItems.size === 0) return;
+    setSplitting(true);
+    try {
+      const wl = waiters.length > 0 ? waiters : await fetchWaiters();
+      const nextNum = (() => {
+        const used = new Set(sessions.map((s) => s.tableNumber));
+        for (let i = 1; i <= 999; i++) { if (!used.has(String(i))) return String(i); }
+        return String(sessions.length + 1);
+      })();
+      const createRes = await fetch("/api/restaurant/sessions", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tableName: nextNum, waiterId: wl[0]?.id ?? sel.waiterName }),
+      });
+      const createData = await createRes.json();
+      if (!createRes.ok) throw new Error(createData.error || "No se pudo crear cuenta nueva");
+      const res = await fetch(`/api/restaurant/sessions/${sel.id}/transfer-items`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ targetSessionId: createData.id, itemIds: Array.from(splitItems) }),
+      });
+      if (!res.ok) { const d = await res.json(); throw new Error(d.error || "Error dividiendo"); }
+      toast(`Cuenta dividida. Nueva mesa: ${nextNum}`, "success");
+      setModal(null);
+      await fetchSessions();
+    } catch (err: any) { toast(err.message, "error"); }
+    finally { setSplitting(false); }
+  };
+
+  /* ====================================================================
+     7. CAPTURA
+     ==================================================================== */
 
   const handleCapturaClick = () => {
     if (hasActiveShift === false) { toast("Abra un turno de caja primero", "error"); return; }
     if (!sel) { toast("Seleccione una cuenta", "warning"); return; }
-    setCapturaCart([]);
-    setProductSearch("");
-    setProducts([]);
+    setCapturaCart([]); setProductSearch(""); setProducts([]);
     setModal("captura");
     setTimeout(() => searchRef.current?.focus(), 100);
   };
@@ -359,8 +573,7 @@ export const CashierBillingConsole: React.FC = () => {
   const updateCapturaQty = (pid: string, delta: number) => {
     setCapturaCart((prev) => prev.map((l) => {
       if (l.productId !== pid) return l;
-      const nq = Math.max(1, l.quantity + delta);
-      return { ...l, quantity: nq };
+      return { ...l, quantity: Math.max(1, l.quantity + delta) };
     }));
   };
 
@@ -369,8 +582,7 @@ export const CashierBillingConsole: React.FC = () => {
     setSendingOrder(true);
     try {
       const res = await fetch("/api/restaurant/orders", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+        method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           sessionId: sel.id,
           items: capturaCart.map((l) => ({
@@ -391,42 +603,167 @@ export const CashierBillingConsole: React.FC = () => {
     finally { setSendingOrder(false); }
   };
 
-  /* ═══════════════════════════════════════════════════════════════════════════
-     CANCELAR PRODUCTO (selected line, in-app confirm)
-     ═══════════════════════════════════════════════════════════════════════════ */
+  /* ====================================================================
+     8. CLIENTE
+     ==================================================================== */
 
-  const handleCancelLineClick = () => {
-    if (!selectedLine || !isCancellable) { toast("Seleccione un producto cancelable de la tabla", "warning"); return; }
-    setModal("confirmCancelLine");
+  const handleClienteClick = () => {
+    if (!sel) { toast("Seleccione una cuenta", "warning"); return; }
+    setCustomerSearch(""); setCustomerResults([]);
+    setModal("cliente");
   };
 
-  const handleConfirmCancelLine = async () => {
-    if (!selectedLineId) return;
-    setCancellingLine(true);
+  useEffect(() => {
+    if (modal !== "cliente") return;
+    if (!customerSearch.trim()) { setCustomerResults([]); return; }
+    const t = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/pos/cashier/customer-search?search=${encodeURIComponent(customerSearch)}`);
+        const d = await res.json();
+        setCustomerResults(Array.isArray(d) ? d : []);
+      } catch { setCustomerResults([]); }
+    }, 300);
+    return () => clearTimeout(t);
+  }, [customerSearch, modal]);
+
+  const assignCustomer = (c: CustomerResult) => {
+    if (!sel) return;
+    setSessionCustomer((prev) => ({ ...prev, [sel.id]: c }));
+    toast(`Cliente ${c.name} asignado a Mesa ${sel.tableNumber}`, "success");
+    setModal(null);
+  };
+
+  /* ====================================================================
+     9. CAMBIAR MESERO
+     ==================================================================== */
+
+  const handleMeseroClick = async () => {
+    if (!sel) return;
+    try { await fetchWaiters(); } catch (err: any) { toast(err.message, "error"); return; }
+    setPickedWaiter(""); setModal("mesero");
+  };
+
+  const handleConfirmMesero = async () => {
+    if (!sel || !pickedWaiter) return;
+    setChangingWaiter(true);
     try {
-      const res = await fetch(`/api/restaurant/kds/items/${selectedLineId}/status`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "CANCELLED" }),
+      const res = await fetch(`/api/restaurant/sessions/${sel.id}/update`, {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ waiterId: pickedWaiter }),
       });
-      const d = await res.json();
-      if (!res.ok) throw new Error(d.error || "Error cancelando");
-      toast("Producto cancelado", "success");
-      setSelectedLineId(null);
+      if (!res.ok) { const d = await res.json(); throw new Error(d.error || "Error cambiando mesero"); }
+      toast("Mesero actualizado", "success");
       setModal(null);
       await fetchSessions();
     } catch (err: any) { toast(err.message, "error"); }
-    finally { setCancellingLine(false); }
+    finally { setChangingWaiter(false); }
   };
 
-  /* ═══════════════════════════════════════════════════════════════════════════
-     COBRAR
-     ═══════════════════════════════════════════════════════════════════════════ */
+  /* ====================================================================
+     10. TRANSFERIR PROD
+     ==================================================================== */
+
+  const handleTransferirClick = () => {
+    if (!sel) { toast("Seleccione una cuenta", "warning"); return; }
+    if (!selectedLine) { toast("Seleccione un producto de la tabla", "warning"); return; }
+    if (selectedLine.status === "CANCELLED") { toast("No se puede transferir un producto cancelado", "warning"); return; }
+    if (sessions.length < 2) { toast("Se necesitan al menos 2 cuentas abiertas", "warning"); return; }
+    setTransferTargetId("");
+    setModal("transferirProd");
+  };
+
+  const handleConfirmTransfer = async () => {
+    if (!sel || !transferTargetId || !selectedLineId) return;
+    setTransferring(true);
+    try {
+      const res = await fetch(`/api/restaurant/sessions/${sel.id}/transfer-items`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ targetSessionId: transferTargetId, itemIds: [selectedLineId] }),
+      });
+      if (!res.ok) { const d = await res.json(); throw new Error(d.error || "Error transfiriendo"); }
+      const target = sessions.find((s) => s.id === transferTargetId);
+      toast(`Producto transferido a Mesa ${target?.tableNumber || "?"}`, "success");
+      setSelectedLineId(null); setModal(null);
+      await fetchSessions();
+    } catch (err: any) { toast(err.message, "error"); }
+    finally { setTransferring(false); }
+  };
+
+  /* ====================================================================
+     11. DESCTO PROD
+     ==================================================================== */
+
+  const handleDesctoProdClick = () => {
+    if (!sel) { toast("Seleccione una cuenta", "warning"); return; }
+    if (!selectedLine) { toast("Seleccione un producto de la tabla", "warning"); return; }
+    if (selectedLine.status === "CANCELLED") { toast("No se puede aplicar descuento a producto cancelado", "warning"); return; }
+    setProdDiscountPercent("");
+    setModal("desctoProd");
+  };
+
+  const handleApplyDesctoProd = async () => {
+    if (!selectedLine) return;
+    const pct = parseFloat(prodDiscountPercent) || 0;
+    if (pct <= 0 || pct > 100) { toast("Ingrese un porcentaje entre 1 y 100", "warning"); return; }
+    setApplyingProdDiscount(true);
+    try {
+      const newPrice = Math.round(selectedLine.unitPrice * (1 - pct / 100) * 100) / 100;
+      const res = await fetch(`/api/restaurant/orders/items/${selectedLine.id}`, {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ unitPrice: newPrice }),
+      });
+      if (!res.ok) { const d = await res.json(); throw new Error(d.error || "Error aplicando descuento"); }
+      toast(`Descuento ${pct}% aplicado a ${selectedLine.productName}`, "success");
+      setSelectedLineId(null); setModal(null);
+      await fetchSessions();
+    } catch (err: any) { toast(err.message, "error"); }
+    finally { setApplyingProdDiscount(false); }
+  };
+
+  /* ====================================================================
+     12. PROPINA INCLUIDA
+     ==================================================================== */
+
+  const handlePropinaClick = () => { if (!sel) return; setTipInput(String(sel.tipAmount || 0)); setModal("propina"); };
+
+  const handleSaveTip = async () => {
+    if (!sel) return;
+    setSavingTip(true);
+    try {
+      const res = await fetch(`/api/restaurant/sessions/${sel.id}/tip`, {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tipAmount: parseFloat(tipInput) || 0 }),
+      });
+      if (!res.ok) { const d = await res.json(); throw new Error(d.error || "Error guardando propina"); }
+      toast("Propina actualizada", "success");
+      setModal(null);
+      await fetchSessions();
+    } catch (err: any) { toast(err.message, "error"); }
+    finally { setSavingTip(false); }
+  };
+
+  /* ====================================================================
+     13. PAGAR CUENTA (COBRAR) — multi-payment
+     ==================================================================== */
+
+  const addPayEntry = () => {
+    setPayEntries((prev) => [...prev, { method: "CASH" as const, amount: "", reference: "" }]);
+  };
+
+  const removePayEntry = (idx: number) => {
+    setPayEntries((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  const updatePayEntry = (idx: number, field: "method" | "amount" | "reference", value: string) => {
+    setPayEntries((prev) => prev.map((e, i) => i === idx ? { ...e, [field]: value } : e));
+  };
+
+  const payEntriesTotal = payEntries.reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
+  const payEntriesOk = payEntriesTotal >= grandTotal && payEntries.every((e) => (parseFloat(e.amount) || 0) > 0);
 
   const handleCobrarClick = () => {
     if (!sel) return;
-    setPayMethod("cash");
-    setCashReceived("");
+    setPayEntries([{ method: "CASH", amount: String(grandTotal.toFixed(2)), reference: "" }]);
     setBillSuccess(false);
     setModal("cobrar");
   };
@@ -435,25 +772,34 @@ export const CashierBillingConsole: React.FC = () => {
     if (!sel) return;
     setBilling(true);
     try {
+      const customer = sessionCustomer[sel.id];
+      const discount = sessionDiscount[sel.id] || 0;
+      const payments = payEntries
+        .filter((e) => (parseFloat(e.amount) || 0) > 0)
+        .map((e) => ({ method: e.method, amount: parseFloat(e.amount), reference: e.reference || null }));
       const res = await fetch(`/api/restaurant/sessions/${sel.id}/close`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({}),
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ customerId: customer?.id || null, discountAmount: discount, payments }),
       });
-      const d = await res.json();
-      if (!res.ok) throw new Error(d.error || "Error cerrando cuenta");
-      const methodLabel = payMethod === "cash" ? "Efectivo" : payMethod === "card" ? "Tarjeta" : "Transferencia";
-      printReceipt(sel, methodLabel);
+      if (!res.ok) { const d = await res.json(); throw new Error(d.error || "Error cerrando cuenta"); }
+      const methodLabel = payments.map((p) => {
+        if (p.method === "CASH") return "Efectivo";
+        if (p.method === "CARD") return "Tarjeta";
+        return "Transferencia";
+      }).join(", ");
+      printReceipt(sel, methodLabel, discount);
       setBillSuccess(true);
       toast(`Mesa ${sel.tableNumber} cobrada`, "success");
+      setSessionDiscount((prev) => { const n = { ...prev }; delete n[sel.id]; return n; });
+      setSessionCustomer((prev) => { const n = { ...prev }; delete n[sel.id]; return n; });
       await fetchSessions();
     } catch (err: any) { toast(err.message, "error"); }
     finally { setBilling(false); }
   };
 
-  /* ═══════════════════════════════════════════════════════════════════════════
-     FACTURA (Alegra)
-     ═══════════════════════════════════════════════════════════════════════════ */
+  /* ====================================================================
+     14. FACTURA (Alegra)
+     ==================================================================== */
 
   const handleFacturaClick = () => { if (!sel) return; setModal("factura"); };
 
@@ -462,8 +808,7 @@ export const CashierBillingConsole: React.FC = () => {
     setIssuingInvoice(true);
     try {
       const res = await fetch("/api/restaurant/invoices/issue-alegra", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+        method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sessionId: sel.id }),
       });
       const d = await res.json();
@@ -474,67 +819,15 @@ export const CashierBillingConsole: React.FC = () => {
     finally { setIssuingInvoice(false); }
   };
 
-  /* ═══════════════════════════════════════════════════════════════════════════
-     PROPINA
-     ═══════════════════════════════════════════════════════════════════════════ */
+  /* ====================================================================
+     15. IMPRIMIR CUENTA
+     ==================================================================== */
 
-  const handlePropinaClick = () => { if (!sel) return; setTipInput(String(sel.tipAmount || 0)); setModal("propina"); };
+  const handlePrint = () => { if (!sel) return; printReceipt(sel, undefined, discountAmt); };
 
-  const handleSaveTip = async () => {
-    if (!sel) return;
-    setSavingTip(true);
-    try {
-      const res = await fetch(`/api/restaurant/sessions/${sel.id}/tip`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tipAmount: parseFloat(tipInput) || 0 }),
-      });
-      const d = await res.json();
-      if (!res.ok) throw new Error(d.error || "Error guardando propina");
-      toast("Propina actualizada", "success");
-      setModal(null);
-      await fetchSessions();
-    } catch (err: any) { toast(err.message, "error"); }
-    finally { setSavingTip(false); }
-  };
-
-  /* ═══════════════════════════════════════════════════════════════════════════
-     CAMBIAR MESERO
-     ═══════════════════════════════════════════════════════════════════════════ */
-
-  const handleMeseroClick = async () => {
-    if (!sel) return;
-    try {
-      const res = await fetch("/api/restaurant/waiters");
-      const d = await res.json();
-      if (!res.ok) throw new Error(d.error || "Error cargando meseros");
-      setWaiters(Array.isArray(d) ? d : []);
-    } catch (err: any) { toast(err.message, "error"); return; }
-    setPickedWaiter("");
-    setModal("mesero");
-  };
-
-  const handleConfirmMesero = async () => {
-    if (!sel || !pickedWaiter) return;
-    setChangingWaiter(true);
-    try {
-      const res = await fetch(`/api/restaurant/sessions/${sel.id}/update`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ waiterId: pickedWaiter }),
-      });
-      const d = await res.json();
-      if (!res.ok) throw new Error(d.error || "Error cambiando mesero");
-      toast("Mesero actualizado", "success");
-      setModal(null);
-      await fetchSessions();
-    } catch (err: any) { toast(err.message, "error"); }
-    finally { setChangingWaiter(false); }
-  };
-
-  /* ═══════════════════════════════════════════════════════════════════════════
-     CANCELAR FOLIO
-     ═══════════════════════════════════════════════════════════════════════════ */
+  /* ====================================================================
+     16. CANCELAR FOLIO
+     ==================================================================== */
 
   const handleCancelFolioClick = () => { if (!sel) return; setModal("cancelFolio"); };
 
@@ -542,12 +835,8 @@ export const CashierBillingConsole: React.FC = () => {
     if (!sel) return;
     setCancellingFolio(true);
     try {
-      const res = await fetch(`/api/restaurant/sessions/${sel.id}/cancel`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-      });
-      const d = await res.json();
-      if (!res.ok) throw new Error(d.error || "Error cancelando folio");
+      const res = await fetch(`/api/restaurant/sessions/${sel.id}/cancel`, { method: "POST" });
+      if (!res.ok) { const d = await res.json(); throw new Error(d.error || "Error cancelando folio"); }
       toast(`Folio Mesa ${sel.tableNumber} cancelado`, "success");
       setModal(null);
       await fetchSessions();
@@ -555,15 +844,9 @@ export const CashierBillingConsole: React.FC = () => {
     finally { setCancellingFolio(false); }
   };
 
-  /* ═══════════════════════════════════════════════════════════════════════════
-     IMPRIMIR
-     ═══════════════════════════════════════════════════════════════════════════ */
-
-  const handlePrint = () => { if (!sel) return; printReceipt(sel); };
-
-  /* ═══════════════════════════════════════════════════════════════════════════
+  /* ====================================================================
      COMPUTED
-     ═══════════════════════════════════════════════════════════════════════════ */
+     ==================================================================== */
 
   const filtered = sessions.filter((s) => {
     if (!searchText) return true;
@@ -575,13 +858,12 @@ export const CashierBillingConsole: React.FC = () => {
   const taxAmount = sel?.taxAmount ?? 0;
   const total = sel?.total ?? 0;
   const tip = sel?.tipAmount ?? 0;
-  const grandTotal = total + tip;
-  const change = payMethod === "cash" ? Math.max(0, (parseFloat(cashReceived) || 0) - grandTotal) : 0;
-  const cashOk = payMethod !== "cash" || (parseFloat(cashReceived) || 0) >= grandTotal;
+  const grandTotal = total + tip - discountAmt;
+  const customer = sel ? sessionCustomer[sel.id] : undefined;
 
-  /* ═══════════════════════════════════════════════════════════════════════════
+  /* ====================================================================
      LOADING
-     ═══════════════════════════════════════════════════════════════════════════ */
+     ==================================================================== */
 
   if (loading) {
     return (
@@ -591,23 +873,23 @@ export const CashierBillingConsole: React.FC = () => {
     );
   }
 
-  /* ═══════════════════════════════════════════════════════════════════════════
+  /* ====================================================================
      RENDER
-     ═══════════════════════════════════════════════════════════════════════════ */
+     ==================================================================== */
 
   return (
     <div className="flex flex-col h-screen bg-slate-950 text-white font-sans overflow-hidden select-none">
 
-      {/* ══════════════════════════════════════════════════════════════════════
+      {/* ================================================================
          MODALS
-         ══════════════════════════════════════════════════════════════════════ */}
+         ================================================================ */}
 
       {/* ABRIR CUENTA */}
       {modal === "open" && (
         <Backdrop onClose={() => setModal(null)}>
           <ModalCard title="ABRIR CUENTA" onClose={() => setModal(null)}>
             {openError && <div className="bg-red-600/10 border border-red-600/30 rounded-lg p-3 mb-3 text-red-400 text-xs font-semibold">{openError}</div>}
-            <label className="block text-xs font-semibold text-slate-400 mb-1">Número de mesa</label>
+            <label className="block text-xs font-semibold text-slate-400 mb-1">Mesa / Cuenta</label>
             <input ref={tableInputRef} value={newTableName} onChange={(e) => setNewTableName(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") handleConfirmOpen(); }} autoFocus className="w-full bg-slate-800 border border-slate-600 rounded-lg px-4 py-3 text-2xl font-black text-center text-amber-400 outline-none focus:border-amber-500 mb-3" placeholder="1, 2, VIP..." />
             <label className="block text-xs font-semibold text-slate-400 mb-1">Mesero</label>
             <select value={pickedWaiter} onChange={(e) => setPickedWaiter(e.target.value)} className="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-amber-500 mb-4">
@@ -622,12 +904,134 @@ export const CashierBillingConsole: React.FC = () => {
         </Backdrop>
       )}
 
+      {/* CANCELAR PRODUCTO */}
+      {modal === "confirmCancelLine" && selectedLine && (
+        <Backdrop onClose={() => setModal(null)}>
+          <ModalCard title="CANCELAR PRODUCTO" onClose={() => setModal(null)}>
+            <div className="text-center mb-4">
+              <div className="w-12 h-12 rounded-full bg-red-600/20 flex items-center justify-center mx-auto mb-3"><X className="w-6 h-6 text-red-400" /></div>
+              <p className="text-white text-sm font-semibold mb-1">Cancelar este producto?</p>
+              <div className="bg-slate-800 rounded-lg p-3 mt-3">
+                <div className="text-amber-400 font-bold text-sm">{selectedLine.productName}</div>
+                <div className="text-slate-400 text-xs mt-1">Cantidad: {selectedLine.quantity} &middot; {fmtCur(selectedLine.quantity * selectedLine.unitPrice)}</div>
+                <div className={`text-xs font-bold mt-1 ${statusColor(selectedLine.status)}`}>{statusLabel(selectedLine.status)}</div>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button onClick={() => setModal(null)} className="flex-1 py-2.5 bg-slate-800 border border-slate-600 rounded-lg text-sm font-semibold text-slate-300 hover:bg-slate-700">Volver</button>
+              <button onClick={handleConfirmCancelLine} disabled={cancellingLine} className="flex-1 py-2.5 bg-red-600 rounded-lg text-sm font-bold text-white hover:bg-red-700 disabled:opacity-40">{cancellingLine ? "Cancelando..." : "Cancelar Producto"}</button>
+            </div>
+          </ModalCard>
+        </Backdrop>
+      )}
+
+      {/* CAMBIAR CUENTA */}
+      {modal === "cambiarCuenta" && sel && (
+        <Backdrop onClose={() => setModal(null)}>
+          <ModalCard title={`CAMBIAR CUENTA \u2014 Mesa ${sel.tableNumber}`} onClose={() => setModal(null)}>
+            <label className="block text-xs font-semibold text-slate-400 mb-1">Nuevo nombre de mesa / cuenta</label>
+            <input value={renameValue} onChange={(e) => setRenameValue(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") handleConfirmRename(); }} autoFocus className="w-full bg-slate-800 border border-slate-600 rounded-lg px-4 py-3 text-2xl font-black text-center text-amber-400 outline-none focus:border-amber-500 mb-4" />
+            <div className="flex gap-2">
+              <button onClick={() => setModal(null)} className="flex-1 py-2.5 bg-slate-800 border border-slate-600 rounded-lg text-sm font-semibold text-slate-300 hover:bg-slate-700">Cancelar</button>
+              <button onClick={handleConfirmRename} disabled={!renameValue.trim() || renaming} className="flex-1 py-2.5 bg-amber-600 rounded-lg text-sm font-bold text-white hover:bg-amber-700 disabled:opacity-40">{renaming ? "Cambiando..." : "Cambiar"}</button>
+            </div>
+          </ModalCard>
+        </Backdrop>
+      )}
+
+      {/* JUNTAR CUENTAS */}
+      {modal === "juntarCuentas" && sel && (
+        <Backdrop onClose={() => setModal(null)}>
+          <ModalCard title={`JUNTAR CUENTAS \u2192 Mesa ${sel.tableNumber}`} onClose={() => setModal(null)}>
+            <p className="text-xs text-slate-400 mb-3">Seleccione la cuenta que desea fusionar con la actual. Todos sus productos se mover&aacute;n aqu&iacute;.</p>
+            <div className="space-y-1.5 max-h-60 overflow-y-auto mb-4">
+              {sessions.filter((s) => s.id !== sel.id).map((s) => (
+                <div key={s.id} onClick={() => setMergeTargetId(s.id)}
+                  className={`px-3 py-2.5 rounded-lg border cursor-pointer flex justify-between items-center ${mergeTargetId === s.id ? "bg-amber-600/15 border-amber-500" : "bg-slate-800 border-slate-700 hover:bg-slate-700"}`}>
+                  <div>
+                    <div className="text-sm font-bold text-white">Mesa {s.tableNumber}</div>
+                    <div className="text-[10px] text-slate-500">{s.waiterName} &middot; {s.itemsCount} items</div>
+                  </div>
+                  <div className="text-sm font-bold text-amber-400">{fmtCur(s.total)}</div>
+                </div>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <button onClick={() => setModal(null)} className="flex-1 py-2.5 bg-slate-800 border border-slate-600 rounded-lg text-sm font-semibold text-slate-300 hover:bg-slate-700">Cancelar</button>
+              <button onClick={handleConfirmJuntar} disabled={!mergeTargetId || merging} className="flex-1 py-2.5 bg-amber-600 rounded-lg text-sm font-bold text-white hover:bg-amber-700 disabled:opacity-40">{merging ? "Juntando..." : "Juntar"}</button>
+            </div>
+          </ModalCard>
+        </Backdrop>
+      )}
+
+      {/* DESCTO GENERAL */}
+      {modal === "desctoGeneral" && sel && (
+        <Backdrop onClose={() => setModal(null)}>
+          <ModalCard title={`DESCUENTO GENERAL \u2014 Mesa ${sel.tableNumber}`} onClose={() => setModal(null)}>
+            <div className="text-center mb-4">
+              <Percent className="w-10 h-10 text-amber-500 mx-auto mb-2" />
+              <div className="text-xl font-black text-white">{fmtCur(sel.total)}</div>
+              <div className="text-xs text-slate-500 mt-1">Total actual de la cuenta</div>
+            </div>
+            <label className="block text-xs font-semibold text-slate-400 mb-1">Porcentaje de descuento</label>
+            <div className="flex items-center gap-2 mb-2">
+              <input value={discountPercent} onChange={(e) => setDiscountPercent(e.target.value)} type="number" min="1" max="100" step="1" autoFocus className="flex-1 bg-slate-800 border border-slate-600 rounded-lg px-3 py-2.5 text-lg font-bold text-center text-white outline-none focus:border-amber-500" placeholder="10" onKeyDown={(e) => { if (e.key === "Enter") handleApplyDesctoGeneral(); }} />
+              <span className="text-2xl font-bold text-amber-400">%</span>
+            </div>
+            {(parseFloat(discountPercent) || 0) > 0 && (
+              <div className="text-center text-sm text-emerald-400 font-semibold mb-3">
+                Descuento: {fmtCur(Math.round(sel.total * (parseFloat(discountPercent) || 0)) / 100)}
+              </div>
+            )}
+            <div className="flex gap-2">
+              {discountAmt > 0 && (
+                <button onClick={() => { setSessionDiscount((prev) => { const n = { ...prev }; delete n[sel.id]; return n; }); toast("Descuento eliminado", "success"); setModal(null); }} className="py-2.5 px-3 bg-red-600/20 border border-red-600/30 rounded-lg text-sm font-semibold text-red-400 hover:bg-red-600/30">Quitar</button>
+              )}
+              <button onClick={() => setModal(null)} className="flex-1 py-2.5 bg-slate-800 border border-slate-600 rounded-lg text-sm font-semibold text-slate-300 hover:bg-slate-700">Cancelar</button>
+              <button onClick={handleApplyDesctoGeneral} className="flex-1 py-2.5 bg-amber-600 rounded-lg text-sm font-bold text-white hover:bg-amber-700">Aplicar</button>
+            </div>
+          </ModalCard>
+        </Backdrop>
+      )}
+
+      {/* DIVIDIR CUENTA */}
+      {modal === "dividirCuenta" && sel && (
+        <Backdrop onClose={() => setModal(null)}>
+          <ModalCard title={`DIVIDIR CUENTA \u2014 Mesa ${sel.tableNumber}`} width="max-w-lg" onClose={() => setModal(null)}>
+            <p className="text-xs text-slate-400 mb-3">Seleccione los productos que desea mover a una nueva cuenta.</p>
+            <div className="space-y-1 max-h-72 overflow-y-auto mb-4 border border-slate-700 rounded-lg">
+              {activeLines.map((line) => (
+                <div key={line.id} onClick={() => toggleSplitItem(line.id)}
+                  className={`px-3 py-2 cursor-pointer flex items-center gap-3 border-b border-slate-800 last:border-0 ${splitItems.has(line.id) ? "bg-amber-600/15" : "hover:bg-slate-800/50"}`}>
+                  <div className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 ${splitItems.has(line.id) ? "bg-amber-500 border-amber-500" : "border-slate-600"}`}>
+                    {splitItems.has(line.id) && <Check className="w-3 h-3 text-white" />}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs font-semibold text-white truncate">{line.productName}</div>
+                    <div className="text-[10px] text-slate-500">{line.quantity} x {fmtCur(line.unitPrice)}</div>
+                  </div>
+                  <div className="text-xs font-bold text-amber-400">{fmtCur(line.quantity * line.unitPrice)}</div>
+                </div>
+              ))}
+            </div>
+            <div className="text-right text-xs text-slate-400 mb-3">
+              {splitItems.size} producto{splitItems.size !== 1 ? "s" : ""} seleccionado{splitItems.size !== 1 ? "s" : ""}: <span className="text-amber-400 font-bold">
+                {fmtCur(activeLines.filter((l) => splitItems.has(l.id)).reduce((s, l) => s + l.quantity * l.unitPrice, 0))}
+              </span>
+            </div>
+            <div className="flex gap-2">
+              <button onClick={() => setModal(null)} className="flex-1 py-2.5 bg-slate-800 border border-slate-600 rounded-lg text-sm font-semibold text-slate-300 hover:bg-slate-700">Cancelar</button>
+              <button onClick={handleConfirmDividir} disabled={splitItems.size === 0 || splitting} className="flex-1 py-2.5 bg-amber-600 rounded-lg text-sm font-bold text-white hover:bg-amber-700 disabled:opacity-40">{splitting ? "Dividiendo..." : "Dividir"}</button>
+            </div>
+          </ModalCard>
+        </Backdrop>
+      )}
+
       {/* CAPTURA */}
       {modal === "captura" && (
         <Backdrop onClose={() => setModal(null)}>
-          <ModalCard title={`CAPTURA — Mesa ${sel?.tableNumber}`} width="max-w-2xl" onClose={() => setModal(null)}>
+          <ModalCard title={`CAPTURA \u2014 Mesa ${sel?.tableNumber}`} width="max-w-2xl" onClose={() => setModal(null)}>
             <div className="flex gap-4" style={{ minHeight: 340 }}>
-              {/* Product search */}
               <div className="flex-1 flex flex-col gap-2">
                 <input ref={searchRef} value={productSearch} onChange={(e) => setProductSearch(e.target.value)} placeholder="Buscar producto..." className="bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-amber-500" />
                 <div className="overflow-y-auto flex-1 border border-slate-700 rounded-lg">
@@ -641,7 +1045,6 @@ export const CashierBillingConsole: React.FC = () => {
                   ))}
                 </div>
               </div>
-              {/* Cart */}
               <div className="w-56 flex flex-col gap-2">
                 <div className="text-xs font-bold text-slate-400">ORDEN ({capturaCart.reduce((s, l) => s + l.quantity, 0)})</div>
                 <div className="flex-1 overflow-y-auto border border-slate-700 rounded-lg">
@@ -661,76 +1064,201 @@ export const CashierBillingConsole: React.FC = () => {
                 </div>
                 <div className="text-right font-bold text-amber-400 text-sm">{fmtCur(capturaCart.reduce((s, l) => s + l.quantity * l.unitPrice, 0))}</div>
                 <button onClick={() => setModal(null)} className="py-2 bg-slate-800 border border-slate-600 rounded-lg text-xs font-semibold text-slate-300 hover:bg-slate-700">Cancelar</button>
-                <button onClick={handleSendCaptura} disabled={capturaCart.length === 0 || sendingOrder} className="py-2 bg-emerald-600 rounded-lg text-xs font-bold text-white hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed">{sendingOrder ? "Enviando..." : "Enviar a Cocina"}</button>
+                <button onClick={handleSendCaptura} disabled={capturaCart.length === 0 || sendingOrder} className="py-2 bg-emerald-600 rounded-lg text-xs font-bold text-white hover:bg-emerald-700 disabled:opacity-40">{sendingOrder ? "Enviando..." : "Enviar a Cocina"}</button>
               </div>
             </div>
           </ModalCard>
         </Backdrop>
       )}
 
-      {/* CONFIRMAR CANCELAR PRODUCTO */}
-      {modal === "confirmCancelLine" && selectedLine && (
+      {/* CLIENTE */}
+      {modal === "cliente" && sel && (
         <Backdrop onClose={() => setModal(null)}>
-          <ModalCard title="CANCELAR PRODUCTO" onClose={() => setModal(null)}>
-            <div className="text-center mb-4">
-              <div className="w-12 h-12 rounded-full bg-red-600/20 flex items-center justify-center mx-auto mb-3"><X className="w-6 h-6 text-red-400" /></div>
-              <p className="text-white text-sm font-semibold mb-1">¿Cancelar este producto?</p>
-              <div className="bg-slate-800 rounded-lg p-3 mt-3">
-                <div className="text-amber-400 font-bold text-sm">{selectedLine.productName}</div>
-                <div className="text-slate-400 text-xs mt-1">Cantidad: {selectedLine.quantity} · {fmtCur(selectedLine.quantity * selectedLine.unitPrice)}</div>
-                <div className={`text-xs font-bold mt-1 ${statusColor(selectedLine.status)}`}>{statusLabel(selectedLine.status)}</div>
+          <ModalCard title={`CLIENTE \u2014 Mesa ${sel.tableNumber}`} onClose={() => setModal(null)}>
+            {customer && (
+              <div className="bg-emerald-600/10 border border-emerald-600/30 rounded-lg p-3 mb-3 flex items-center justify-between">
+                <div><div className="text-emerald-400 font-bold text-xs">{customer.name}</div><div className="text-[10px] text-slate-500">{customer.taxId || "Sin NIT"}</div></div>
+                <button onClick={() => { setSessionCustomer((prev) => { const n = { ...prev }; delete n[sel.id]; return n; }); toast("Cliente desasignado", "success"); }} className="text-red-400 text-xs font-semibold hover:text-red-300">Quitar</button>
               </div>
+            )}
+            <input value={customerSearch} onChange={(e) => setCustomerSearch(e.target.value)} placeholder="Buscar por nombre, NIT o telefono..." autoFocus className="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-amber-500 mb-3" />
+            <div className="max-h-52 overflow-y-auto border border-slate-700 rounded-lg mb-3">
+              {customerResults.length === 0 ? (
+                <div className="p-4 text-center text-slate-500 text-xs">{customerSearch ? "Sin resultados" : "Escribe para buscar..."}</div>
+              ) : customerResults.map((c) => (
+                <div key={c.id} onClick={() => assignCustomer(c)} className="px-3 py-2 cursor-pointer border-b border-slate-800 hover:bg-slate-800/50 flex justify-between items-center">
+                  <div><div className="font-semibold text-xs text-white">{c.name}</div><div className="text-[10px] text-slate-500">{c.taxId || "Sin NIT"} &middot; {c.phone || ""}</div></div>
+                  <UserCircle className="w-4 h-4 text-slate-500" />
+                </div>
+              ))}
+            </div>
+            <button onClick={() => setModal(null)} className="w-full py-2.5 bg-slate-800 border border-slate-600 rounded-lg text-sm font-semibold text-slate-300 hover:bg-slate-700">Cerrar</button>
+          </ModalCard>
+        </Backdrop>
+      )}
+
+      {/* TRANSFERIR PROD */}
+      {modal === "transferirProd" && sel && selectedLine && (
+        <Backdrop onClose={() => setModal(null)}>
+          <ModalCard title="TRANSFERIR PRODUCTO" onClose={() => setModal(null)}>
+            <div className="bg-slate-800 rounded-lg p-3 mb-3">
+              <div className="text-amber-400 font-bold text-sm">{selectedLine.productName}</div>
+              <div className="text-slate-400 text-xs mt-1">{selectedLine.quantity} x {fmtCur(selectedLine.unitPrice)} = {fmtCur(selectedLine.quantity * selectedLine.unitPrice)}</div>
+            </div>
+            <p className="text-xs text-slate-400 mb-2">Seleccione la cuenta destino:</p>
+            <div className="space-y-1.5 max-h-48 overflow-y-auto mb-4">
+              {sessions.filter((s) => s.id !== sel.id).map((s) => (
+                <div key={s.id} onClick={() => setTransferTargetId(s.id)}
+                  className={`px-3 py-2 rounded-lg border cursor-pointer flex justify-between items-center ${transferTargetId === s.id ? "bg-amber-600/15 border-amber-500" : "bg-slate-800 border-slate-700 hover:bg-slate-700"}`}>
+                  <div className="text-sm font-bold text-white">Mesa {s.tableNumber}</div>
+                  <div className="text-xs text-slate-500">{s.waiterName}</div>
+                </div>
+              ))}
             </div>
             <div className="flex gap-2">
-              <button onClick={() => setModal(null)} className="flex-1 py-2.5 bg-slate-800 border border-slate-600 rounded-lg text-sm font-semibold text-slate-300 hover:bg-slate-700">Volver</button>
-              <button onClick={handleConfirmCancelLine} disabled={cancellingLine} className="flex-1 py-2.5 bg-red-600 rounded-lg text-sm font-bold text-white hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed">{cancellingLine ? "Cancelando..." : "Cancelar Producto"}</button>
+              <button onClick={() => setModal(null)} className="flex-1 py-2.5 bg-slate-800 border border-slate-600 rounded-lg text-sm font-semibold text-slate-300 hover:bg-slate-700">Cancelar</button>
+              <button onClick={handleConfirmTransfer} disabled={!transferTargetId || transferring} className="flex-1 py-2.5 bg-amber-600 rounded-lg text-sm font-bold text-white hover:bg-amber-700 disabled:opacity-40">{transferring ? "Transfiriendo..." : "Transferir"}</button>
             </div>
           </ModalCard>
         </Backdrop>
       )}
 
-      {/* COBRAR */}
+      {/* DESCTO PROD */}
+      {modal === "desctoProd" && selectedLine && (
+        <Backdrop onClose={() => setModal(null)}>
+          <ModalCard title="DESCUENTO PRODUCTO" onClose={() => setModal(null)}>
+            <div className="bg-slate-800 rounded-lg p-3 mb-3 text-center">
+              <div className="text-amber-400 font-bold text-sm">{selectedLine.productName}</div>
+              <div className="text-white text-lg font-black mt-1">{fmtCur(selectedLine.unitPrice)}</div>
+              <div className="text-[10px] text-slate-500">Precio unitario actual</div>
+            </div>
+            <label className="block text-xs font-semibold text-slate-400 mb-1">Porcentaje de descuento</label>
+            <div className="flex items-center gap-2 mb-2">
+              <input value={prodDiscountPercent} onChange={(e) => setProdDiscountPercent(e.target.value)} type="number" min="1" max="100" step="1" autoFocus className="flex-1 bg-slate-800 border border-slate-600 rounded-lg px-3 py-2.5 text-lg font-bold text-center text-white outline-none focus:border-amber-500" placeholder="10" onKeyDown={(e) => { if (e.key === "Enter") handleApplyDesctoProd(); }} />
+              <span className="text-2xl font-bold text-amber-400">%</span>
+            </div>
+            {(parseFloat(prodDiscountPercent) || 0) > 0 && (
+              <div className="text-center text-sm mb-3">
+                <span className="text-slate-400">Nuevo precio: </span>
+                <span className="text-emerald-400 font-bold">{fmtCur(Math.round(selectedLine.unitPrice * (1 - (parseFloat(prodDiscountPercent) || 0) / 100) * 100) / 100)}</span>
+              </div>
+            )}
+            <div className="flex gap-2">
+              <button onClick={() => setModal(null)} className="flex-1 py-2.5 bg-slate-800 border border-slate-600 rounded-lg text-sm font-semibold text-slate-300 hover:bg-slate-700">Cancelar</button>
+              <button onClick={handleApplyDesctoProd} disabled={applyingProdDiscount} className="flex-1 py-2.5 bg-amber-600 rounded-lg text-sm font-bold text-white hover:bg-amber-700 disabled:opacity-40">{applyingProdDiscount ? "Aplicando..." : "Aplicar"}</button>
+            </div>
+          </ModalCard>
+        </Backdrop>
+      )}
+
+      {/* COBRAR — multi-payment */}
       {modal === "cobrar" && sel && (
         <Backdrop onClose={() => !billing && setModal(null)}>
-          <ModalCard title={`COBRAR — Mesa ${sel.tableNumber}`} onClose={() => !billing && setModal(null)}>
+          <ModalCard title={`PAGAR CUENTA \u2014 Mesa ${sel.tableNumber}`} width="max-w-lg" onClose={() => !billing && setModal(null)}>
             {billSuccess ? (
               <div className="text-center py-4">
                 <div className="w-16 h-16 rounded-full bg-emerald-600/20 flex items-center justify-center mx-auto mb-3"><Check className="w-8 h-8 text-emerald-400" /></div>
                 <p className="text-emerald-400 font-bold text-lg mb-1">Cuenta cobrada</p>
-                <p className="text-slate-400 text-sm">Mesa {sel.tableNumber} · {fmtCur(grandTotal)}</p>
+                <p className="text-slate-400 text-sm">Mesa {sel.tableNumber} &middot; {fmtCur(grandTotal)}</p>
                 <button onClick={() => setModal(null)} className="mt-4 w-full py-2.5 bg-slate-800 border border-slate-600 rounded-lg text-sm font-semibold text-slate-300 hover:bg-slate-700">Cerrar</button>
               </div>
             ) : (
               <>
-                <div className="text-center mb-4">
-                  <div className="text-slate-400 text-xs font-semibold mb-1">TOTAL A COBRAR</div>
-                  <div className="text-4xl font-black text-amber-400">{fmtCur(grandTotal)}</div>
-                  {tip > 0 && <div className="text-xs text-slate-500 mt-1">Incluye propina: {fmtCur(tip)}</div>}
+                {/* Summary */}
+                <div className="bg-slate-800 rounded-xl p-3 mb-4 flex items-center justify-between">
+                  <div>
+                    <div className="text-[10px] text-slate-500 font-semibold">TOTAL A COBRAR</div>
+                    <div className="text-3xl font-black text-amber-400">{fmtCur(grandTotal)}</div>
+                    <div className="flex gap-3 mt-1 text-[10px] text-slate-500">
+                      <span>Subtotal: {fmtCur(subtotal)}</span>
+                      {discountAmt > 0 && <span className="text-emerald-400">Dto: -{fmtCur(discountAmt)}</span>}
+                      {tip > 0 && <span className="text-amber-400">Propina: {fmtCur(tip)}</span>}
+                    </div>
+                  </div>
+                  {customer && (
+                    <div className="text-right">
+                      <div className="text-[10px] text-slate-500">CLIENTE</div>
+                      <div className="text-xs text-sky-400 font-semibold">{customer.name}</div>
+                    </div>
+                  )}
                 </div>
-                <div className="text-xs font-semibold text-slate-400 mb-2">Método de pago</div>
-                <div className="grid grid-cols-3 gap-2 mb-4">
-                  {([
-                    { key: "cash" as const, label: "Efectivo", Icon: Banknote },
-                    { key: "card" as const, label: "Tarjeta", Icon: CreditCard },
-                    { key: "transfer" as const, label: "Transferencia", Icon: ArrowLeftRight },
-                  ]).map((m) => (
-                    <button key={m.key} onClick={() => { setPayMethod(m.key); setCashReceived(""); }} className={`flex flex-col items-center gap-1 py-3 rounded-lg border text-xs font-semibold ${payMethod === m.key ? "bg-amber-600/20 border-amber-500 text-amber-400" : "bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-600"}`}>
-                      <m.Icon className="w-5 h-5" />{m.label}
-                    </button>
-                  ))}
+
+                {/* Payment entries */}
+                <div className="text-xs font-bold text-slate-400 mb-2 flex items-center justify-between">
+                  <span>FORMA DE PAGO</span>
+                  <button onClick={addPayEntry} className="flex items-center gap-1 text-amber-400 hover:text-amber-300 font-semibold">
+                    <Plus className="w-3 h-3" /> Agregar metodo
+                  </button>
                 </div>
-                {payMethod === "cash" && (
-                  <div className="mb-4">
-                    <label className="block text-xs font-semibold text-slate-400 mb-1">Efectivo recibido</label>
-                    <input value={cashReceived} onChange={(e) => setCashReceived(e.target.value)} type="number" step="0.01" min="0" className="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2.5 text-lg font-bold text-center text-white outline-none focus:border-amber-500" placeholder="0.00" autoFocus />
-                    {(parseFloat(cashReceived) || 0) >= grandTotal && grandTotal > 0 && (
-                      <div className="mt-2 text-center"><span className="text-xs text-slate-500">Cambio: </span><span className="text-lg font-bold text-emerald-400">{fmtCur(change)}</span></div>
-                    )}
+
+                <div className="space-y-2 mb-3">
+                  {payEntries.map((entry, idx) => {
+                    const amt = parseFloat(entry.amount) || 0;
+                    const isCash = entry.method === "CASH";
+                    const change = isCash && amt > grandTotal ? amt - grandTotal : 0;
+                    return (
+                      <div key={idx} className="bg-slate-800 border border-slate-700 rounded-xl p-3">
+                        <div className="flex items-center gap-2 mb-2">
+                          {/* Method selector */}
+                          <div className="flex gap-1">
+                            {([
+                              { k: "CASH" as const, label: "Efectivo", Icon: Banknote },
+                              { k: "CARD" as const, label: "Tarjeta", Icon: CreditCard },
+                              { k: "TRANSFER" as const, label: "Transfer.", Icon: ArrowLeftRight },
+                            ]).map(({ k, label, Icon }) => (
+                              <button key={k} onClick={() => updatePayEntry(idx, "method", k)}
+                                className={`flex items-center gap-1 px-2 py-1 rounded-lg border text-[10px] font-bold ${entry.method === k ? "bg-amber-600/20 border-amber-500 text-amber-400" : "bg-slate-700 border-slate-600 text-slate-400 hover:text-white"}`}>
+                                <Icon className="w-3 h-3" />{label}
+                              </button>
+                            ))}
+                          </div>
+                          <span className="flex-1" />
+                          {payEntries.length > 1 && (
+                            <button onClick={() => removePayEntry(idx)} className="text-red-400 hover:text-red-300 text-xs font-bold">&times;</button>
+                          )}
+                        </div>
+                        <div className="flex gap-2">
+                          <div className="flex-1">
+                            <label className="block text-[10px] text-slate-500 font-semibold mb-0.5">Monto</label>
+                            <input value={entry.amount} onChange={(e) => updatePayEntry(idx, "amount", e.target.value)}
+                              type="number" step="0.01" min="0"
+                              className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-lg font-bold text-center text-white outline-none focus:border-amber-500"
+                              placeholder="0.00" autoFocus={idx === 0} />
+                          </div>
+                          {!isCash && (
+                            <div className="flex-1">
+                              <label className="block text-[10px] text-slate-500 font-semibold mb-0.5">Referencia (opc.)</label>
+                              <input value={entry.reference} onChange={(e) => updatePayEntry(idx, "reference", e.target.value)}
+                                className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-amber-500"
+                                placeholder="# autorización..." />
+                            </div>
+                          )}
+                        </div>
+                        {isCash && change > 0 && (
+                          <div className="mt-1.5 text-center">
+                            <span className="text-[10px] text-slate-500">Cambio: </span>
+                            <span className="text-base font-black text-emerald-400">{fmtCur(change)}</span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Payment total vs grand total */}
+                {payEntries.length > 1 && (
+                  <div className={`flex justify-between text-sm font-bold mb-3 px-1 ${payEntriesTotal >= grandTotal ? "text-emerald-400" : "text-red-400"}`}>
+                    <span>Total ingresado:</span>
+                    <span>{fmtCur(payEntriesTotal)} / {fmtCur(grandTotal)}</span>
                   </div>
                 )}
+
                 <div className="flex gap-2">
                   <button onClick={() => setModal(null)} disabled={billing} className="flex-1 py-2.5 bg-slate-800 border border-slate-600 rounded-lg text-sm font-semibold text-slate-300 hover:bg-slate-700 disabled:opacity-40">Cancelar</button>
-                  <button onClick={handleConfirmCobrar} disabled={billing || !cashOk} className="flex-1 py-2.5 bg-emerald-600 rounded-lg text-sm font-bold text-white hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed">{billing ? "Procesando..." : "Confirmar Pago"}</button>
+                  <button onClick={handleConfirmCobrar} disabled={billing || !payEntriesOk}
+                    className="flex-1 py-2.5 bg-emerald-600 rounded-lg text-sm font-bold text-white hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed">
+                    {billing ? "Procesando..." : "Confirmar Pago"}
+                  </button>
                 </div>
               </>
             )}
@@ -741,15 +1269,16 @@ export const CashierBillingConsole: React.FC = () => {
       {/* FACTURA */}
       {modal === "factura" && sel && (
         <Backdrop onClose={() => setModal(null)}>
-          <ModalCard title={`FACTURA — Mesa ${sel.tableNumber}`} onClose={() => setModal(null)}>
+          <ModalCard title={`FACTURA \u2014 Mesa ${sel.tableNumber}`} onClose={() => setModal(null)}>
             <div className="text-center mb-4">
-              <Receipt className="w-10 h-10 text-amber-500 mx-auto mb-2" />
-              <p className="text-slate-400 text-xs mb-1">Emitir factura electrónica vía Alegra</p>
+              <FileText className="w-10 h-10 text-amber-500 mx-auto mb-2" />
+              <p className="text-slate-400 text-xs mb-1">Emitir factura electronica via Alegra</p>
               <div className="text-2xl font-black text-amber-400 mt-2">{fmtCur(grandTotal)}</div>
+              {customer && <div className="text-xs text-sky-400 mt-2">Cliente: {customer.name} ({customer.taxId || "Sin NIT"})</div>}
             </div>
             <div className="flex gap-2">
               <button onClick={() => setModal(null)} className="flex-1 py-2.5 bg-slate-800 border border-slate-600 rounded-lg text-sm font-semibold text-slate-300 hover:bg-slate-700">Cancelar</button>
-              <button onClick={handleEmitFactura} disabled={issuingInvoice} className="flex-1 py-2.5 bg-amber-600 rounded-lg text-sm font-bold text-white hover:bg-amber-700 disabled:opacity-40 disabled:cursor-not-allowed">{issuingInvoice ? "Emitiendo..." : "Emitir Factura"}</button>
+              <button onClick={handleEmitFactura} disabled={issuingInvoice} className="flex-1 py-2.5 bg-amber-600 rounded-lg text-sm font-bold text-white hover:bg-amber-700 disabled:opacity-40">{issuingInvoice ? "Emitiendo..." : "Emitir Factura"}</button>
             </div>
           </ModalCard>
         </Backdrop>
@@ -758,12 +1287,12 @@ export const CashierBillingConsole: React.FC = () => {
       {/* PROPINA */}
       {modal === "propina" && sel && (
         <Backdrop onClose={() => setModal(null)}>
-          <ModalCard title={`PROPINA — Mesa ${sel.tableNumber}`} onClose={() => setModal(null)}>
+          <ModalCard title={`PROPINA INCLUIDA \u2014 Mesa ${sel.tableNumber}`} onClose={() => setModal(null)}>
             <label className="block text-xs font-semibold text-slate-400 mb-1">Monto de propina</label>
-            <input value={tipInput} onChange={(e) => setTipInput(e.target.value)} type="number" step="0.01" min="0" className="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2.5 text-lg font-bold text-center text-white outline-none focus:border-amber-500 mb-4" autoFocus />
+            <input value={tipInput} onChange={(e) => setTipInput(e.target.value)} type="number" step="0.01" min="0" className="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2.5 text-lg font-bold text-center text-white outline-none focus:border-amber-500 mb-4" autoFocus onKeyDown={(e) => { if (e.key === "Enter") handleSaveTip(); }} />
             <div className="flex gap-2">
               <button onClick={() => setModal(null)} className="flex-1 py-2.5 bg-slate-800 border border-slate-600 rounded-lg text-sm font-semibold text-slate-300 hover:bg-slate-700">Cancelar</button>
-              <button onClick={handleSaveTip} disabled={savingTip} className="flex-1 py-2.5 bg-amber-600 rounded-lg text-sm font-bold text-white hover:bg-amber-700 disabled:opacity-40 disabled:cursor-not-allowed">{savingTip ? "Guardando..." : "Guardar"}</button>
+              <button onClick={handleSaveTip} disabled={savingTip} className="flex-1 py-2.5 bg-amber-600 rounded-lg text-sm font-bold text-white hover:bg-amber-700 disabled:opacity-40">{savingTip ? "Guardando..." : "Guardar"}</button>
             </div>
           </ModalCard>
         </Backdrop>
@@ -772,7 +1301,7 @@ export const CashierBillingConsole: React.FC = () => {
       {/* CAMBIAR MESERO */}
       {modal === "mesero" && sel && (
         <Backdrop onClose={() => setModal(null)}>
-          <ModalCard title={`CAMBIAR MESERO — Mesa ${sel.tableNumber}`} onClose={() => setModal(null)}>
+          <ModalCard title={`CAMBIAR MESERO \u2014 Mesa ${sel.tableNumber}`} onClose={() => setModal(null)}>
             <p className="text-xs text-slate-400 mb-2">Mesero actual: <span className="text-white font-semibold">{sel.waiterName}</span></p>
             <label className="block text-xs font-semibold text-slate-400 mb-1">Nuevo mesero</label>
             <select value={pickedWaiter} onChange={(e) => setPickedWaiter(e.target.value)} className="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-amber-500 mb-4">
@@ -781,7 +1310,7 @@ export const CashierBillingConsole: React.FC = () => {
             </select>
             <div className="flex gap-2">
               <button onClick={() => setModal(null)} className="flex-1 py-2.5 bg-slate-800 border border-slate-600 rounded-lg text-sm font-semibold text-slate-300 hover:bg-slate-700">Cancelar</button>
-              <button onClick={handleConfirmMesero} disabled={!pickedWaiter || changingWaiter} className="flex-1 py-2.5 bg-amber-600 rounded-lg text-sm font-bold text-white hover:bg-amber-700 disabled:opacity-40 disabled:cursor-not-allowed">{changingWaiter ? "Cambiando..." : "Cambiar"}</button>
+              <button onClick={handleConfirmMesero} disabled={!pickedWaiter || changingWaiter} className="flex-1 py-2.5 bg-amber-600 rounded-lg text-sm font-bold text-white hover:bg-amber-700 disabled:opacity-40">{changingWaiter ? "Cambiando..." : "Cambiar"}</button>
             </div>
           </ModalCard>
         </Backdrop>
@@ -790,11 +1319,11 @@ export const CashierBillingConsole: React.FC = () => {
       {/* CANCELAR FOLIO */}
       {modal === "cancelFolio" && sel && (
         <Backdrop onClose={() => setModal(null)}>
-          <ModalCard title={`CANCELAR FOLIO — Mesa ${sel.tableNumber}`} onClose={() => setModal(null)}>
+          <ModalCard title={`CANCELAR FOLIO \u2014 Mesa ${sel.tableNumber}`} onClose={() => setModal(null)}>
             <div className="text-center mb-4">
               <div className="w-12 h-12 rounded-full bg-red-600/20 flex items-center justify-center mx-auto mb-3"><AlertTriangle className="w-6 h-6 text-red-400" /></div>
-              <p className="text-white text-sm font-semibold">¿Cancelar esta cuenta completamente?</p>
-              <p className="text-slate-500 text-xs mt-1">Se cancelarán todos los productos pendientes y se cerrará la mesa sin cobro.</p>
+              <p className="text-white text-sm font-semibold">Cancelar esta cuenta completamente?</p>
+              <p className="text-slate-500 text-xs mt-1">Se cancelaran todos los productos y se cerrara sin cobro.</p>
               <div className="bg-slate-800 rounded-lg p-3 mt-3 text-left">
                 <div className="flex justify-between text-xs"><span className="text-slate-400">Mesa:</span><span className="text-white font-bold">{sel.tableNumber}</span></div>
                 <div className="flex justify-between text-xs mt-1"><span className="text-slate-400">Mesero:</span><span className="text-white">{sel.waiterName}</span></div>
@@ -804,15 +1333,15 @@ export const CashierBillingConsole: React.FC = () => {
             </div>
             <div className="flex gap-2">
               <button onClick={() => setModal(null)} className="flex-1 py-2.5 bg-slate-800 border border-slate-600 rounded-lg text-sm font-semibold text-slate-300 hover:bg-slate-700">Volver</button>
-              <button onClick={handleConfirmCancelFolio} disabled={cancellingFolio} className="flex-1 py-2.5 bg-red-600 rounded-lg text-sm font-bold text-white hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed">{cancellingFolio ? "Cancelando..." : "Cancelar Folio"}</button>
+              <button onClick={handleConfirmCancelFolio} disabled={cancellingFolio} className="flex-1 py-2.5 bg-red-600 rounded-lg text-sm font-bold text-white hover:bg-red-700 disabled:opacity-40">{cancellingFolio ? "Cancelando..." : "Cancelar Folio"}</button>
             </div>
           </ModalCard>
         </Backdrop>
       )}
 
-      {/* ══════════════════════════════════════════════════════════════════════
-         TOOLBAR
-         ══════════════════════════════════════════════════════════════════════ */}
+      {/* ================================================================
+         TOOLBAR (SoftRestaurant style - 2 rows of buttons)
+         ================================================================ */}
       <div className="bg-slate-900 border-b border-slate-800 px-3 py-2 flex-shrink-0">
         <div className="flex items-center gap-2 mb-1.5">
           <span className="text-amber-500 font-black text-base tracking-wider mr-2">CLIVARO POS</span>
@@ -824,42 +1353,47 @@ export const CashierBillingConsole: React.FC = () => {
               Sel: {selectedLine.productName}
             </span>
           )}
+          {customer && (
+            <span className="bg-sky-600/20 text-sky-400 border border-sky-600/30 rounded px-2 py-0.5 text-[10px] font-bold truncate max-w-[160px]">
+              {customer.name}
+            </span>
+          )}
+          {discountAmt > 0 && (
+            <span className="bg-emerald-600/20 text-emerald-400 border border-emerald-600/30 rounded px-2 py-0.5 text-[10px] font-bold">
+              Dto: -{fmtCur(discountAmt)}
+            </span>
+          )}
           <span className="text-slate-500 text-[10px] font-semibold">{sessions.length} cuentas</span>
         </div>
+
         {/* Row 1 */}
-        <div className="flex gap-1.5 flex-wrap">
-          {[
-            { label: "Abrir Cuenta", Icon: Plus, act: handleOpenClick, dis: false },
-            { label: "Captura", Icon: Pencil, act: handleCapturaClick, dis: !sel, accent: true },
-            { label: "Cancelar Prod", Icon: X, act: handleCancelLineClick, dis: !sel || !isCancellable },
-            { label: "Cobrar", Icon: DollarSign, act: handleCobrarClick, dis: !sel, success: true },
-            { label: "Factura", Icon: Receipt, act: handleFacturaClick, dis: !sel },
-            { label: "Imprimir", Icon: Printer, act: handlePrint, dis: !sel },
-          ].map((btn) => (
-            <button key={btn.label} onClick={btn.act} disabled={btn.dis} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-semibold border ${btn.dis ? "opacity-30 cursor-not-allowed bg-slate-800 border-slate-800 text-slate-600" : (btn as any).success ? "bg-emerald-600 border-emerald-700 text-white hover:bg-emerald-700" : (btn as any).accent ? "bg-amber-600 border-amber-700 text-white hover:bg-amber-700" : "bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700"}`}>
-              <btn.Icon className="w-3.5 h-3.5" />{btn.label}
-            </button>
-          ))}
+        <div className="flex gap-1 flex-wrap">
+          <ToolBtn label="Abrir Cuenta" Icon={Plus} onClick={handleOpenClick} />
+          <ToolBtn label="Cancelar Prod." Icon={X} onClick={handleCancelLineClick} disabled={!sel || !isCancellable} variant="danger" />
+          <ToolBtn label="Cambiar Cuenta" Icon={ArrowRightLeft} onClick={handleCambiarCuentaClick} disabled={!sel} />
+          <ToolBtn label="Juntar Cuentas" Icon={Merge} onClick={handleJuntarClick} disabled={!sel || sessions.length < 2} />
+          <ToolBtn label="Descto. General" Icon={Percent} onClick={handleDesctoGeneralClick} disabled={!sel} />
+          <ToolBtn label="Dividir Cuenta" Icon={Scissors} onClick={handleDividirClick} disabled={!sel || activeLines.length < 2} />
+          <ToolBtn label="Imprimir Cuenta" Icon={Printer} onClick={handlePrint} disabled={!sel} />
+          <ToolBtn label="Cerrar" Icon={LogOut} onClick={() => window.history.back()} />
         </div>
+
         {/* Row 2 */}
-        <div className="flex gap-1.5 flex-wrap mt-1">
-          {[
-            { label: "Cambiar Mesero", Icon: UserCheck, act: handleMeseroClick, dis: !sel },
-            { label: "Propina", Icon: Coins, act: handlePropinaClick, dis: !sel },
-            { label: "Cancelar Folio", Icon: Ban, act: handleCancelFolioClick, dis: !sel, danger: true },
-            { label: "Refrescar", Icon: RefreshCw, act: () => { fetchSessions(); checkShift(); }, dis: false },
-            { label: "Salir", Icon: LogOut, act: () => window.history.back(), dis: false },
-          ].map((btn) => (
-            <button key={btn.label} onClick={btn.act} disabled={btn.dis} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-semibold border ${btn.dis ? "opacity-30 cursor-not-allowed bg-slate-800 border-slate-800 text-slate-600" : (btn as any).danger ? "bg-red-600/20 border-red-600/30 text-red-400 hover:bg-red-600/30" : "bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700"}`}>
-              <btn.Icon className="w-3.5 h-3.5" />{btn.label}
-            </button>
-          ))}
+        <div className="flex gap-1 flex-wrap mt-1">
+          <ToolBtn label="Captura" Icon={Pencil} onClick={handleCapturaClick} disabled={!sel} variant="accent" />
+          <ToolBtn label="Cliente" Icon={UserCircle} onClick={handleClienteClick} disabled={!sel} />
+          <ToolBtn label="Cambiar Mesero" Icon={UserCheck} onClick={handleMeseroClick} disabled={!sel} />
+          <ToolBtn label="Transferir Prod." Icon={ArrowLeftRight} onClick={handleTransferirClick} disabled={!sel || !selectedLine || selectedLine?.status === "CANCELLED"} />
+          <ToolBtn label="Descto. Prod." Icon={Percent} onClick={handleDesctoProdClick} disabled={!sel || !selectedLine || selectedLine?.status === "CANCELLED"} />
+          <ToolBtn label="Propina Incluida" Icon={Coins} onClick={handlePropinaClick} disabled={!sel} />
+          <ToolBtn label="Pagar Cuenta" Icon={DollarSign} onClick={handleCobrarClick} disabled={!sel} variant="success" />
+          <ToolBtn label="Factura" Icon={FileText} onClick={handleFacturaClick} disabled={!sel} />
         </div>
       </div>
 
-      {/* ══════════════════════════════════════════════════════════════════════
+      {/* ================================================================
          BODY
-         ══════════════════════════════════════════════════════════════════════ */}
+         ================================================================ */}
       <div className="flex flex-1 overflow-hidden">
 
         {/* LEFT: Accounts List */}
@@ -879,7 +1413,7 @@ export const CashierBillingConsole: React.FC = () => {
                 <div key={s.id} onClick={() => setSel(s)} className={`px-3 py-2.5 cursor-pointer border-b border-slate-800/60 flex justify-between items-center ${isSel ? "bg-amber-600/15 border-l-2 border-l-amber-500" : "hover:bg-slate-800/50"}`}>
                   <div>
                     <div className={`font-bold text-sm ${isSel ? "text-amber-400" : "text-white"}`}>Mesa {s.tableNumber}</div>
-                    <div className="text-[10px] text-slate-500">{s.waiterName} · {s.itemsCount} items</div>
+                    <div className="text-[10px] text-slate-500">{s.waiterName} &middot; {s.itemsCount} items</div>
                   </div>
                   <div className="text-right">
                     <div className="font-bold text-xs text-white">{fmtCur(s.total)}</div>
@@ -897,12 +1431,14 @@ export const CashierBillingConsole: React.FC = () => {
 
           {/* Info bar */}
           {sel && (
-            <div className="bg-slate-900/50 border-b border-slate-800 px-4 py-2 flex items-center gap-4 flex-shrink-0 text-xs">
-              <div className="flex items-center gap-1.5"><span className="text-slate-500 font-semibold">Mesa:</span><span className="text-amber-400 font-bold text-sm">{sel.tableNumber}</span></div>
+            <div className="bg-slate-900/50 border-b border-slate-800 px-4 py-2 flex items-center gap-4 flex-shrink-0 text-xs flex-wrap">
+              <div className="flex items-center gap-1.5"><span className="text-slate-500 font-semibold">Cuenta:</span><span className="text-amber-400 font-bold text-sm">{sel.tableNumber}</span></div>
+              <div className="flex items-center gap-1.5"><span className="text-slate-500 font-semibold">Area:</span><span className="text-white">{sel.zoneName}</span></div>
               <div className="flex items-center gap-1.5"><UserCheck className="w-3 h-3 text-slate-500" /><span className="text-white font-semibold">{sel.waiterName}</span></div>
               <div className="flex items-center gap-1.5"><Clock className="w-3 h-3 text-slate-500" /><span className="text-slate-300">{fmtTime(sel.openedAt)}</span></div>
               <span className={`px-2 py-0.5 rounded border text-[10px] font-bold ${elapsedBadge(sel.elapsedMinutes)}`}>{sel.elapsedMinutes} min</span>
               <div className="flex items-center gap-1.5"><ChefHat className="w-3 h-3 text-slate-500" /><span className="text-slate-300">{sel.itemsCount} items</span></div>
+              {customer && <div className="flex items-center gap-1.5"><UserCircle className="w-3 h-3 text-sky-400" /><span className="text-sky-400 font-semibold">{customer.name}</span></div>}
             </div>
           )}
 
@@ -912,14 +1448,14 @@ export const CashierBillingConsole: React.FC = () => {
               <table className="w-full text-xs">
                 <thead>
                   <tr className="bg-slate-900 sticky top-0 z-10">
-                    {["#", "Cant", "Descripción", "Precio", "Importe", "Estado", ""].map((h, i) => (
-                      <th key={i} className={`px-3 py-2 text-amber-500/70 font-bold text-[10px] uppercase tracking-wider border-b border-slate-800 ${h === "Descripción" ? "text-left" : "text-right"} ${i === 0 ? "w-8" : i === 6 ? "w-9" : ""}`}>{h}</th>
+                    {["#", "Cant", "Descripcion", "Precio", "Desc.", "Importe", "Estado", ""].map((h, i) => (
+                      <th key={i} className={`px-3 py-2 text-amber-500/70 font-bold text-[10px] uppercase tracking-wider border-b border-slate-800 ${h === "Descripcion" ? "text-left" : "text-right"} ${i === 0 ? "w-8" : i === 7 ? "w-9" : ""}`}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {sel.lines.length === 0 ? (
-                    <tr><td colSpan={7} className="py-12 text-center text-slate-600 text-xs">Sin productos — use <span className="text-amber-500 font-semibold">Captura</span> para agregar</td></tr>
+                    <tr><td colSpan={8} className="py-12 text-center text-slate-600 text-xs">Sin productos &mdash; use <span className="text-amber-500 font-semibold">Captura</span> para agregar</td></tr>
                   ) : sel.lines.map((line, idx) => {
                     const isLineSel = selectedLineId === line.id;
                     const cancellable = line.status === "PENDING" || line.status === "COOKING";
@@ -932,6 +1468,7 @@ export const CashierBillingConsole: React.FC = () => {
                           {line.notes && <span className="ml-1.5 text-[10px] text-amber-500/70 italic">[{line.notes}]</span>}
                         </td>
                         <td className="px-3 py-2.5 text-right text-slate-400">{fmtCur(line.unitPrice)}</td>
+                        <td className="px-3 py-2.5 text-right text-slate-500">0.00</td>
                         <td className="px-3 py-2.5 text-right text-white font-semibold">{fmtCur(line.quantity * line.unitPrice)}</td>
                         <td className={`px-3 py-2.5 text-center text-[10px] font-bold ${statusColor(line.status)}`}>{statusLabel(line.status)}</td>
                         <td className="px-2 py-2.5 text-center">
@@ -946,7 +1483,7 @@ export const CashierBillingConsole: React.FC = () => {
               </table>
             ) : (
               <div className="h-full flex flex-col items-center justify-center gap-3">
-                <div className="text-4xl opacity-20">🍽️</div>
+                <div className="text-4xl opacity-20">&#127869;</div>
                 <div className="text-slate-500 font-semibold text-sm">Seleccione una cuenta o abra una nueva</div>
               </div>
             )}
@@ -957,6 +1494,7 @@ export const CashierBillingConsole: React.FC = () => {
             <div className="flex gap-5 text-xs">
               <div><span className="text-slate-500 font-semibold">Subtotal: </span><span className="text-white font-bold">{fmtCur(subtotal)}</span></div>
               <div><span className="text-slate-500 font-semibold">Impuestos: </span><span className="text-white font-bold">{fmtCur(taxAmount)}</span></div>
+              {discountAmt > 0 && <div><span className="text-slate-500 font-semibold">Descuento: </span><span className="text-emerald-400 font-bold">-{fmtCur(discountAmt)}</span></div>}
               {tip > 0 && <div><span className="text-slate-500 font-semibold">Propina: </span><span className="text-amber-400 font-bold">{fmtCur(tip)}</span></div>}
             </div>
             <div className="flex items-center gap-3">

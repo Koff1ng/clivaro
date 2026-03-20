@@ -502,6 +502,7 @@ model Invoice {
   discount                Float                           @default(0)
   tax                     Float                           @default(0) // Total tax (grand total of all applied taxes)
   total                   Float                           @default(0)
+  tipAmount               Float                           @default(0)
   balance                 Float                           @default(0) // Remaining amount to be paid
   notes                   String?
   issuedAt                DateTime?
