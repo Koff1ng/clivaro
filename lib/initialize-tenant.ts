@@ -40,8 +40,8 @@ async function initializePostgresTenant(databaseUrl: string, tenantId: string, t
   // This ensures the schema created here exactly matches the schema queried at runtime
   const schemaName = getSchemaName(tenantId)
 
-  // Use DIRECT_DATABASE_URL for DDL operations if available (avoids PgBouncer issues)
-  const directUrl = process.env.DIRECT_DATABASE_URL || baseUrl
+  // Use DIRECT_DATABASE_URL or DIRECT_URL for DDL operations if available (avoids PgBouncer issues)
+  const directUrl = process.env.DIRECT_DATABASE_URL || process.env.DIRECT_URL || baseUrl
   const directUrlForSchema = stripSchemaParam(directUrl)
 
   console.log('='.repeat(60))

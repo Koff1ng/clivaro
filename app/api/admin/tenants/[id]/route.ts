@@ -201,8 +201,8 @@ export async function DELETE(
     if (isPostgres) {
       const schemaName = getSchemaName(id)
 
-      // Use DIRECT_DATABASE_URL for DDL operations
-      const directUrl = process.env.DIRECT_DATABASE_URL || process.env.DATABASE_URL
+      // Use DIRECT_DATABASE_URL or DIRECT_URL for DDL operations
+      const directUrl = process.env.DIRECT_DATABASE_URL || process.env.DIRECT_URL || process.env.DATABASE_URL
 
       if (directUrl) {
         const { PrismaClient } = await import('@prisma/client')
