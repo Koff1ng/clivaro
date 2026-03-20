@@ -152,7 +152,7 @@ export function GeneralConfig({ settings, onSave, isLoading, initialTab = 'ident
   const [showTicketEditor, setShowTicketEditor] = useState(false)
   const [showWarehouseDialog, setShowWarehouseDialog] = useState(false)
   const [expandedWarehouseId, setExpandedWarehouseId] = useState<string | null>(null)
-  const [newWarehouse, setNewWarehouse] = useState({ name: '', address: '', active: true })
+  const [newWarehouse, setNewWarehouse] = useState({ name: '', location: '', active: true })
   
   const queryClient = useQueryClient()
 
@@ -162,7 +162,8 @@ export function GeneralConfig({ settings, onSave, isLoading, initialTab = 'ident
     queryFn: async () => {
       const res = await fetch('/api/warehouses')
       if (!res.ok) throw new Error('Failed to fetch warehouses')
-      return res.json()
+      const data = await res.json()
+      return Array.isArray(data) ? data : (data.warehouses || [])
     }
   })
 
@@ -183,7 +184,7 @@ export function GeneralConfig({ settings, onSave, isLoading, initialTab = 'ident
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['warehouses'] })
       setShowWarehouseDialog(false)
-      setNewWarehouse({ name: '', address: '', active: true })
+      setNewWarehouse({ name: '', location: '', active: true })
       toast('Almacén creado exitosamente', 'success')
     },
     onError: (err: any) => {
@@ -492,7 +493,7 @@ export function GeneralConfig({ settings, onSave, isLoading, initialTab = 'ident
                         </div>
                         <div>
                            <h3 className="font-black text-slate-800 text-lg tracking-tight">{w.name}</h3>
-                           <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">{w.address || 'Sin dirección'}</p>
+                           <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">{w.location || w.address || 'Sin dirección'}</p>
                         </div>
                      </div>
                      <Badge className={cn("rounded-full px-3", w.active ? "bg-emerald-500" : "bg-slate-400")}>{w.active ? 'Activo' : 'Off'}</Badge>
@@ -545,6 +546,48 @@ export function GeneralConfig({ settings, onSave, isLoading, initialTab = 'ident
                      <Plus className="text-slate-300 group-hover:text-primary" />
                   </button>
                ))}
+            </div>
+         </DialogContent>
+      </Dialog>
+
+      {/* Warehouse Creation Dialog */}
+      <Dialog open={showWarehouseDialog} onOpenChange={setShowWarehouseDialog}>
+         <DialogContent className="rounded-[2.5rem] border-none shadow-2xl p-0 overflow-hidden">
+            <div className="p-8 bg-slate-900 text-white">
+               <DialogTitle className="text-2xl font-black flex items-center gap-3"><Warehouse size={28} /> Nuevo Almacén</DialogTitle>
+               <DialogDescription className="text-slate-400 mt-1 uppercase text-[10px] font-bold tracking-widest">Registrar punto físico de stock</DialogDescription>
+            </div>
+            <div className="p-8 space-y-6">
+               <div className="space-y-2">
+                  <Label className="text-[10px] font-black text-slate-400 uppercase ml-1">Nombre del Almacén</Label>
+                  <Input 
+                     placeholder="Ej: Bodega Principal" 
+                     value={newWarehouse.name} 
+                     onChange={(e) => setNewWarehouse(prev => ({ ...prev, name: e.target.value }))} 
+                     className="rounded-xl h-12 bg-slate-50 border-transparent focus:bg-white transition-all font-semibold"
+                  />
+               </div>
+               <div className="space-y-2">
+                  <Label className="text-[10px] font-black text-slate-400 uppercase ml-1">Ubicación / Dirección</Label>
+                  <Input 
+                     placeholder="Ej: Calle 50 #30-20, Medellín" 
+                     value={newWarehouse.location} 
+                     onChange={(e) => setNewWarehouse(prev => ({ ...prev, location: e.target.value }))} 
+                     className="rounded-xl h-12 bg-slate-50 border-transparent focus:bg-white transition-all"
+                  />
+               </div>
+               <div className="flex justify-end gap-3 pt-4">
+                  <Button type="button" variant="outline" className="rounded-full" onClick={() => setShowWarehouseDialog(false)}>Cancelar</Button>
+                  <Button 
+                     type="button" 
+                     className="rounded-full bg-slate-900 font-bold px-8"
+                     disabled={!newWarehouse.name || createWarehouseMutation.isPending}
+                     onClick={() => createWarehouseMutation.mutate({ name: newWarehouse.name, location: newWarehouse.location })}
+                  >
+                     {createWarehouseMutation.isPending ? <Loader2 className="animate-spin mr-2" size={16} /> : <Plus size={16} className="mr-2" />}
+                     Crear Almacén
+                  </Button>
+               </div>
             </div>
          </DialogContent>
       </Dialog>
