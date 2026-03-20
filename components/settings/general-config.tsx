@@ -401,7 +401,7 @@ export function GeneralConfig({ settings, onSave, isLoading, initialTab = 'ident
                   </div>
                   <div className="grid md:grid-cols-2 gap-6">
                     <div className="space-y-2">
-                      <Label className="text-[10px] font-black text-slate-400 uppercase ml-1">Prefijo Alpja</Label>
+                      <Label className="text-[10px] font-black text-slate-400 uppercase ml-1">Prefijo Alpha</Label>
                       <Input {...register(item.prefix as any)} className="rounded-xl h-12 bg-slate-50 border-transparent focus:bg-white transition-all font-bold text-lg" />
                     </div>
                     <div className="space-y-2">
@@ -514,30 +514,6 @@ export function GeneralConfig({ settings, onSave, isLoading, initialTab = 'ident
               ))}
             </div>
           </div>
-        )}
-
-        {/* Restaurante (Link o Redirección interna) */}
-        {activeTab === 'inventory' && (
-           <div className="space-y-8 animate-in fade-in slide-in-from-right-8 duration-700">
-              {renderSectionHeader('Módulo Restaurante', UtensilsCrossed, 'GESTIÓN GASTRONÓMICA')}
-              <div className="p-10 border rounded-[3rem] bg-white shadow-xl shadow-slate-100 border-slate-100 text-center space-y-6">
-                 <div className="w-24 h-24 bg-primary/10 rounded-full flex items-center justify-center mx-auto text-primary">
-                    <UtensilsCrossed size={48} />
-                 </div>
-                 <div className="space-y-2">
-                    <h3 className="text-2xl font-black text-slate-800">Modo Restaurante</h3>
-                    <p className="text-slate-500 max-w-sm mx-auto text-sm leading-relaxed">Habilita comandas, gestión de mesas, zonas y recetas avanzadas para tu operación.</p>
-                 </div>
-                 <div className="flex items-center justify-center gap-4 pt-4">
-                    <span className="text-sm font-bold text-slate-400 uppercase tracking-widest">Estado: {watch('enableRestaurantMode') ? 'Activo' : 'Desactivado'}</span>
-                    <Switch 
-                       className="scale-150"
-                       checked={watch('enableRestaurantMode')} 
-                       onCheckedChange={(c) => setValue('enableRestaurantMode', c)} 
-                    />
-                 </div>
-              </div>
-           </div>
         )}
 
         {/* Floating Save Button */}

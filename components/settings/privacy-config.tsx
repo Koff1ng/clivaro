@@ -134,8 +134,8 @@ export function PrivacyConfig() {
                             Política de Privacidad
                             <ExternalLink className="w-3.5 h-3.5 opacity-50 group-hover:opacity-100 transition-opacity" />
                         </Link>
-                        <a href="mailto:legal@clivaro.com" className="text-sm text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors">
-                            Contacto Legal: legal@clivaro.com
+                        <a href="mailto:gerencia@clientumstudio.com" className="text-sm text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors">
+                            Contacto Legal: gerencia@clientumstudio.com
                         </a>
                     </div>
                 </CardContent>
