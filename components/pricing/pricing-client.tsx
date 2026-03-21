@@ -185,7 +185,7 @@ export function PricingClient() {
       <ScrollNavbar onContactClick={handleContactClick} />
 
       {/* Hero Section */}
-      <div className="pt-16">
+      <div className="pt-32">
         <HeroPreview
           onContactClick={() => {
             setSelectedPlan(undefined)
