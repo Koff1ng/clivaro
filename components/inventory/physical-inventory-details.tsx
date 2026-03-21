@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { formatDate } from '@/lib/utils'
-import { Printer, Save, X } from 'lucide-react'
+import { Printer, Save, X, Loader2 } from 'lucide-react'
 import { useToast } from '@/components/ui/toast'
 import { PhysicalInventoryPrint } from './physical-inventory-print'
 
@@ -14,6 +14,7 @@ export function PhysicalInventoryDetails({ inventory, onClose, onUpdate }: { inv
   const [editingNotes, setEditingNotes] = useState<Record<string, string>>({})
   const [editingItemId, setEditingItemId] = useState<string | null>(null)
   const [showPrintDialog, setShowPrintDialog] = useState(false)
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false)
   const { toast } = useToast()
   const queryClient = useQueryClient()
 
@@ -109,6 +110,70 @@ export function PhysicalInventoryDetails({ inventory, onClose, onUpdate }: { inv
   const itemsWithDifferences = inventory.items?.filter((item: any) =>
     item.countedQuantity !== null && item.difference !== null && item.difference !== 0
   ) || []
+
+  const handleBackendPrint = async () => {
+    try {
+      setIsGeneratingPdf(true)
+      
+      const printElement = document.querySelector('.physical-inventory-print-content')
+      if (!printElement) {
+        alert('No se pudo encontrar el contenido para imprimir.')
+        return
+      }
+
+      const styles = Array.from(document.querySelectorAll('style, link[rel="stylesheet"]'))
+          .map(style => style.outerHTML)
+          .join('\n')
+
+      const htmlContent = `
+          <!DOCTYPE html>
+          <html lang="es" class="light">
+          <head>
+              <meta charset="UTF-8">
+              ${styles}
+              <style>
+                  body { background: white !important; padding: 40px !important; }
+                  .print-hidden, button, .no-print { display: none !important; }
+              </style>
+          </head>
+          <body class="bg-white">
+              <div style="margin-bottom: 30px;">
+                <h1 style="font-size: 24px; font-weight: bold;">Inventario Físico: ${inventory.number}</h1>
+                <p>Almacén: ${inventory.warehouse?.name}</p>
+              </div>
+              ${printElement.innerHTML}
+          </body>
+          </html>
+      `
+
+      const res = await fetch('/api/pdf/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+              html: htmlContent,
+              filename: `inventario_${inventory.number}`
+          })
+      })
+
+      if (!res.ok) throw new Error('PDF generation failed')
+
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `inventario_${inventory.number}.pdf`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.open(url, '_blank')
+    } catch (error) {
+      console.error('Error generating PDF:', error)
+      alert('Error generando el PDF.')
+    } finally {
+      setIsGeneratingPdf(false)
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -336,16 +401,18 @@ export function PhysicalInventoryDetails({ inventory, onClose, onUpdate }: { inv
               <div className="flex justify-between items-center">
                 <DialogTitle>Formato de Inventario Físico</DialogTitle>
                 <div className="flex gap-2">
-                  <Button variant="outline" onClick={() => window.print()}>
-                    <Printer className="h-4 w-4 mr-2" />
-                    Imprimir
+                  <Button variant="outline" onClick={handleBackendPrint} disabled={isGeneratingPdf}>
+                    {isGeneratingPdf ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Printer className="h-4 w-4 mr-2" />}
+                    {isGeneratingPdf ? 'Generando PDF...' : 'Imprimir'}
                   </Button>
                   <Button variant="outline" onClick={() => setShowPrintDialog(false)}>
                     Cerrar
                   </Button>
                 </div>
               </div>
-              <PhysicalInventoryPrint inventory={inventory} />
+              <div className="physical-inventory-print-content">
+                <PhysicalInventoryPrint inventory={inventory} />
+              </div>
             </div>
           </DialogContent>
         </Dialog>

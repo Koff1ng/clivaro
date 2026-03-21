@@ -1,11 +1,12 @@
 'use client'
 
+import { useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { formatCurrency, formatDate } from '@/lib/utils'
-import { ArrowLeft, Printer, FileText, XCircle, CheckCircle } from 'lucide-react'
+import { ArrowLeft, Printer, FileText, XCircle, CheckCircle, Loader2 } from 'lucide-react'
 import { useToast } from '@/components/ui/toast'
 import { MainLayout } from '@/components/layout/main-layout'
 import {
@@ -31,6 +32,7 @@ export default function SalesOrderDetailPage() {
     const router = useRouter()
     const { toast } = useToast()
     const queryClient = useQueryClient()
+    const [isGeneratingPdf, setIsGeneratingPdf] = useState(false)
 
     const { data: order, isLoading, isError, error } = useQuery({
         queryKey: ['sales-order', id],
@@ -92,6 +94,66 @@ export default function SalesOrderDetailPage() {
         }
     })
 
+    const handleBackendPrint = async () => {
+        if (!order) return
+        try {
+            setIsGeneratingPdf(true)
+            
+            const styles = Array.from(document.querySelectorAll('style, link[rel="stylesheet"]'))
+                .map(style => style.outerHTML)
+                .join('\n')
+
+            const htmlContent = `
+                <!DOCTYPE html>
+                <html lang="es" class="light">
+                <head>
+                    <meta charset="UTF-8">
+                    ${styles}
+                    <style>
+                        body { background: white !important; padding: 40px !important; }
+                        .print-hidden, button, .no-print, nav, header { display: none !important; }
+                    </style>
+                </head>
+                <body class="bg-white">
+                    <div style="margin-bottom: 20px;">
+                        <h1 style="font-size: 28px; font-weight: bold;">Orden de Venta: ${order.number}</h1>
+                        <p>Fecha: ${formatDate(order.createdAt)}</p>
+                    </div>
+                    ${document.querySelector('main')?.innerHTML || document.body.innerHTML}
+                </body>
+                </html>
+            `
+
+            const res = await fetch('/api/pdf/generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    html: htmlContent,
+                    filename: `orden_${order.number}`
+                })
+            })
+
+            if (!res.ok) throw new Error('PDF generation failed')
+
+            const blob = await res.blob()
+            const url = URL.createObjectURL(blob)
+            
+            const link = document.createElement('a')
+            link.href = url
+            link.download = `orden_${order.number}.pdf`
+            document.body.appendChild(link)
+            link.click()
+            document.body.removeChild(link)
+            window.open(url, '_blank')
+        } catch (error) {
+            console.error('Error generating PDF:', error)
+            alert('Error generando el PDF.')
+        } finally {
+            setIsGeneratingPdf(false)
+        }
+    }
+
+
     if (isLoading) return (
         <MainLayout>
             <div className="flex justify-center items-center main-h-[50vh] p-8">
@@ -140,9 +202,9 @@ export default function SalesOrderDetailPage() {
                         </p>
                     </div>
                     <div className="ml-auto flex gap-2">
-                        <Button variant="outline" onClick={() => window.print()}>
-                            <Printer className="h-4 w-4 mr-2" />
-                            Imprimir
+                        <Button variant="outline" onClick={handleBackendPrint} disabled={isGeneratingPdf}>
+                            {isGeneratingPdf ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Printer className="h-4 w-4 mr-2" />}
+                            {isGeneratingPdf ? 'Generando...' : 'Imprimir'}
                         </Button>
                         {order.status === 'OPEN' && (
                             <>

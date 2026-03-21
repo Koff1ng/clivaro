@@ -29,40 +29,48 @@ export function ReportLayout({
     const [isGeneratingPdf, setIsGeneratingPdf] = useState(false)
 
     const handleBackendPrint = async () => {
-        if (onPrint) onPrint() // call original if exists to do tracking maybe
-
         try {
             setIsGeneratingPdf(true)
 
-            // Mimic print mode to capture correct styles
-            const originalHtml = document.documentElement.className
-            document.documentElement.classList.add('print')
+            // Capture the current document content
+            // We clone the body to avoid modifying the active UI
+            const printContent = document.querySelector('.report-content-to-print') || document.body
+            
+            // Capture all styles
+            const styles = Array.from(document.querySelectorAll('style, link[rel="stylesheet"]'))
+                .map(style => style.outerHTML)
+                .join('\n')
 
-            // Wait a tick for styles to apply
-            await new Promise((resolve) => setTimeout(resolve, 50))
-
-            let htmlContent = document.documentElement.outerHTML
-
-            // Clean up html to be sent
-            htmlContent = `
+            let htmlContent = `
                 <!DOCTYPE html>
-                <html lang="es" class="light print">
+                <html lang="es" class="light">
                 <head>
-                    ${document.head.innerHTML}
+                    <meta charset="UTF-8">
+                    ${styles}
                     <style>
-                        /* Base print fixes */
-                        body { background: white !important; }
-                        * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+                        /* Essential print fixes for Puppeteer */
+                        body { 
+                            background: white !important; 
+                            padding: 40px !important;
+                            -webkit-print-color-adjust: exact !important;
+                            print-color-adjust: exact !important;
+                        }
+                        .print-hidden, button, .no-print { display: none !important; }
+                        /* Ensure charts and cards show up well */
+                        .recharts-responsive-container { width: 100% !important; height: 400px !important; }
+                        canvas { max-width: 100% !important; height: auto !important; }
                     </style>
                 </head>
                 <body class="bg-white">
-                    ${document.body.innerHTML}
+                    <div class="mb-8">
+                        <h1 style="font-size: 24px; font-weight: bold; margin-bottom: 8px;">${title}</h1>
+                        ${description ? `<p style="color: #64748b; font-size: 14px;">${description}</p>` : ''}
+                        <hr style="margin: 20px 0; border: 0; border-top: 1px solid #e2e8f0;" />
+                    </div>
+                    ${printContent.innerHTML}
                 </body>
                 </html>
             `
-            
-            // Revert changes immediately
-            document.documentElement.className = originalHtml
 
             const res = await fetch('/api/pdf/generate', {
                 method: 'POST',
@@ -77,6 +85,16 @@ export function ReportLayout({
 
             const blob = await res.blob()
             const url = URL.createObjectURL(blob)
+            
+            // Create a temporary link to trigger download/redirection
+            const link = document.createElement('a')
+            link.href = url
+            link.download = `${title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_${new Date().toISOString().split('T')[0]}.pdf`
+            document.body.appendChild(link)
+            link.click()
+            document.body.removeChild(link)
+            
+            // Also open in new tab as fallback/viewer
             window.open(url, '_blank')
         } catch (error) {
             console.error('Error generating PDF:', error)
@@ -142,7 +160,7 @@ export function ReportLayout({
             )}
 
             {/* Main Content */}
-            <div className="print:p-8 [&_canvas]:print:block">
+            <div className="report-content-to-print print:p-8 [&_canvas]:print:block">
                 <div className="hidden print:block mb-8">
                     <h1 className="text-3xl font-bold text-slate-900">{title}</h1>
                     {description && <p className="text-lg text-slate-600 mt-2">{description}</p>}

@@ -41,9 +41,6 @@ export function TopProductsReport() {
         item.sku.toLowerCase().includes(searchTerm.toLowerCase())
     )
 
-    const handlePrint = () => {
-        window.print()
-    }
 
     const handleExport = () => {
         const columns = [
@@ -74,7 +71,7 @@ export function TopProductsReport() {
         <ReportLayout
             title="Productos Más Vendidos"
             description="Top productos por ventas y cantidad en el período seleccionado"
-            onPrint={handlePrint}
+            onPrint={() => {}} // dummy to keep the button visible in layout
             onExport={handleExport}
             filters={
                 <div className="flex flex-wrap items-center gap-4">

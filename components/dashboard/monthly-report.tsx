@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { formatCurrency, formatDate } from '@/lib/utils'
-import { Printer, Download, DollarSign, Package } from 'lucide-react'
+import { Printer, Download, DollarSign, Package, Loader2 } from 'lucide-react'
 import { MonthlyReportPrint } from './monthly-report-print'
 
 async function fetchMonthlyReport(year: number, month: number) {
@@ -30,8 +30,68 @@ export function MonthlyReport() {
     enabled: isOpen,
   })
 
-  const handlePrint = () => {
-    window.print()
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false)
+
+  const handlePrint = async () => {
+    try {
+      setIsGeneratingPdf(true)
+      
+      // Select the print-only component content
+      const printElement = document.querySelector('.monthly-report-print-content')
+      if (!printElement) {
+        alert('No se pudo encontrar el contenido para imprimir.')
+        return
+      }
+
+      // Capture all styles
+      const styles = Array.from(document.querySelectorAll('style, link[rel="stylesheet"]'))
+          .map(style => style.outerHTML)
+          .join('\n')
+
+      const htmlContent = `
+          <!DOCTYPE html>
+          <html lang="es" class="light">
+          <head>
+              <meta charset="UTF-8">
+              ${styles}
+              <style>
+                  body { background: white !important; padding: 40px !important; }
+                  .print-hidden, button, .no-print { display: none !important; }
+              </style>
+          </head>
+          <body class="bg-white">
+              ${printElement.innerHTML}
+          </body>
+          </html>
+      `
+
+      const res = await fetch('/api/pdf/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+              html: htmlContent,
+              filename: `reporte_mensual_${selectedYear}_${selectedMonth}`
+          })
+      })
+
+      if (!res.ok) throw new Error('PDF generation failed')
+
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `reporte_mensual_${selectedYear}_${selectedMonth}.pdf`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.open(url, '_blank')
+    } catch (error) {
+      console.error('Error generating PDF:', error)
+      alert('Error generando el PDF.')
+    } finally {
+      setIsGeneratingPdf(false)
+    }
   }
 
   const handleDownload = () => {
@@ -80,7 +140,7 @@ export function MonthlyReport() {
   return (
     <>
       {/* Vista para impresión - oculta en pantalla */}
-      <div className="hidden print:block">
+      <div className="hidden print:block monthly-report-print-content">
         <MonthlyReportPrint report={report} />
       </div>
 
@@ -122,9 +182,9 @@ export function MonthlyReport() {
                     )
                   })}
                 </select>
-                <Button variant="outline" onClick={handlePrint}>
-                  <Printer className="h-4 w-4 mr-2" />
-                  Imprimir
+                <Button variant="outline" onClick={handlePrint} disabled={isGeneratingPdf}>
+                  {isGeneratingPdf ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Printer className="h-4 w-4 mr-2" />}
+                  {isGeneratingPdf ? 'Generando...' : 'Imprimir'}
                 </Button>
                 <Button variant="outline" onClick={handleDownload}>
                   <Download className="h-4 w-4 mr-2" />

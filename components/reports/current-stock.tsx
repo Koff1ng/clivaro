@@ -39,9 +39,6 @@ export function CurrentStockReport() {
         queryFn: () => fetchCurrentStock(selectedWarehouse),
     })
 
-    const handlePrint = () => {
-        window.print()
-    }
 
     const filteredItems = (data?.items || []).filter((item: any) =>
         item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -72,7 +69,7 @@ export function CurrentStockReport() {
         <ReportLayout
             title="Stock Actual y Valorización"
             description="Estado actual del inventario con valorización a costo y precio de venta"
-            onPrint={handlePrint}
+            onPrint={() => {}} // dummy to keep the button visible in layout
             onExport={handleExport}
             filters={
                 <div className="flex flex-wrap items-center gap-4">

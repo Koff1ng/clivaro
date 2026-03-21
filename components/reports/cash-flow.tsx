@@ -42,9 +42,6 @@ export function CashFlowReport() {
         m.userName.toLowerCase().includes(searchTerm.toLowerCase())
     )
 
-    const handlePrint = () => {
-        window.print()
-    }
 
     const handleExport = () => {
         const columns = [
@@ -69,7 +66,7 @@ export function CashFlowReport() {
         <ReportLayout
             title="Flujo de Caja"
             description="Seguimiento de ingresos, egresos y ventas realizadas"
-            onPrint={handlePrint}
+            onPrint={() => {}} // dummy to keep the button visible in layout
             onExport={handleExport}
             filters={
                 <div className="flex flex-wrap items-center gap-4">

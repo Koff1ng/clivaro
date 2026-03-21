@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { ArrowLeft, Download, ChevronRight, ShieldCheck, Scale, FileText, Lock, UserCheck } from 'lucide-react'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
+import { Loader2 } from 'lucide-react'
 
 export default function TermsPage() {
     const [activeSection, setActiveSection] = useState('')
@@ -41,6 +42,67 @@ export default function TermsPage() {
         return () => observer.disconnect()
     }, [])
 
+    const [isGeneratingPdf, setIsGeneratingPdf] = useState(false)
+
+    const handleDownloadPdf = async () => {
+        try {
+            setIsGeneratingPdf(true)
+            
+            const styles = Array.from(document.querySelectorAll('style, link[rel="stylesheet"]'))
+                .map(style => style.outerHTML)
+                .join('\n')
+
+            const htmlContent = `
+                <!DOCTYPE html>
+                <html lang="es" class="light">
+                <head>
+                    <meta charset="UTF-8">
+                    ${styles}
+                    <style>
+                        body { background: white !important; padding: 60px !important; }
+                        .print-hidden, button, .no-print, nav, header, aside { display: none !important; }
+                        article { max-width: 100% !important; margin: 0 !important; }
+                    </style>
+                </head>
+                <body class="bg-white">
+                    <div style="text-align: center; margin-bottom: 40px;">
+                        <h1 style="font-size: 32px; font-weight: 800;">Términos y Condiciones de Uso</h1>
+                        <p style="color: #64748b;">Clivaro - Clientum Studio SAS</p>
+                    </div>
+                    ${document.querySelector('article')?.innerHTML || document.body.innerHTML}
+                </body>
+                </html>
+            `
+
+            const res = await fetch('/api/pdf/generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    html: htmlContent,
+                    filename: 'terminos_y_condiciones_clivaro'
+                })
+            })
+
+            if (!res.ok) throw new Error('PDF generation failed')
+
+            const blob = await res.blob()
+            const url = URL.createObjectURL(blob)
+            
+            const link = document.createElement('a')
+            link.href = url
+            link.download = `terminos_y_condiciones_clivaro.pdf`
+            document.body.appendChild(link)
+            link.click()
+            document.body.removeChild(link)
+            window.open(url, '_blank')
+        } catch (error) {
+            console.error('Error generating PDF:', error)
+            alert('Error generando el PDF legal.')
+        } finally {
+            setIsGeneratingPdf(false)
+        }
+    }
+
     return (
         <div className="min-h-screen bg-white dark:bg-slate-950 font-sans text-slate-900 dark:text-slate-100 selection:bg-blue-100 dark:selection:bg-blue-900/40">
             {/* Header */}
@@ -56,9 +118,15 @@ export default function TermsPage() {
                         <div className="h-6 w-px bg-slate-200 dark:bg-slate-800 hidden sm:block" />
                         <Logo size="sm" />
                     </div>
-                    <Button variant="outline" size="sm" className="gap-2 border-blue-200 text-blue-600 hover:bg-blue-50 dark:border-blue-900/50 dark:text-blue-400 dark:hover:bg-blue-900/20" onClick={() => window.print()}>
-                        <Download className="w-4 h-4" />
-                        <span className="hidden sm:inline">Descargar PDF Legal</span>
+                    <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="gap-2 border-blue-200 text-blue-600 hover:bg-blue-50 dark:border-blue-900/50 dark:text-blue-400 dark:hover:bg-blue-900/20" 
+                        onClick={handleDownloadPdf}
+                        disabled={isGeneratingPdf}
+                    >
+                        {isGeneratingPdf ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                        <span className="hidden sm:inline">{isGeneratingPdf ? 'Generando...' : 'Descargar PDF Legal'}</span>
                     </Button>
                 </div>
             </header>

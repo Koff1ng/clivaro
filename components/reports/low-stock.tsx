@@ -39,9 +39,6 @@ export function LowStockReport() {
         queryFn: () => fetchLowStock(selectedWarehouse),
     })
 
-    const handlePrint = () => {
-        window.print()
-    }
 
     const filteredItems = (data?.items || []).filter((item: any) =>
         item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -72,7 +69,7 @@ export function LowStockReport() {
         <ReportLayout
             title="Alertas de Stock Bajo"
             description="Productos que requieren reabastecimiento urgente por nivel crítico"
-            onPrint={handlePrint}
+            onPrint={() => {}} // dummy to keep the button visible in layout
             onExport={handleExport}
             filters={
                 <div className="flex flex-wrap items-center gap-4">

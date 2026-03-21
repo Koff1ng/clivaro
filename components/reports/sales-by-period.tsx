@@ -39,9 +39,6 @@ export function SalesByPeriodReport() {
         p.name.toLowerCase().includes(searchTerm.toLowerCase())
     )
 
-    const handlePrint = () => {
-        window.print()
-    }
 
     const handleExport = () => {
         const columns = [
@@ -58,7 +55,7 @@ export function SalesByPeriodReport() {
         <ReportLayout
             title="Ventas por Período"
             description="Análisis detallado de ventas en el período seleccionado"
-            onPrint={handlePrint}
+            onPrint={() => {}} // dummy to keep the button visible in layout
             onExport={handleExport}
             filters={
                 <div className="flex flex-wrap items-center gap-4">

@@ -37,9 +37,6 @@ export function ProfitMarginsReport() {
         queryFn: () => fetchProfitMargins(dateRange.from, dateRange.to),
     })
 
-    const handlePrint = () => {
-        window.print()
-    }
 
     const handleExport = () => {
         const columns = [
@@ -62,7 +59,7 @@ export function ProfitMarginsReport() {
         <ReportLayout
             title="Márgenes de Ganancia"
             description="Análisis de rentabilidad por categoría y evolución temporal"
-            onPrint={handlePrint}
+            onPrint={() => {}} // dummy to keep the button visible in layout
             onExport={handleExport}
             filters={<DateRangeFilter value={dateRange} onChange={setDateRange} />}
         >
