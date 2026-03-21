@@ -156,10 +156,9 @@ export async function PUT(
       where: { id: subscription.id },
       data: {
         planId: validatedData.newPlanId,
-        // Si es upgrade, mantener el mismo endDate (el cambio es inmediato)
-        // Si es downgrade, también mantener el endDate (el cambio se aplica en el próximo ciclo)
-        // En ambos casos, el próximo pago será con el nuevo plan
-        status: subscription.status === 'active' ? 'active' : subscription.status,
+        // Si es upgrade, el estado pasa a pending_payment para forzar el pago.
+        // Si es downgrade, se mantiene el plan (o se aplica en el próximo ciclo).
+        status: isUpgrade ? 'pending_payment' : subscription.status,
       },
       include: {
         plan: true,

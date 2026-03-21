@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useSession, signOut } from 'next-auth/react'
 import { useEffect, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { cn } from '@/lib/utils'
 import {
   NavArrowRight,
@@ -63,6 +64,18 @@ export function Sidebar() {
   const userPermissions = (session?.user as any)?.permissions || []
   const isSuperAdmin = (session?.user as any)?.isSuperAdmin || false
   const { hasFeature: hasPlanFeature, isNewFeature, newFeatures, isLoading, planName } = useTenantPlan()
+  
+  // Custom queries for module visibility
+  const { data: restaurantConfig } = useQuery({
+    queryKey: ['restaurant-config'],
+    queryFn: async () => {
+      const res = await fetch('/api/restaurant/config')
+      if (!res.ok) return null
+      return res.json()
+    },
+    staleTime: 5 * 60 * 1000 // 5 min cache
+  })
+  
   const [visitedFeatures, setVisitedFeatures] = useState<Record<string, number>>({})
 
   // Persist scroll position
@@ -187,8 +200,10 @@ export function Sidebar() {
 
       // Special check for restaurant group
       if (item.href.startsWith('/restaurant') && !isSuperAdmin) {
-         // This would ideally come from useTenantPlan or a new hook useTenantSettings
-         // For now, we allow it if the user has permissions, as the user already enabled it.
+         // Comandero and other restaurant modules should only be visible if Restaurant Mode is explicitly enabled.
+         const isRestaurantEnabled = restaurantConfig?.enableRestaurantMode === true
+         if (!isRestaurantEnabled) return false
+
          return true 
       }
 
@@ -208,18 +223,18 @@ export function Sidebar() {
       <aside
         className={cn(
           'fixed md:static top-0 left-0 z-50 h-screen flex flex-col border-r border-slate-800 bg-[#0F172A] text-slate-100 transition-all duration-300 ease-in-out overflow-hidden print:hidden',
-          isOpen ? 'w-64 translate-x-0' : 'w-0 -translate-x-full md:translate-x-0 md:w-[72px]'
+          isOpen ? 'w-56 translate-x-0' : 'w-0 -translate-x-full md:translate-x-0 md:w-16'
         )}
       >
         {isOpen && (
           <div className={cn(
-            'flex items-center justify-center border-b border-white/5 px-4 transition-opacity duration-300 opacity-100 h-12 sm:h-14 overflow-hidden'
+            'flex items-center justify-center border-b border-white/5 px-4 transition-opacity duration-300 opacity-100 h-12 sm:h-12 overflow-hidden'
           )}>
             <Link href="/dashboard" prefetch scroll={false} className="w-full flex items-center h-full">
               <Logo
                 size="lg"
                 showByline={false}
-                className="!w-44 !h-auto !justify-start -ml-1"
+                className="!w-36 !h-auto !justify-start -ml-2"
               />
             </Link>
           </div>
@@ -276,14 +291,14 @@ export function Sidebar() {
                           }}
                           className={cn(
                             'flex rounded-lg font-medium transition-all duration-200 relative group',
-                            isOpen ? 'flex-row items-center gap-3 text-sm px-3 py-2 ml-1' : 'flex-col items-center justify-center gap-1 px-1 py-2',
+                            isOpen ? 'flex-row items-center gap-3 text-[13px] px-2.5 py-1.5 ml-1' : 'flex-col items-center justify-center gap-1 px-1 py-1.5',
                             isActive
-                              ? 'bg-[#0EA5E9] text-white shadow-lg shadow-cyan-500/20'
-                              : 'text-slate-400 hover:bg-slate-800 hover:text-white',
+                              ? 'bg-slate-800/80 text-white font-semibold'
+                              : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200',
                           )}
                           title={!isOpen ? item.label : undefined}
                         >
-                          <AppIcon icon={Icon} className={cn("flex-shrink-0 transition-all", isOpen ? "w-5 h-5" : "w-[22px] h-[22px] mb-0.5")} />
+                          <AppIcon icon={Icon} className={cn("flex-shrink-0 transition-all", isOpen ? "w-[18px] h-[18px]" : "w-5 h-5 mb-0.5")} />
                           <span className={cn(
                             'transition-all duration-200',
                             isOpen ? 'flex items-center gap-1.5 whitespace-nowrap' : 'text-[10px] font-medium tracking-tight w-full truncate text-center px-0.5 opacity-90 block'

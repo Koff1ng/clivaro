@@ -1,10 +1,11 @@
 'use client'
 
-import { ReactNode } from 'react'
+import { ReactNode, useRef } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, Printer, Download } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import { useReactToPrint } from 'react-to-print'
 
 interface ReportLayoutProps {
     title: string
@@ -26,6 +27,13 @@ export function ReportLayout({
     actions,
 }: ReportLayoutProps) {
     const router = useRouter()
+
+    const printRef = useRef<HTMLDivElement>(null)
+
+    const handlePrint = useReactToPrint({
+        contentRef: printRef,
+        documentTitle: title,
+    })
 
     return (
         <div className="space-y-4">
@@ -52,7 +60,11 @@ export function ReportLayout({
                 <div className="flex items-center gap-2 print:hidden">
                     {actions}
                     {onPrint && (
-                        <Button variant="outline" size="sm" onClick={onPrint}>
+                        <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={handlePrint}
+                        >
                             <Printer className="h-4 w-4 mr-2" />
                             Imprimir
                         </Button>
@@ -74,7 +86,14 @@ export function ReportLayout({
             )}
 
             {/* Main Content */}
-            <div className="print:p-8">{children}</div>
+            <div className="print:p-8 [&_canvas]:print:block" ref={printRef}>
+                <div className="hidden print:block mb-8">
+                    <h1 className="text-3xl font-bold text-slate-900">{title}</h1>
+                    {description && <p className="text-lg text-slate-600 mt-2">{description}</p>}
+                    <div className="h-divider w-full border-b mt-4 mb-6" />
+                </div>
+                {children}
+            </div>
         </div>
     )
 }

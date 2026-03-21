@@ -27,6 +27,16 @@ export function RestaurantSettingsView() {
   const queryClient = useQueryClient()
   const [showMapDialog, setShowMapDialog] = useState(false)
   const [selectedZoneId, setSelectedZoneId] = useState<string | null>(null)
+  const [showUpgradeDialog, setShowUpgradeDialog] = useState(false)
+
+  const { data: tenantPlan, isLoading: isLoadingPlan } = useQuery({
+    queryKey: ['tenant-plan'],
+    queryFn: async () => {
+      const res = await fetch('/api/tenant/plan')
+      if (!res.ok) return null
+      return res.json()
+    }
+  })
 
   const { data: config, isLoading: isLoadingConfig } = useQuery({
     queryKey: ['restaurant-config'],
@@ -63,7 +73,7 @@ export function RestaurantSettingsView() {
     }
   })
 
-  if (isLoadingConfig || isLoadingZones) {
+  if (isLoadingConfig || isLoadingZones || isLoadingPlan) {
     return (
       <div className="flex items-center justify-center py-20">
         <Loader2 className="animate-spin text-slate-400" size={32} />
@@ -72,6 +82,15 @@ export function RestaurantSettingsView() {
   }
 
   const isEnabled = config?.enableRestaurantMode || false
+  const isStarterPlan = tenantPlan?.plan?.name?.toUpperCase() === 'STARTER' || tenantPlan?.plan?.name?.toUpperCase() === 'FREE'
+  
+  const handleToggleRestaurant = (val: boolean) => {
+    if (val && isStarterPlan) {
+      setShowUpgradeDialog(true)
+      return
+    }
+    updateConfigMutation.mutate({ enableRestaurantMode: val })
+  }
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-700">
@@ -90,7 +109,7 @@ export function RestaurantSettingsView() {
              <Switch 
                className="data-[state=checked]:bg-emerald-500"
                checked={isEnabled} 
-               onCheckedChange={(val) => updateConfigMutation.mutate({ enableRestaurantMode: val })} 
+               onCheckedChange={handleToggleRestaurant} 
              />
              <span className="text-xs font-black uppercase tracking-widest">{isEnabled ? 'Activo' : 'Desactivado'}</span>
           </div>
@@ -108,7 +127,7 @@ export function RestaurantSettingsView() {
                  <p className="text-sm text-slate-500 leading-relaxed font-medium">Habilita comandas, gestión de mesas, zonas, meseros y estaciones de cocina para llevar tu negocio al siguiente nivel.</p>
               </div>
               <Button 
-                onClick={() => updateConfigMutation.mutate({ enableRestaurantMode: true })}
+                onClick={() => handleToggleRestaurant(true)}
                 className="rounded-full px-8 h-12 font-black uppercase tracking-widest text-xs"
               >
                 Habilitar Ahora
@@ -211,9 +230,35 @@ export function RestaurantSettingsView() {
              </div>
              <div className="flex-1 overflow-hidden p-8 bg-slate-100">
                 {selectedZoneId && <RestaurantTableMap zoneId={selectedZoneId} isEditMode={true} />}
+              </div>
+           </DialogContent>
+       </Dialog>
+
+       {/* Upgrade Plan Dialog */}
+       <Dialog open={showUpgradeDialog} onOpenChange={setShowUpgradeDialog}>
+          <DialogContent className="rounded-[2.5rem] border-none shadow-2xl p-0 overflow-hidden text-center max-w-md">
+             <div className="p-8 bg-gradient-to-b from-indigo-50 to-white">
+                <div className="w-16 h-16 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center mx-auto mb-6">
+                   <UtensilsCrossed size={32} />
+                </div>
+                <DialogTitle className="text-2xl font-black text-slate-800 tracking-tight mb-2">Sube de nivel tu negocio</DialogTitle>
+                <div className="text-sm font-medium text-slate-500 leading-relaxed mb-8">
+                   El Modo Restaurante es una función avanzada exclusiva para planes <strong className="text-slate-800">Business</strong> y superiores. Obtendrás gestión de mesas, comanderas móviles y monitor KDS para cocina.
+                </div>
+                <div className="space-y-3">
+                   <Button className="w-full rounded-full h-12 bg-indigo-600 hover:bg-indigo-700 font-bold uppercase tracking-widest text-xs" onClick={() => {
+                     setShowUpgradeDialog(false)
+                     window.location.href = '/settings/billing' // Navigate to billing/subscription page
+                   }}>
+                      Mejorar a Business
+                   </Button>
+                   <Button variant="ghost" className="w-full rounded-full h-10 font-bold text-xs uppercase" onClick={() => setShowUpgradeDialog(false)}>
+                      Quizás más tarde
+                   </Button>
+                </div>
              </div>
           </DialogContent>
-      </Dialog>
-    </div>
-  )
-}
+       </Dialog>
+     </div>
+   )
+ }

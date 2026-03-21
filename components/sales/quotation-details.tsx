@@ -8,9 +8,12 @@ import { formatCurrency, formatDate } from '@/lib/utils'
 import { useToast } from '@/components/ui/toast'
 import { LoadingOverlay } from '@/components/ui/loading-overlay'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
-import { FileText, Phone, MapPin, CheckCircle, Send } from 'lucide-react'
+import { FileText, Phone, MapPin, CheckCircle, Send, Printer } from 'lucide-react'
 import { Mail } from 'iconoir-react'
 import { sendQuotationEmail } from '@/lib/supabase/client'
+import { QuotationPrintLetter } from './quotation-print-letter'
+import { useRef } from 'react'
+import { useReactToPrint } from 'react-to-print'
 
 export function QuotationDetails({ quotation }: { quotation: any }) {
   const { toast } = useToast()
@@ -19,6 +22,12 @@ export function QuotationDetails({ quotation }: { quotation: any }) {
   const [confirmSendOpen, setConfirmSendOpen] = useState(false)
   const [confirmMode, setConfirmMode] = useState<'send' | 'resend' | null>(null)
   const queryClient = useQueryClient()
+  const printRef = useRef<HTMLDivElement>(null)
+
+  const handlePrint = useReactToPrint({
+    contentRef: printRef,
+    documentTitle: `Cotizacion_${quotation?.number || 'draft'}`,
+  })
 
   // Validar y normalizar datos
   if (!quotation) {
@@ -51,20 +60,21 @@ export function QuotationDetails({ quotation }: { quotation: any }) {
 
   const sendMutation = useMutation({
     mutationFn: async () => {
-      setSending(true)
-      const data = await sendQuotationEmail(quotation.id)
-      return data
+      // Mocked response for now since the backend is under development
+      return new Promise((resolve) => {
+        setTimeout(() => {
+          resolve({ message: 'Preparando cliente de correo local...' })
+        }, 500)
+      })
     },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['quotations'] })
-      queryClient.invalidateQueries({ queryKey: ['activity-feed'] })
+    onSuccess: (data: any) => {
+      // Don't invalidate queries here since we aren't changing status in the DB yet via the mailto
       setSending(false)
-      toast(data.message || `Cotización enviada exitosamente`, 'success')
+      toast(data.message || `Redirigiendo a correo`, 'success')
     },
     onError: (error: any) => {
       setSending(false)
-      const errorMessage = error.message || 'No se pudo enviar la cotización'
-      toast(`Error: ${errorMessage}`, 'error')
+      toast(`Error al preparar el correo`, 'error')
     },
   })
 
@@ -78,8 +88,22 @@ export function QuotationDetails({ quotation }: { quotation: any }) {
   }
 
   const handleConfirmSend = () => {
-    if (!quotation?.id) return
+    if (!quotation?.customer?.email) return
+    
+    // Simulate UI loading
     sendMutation.mutate()
+    
+    // Open mailto tab
+    const subject = encodeURIComponent(`Cotización ${quotation.number}`)
+    const body = encodeURIComponent(
+      `Hola ${quotation.customer.name || ''},\n\nAdjunto le enviamos la cotización ${quotation.number} solicitada.\n\nQuedamos a su disposición.\n\nSaludos.`
+    )
+    
+    // Slight delay to allow the dialog to close smoothly and show toast
+    setTimeout(() => {
+      window.open(`mailto:${quotation.customer.email}?subject=${subject}&body=${body}`, '_blank')
+    }, 600)
+    
     setConfirmSendOpen(false)
   }
 
@@ -118,26 +142,27 @@ export function QuotationDetails({ quotation }: { quotation: any }) {
             </div>
           </div>
           <div className="flex gap-2">
-            {quotation.status === 'DRAFT' && (
+            <Button
+              variant="outline"
+              onClick={handlePrint}
+            >
+              <Printer className="h-4 w-4 mr-2" />
+              Imprimir / PDF
+            </Button>
+            
+            {(quotation.status === 'DRAFT' || quotation.status === 'SENT' || quotation.status === 'ACCEPTED') && (
               <Button
                 variant="outline"
                 onClick={() => openSendConfirm('send')}
                 disabled={sendMutation.isPending}
               >
                 <Mail className="h-4 w-4 mr-2" />
-                {sendMutation.isPending ? 'Enviando...' : 'Enviar por email'}
+                {sendMutation.isPending ? 'Abriendo...' : 'Enviar por email'}
               </Button>
             )}
+
             {(quotation.status === 'SENT' || quotation.status === 'ACCEPTED') && (
               <>
-                <Button
-                  variant="outline"
-                  onClick={() => openSendConfirm('resend')}
-                  disabled={sendMutation.isPending}
-                >
-                  <Mail className="h-4 w-4 mr-2" />
-                  {sendMutation.isPending ? 'Reenviando...' : 'Reenviar por email'}
-                </Button>
                 {quotation.status === 'SENT' && (
                   <Button
                     onClick={() => {
@@ -164,7 +189,7 @@ export function QuotationDetails({ quotation }: { quotation: any }) {
               </DialogTitle>
               <DialogDescription>
                 {quotation?.customer?.email
-                  ? `Se enviará la cotización ${quotation.number} al correo ${quotation.customer.email}.`
+                  ? `Se abrirá su cliente de correo para enviar la cotización ${quotation.number} a ${quotation.customer.email}. Recuerde primero descargar el PDF para adjuntarlo manualmente.`
                   : 'El cliente no tiene un correo electrónico configurado.'}
               </DialogDescription>
             </DialogHeader>
@@ -173,7 +198,7 @@ export function QuotationDetails({ quotation }: { quotation: any }) {
                 Cancelar
               </Button>
               <Button onClick={handleConfirmSend} disabled={sendMutation.isPending}>
-                {sendMutation.isPending ? 'Enviando...' : 'Confirmar envío'}
+                {sendMutation.isPending ? 'Abriendo correo...' : 'Abrir correo'}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -313,6 +338,14 @@ export function QuotationDetails({ quotation }: { quotation: any }) {
           </div>
         )}
 
+
+      </div>
+
+      {/* Vista de impresión oculta */}
+      <div className="hidden print:block">
+        <div ref={printRef}>
+          <QuotationPrintLetter quotation={quotation} />
+        </div>
       </div>
     </>
   )

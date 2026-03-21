@@ -288,6 +288,24 @@ async function initializePostgresTenant(databaseUrl: string, tenantId: string, t
       },
     })
 
+    // Default Payment Methods
+    await tenantPrisma.paymentMethod.upsert({
+      where: { name: 'Efectivo' },
+      update: {},
+      create: { name: 'Efectivo', type: 'CASH', active: true, color: '#10b981', icon: 'banknote' }
+    })
+    await tenantPrisma.paymentMethod.upsert({
+      where: { name: 'Tarjeta' },
+      update: {},
+      create: { name: 'Tarjeta', type: 'CARD', active: true, color: '#f59e0b', icon: 'credit-card' }
+    })
+    await tenantPrisma.paymentMethod.upsert({
+      where: { name: 'Transferencia' },
+      update: {},
+      create: { name: 'Transferencia', type: 'TRANSFER', active: true, color: '#3b82f6', icon: 'smartphone' }
+    })
+
+
     // Core permissions every tenant admin needs (All modules)
     const corePermissions = [
       'view_reports',

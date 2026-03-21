@@ -1,25 +1,33 @@
 
 import {
-    NavArrowRight,
-    Box,
-    Archive,
-    Group,
-    KanbanBoard,
-    Mail,
-    Page,
-    Cart as CartIcon,
-    Bag,
-    Shop,
-    Wallet as WalletIcon,
-    UserSquare,
-    Settings as SettingsIcon,
+    LayoutDashboard,
+    BarChart3,
+    Users,
+    Target,
+    Megaphone,
+    ShoppingCart,
+    Banknote,
+    FileText,
+    ClipboardList,
+    Receipt,
+    FileMinus,
     ShieldCheck,
-    PasteClipboard,
+    UtensilsCrossed,
+    Package,
+    Boxes,
+    Store,
+    ShoppingBag,
     Truck,
-    StatsUpSquare,
-    Calculator,
-    Cash,
-} from 'iconoir-react'
+    BookOpen,
+    FileDigit,
+    PieChart,
+    FileSpreadsheet,
+    Scale,
+    Puzzle,
+    UserCircle,
+    Coins,
+    Settings2,
+} from 'lucide-react'
 
 export type MenuItem = {
     href: string
@@ -40,41 +48,41 @@ export const menuGroups: MenuGroup[] = [
         title: 'General',
         key: 'general',
         items: [
-            { href: '/dashboard', label: 'Dashboard', icon: NavArrowRight, permission: ['view_reports', 'manage_sales'], planFeature: 'viewReports' },
-            { href: '/dashboard/reports', label: 'Reportes', icon: StatsUpSquare, permission: 'view_reports', planFeature: 'viewReports' },
+            { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, permission: ['view_reports', 'manage_sales'], planFeature: 'viewReports' },
+            { href: '/dashboard/reports', label: 'Reportes', icon: BarChart3, permission: 'view_reports', planFeature: 'viewReports' },
         ]
     },
     {
         title: 'Marketing',
         key: 'marketing',
         items: [
-            { href: '/crm/customers', label: 'Clientes', icon: Group, permission: ['manage_crm', 'manage_sales'], planFeature: 'manageSales' },
-            { href: '/crm/leads', label: 'Oportunidades', icon: KanbanBoard, permission: 'manage_crm', planFeature: 'leads' },
-            { href: '/marketing/campaigns', label: 'Campañas', icon: Mail, permission: 'manage_crm', planFeature: 'marketing' },
+            { href: '/crm/customers', label: 'Clientes', icon: Users, permission: ['manage_crm', 'manage_sales'], planFeature: 'manageSales' },
+            { href: '/crm/leads', label: 'Oportunidades', icon: Target, permission: 'manage_crm', planFeature: 'leads' },
+            { href: '/marketing/campaigns', label: 'Campañas', icon: Megaphone, permission: 'manage_crm', planFeature: 'marketing' },
         ]
     },
     {
         title: 'POS',
         key: 'pos',
         items: [
-            { href: '/pos', label: 'Punto de Venta', icon: CartIcon, permission: 'manage_sales', planFeature: 'pos' },
-            { href: '/cash/shifts', label: 'Caja', icon: WalletIcon, permission: ['manage_cash', 'manage_sales'], planFeature: 'manageCash' },
-            { href: '/sales/quotes', label: 'Cotizaciones', icon: PasteClipboard, permission: 'manage_sales', planFeature: 'quotations' },
-            { href: '/sales/orders', label: 'Órdenes', icon: PasteClipboard, permission: 'manage_sales', planFeature: 'manageSales' },
-            { href: '/sales/invoices', label: 'Facturas', icon: Page, permission: 'manage_sales', planFeature: 'invoices' },
-            { href: '/credit-notes', label: 'Notas Crédito', icon: PasteClipboard, permission: 'manage_sales', planFeature: 'invoices' },
+            { href: '/pos', label: 'Punto de Venta', icon: ShoppingCart, permission: 'manage_sales', planFeature: 'pos' },
+            { href: '/cash/shifts', label: 'Caja', icon: Banknote, permission: ['manage_cash', 'manage_sales'], planFeature: 'manageCash' },
+            { href: '/sales/quotes', label: 'Cotizaciones', icon: FileText, permission: 'manage_sales', planFeature: 'quotations' },
+            { href: '/sales/orders', label: 'Órdenes', icon: ClipboardList, permission: 'manage_sales', planFeature: 'manageSales' },
+            { href: '/sales/invoices', label: 'Facturas', icon: Receipt, permission: 'manage_sales', planFeature: 'invoices' },
+            { href: '/credit-notes', label: 'Notas Crédito', icon: FileMinus, permission: 'manage_sales', planFeature: 'invoices' },
             { href: '/dashboard/electronic-invoicing', label: 'Fact. Electrónica', icon: ShieldCheck, permission: 'manage_sales', planFeature: 'invoices' },
-            { href: '/pos/commander', label: 'Comandero ', icon: Calculator, permission: 'manage_sales' },
+            { href: '/pos/commander', label: 'Comandero ', icon: UtensilsCrossed, permission: 'manage_sales' },
         ]
     },
     {
         title: 'Inventario',
         key: 'inventory',
         items: [
-            { href: '/products', label: 'Items', icon: Box, permission: 'manage_products', planFeature: 'manageProducts' },
-            { href: '/inventory', label: 'Inventario', icon: Archive, permission: 'manage_inventory', planFeature: 'manageInventory' },
-            { href: '/purchases/suppliers', label: 'Proveedores', icon: Shop, permission: 'manage_purchases', planFeature: 'managePurchases' },
-            { href: '/purchases/orders', label: 'Órdenes Compra', icon: Bag, permission: 'manage_purchases', planFeature: 'managePurchases' },
+            { href: '/products', label: 'Items', icon: Package, permission: 'manage_products', planFeature: 'manageProducts' },
+            { href: '/inventory', label: 'Inventario', icon: Boxes, permission: 'manage_inventory', planFeature: 'manageInventory' },
+            { href: '/purchases/suppliers', label: 'Proveedores', icon: Store, permission: 'manage_purchases', planFeature: 'managePurchases' },
+            { href: '/purchases/orders', label: 'Órdenes Compra', icon: ShoppingBag, permission: 'manage_purchases', planFeature: 'managePurchases' },
             { href: '/purchases/receipts', label: 'Recepciones', icon: Truck, permission: 'manage_purchases', planFeature: 'managePurchases' },
         ]
     },
@@ -82,27 +90,27 @@ export const menuGroups: MenuGroup[] = [
         title: 'Contabilidad',
         key: 'accounting',
         items: [
-            { href: '/accounting/accounts', label: 'Catálogo de cuentas', icon: Page, permission: 'manage_accounting', planFeature: 'manageAccounting' },
-            { href: '/accounting/vouchers', label: 'Comprobante contable', icon: PasteClipboard, permission: 'manage_accounting', planFeature: 'manageAccounting' },
-            { href: '/accounting/reports', label: 'Centro de Reportes', icon: StatsUpSquare, permission: 'manage_accounting', planFeature: 'manageAccounting' },
-            { href: '/accounting/reports/exogenous', label: 'Información exógena', icon: ShieldCheck, permission: 'manage_accounting', planFeature: 'manageAccounting' },
-            { href: '/accounting/fiscal-conciliator', label: 'Conciliador fiscal', icon: Calculator, permission: 'manage_accounting', planFeature: 'manageAccounting' },
-            { href: '/accounting/addons', label: 'Complementos contables', icon: Box, permission: 'manage_accounting', planFeature: 'manageAccounting' },
+            { href: '/accounting/accounts', label: 'Catálogo de cuentas', icon: BookOpen, permission: 'manage_accounting', planFeature: 'manageAccounting' },
+            { href: '/accounting/vouchers', label: 'Comprobante contable', icon: FileDigit, permission: 'manage_accounting', planFeature: 'manageAccounting' },
+            { href: '/accounting/reports', label: 'Centro de Reportes', icon: PieChart, permission: 'manage_accounting', planFeature: 'manageAccounting' },
+            { href: '/accounting/reports/exogenous', label: 'Información exógena', icon: FileSpreadsheet, permission: 'manage_accounting', planFeature: 'manageAccounting' },
+            { href: '/accounting/fiscal-conciliator', label: 'Conciliador fiscal', icon: Scale, permission: 'manage_accounting', planFeature: 'manageAccounting' },
+            { href: '/accounting/addons', label: 'Complementos contables', icon: Puzzle, permission: 'manage_accounting', planFeature: 'manageAccounting' },
         ]
     },
     {
         title: 'Recursos Humanos',
         key: 'hr',
         items: [
-            { href: '/hr/employees', label: 'Empleados', icon: Group, permission: 'manage_users', planFeature: 'managePayroll' },
-            { href: '/hr/payroll', label: 'Nómina', icon: WalletIcon, permission: 'manage_users', planFeature: 'managePayroll' },
+            { href: '/hr/employees', label: 'Empleados', icon: UserCircle, permission: 'manage_users', planFeature: 'managePayroll' },
+            { href: '/hr/payroll', label: 'Nómina', icon: Coins, permission: 'manage_users', planFeature: 'managePayroll' },
         ]
     },
     {
         title: 'Sistema',
         key: 'system',
         items: [
-            { href: '/admin/users', label: 'Usuarios', icon: UserSquare, permission: 'manage_users', planFeature: 'manageUsers' },
+            { href: '/admin/users', label: 'Usuarios', icon: Settings2, permission: 'manage_users', planFeature: 'manageUsers' },
         ]
     }
 ]
