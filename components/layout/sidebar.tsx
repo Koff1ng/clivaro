@@ -228,13 +228,13 @@ export function Sidebar() {
       >
         {isOpen && (
           <div className={cn(
-            'flex items-center justify-center border-b border-white/5 px-4 transition-opacity duration-300 opacity-100 h-12 sm:h-12 overflow-hidden'
+            'flex items-center justify-center border-b border-white/5 px-4 transition-opacity duration-300 opacity-100 h-16 sm:h-16 overflow-hidden'
           )}>
-            <Link href="/dashboard" prefetch scroll={false} className="w-full flex items-center h-full">
+            <Link href="/dashboard" prefetch scroll={false} className="w-full flex items-center justify-center h-full">
               <Logo
                 size="lg"
                 showByline={false}
-                className="!w-36 !h-auto !justify-start -ml-2"
+                className="!w-32 !h-auto !justify-center"
               />
             </Link>
           </div>

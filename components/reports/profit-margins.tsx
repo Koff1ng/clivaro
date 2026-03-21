@@ -6,6 +6,7 @@ import { ReportLayout } from '@/components/reports/report-layout'
 import { DateRangeFilter, DateRange } from '@/components/reports/date-range-filter'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { formatCurrency } from '@/lib/utils'
+import { exportToExcel } from '@/lib/export-utils'
 import { subDays } from 'date-fns'
 import { TrendingUp, Percent, DollarSign, PieChart as PieIcon } from 'lucide-react'
 import {
@@ -41,28 +42,20 @@ export function ProfitMarginsReport() {
     }
 
     const handleExport = () => {
-        const csvContent = [
-            ['Categoría', 'Ingresos', 'Costos', 'Ganancia', 'Margen %'],
-            ...((data?.byCategory || []).map((c: any) => [
-                c.name,
-                c.revenue,
-                c.cost,
-                c.profit,
-                c.margin.toFixed(2),
-            ])),
+        const columns = [
+            { header: 'Categoría', key: 'name', width: 200 },
+            { header: 'Ingresos', key: 'revenue', width: 120 },
+            { header: 'Costos', key: 'cost', width: 120 },
+            { header: 'Ganancia', key: 'profit', width: 120 },
+            { header: 'Margen %', key: 'marginFormatted', width: 100 },
         ]
-            .map(row => row.join(','))
-            .join('\n')
+        
+        const exportData = (data?.byCategory || []).map((c: any) => ({
+            ...c,
+            marginFormatted: c.margin.toFixed(2)
+        }))
 
-        const blob = new Blob([csvContent], { type: 'text/csv' })
-        const url = URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = `margenes-ganancia-${dateRange.from.toISOString().split('T')[0]}.csv`
-        document.body.appendChild(a)
-        a.click()
-        document.body.removeChild(a)
-        URL.revokeObjectURL(url)
+        exportToExcel(exportData, columns, `margenes-ganancia-${dateRange.from.toISOString().split('T')[0]}`)
     }
 
     return (

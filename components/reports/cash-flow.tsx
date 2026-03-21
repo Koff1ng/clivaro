@@ -6,6 +6,7 @@ import { ReportLayout } from '@/components/reports/report-layout'
 import { DateRangeFilter, DateRange } from '@/components/reports/date-range-filter'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { formatCurrency } from '@/lib/utils'
+import { exportToExcel } from '@/lib/export-utils'
 import { subDays, format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { ArrowUpCircle, ArrowDownCircle, Scale, History, TrendingUp, DollarSign } from 'lucide-react'
@@ -46,28 +47,22 @@ export function CashFlowReport() {
     }
 
     const handleExport = () => {
-        const csvContent = [
-            ['Fecha', 'Tipo', 'Monto', 'Concepto', 'Usuario'],
-            ...((data?.movements || []).map((m: any) => [
-                format(new Date(m.createdAt), 'yyyy-MM-dd HH:mm'),
-                m.type === 'IN' ? 'Entrada' : 'Salida',
-                m.amount,
-                m.reason || '',
-                m.userName,
-            ])),
+        const columns = [
+            { header: 'Fecha', key: 'formattedDate', width: 150 },
+            { header: 'Tipo', key: 'typeLabel', width: 100 },
+            { header: 'Monto', key: 'amount', width: 120 },
+            { header: 'Concepto', key: 'reason', width: 250 },
+            { header: 'Usuario', key: 'userName', width: 150 },
         ]
-            .map(row => row.join(','))
-            .join('\n')
 
-        const blob = new Blob([csvContent], { type: 'text/csv' })
-        const url = URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = `flujo-caja-${dateRange.from.toISOString().split('T')[0]}.csv`
-        document.body.appendChild(a)
-        a.click()
-        document.body.removeChild(a)
-        URL.revokeObjectURL(url)
+        const exportData = (data?.movements || []).map((m: any) => ({
+            ...m,
+            formattedDate: format(new Date(m.createdAt), 'yyyy-MM-dd HH:mm'),
+            typeLabel: m.type === 'IN' ? 'Entrada' : 'Salida',
+            reason: m.reason || 'N/A'
+        }))
+
+        exportToExcel(exportData, columns, `flujo-caja-${dateRange.from.toISOString().split('T')[0]}`)
     }
 
     return (

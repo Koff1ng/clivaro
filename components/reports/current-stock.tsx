@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query'
 import { ReportLayout } from '@/components/reports/report-layout'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { formatCurrency } from '@/lib/utils'
+import { exportToExcel } from '@/lib/export-utils'
 import { Package, Warehouse, DollarSign, Calculator, TrendingUp } from 'lucide-react'
 
 async function fetchCurrentStock(warehouseId?: string) {
@@ -48,31 +49,23 @@ export function CurrentStockReport() {
     )
 
     const handleExport = () => {
-        const csvContent = [
-            ['SKU', 'Producto', 'Categoría', 'Stock Total', 'Costo Unitario', 'Valor Costo', 'Precio Venta', 'Valor Venta'],
-            ...(filteredItems.map((item: any) => [
-                item.sku,
-                item.name,
-                item.category,
-                item.totalQuantity,
-                item.cost,
-                item.totalCostValue,
-                item.price,
-                item.totalPriceValue,
-            ])),
+        const columns = [
+            { header: 'SKU', key: 'sku', width: 120 },
+            { header: 'Producto', key: 'name', width: 300 },
+            { header: 'Categoría', key: 'category', width: 150 },
+            { header: 'Stock Total', key: 'totalQuantity', width: 100 },
+            { header: 'Costo Unitario', key: 'cost', width: 120 },
+            { header: 'Valor Costo', key: 'totalCostValue', width: 120 },
+            { header: 'Precio Venta', key: 'price', width: 120 },
+            { header: 'Valor Venta', key: 'totalPriceValue', width: 120 },
         ]
-            .map(row => row.join(','))
-            .join('\n')
+        
+        const exportData = filteredItems.map((item: any) => ({
+            ...item,
+            category: item.category || 'Sin categoría'
+        }))
 
-        const blob = new Blob([csvContent], { type: 'text/csv' })
-        const url = URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = `stock-actual-${new Date().toISOString().split('T')[0]}.csv`
-        document.body.appendChild(a)
-        a.click()
-        document.body.removeChild(a)
-        URL.revokeObjectURL(url)
+        exportToExcel(exportData, columns, `stock-actual-${new Date().toISOString().split('T')[0]}`)
     }
 
     return (

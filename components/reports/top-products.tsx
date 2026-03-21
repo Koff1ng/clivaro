@@ -6,6 +6,7 @@ import { ReportLayout } from '@/components/reports/report-layout'
 import { DateRangeFilter, DateRange } from '@/components/reports/date-range-filter'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { formatCurrency } from '@/lib/utils'
+import { exportToExcel } from '@/lib/export-utils'
 import { subDays, format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { Package, TrendingUp, DollarSign, Search } from 'lucide-react'
@@ -45,30 +46,22 @@ export function TopProductsReport() {
     }
 
     const handleExport = () => {
-        const csvContent = [
-            ['Producto', 'SKU', 'Categoría', 'Cantidad', 'Ingresos', 'Costo', 'Ganancia'],
-            ...((data?.products || []).map((product: any) => [
-                product.name,
-                product.sku,
-                product.category || 'Sin categoría',
-                product.quantity,
-                product.revenue,
-                product.cost,
-                product.profit,
-            ])),
+        const columns = [
+            { header: 'Producto', key: 'name', width: 300 },
+            { header: 'SKU', key: 'sku', width: 120 },
+            { header: 'Categoría', key: 'category', width: 150 },
+            { header: 'Cantidad', key: 'quantity', width: 100 },
+            { header: 'Ingresos', key: 'revenue', width: 120 },
+            { header: 'Costo', key: 'cost', width: 120 },
+            { header: 'Ganancia', key: 'profit', width: 120 },
         ]
-            .map(row => row.join(','))
-            .join('\n')
+        
+        const exportData = (data?.products || []).map((product: any) => ({
+            ...product,
+            category: product.category || 'Sin categoría'
+        }))
 
-        const blob = new Blob([csvContent], { type: 'text/csv' })
-        const url = URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = `top-productos-${dateRange.from.toISOString().split('T')[0]}.csv`
-        document.body.appendChild(a)
-        a.click()
-        document.body.removeChild(a)
-        URL.revokeObjectURL(url)
+        exportToExcel(exportData, columns, `top-productos-${dateRange.from.toISOString().split('T')[0]}`)
     }
 
     const topProductsByView = [...filteredItems].sort((a: any, b: any) => {

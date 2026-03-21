@@ -6,6 +6,7 @@ import { ReportLayout } from '@/components/reports/report-layout'
 import { DateRangeFilter, DateRange } from '@/components/reports/date-range-filter'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { formatCurrency } from '@/lib/utils'
+import { exportToExcel } from '@/lib/export-utils'
 import { DollarSign, TrendingUp, FileText, Package } from 'lucide-react'
 import { subDays } from 'date-fns'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, AreaChart, Area } from 'recharts'
@@ -43,26 +44,14 @@ export function SalesByPeriodReport() {
     }
 
     const handleExport = () => {
-        const csvContent = [
-            ['Día', 'Ventas', 'Facturas'],
-            ...((data?.salesByDay || []).map((day: any) => [
-                day.date,
-                day.sales,
-                day.count,
-            ])),
+        const columns = [
+            { header: 'Día', key: 'date', width: 150 },
+            { header: 'Ventas Brutas', key: 'sales', width: 120 },
+            { header: 'Ventas Netas', key: 'netSales', width: 120 },
+            { header: 'Facturas', key: 'count', width: 100 },
         ]
-            .map(row => row.join(','))
-            .join('\n')
 
-        const blob = new Blob([csvContent], { type: 'text/csv' })
-        const url = URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = `ventas-por-periodo-${dateRange.from.toISOString().split('T')[0]}.csv`
-        document.body.appendChild(a)
-        a.click()
-        document.body.removeChild(a)
-        URL.revokeObjectURL(url)
+        exportToExcel(data?.salesByDay || [], columns, `ventas-por-periodo-${dateRange.from.toISOString().split('T')[0]}`)
     }
 
     return (

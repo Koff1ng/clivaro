@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query'
 import { ReportLayout } from '@/components/reports/report-layout'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { formatCurrency } from '@/lib/utils'
+import { exportToExcel } from '@/lib/export-utils'
 import { AlertTriangle, Warehouse, ArrowDownRight, Package, Calculator } from 'lucide-react'
 
 async function fetchLowStock(warehouseId?: string) {
@@ -48,29 +49,23 @@ export function LowStockReport() {
     )
 
     const handleExport = () => {
-        const csvContent = [
-            ['SKU', 'Producto', 'Categoría', 'Stock Actual', 'Mínimo', 'Déficit'],
-            ...(filteredItems.map((item: any) => [
-                item.sku,
-                item.name,
-                item.category,
-                item.stockByWarehouse[0]?.quantity || 0,
-                item.stockByWarehouse[0]?.minStock || 0,
-                item.stockByWarehouse[0]?.deficit || 0,
-            ])),
+        const columns = [
+            { header: 'SKU', key: 'sku', width: 120 },
+            { header: 'Producto', key: 'name', width: 300 },
+            { header: 'Categoría', key: 'category', width: 150 },
+            { header: 'Stock Actual', key: 'currentStock', width: 120 },
+            { header: 'Mínimo', key: 'minStock', width: 100 },
+            { header: 'Déficit', key: 'deficit', width: 100 },
         ]
-            .map(row => row.join(','))
-            .join('\n')
 
-        const blob = new Blob([csvContent], { type: 'text/csv' })
-        const url = URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = `reporte-bajo-stock-${new Date().toISOString().split('T')[0]}.csv`
-        document.body.appendChild(a)
-        a.click()
-        document.body.removeChild(a)
-        URL.revokeObjectURL(url)
+        const exportData = filteredItems.map((item: any) => ({
+            ...item,
+            currentStock: item.stockByWarehouse[0]?.quantity || 0,
+            minStock: item.stockByWarehouse[0]?.minStock || 0,
+            deficit: item.stockByWarehouse[0]?.deficit || 0,
+        }))
+
+        exportToExcel(exportData, columns, `reporte-bajo-stock-${new Date().toISOString().split('T')[0]}`)
     }
 
     return (

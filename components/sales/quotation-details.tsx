@@ -12,8 +12,6 @@ import { FileText, Phone, MapPin, CheckCircle, Send, Printer } from 'lucide-reac
 import { Mail } from 'iconoir-react'
 import { sendQuotationEmail } from '@/lib/supabase/client'
 import { QuotationPrintLetter } from './quotation-print-letter'
-import { useRef } from 'react'
-import { useReactToPrint } from 'react-to-print'
 
 export function QuotationDetails({ quotation }: { quotation: any }) {
   const { toast } = useToast()
@@ -22,12 +20,10 @@ export function QuotationDetails({ quotation }: { quotation: any }) {
   const [confirmSendOpen, setConfirmSendOpen] = useState(false)
   const [confirmMode, setConfirmMode] = useState<'send' | 'resend' | null>(null)
   const queryClient = useQueryClient()
-  const printRef = useRef<HTMLDivElement>(null)
 
-  const handlePrint = useReactToPrint({
-    contentRef: printRef,
-    documentTitle: `Cotizacion_${quotation?.number || 'draft'}`,
-  })
+  const handlePrint = () => {
+    window.print()
+  }
 
   // Validar y normalizar datos
   if (!quotation) {
@@ -130,7 +126,9 @@ export function QuotationDetails({ quotation }: { quotation: any }) {
   return (
     <>
       {sending && <LoadingOverlay message="Enviando cotización..." />}
-      <div className="space-y-6">
+      
+      {/* Vista en pantalla */}
+      <div className="space-y-6 print:hidden">
         {/* Header */}
         <div className="flex justify-between items-start">
           <div>
@@ -343,9 +341,7 @@ export function QuotationDetails({ quotation }: { quotation: any }) {
 
       {/* Vista de impresión oculta */}
       <div className="hidden print:block">
-        <div ref={printRef}>
-          <QuotationPrintLetter quotation={quotation} />
-        </div>
+        <QuotationPrintLetter quotation={quotation} />
       </div>
     </>
   )
