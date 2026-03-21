@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { FileText, Phone, MapPin, CheckCircle, Send, Printer } from 'lucide-react'
 import { Mail } from 'iconoir-react'
 import { sendQuotationEmail } from '@/lib/supabase/client'
+import { Loader2 } from 'lucide-react'
 import { QuotationPrintLetter } from './quotation-print-letter'
 
 export function QuotationDetails({ quotation }: { quotation: any }) {
@@ -21,8 +22,24 @@ export function QuotationDetails({ quotation }: { quotation: any }) {
   const [confirmMode, setConfirmMode] = useState<'send' | 'resend' | null>(null)
   const queryClient = useQueryClient()
 
-  const handlePrint = () => {
-    window.print()
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false)
+
+  const handleBackendPrint = async () => {
+    try {
+      setIsGeneratingPdf(true)
+      const res = await fetch(`/api/quotations/${quotation.id}/pdf`)
+      
+      if (!res.ok) throw new Error('Error al generar PDF')
+
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      window.open(url, '_blank')
+    } catch (error) {
+      toast('Error generando el PDF. Intente de nuevo.', 'error')
+      console.error(error)
+    } finally {
+      setIsGeneratingPdf(false)
+    }
   }
 
   // Validar y normalizar datos
@@ -142,10 +159,11 @@ export function QuotationDetails({ quotation }: { quotation: any }) {
           <div className="flex gap-2">
             <Button
               variant="outline"
-              onClick={handlePrint}
+              onClick={handleBackendPrint}
+              disabled={isGeneratingPdf}
             >
-              <Printer className="h-4 w-4 mr-2" />
-              Imprimir / PDF
+              {isGeneratingPdf ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Printer className="h-4 w-4 mr-2" />}
+              {isGeneratingPdf ? 'Generando...' : 'Imprimir / PDF'}
             </Button>
             
             {(quotation.status === 'DRAFT' || quotation.status === 'SENT' || quotation.status === 'ACCEPTED') && (

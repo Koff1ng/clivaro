@@ -1,9 +1,9 @@
 'use client'
 
-import { ReactNode } from 'react'
+import { ReactNode, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { ArrowLeft, Printer, Download } from 'lucide-react'
+import { ArrowLeft, Printer, Download, Loader2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
 interface ReportLayoutProps {
@@ -26,8 +26,65 @@ export function ReportLayout({
     actions,
 }: ReportLayoutProps) {
     const router = useRouter()
+    const [isGeneratingPdf, setIsGeneratingPdf] = useState(false)
 
+    const handleBackendPrint = async () => {
+        if (onPrint) onPrint() // call original if exists to do tracking maybe
 
+        try {
+            setIsGeneratingPdf(true)
+
+            // Mimic print mode to capture correct styles
+            const originalHtml = document.documentElement.className
+            document.documentElement.classList.add('print')
+
+            // Wait a tick for styles to apply
+            await new Promise((resolve) => setTimeout(resolve, 50))
+
+            let htmlContent = document.documentElement.outerHTML
+
+            // Clean up html to be sent
+            htmlContent = `
+                <!DOCTYPE html>
+                <html lang="es" class="light print">
+                <head>
+                    ${document.head.innerHTML}
+                    <style>
+                        /* Base print fixes */
+                        body { background: white !important; }
+                        * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+                    </style>
+                </head>
+                <body class="bg-white">
+                    ${document.body.innerHTML}
+                </body>
+                </html>
+            `
+            
+            // Revert changes immediately
+            document.documentElement.className = originalHtml
+
+            const res = await fetch('/api/pdf/generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    html: htmlContent,
+                    filename: title.replace(/[^a-z0-9]/gi, '_').toLowerCase()
+                })
+            })
+
+            if (!res.ok) throw new Error('PDF generation failed')
+
+            const blob = await res.blob()
+            const url = URL.createObjectURL(blob)
+            window.open(url, '_blank')
+        } catch (error) {
+            console.error('Error generating PDF:', error)
+            alert('Error generando el PDF. Intente nuevamente.')
+        } finally {
+            setIsGeneratingPdf(false)
+        }
+    }
 
     return (
         <div className="space-y-4">
@@ -57,10 +114,15 @@ export function ReportLayout({
                         <Button 
                             variant="outline" 
                             size="sm" 
-                            onClick={onPrint}
+                            onClick={handleBackendPrint}
+                            disabled={isGeneratingPdf}
                         >
-                            <Printer className="h-4 w-4 mr-2" />
-                            Imprimir
+                            {isGeneratingPdf ? (
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            ) : (
+                                <Printer className="h-4 w-4 mr-2" />
+                            )}
+                            {isGeneratingPdf ? 'Generando...' : 'Imprimir / PDF'}
                         </Button>
                     )}
                     {onExport && (

@@ -43,174 +43,361 @@ export async function generateQuotationPDF(quotation: QuotationPDFData): Promise
 
   const html = `
     <!DOCTYPE html>
-    <html>
+    <html lang="es">
     <head>
       <meta charset="UTF-8">
+      <link rel="preconnect" href="https://fonts.googleapis.com">
+      <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
       <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { 
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-          line-height: 1.6;
-          color: #333;
-          padding: 40px;
+        body {
+          font-family: 'Inter', 'Segoe UI', sans-serif;
+          background: #ffffff;
+          color: #1a1a2e;
+          font-size: 11px;
+          line-height: 1.5;
         }
-        .header {
-          text-align: center;
-          margin-bottom: 40px;
-          padding-bottom: 20px;
-          border-bottom: 3px solid #3b82f6;
+        .page { max-width: 210mm; margin: 0 auto; padding: 0; }
+
+        /* ---- TOP HEADER BAR ---- */
+        .header-band {
+          background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+          padding: 32px 40px;
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
         }
-        .header h1 {
-          color: #1e40af;
+        .company-block .company-name {
+          font-size: 20px;
+          font-weight: 800;
+          color: #ffffff;
+          letter-spacing: -0.5px;
+          margin-bottom: 6px;
+        }
+        .company-block .company-meta {
+          color: #94a3b8;
+          font-size: 10px;
+          line-height: 1.7;
+        }
+        .doc-block {
+          text-align: right;
+        }
+        .doc-block .doc-label {
+          font-size: 10px;
+          text-transform: uppercase;
+          letter-spacing: 2px;
+          color: #64748b;
+          margin-bottom: 4px;
+        }
+        .doc-block .doc-number {
           font-size: 28px;
-          margin-bottom: 10px;
+          font-weight: 800;
+          color: #ffffff;
+          letter-spacing: -1px;
         }
-        .info-section {
+        .doc-block .doc-date {
+          font-size: 10px;
+          color: #94a3b8;
+          margin-top: 6px;
+        }
+        .doc-block .validity-tag {
+          display: inline-block;
+          margin-top: 8px;
+          background: #1d4ed8;
+          color: white;
+          padding: 3px 10px;
+          border-radius: 20px;
+          font-size: 9px;
+          font-weight: 600;
+          letter-spacing: 0.5px;
+          text-transform: uppercase;
+        }
+
+        /* ---- BODY ---- */
+        .body-content {
+          padding: 32px 40px;
+        }
+
+        /* ---- INFO GRID ---- */
+        .info-grid {
           display: grid;
           grid-template-columns: 1fr 1fr;
-          gap: 30px;
-          margin-bottom: 30px;
+          gap: 20px;
+          margin-bottom: 28px;
         }
-        .info-box {
-          background: #f9fafb;
-          padding: 20px;
-          border-radius: 6px;
+        .info-card {
+          border: 1px solid #e2e8f0;
+          border-radius: 8px;
+          overflow: hidden;
         }
-        .info-box h3 {
-          color: #1e40af;
-          font-size: 14px;
+        .info-card-header {
+          background: #f8fafc;
+          padding: 8px 16px;
+          font-size: 9px;
+          font-weight: 700;
           text-transform: uppercase;
-          margin-bottom: 15px;
+          letter-spacing: 1.5px;
+          color: #64748b;
+          border-bottom: 1px solid #e2e8f0;
         }
-        .info-box p {
-          margin: 8px 0;
-          font-size: 14px;
+        .info-card-body {
+          padding: 14px 16px;
+        }
+        .info-card-body .client-name {
+          font-size: 13px;
+          font-weight: 700;
+          color: #0f172a;
+          margin-bottom: 8px;
+        }
+        .info-row {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 4px 0;
+          border-bottom: 1px solid #f1f5f9;
+        }
+        .info-row:last-child { border-bottom: none; }
+        .info-row .lbl { color: #64748b; font-size: 10px; }
+        .info-row .val { color: #1e293b; font-weight: 600; font-size: 10px; text-align: right; }
+
+        /* ---- ITEMS TABLE ---- */
+        .section-title {
+          font-size: 9px;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 1.5px;
+          color: #64748b;
+          margin-bottom: 8px;
+          padding-bottom: 4px;
+          border-bottom: 2px solid #e2e8f0;
         }
         table {
           width: 100%;
           border-collapse: collapse;
-          margin: 30px 0;
+          margin-bottom: 24px;
+        }
+        thead tr {
+          background: #0f172a;
         }
         th {
-          background-color: #1e40af;
-          color: white;
-          padding: 12px;
+          padding: 10px 12px;
           text-align: left;
-          font-weight: 600;
-          font-size: 13px;
+          font-size: 9px;
+          font-weight: 700;
+          color: #94a3b8;
+          text-transform: uppercase;
+          letter-spacing: 1px;
         }
-        td {
-          padding: 12px;
-          border-bottom: 1px solid #e5e7eb;
-        }
-        .totals {
-          margin-top: 30px;
-          text-align: right;
-        }
-        .totals-row {
+        th.r { text-align: right; }
+        th.c { text-align: center; }
+        tbody tr { border-bottom: 1px solid #f1f5f9; }
+        tbody tr:nth-child(even) { background: #f8fafc; }
+        td { padding: 10px 12px; vertical-align: top; }
+        td.r { text-align: right; }
+        td.c { text-align: center; }
+        .prod-name { font-weight: 600; color: #0f172a; font-size: 11px; }
+        .prod-sku { font-size: 9px; color: #94a3b8; margin-top: 2px; font-family: monospace; }
+
+        /* ---- TOTALS ---- */
+        .totals-wrapper {
           display: flex;
           justify-content: flex-end;
-          padding: 8px 0;
-          font-size: 14px;
+          margin-top: 8px;
+          margin-bottom: 28px;
         }
-        .totals-row.total-final {
-          font-size: 20px;
-          font-weight: bold;
-          color: #1e40af;
-          border-top: 2px solid #1e40af;
-          padding-top: 15px;
-          margin-top: 10px;
+        .totals-box {
+          width: 260px;
+          border: 1px solid #e2e8f0;
+          border-radius: 8px;
+          overflow: hidden;
         }
-        .notes {
-          margin-top: 30px;
-          padding: 20px;
-          background: #fef3c7;
-          border-left: 4px solid #f59e0b;
-          border-radius: 4px;
+        .totals-box .t-row {
+          display: flex;
+          justify-content: space-between;
+          padding: 8px 14px;
+          font-size: 11px;
+          border-bottom: 1px solid #f1f5f9;
         }
+        .totals-box .t-row:last-child { border-bottom: none; }
+        .totals-box .t-row .t-lbl { color: #64748b; }
+        .totals-box .t-row .t-val { font-weight: 600; color: #0f172a; }
+        .totals-box .t-row.total {
+          background: #0f172a;
+          padding: 12px 14px;
+        }
+        .totals-box .t-row.total .t-lbl {
+          color: #94a3b8;
+          font-weight: 700;
+          font-size: 12px;
+          text-transform: uppercase;
+          letter-spacing: 1px;
+        }
+        .totals-box .t-row.total .t-val {
+          font-size: 15px;
+          font-weight: 800;
+          color: #ffffff;
+        }
+
+        /* ---- NOTES ---- */
+        .notes-block {
+          border-left: 3px solid #1d4ed8;
+          padding: 12px 16px;
+          background: #eff6ff;
+          border-radius: 0 6px 6px 0;
+          margin-bottom: 28px;
+        }
+        .notes-block .notes-label {
+          font-size: 9px;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 1px;
+          color: #1d4ed8;
+          margin-bottom: 5px;
+        }
+        .notes-block p { font-size: 10px; color: #1e40af; }
+
+        /* ---- FOOTER ---- */
+        .footer {
+          background: #f8fafc;
+          border-top: 1px solid #e2e8f0;
+          padding: 16px 40px;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+        }
+        .footer-left {
+          font-size: 9px;
+          color: #94a3b8;
+          line-height: 1.6;
+        }
+        .footer-right {
+          font-size: 9px;
+          color: #94a3b8;
+          text-align: right;
+        }
+        .footer-right strong { color: #64748b; }
       </style>
     </head>
     <body>
-      <div class="header">
-        <h1>COTIZACIÓN ${quotation.number}</h1>
-        <div>
-          <div style="font-weight: 600; font-size: 16px; color: #1e40af; margin-bottom: 5px;">${companyName}</div>
-          ${companyAddress ? `<div>${companyAddress}</div>` : ''}
-          ${companyPhone ? `<div>Tel: ${companyPhone}</div>` : ''}
-          ${companyEmail ? `<div>Email: ${companyEmail}</div>` : ''}
-          ${companyNit ? `<div>NIT: ${companyNit}</div>` : ''}
-        </div>
-      </div>
-      
-      <div class="info-section">
-        <div class="info-box">
-          <h3>Cliente</h3>
-          <p><strong>Nombre:</strong> ${quotation.customer.name}</p>
-          ${quotation.customer.taxId ? `<p><strong>NIT:</strong> ${quotation.customer.taxId}</p>` : ''}
-          ${quotation.customer.email ? `<p><strong>Email:</strong> ${quotation.customer.email}</p>` : ''}
-          ${quotation.customer.phone ? `<p><strong>Teléfono:</strong> ${quotation.customer.phone}</p>` : ''}
-          ${quotation.customer.address ? `<p><strong>Dirección:</strong> ${quotation.customer.address}</p>` : ''}
-        </div>
-        <div class="info-box">
-          <h3>Información</h3>
-          <p><strong>Fecha:</strong> ${formatDate(quotation.createdAt)}</p>
-          ${quotation.validUntil ? `<p><strong>Válida hasta:</strong> ${formatDate(quotation.validUntil)}</p>` : ''}
-        </div>
-      </div>
+      <div class="page">
 
-      <table>
-        <thead>
-          <tr>
-            <th>Producto</th>
-            <th style="text-align: center;">Cantidad</th>
-            <th style="text-align: right;">Precio Unit.</th>
-            <th style="text-align: center;">Descuento</th>
-            <th style="text-align: right;">Subtotal</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${quotation.items.map(item => `
-            <tr>
-              <td>
-                <div style="font-weight: 500;">${item.product.name}</div>
-                ${item.product.sku ? `<div style="font-size: 12px; color: #6b7280;">SKU: ${item.product.sku}</div>` : ''}
-              </td>
-              <td style="text-align: center;">${item.quantity}</td>
-              <td style="text-align: right;">${formatCurrency(item.unitPrice)}</td>
-              <td style="text-align: center;">${item.discount}%</td>
-              <td style="text-align: right; font-weight: 500;">${formatCurrency(item.subtotal)}</td>
-            </tr>
-          `).join('')}
-        </tbody>
-      </table>
+        <!-- HEADER BAND -->
+        <div class="header-band">
+          <div class="company-block">
+            <div class="company-name">${companyName}</div>
+            <div class="company-meta">
+              ${companyNit ? `NIT: ${companyNit}<br>` : ''}
+              ${companyAddress ? `${companyAddress}<br>` : ''}
+              ${companyPhone ? `Tel. ${companyPhone}<br>` : ''}
+              ${companyEmail ? `${companyEmail}` : ''}
+            </div>
+          </div>
+          <div class="doc-block">
+            <div class="doc-label">Cotización de Venta</div>
+            <div class="doc-number">${quotation.number}</div>
+            <div class="doc-date">Fecha: ${formatDate(quotation.createdAt)}</div>
+            ${quotation.validUntil ? `<div class="validity-tag">Válida hasta: ${formatDate(quotation.validUntil)}</div>` : ''}
+          </div>
+        </div>
 
-      <div class="totals">
-        <div class="totals-row">
-          <span style="margin-right: 20px;">Subtotal:</span>
-          <span>${formatCurrency((quotation.subtotal || 0) + (quotation.discount || 0))}</span>
-        </div>
-        ${(quotation.discount || 0) > 0 ? `
-        <div class="totals-row">
-          <span style="margin-right: 20px;">Descuento:</span>
-          <span>${formatCurrency(quotation.discount || 0)}</span>
-        </div>
-        ` : ''}
-        <div class="totals-row">
-          <span style="margin-right: 20px;">IVA:</span>
-          <span>${formatCurrency(quotation.tax || 0)}</span>
-        </div>
-        <div class="totals-row total-final">
-          <span style="margin-right: 20px;">TOTAL:</span>
-          <span>${formatCurrency(quotation.total || 0)}</span>
-        </div>
-      </div>
+        <div class="body-content">
 
-      ${quotation.notes ? `
-      <div class="notes">
-        <h3>Notas</h3>
-        <p>${quotation.notes}</p>
-      </div>
-      ` : ''}
+          <!-- INFO GRID -->
+          <div class="info-grid">
+            <div class="info-card">
+              <div class="info-card-header">Información del Cliente</div>
+              <div class="info-card-body">
+                <div class="client-name">${quotation.customer.name}</div>
+                ${quotation.customer.taxId ? `<div class="info-row"><span class="lbl">NIT / CC</span><span class="val">${quotation.customer.taxId}</span></div>` : ''}
+                ${quotation.customer.email ? `<div class="info-row"><span class="lbl">Email</span><span class="val">${quotation.customer.email}</span></div>` : ''}
+                ${quotation.customer.phone ? `<div class="info-row"><span class="lbl">Teléfono</span><span class="val">${quotation.customer.phone}</span></div>` : ''}
+                ${quotation.customer.address ? `<div class="info-row"><span class="lbl">Dirección</span><span class="val">${quotation.customer.address}</span></div>` : ''}
+              </div>
+            </div>
+            <div class="info-card">
+              <div class="info-card-header">Resumen del Documento</div>
+              <div class="info-card-body">
+                <div class="info-row"><span class="lbl">No. de Cotización</span><span class="val">${quotation.number}</span></div>
+                <div class="info-row"><span class="lbl">Fecha de Emisión</span><span class="val">${formatDate(quotation.createdAt)}</span></div>
+                ${quotation.validUntil ? `<div class="info-row"><span class="lbl">Válida Hasta</span><span class="val">${formatDate(quotation.validUntil)}</span></div>` : ''}
+                <div class="info-row"><span class="lbl">Total a Pagar</span><span class="val" style="color:#1d4ed8;font-size:12px;">${formatCurrency(quotation.total || 0)}</span></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ITEMS TABLE -->
+          <div class="section-title">Detalle de Productos / Servicios</div>
+          <table>
+            <thead>
+              <tr>
+                <th style="width:40%">Descripción</th>
+                <th class="c" style="width:10%">Cant.</th>
+                <th class="r" style="width:15%">V. Unit.</th>
+                <th class="c" style="width:10%">Dcto.</th>
+                <th class="r" style="width:15%">Subtotal</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${quotation.items.map(item => `
+                <tr>
+                  <td>
+                    <div class="prod-name">${item.product.name}</div>
+                    ${item.product.sku ? `<div class="prod-sku">SKU: ${item.product.sku}</div>` : ''}
+                    ${(item as any).variant ? `<div class="prod-sku">Variante: ${(item as any).variant.name}</div>` : ''}
+                  </td>
+                  <td class="c">${item.quantity}</td>
+                  <td class="r">${formatCurrency(item.unitPrice)}</td>
+                  <td class="c">${item.discount > 0 ? item.discount + '%' : '—'}</td>
+                  <td class="r" style="font-weight:600;">${formatCurrency(item.subtotal)}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+
+          <!-- TOTALS -->
+          <div class="totals-wrapper">
+            <div class="totals-box">
+              <div class="t-row">
+                <span class="t-lbl">Subtotal bruto</span>
+                <span class="t-val">${formatCurrency((quotation.subtotal || 0) + (quotation.discount || 0))}</span>
+              </div>
+              ${(quotation.discount || 0) > 0 ? `
+              <div class="t-row">
+                <span class="t-lbl">(-) Descuentos</span>
+                <span class="t-val" style="color:#dc2626;">-${formatCurrency(quotation.discount || 0)}</span>
+              </div>` : ''}
+              <div class="t-row">
+                <span class="t-lbl">IVA</span>
+                <span class="t-val">${formatCurrency(quotation.tax || 0)}</span>
+              </div>
+              <div class="t-row total">
+                <span class="t-lbl">Total</span>
+                <span class="t-val">${formatCurrency(quotation.total || 0)}</span>
+              </div>
+            </div>
+          </div>
+
+          ${quotation.notes ? `
+          <div class="notes-block">
+            <div class="notes-label">Notas y Condiciones</div>
+            <p>${quotation.notes}</p>
+          </div>` : ''}
+
+        </div><!-- /body-content -->
+
+        <!-- FOOTER -->
+        <div class="footer">
+          <div class="footer-left">
+            © ${new Date().getFullYear()} ${companyName}. Documento generado electrónicamente.<br>
+            Esta cotización es válida exclusivamente por el período indicado y no constituye un acuerdo vinculante.
+          </div>
+          <div class="footer-right">
+            <strong>${companyName}</strong><br>
+            ${companyNit ? `NIT: ${companyNit}` : ''}
+          </div>
+        </div>
+
+      </div><!-- /page -->
     </body>
     </html>
   `
