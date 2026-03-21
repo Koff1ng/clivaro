@@ -199,7 +199,7 @@ export function Sidebar() {
       }
 
       // Special check for restaurant group
-      if (item.href.startsWith('/restaurant') && !isSuperAdmin) {
+      if ((item.href.startsWith('/restaurant') || item.href === '/pos/commander') && !isSuperAdmin) {
          // Comandero and other restaurant modules should only be visible if Restaurant Mode is explicitly enabled.
          const isRestaurantEnabled = restaurantConfig?.enableRestaurantMode === true
          if (!isRestaurantEnabled) return false

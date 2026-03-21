@@ -56,7 +56,6 @@ export const menuGroups: MenuGroup[] = [
         title: 'Marketing',
         key: 'marketing',
         items: [
-            { href: '/crm/customers', label: 'Clientes', icon: Users, permission: ['manage_crm', 'manage_sales'], planFeature: 'manageSales' },
             { href: '/crm/leads', label: 'Oportunidades', icon: Target, permission: 'manage_crm', planFeature: 'leads' },
             { href: '/marketing/campaigns', label: 'Campañas', icon: Megaphone, permission: 'manage_crm', planFeature: 'marketing' },
         ]
@@ -66,13 +65,14 @@ export const menuGroups: MenuGroup[] = [
         key: 'pos',
         items: [
             { href: '/pos', label: 'Punto de Venta', icon: ShoppingCart, permission: 'manage_sales', planFeature: 'pos' },
+            { href: '/crm/customers', label: 'Clientes', icon: Users, permission: ['manage_crm', 'manage_sales'], planFeature: 'manageSales' },
             { href: '/cash/shifts', label: 'Caja', icon: Banknote, permission: ['manage_cash', 'manage_sales'], planFeature: 'manageCash' },
             { href: '/sales/quotes', label: 'Cotizaciones', icon: FileText, permission: 'manage_sales', planFeature: 'quotations' },
             { href: '/sales/orders', label: 'Órdenes', icon: ClipboardList, permission: 'manage_sales', planFeature: 'manageSales' },
             { href: '/sales/invoices', label: 'Facturas', icon: Receipt, permission: 'manage_sales', planFeature: 'invoices' },
             { href: '/credit-notes', label: 'Notas Crédito', icon: FileMinus, permission: 'manage_sales', planFeature: 'invoices' },
             { href: '/dashboard/electronic-invoicing', label: 'Fact. Electrónica', icon: ShieldCheck, permission: 'manage_sales', planFeature: 'invoices' },
-            { href: '/pos/commander', label: 'Comandero ', icon: UtensilsCrossed, permission: 'manage_sales' },
+            { href: '/pos/commander', label: 'Comandero', icon: UtensilsCrossed, permission: 'manage_sales' },
         ]
     },
     {

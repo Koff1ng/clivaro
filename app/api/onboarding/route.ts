@@ -42,6 +42,11 @@ async function executeWithRetry<T>(
 const onboardingSchema = z.object({
   userName: z.string().min(1, 'El nombre es requerido'),
   companyName: z.string().min(1, 'El nombre de la empresa es requerido'),
+  companyNit: z.string().optional(),
+  companyAddress: z.string().optional(),
+  companyPhone: z.string().optional(),
+  companyEmail: z.string().optional(),
+  defaultTaxRate: z.number().optional(),
   newUsername: z.string().min(3, 'El usuario debe tener al menos 3 caracteres').optional(),
   newPassword: z.string().min(8, 'La contraseña debe tener al menos 8 caracteres').optional(),
 })
@@ -127,18 +132,32 @@ export async function POST(request: Request) {
     }
 
     // Actualizar o crear TenantSettings con los datos del onboarding
+    const customSettingsObj = validatedData.defaultTaxRate
+      ? JSON.stringify({ defaultTaxRate: validatedData.defaultTaxRate })
+      : undefined
+
     const settings = await prisma.tenantSettings.upsert({
       where: { tenantId: user.tenantId },
       update: {
         onboardingCompleted: true,
         onboardingUserName: validatedData.userName,
         onboardingCompanyName: validatedData.companyName,
+        companyNit: validatedData.companyNit || undefined,
+        companyAddress: validatedData.companyAddress || undefined,
+        companyPhone: validatedData.companyPhone || undefined,
+        companyEmail: validatedData.companyEmail || undefined,
+        ...(customSettingsObj ? { customSettings: customSettingsObj } : {}),
       },
       create: {
         tenantId: user.tenantId,
         onboardingCompleted: true,
         onboardingUserName: validatedData.userName,
         onboardingCompanyName: validatedData.companyName,
+        companyNit: validatedData.companyNit || undefined,
+        companyAddress: validatedData.companyAddress || undefined,
+        companyPhone: validatedData.companyPhone || undefined,
+        companyEmail: validatedData.companyEmail || undefined,
+        ...(customSettingsObj ? { customSettings: customSettingsObj } : {}),
       }
     })
 
