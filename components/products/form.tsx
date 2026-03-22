@@ -31,7 +31,7 @@ const productSchema = z.object({
   description: z.string().optional(),
   productType: z.enum(['RETAIL', 'SERVICE', 'RAW', 'PREPARED', 'SELLABLE']).default('RETAIL'),
   enableRecipeConsumption: z.boolean().default(false),
-  printerStation: z.enum(['KITCHEN', 'BAR', 'CASHIER']).optional().nullable(),
+  printerStation: z.enum(['KITCHEN', 'BAR', 'CASHIER']).optional().nullable().or(z.literal('')),
   percentageMerma: z.number().min(0).max(100).optional(),
   stockAlertEnabled: z.boolean().optional(),
   // Variants
@@ -120,6 +120,7 @@ export function ProductForm({ product, onSuccess }: { product?: any; onSuccess: 
       const payload: any = {
         ...data,
         category: data.category && data.category.trim() !== '' ? data.category.trim() : null,
+        printerStation: data.printerStation === '' ? null : data.printerStation,
       }
 
       const res = await fetch(url, {
