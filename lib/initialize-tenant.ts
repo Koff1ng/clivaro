@@ -304,6 +304,11 @@ async function initializePostgresTenant(databaseUrl: string, tenantId: string, t
       update: {},
       create: { name: 'Transferencia', type: 'TRANSFER', active: true, color: '#3b82f6', icon: 'smartphone' }
     })
+    await tenantPrisma.paymentMethod.upsert({
+      where: { name: 'ABONO' },
+      update: {},
+      create: { name: 'ABONO', type: 'CREDIT', active: true, color: '#ef4444', icon: 'hand-coins' }
+    })
 
 
     // Core permissions every tenant admin needs (All modules)

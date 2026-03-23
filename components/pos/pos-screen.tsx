@@ -1288,12 +1288,12 @@ export function POSScreen({ mode = 'retail', waiterData, waiterToken, preselecte
       if (!cashReceived || isNaN(received) || received < total) {
         if (selectedCustomer && selectedCustomer.id && selectedCustomer.name !== 'Cliente General') {
           const missing = total - (isNaN(received) ? 0 : received)
-          const wantCredit = window.confirm(`Monto incompleto. Faltan ${formatCurrency(missing)}.\n\n¿Deseas registrar un abono de ${formatCurrency(isNaN(received) ? 0 : received)} y enviar el saldo restante a la deuda de ${selectedCustomer.name} (Crédito)?`)
+          const wantCredit = window.confirm(`Monto incompleto. Faltan ${formatCurrency(missing)}.\n\n¿Deseas registrar un abono de ${formatCurrency(isNaN(received) ? 0 : received)} y enviar el saldo restante a la cuenta de ${selectedCustomer.name} (ABONO)?`)
           if (!wantCredit) return
           
-          const creditMethod = paymentMethods.find(m => m.type === 'CREDIT')
+          const creditMethod = paymentMethods.find(m => m.name === 'ABONO' || m.type === 'CREDIT')
           if (!creditMethod) {
-            toast('No hay un método de pago de tipo Crédito configurado en el sistema.', 'error')
+            toast('No hay un método de pago llamado "ABONO" configurado en el sistema.', 'error')
             return
           }
           saleData.payments = [
@@ -1354,17 +1354,17 @@ export function POSScreen({ mode = 'retail', waiterData, waiterToken, preselecte
       if (paid < total - 0.01) {
         if (selectedCustomer && selectedCustomer.id && selectedCustomer.name !== 'Cliente General') {
           const missing = total - paid
-          const wantCredit = window.confirm(`Falta pagar ${formatCurrency(missing)}.\n\n¿Deseas enviar el saldo restante a la cuenta de ${selectedCustomer.name} (Crédito)?`)
+          const wantCredit = window.confirm(`Falta pagar ${formatCurrency(missing)}.\n\n¿Deseas enviar el saldo restante a la cuenta de ${selectedCustomer.name} (ABONO)?`)
           if (!wantCredit) return
           
-          const creditMethod = paymentMethods.find(m => m.type === 'CREDIT')
+          const creditMethod = paymentMethods.find(m => m.name === 'ABONO' || m.type === 'CREDIT')
           if (!creditMethod) {
-            toast('No hay un método de pago de tipo Crédito configurado en el sistema.', 'error')
+            toast('No hay un método de pago llamado "ABONO" configurado en el sistema.', 'error')
             return
           }
           normalized.push({ paymentMethodId: creditMethod.id, amount: missing })
         } else {
-          toast(`Falta pagar: ${formatCurrency(total - paid)}. Selecciona un cliente para fiar la cuota pendiente.`, 'warning')
+          toast(`Falta pagar: ${formatCurrency(total - paid)}. Selecciona un cliente para fiar la cuota pendiente (ABONO).`, 'warning')
           return
         }
       }
