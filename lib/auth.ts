@@ -54,7 +54,7 @@ async function findUserInTenantSchema(
     // Attempt to query with new legal compliance columns
     try {
       const userResult = await client.query(
-        `SELECT id, username, email, name, password, active, "isSuperAdmin", "legalAccepted"
+        `SELECT id, username, email, name, password, active, "isSuperAdmin", "legalAccepted", "forcePasswordChange"
          FROM "User"
          WHERE (username = $1 OR email = $1)
          LIMIT 1`,
@@ -84,7 +84,7 @@ async function findUserInTenantSchema(
       if (queryError?.message?.includes('legalAccepted')) {
         console.warn(`[AUTH] Schema "${schemaName}" is missing legal compliance columns. Retrying without them...`)
         const fallbackResult = await client.query(
-          `SELECT id, username, email, name, password, active, "isSuperAdmin"
+          `SELECT id, username, email, name, password, active, "isSuperAdmin", "forcePasswordChange"
            FROM "User"
            WHERE (username = $1 OR email = $1)
            LIMIT 1`,
@@ -108,7 +108,7 @@ async function findUserInTenantSchema(
         const roles = [...new Set(rolesResult.rows.map((r: any) => r.role_name).filter(Boolean))]
         const permissions = [...new Set(rolesResult.rows.map((r: any) => r.perm_name).filter(Boolean))]
 
-        return { ...user, roles, permissions, legalAccepted: false }
+        return { ...user, roles, permissions, legalAccepted: false, forcePasswordChange: user.forcePasswordChange ?? false }
       }
       throw queryError // Re-throw if it's some other db error
     }
@@ -191,6 +191,7 @@ export const authOptions: NextAuthOptions = {
               tenantId: tenant.id,
               tenantSlug: tenant.slug,
               legalAccepted: tenantUser.legalAccepted ?? false,
+              forcePasswordChange: tenantUser.forcePasswordChange ?? false,
             }
           }
 
@@ -306,6 +307,7 @@ export const authOptions: NextAuthOptions = {
         token.tenantId = (user as any).tenantId ?? null
         token.tenantSlug = (user as any).tenantSlug ?? null
         token.legalAccepted = (user as any).legalAccepted ?? false
+        token.forcePasswordChange = (user as any).forcePasswordChange ?? false
       }
       if (!token.sub && token.id) {
         token.sub = token.id as string
@@ -324,6 +326,7 @@ export const authOptions: NextAuthOptions = {
           ; (session.user as any).tenantId = token.tenantId ?? null
           ; (session.user as any).tenantSlug = token.tenantSlug ?? null
           ; (session.user as any).legalAccepted = token.legalAccepted ?? false
+          ; (session.user as any).forcePasswordChange = token.forcePasswordChange ?? false
       }
       return session
     },

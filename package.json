@@ -43,6 +43,10 @@
     "config:supabase": "powershell -ExecutionPolicy Bypass -File ./scripts/configurar-supabase.ps1",
     "paste-url": "powershell -ExecutionPolicy Bypass -File ./scripts/pegar-url-supabase.ps1",
     "assets:webp": "tsx scripts/convert-public-images-to-webp.ts",
+    "deploy:production": "node scripts/deploy-production.mjs",
+    "deploy:production:db": "prisma generate && prisma db push",
+    "deploy:supabase": "npx supabase db push",
+    "deploy:production:git": "git push origin HEAD",
     "postinstall": "prisma generate"
   },
   "dependencies": {

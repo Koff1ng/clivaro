@@ -17,6 +17,7 @@ model User {
   name                  String
   active                Boolean             @default(true)
   isSuperAdmin          Boolean             @default(false) // Usuario super administrador del sistema
+  forcePasswordChange   Boolean             @default(false)
   createdAt             DateTime            @default(now())
   updatedAt             DateTime            @updatedAt
   createdById           String?

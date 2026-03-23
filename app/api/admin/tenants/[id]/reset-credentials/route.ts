@@ -41,13 +41,14 @@ export async function POST(
             // 1. Upsert admin user with reset password
             const adminUser = await tx.user.upsert({
                 where: { username: 'admin' },
-                update: { password: hashedPassword, active: true },
+                update: { password: hashedPassword, active: true, forcePasswordChange: true },
                 create: {
                     username: 'admin',
                     password: hashedPassword,
                     name: 'Administrador',
                     active: true,
                     isSuperAdmin: false,
+                    forcePasswordChange: true,
                 },
             })
 

@@ -10,6 +10,7 @@ import { Lock, Mail, AlertCircle, Loader2, ArrowRight, CheckCircle2, Building2 }
 import { Logo } from '@/components/ui/logo'
 import { LoadingScreen } from '@/components/ui/loading-screen'
 import { LegalAcceptanceModal } from '@/components/onboarding/legal-acceptance-modal'
+import { ForcedCredentialModal } from '@/components/onboarding/forced-credential-modal'
 import Link from 'next/link'
 import { useSession } from 'next-auth/react'
 
@@ -22,6 +23,7 @@ export default function TenantLoginPage({ params }: { params: { tenantSlug: stri
   const [tenantName, setTenantName] = useState('')
   const [verifying, setVerifying] = useState(true)
   const [showLegalModal, setShowLegalModal] = useState(false)
+  const [showForceResetModal, setShowForceResetModal] = useState(false)
   const [tempSession, setTempSession] = useState<any>(null)
 
   useEffect(() => {
@@ -86,7 +88,10 @@ export default function TenantLoginPage({ params }: { params: { tenantSlug: stri
         const sessionResponse = await fetch('/api/auth/session')
         const session = await sessionResponse.json()
 
-        if (session?.user && !session.user.legalAccepted) {
+        if (session?.user && session.user.forcePasswordChange) {
+          setShowForceResetModal(true)
+          setLoading(false)
+        } else if (session?.user && !session.user.legalAccepted) {
           setTempSession(session)
           setShowLegalModal(true)
           setLoading(false)
@@ -132,6 +137,10 @@ export default function TenantLoginPage({ params }: { params: { tenantSlug: stri
 
   return (
     <div className="w-full h-screen grid lg:grid-cols-2 overflow-hidden text-slate-900 dark:text-slate-100">
+      <ForcedCredentialModal
+        open={showForceResetModal}
+        tenantSlug={params.tenantSlug}
+      />
       <LegalAcceptanceModal
         open={showLegalModal}
         onAccept={handleLegalAccept}

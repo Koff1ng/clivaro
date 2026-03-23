@@ -17,6 +17,7 @@ model User {
   name                        String
   active                      Boolean              @default(true)
   isSuperAdmin                Boolean              @default(false) // Usuario super administrador del sistema
+  forcePasswordChange         Boolean              @default(false)
   createdAt                   DateTime             @default(now())
   updatedAt                   DateTime             @updatedAt
   createdById                 String?
@@ -1014,6 +1015,21 @@ model Tenant {
   employees              Employee[]
   payrollPeriods         PayrollPeriod[]
   payslips               Payslip[]
+
+  passwordResetTokens    PasswordResetToken[]
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  tokenHash String   @unique
+  tenantId  String
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, userId])
 }
 
 model Plan {
