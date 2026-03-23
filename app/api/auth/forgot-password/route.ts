@@ -17,8 +17,14 @@ const bodySchema = z.object({
   identifier: z.string().min(1, 'Ingrese usuario o correo'),
 })
 
-const GENERIC_OK =
-  'Si los datos son correctos y su cuenta tiene un correo registrado, recibirá un enlace para restablecer la contraseña.'
+function maskEmail(email: string): string {
+  if (!email) return ''
+  const parts = email.split('@')
+  if (parts.length !== 2) return email
+  const [local, domain] = parts
+  if (local.length <= 2) return `${local[0]}***@${domain}`
+  return `${local.slice(0, 2)}***${local.slice(-1)}@${domain}`
+}
 
 export async function POST(req: Request) {
   try {
@@ -49,14 +55,13 @@ export async function POST(req: Request) {
     })
 
     if (!tenant?.active) {
-      // Misma respuesta que éxito (no filtrar existencia de tenant)
-      return NextResponse.json({ ok: true, message: GENERIC_OK })
+      return NextResponse.json({ error: 'La empresa solicitada no está activa o no existe.' }, { status: 400 })
     }
 
     const user = await findTenantUserForPasswordReset(tenant.id, identifier)
 
     if (!user || !user.email?.trim()) {
-      return NextResponse.json({ ok: true, message: GENERIC_OK })
+      return NextResponse.json({ error: 'El usuario no fue encontrado o no tiene un correo electrónico configurado.' }, { status: 404 })
     }
 
     const rawToken = generateResetToken()
@@ -77,10 +82,12 @@ export async function POST(req: Request) {
       },
     })
 
-    const resetUrl = buildPasswordResetUrl(tenant.slug, rawToken)
+    const origin = new URL(req.url).origin
+    const resetUrl = `${origin}/login/${encodeURIComponent(tenant.slug)}/reset-password?token=${encodeURIComponent(rawToken)}`
     const tenantLabel = tenant.name || tenant.slug
 
     // Prioriza SMTP (variables Vercel) para el token de recuperación
+    const masked = maskEmail(user.email.trim())
     const emailResult = await sendEmail(
       {
       to: user.email.trim(),
@@ -108,7 +115,10 @@ export async function POST(req: Request) {
       )
     }
 
-    return NextResponse.json({ ok: true, message: GENERIC_OK })
+    return NextResponse.json({ 
+      ok: true, 
+      message: `Correo de recuperación enviado exitosamente a: ${masked}` 
+    })
   } catch (e: any) {
     console.error('[forgot-password]', e)
     return NextResponse.json(
