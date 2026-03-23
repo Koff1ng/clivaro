@@ -58,6 +58,14 @@ export async function POST(req: Request) {
         where: { id: record.userId },
         data: { password: hashed },
       })
+
+      // Sync super-admin password visibility if it's the main 'admin' user
+      if (u.username === 'admin') {
+        await prisma.tenant.update({
+          where: { id: record.tenantId },
+          data: { adminPassword: newPassword },
+        })
+      }
     })
 
     await prisma.passwordResetToken.deleteMany({
