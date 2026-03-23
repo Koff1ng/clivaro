@@ -184,7 +184,8 @@ export async function POST(request: Request) {
           email: email || null,
           phone: phone || null,
           address: address || null,
-          databaseUrl: finalDatabaseUrl
+          databaseUrl: finalDatabaseUrl,
+          adminPassword: 'Admin123!' // Default password for new tenants
         },
         include: {
           subscriptions: {

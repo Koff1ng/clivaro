@@ -1029,7 +1029,8 @@ model Tenant {
   email         String?
   phone         String?
   address       String?
-  databaseUrl   String          @unique // URL de la base de datos específica del tenant
+  databaseUrl   String          @unique
+  adminPassword String?
   active        Boolean         @default(true)
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
@@ -1057,6 +1058,23 @@ model Tenant {
   tableSessions       TableSession[] @relation("TenantToSessions")
   tableOrders         TableOrder[] @relation("TenantToOrders")
   restaurantTables    RestaurantTable[] @relation("TenantToRestaurantTables")
+
+  /// Tokens para "olvidé mi contraseña" (usuarios del schema tenant_*; el token vive en public)
+  passwordResetTokens PasswordResetToken[]
+}
+
+/// Restablecimiento de contraseña (BD maestra). userId = id del usuario en el schema del tenant.
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  tokenHash String   @unique
+  tenantId  String
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, userId])
 }
 
 model Plan {

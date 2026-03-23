@@ -86,6 +86,12 @@ export async function POST(
             })
         })
 
+        // 5. Sync the new password to the public Tenant record for super-admin visibility
+        await prisma.tenant.update({
+            where: { id: tenant.id },
+            data: { adminPassword: newPassword }
+        })
+
         return NextResponse.json({
             success: true,
             message: 'Credenciales restablecidas exitosamente',

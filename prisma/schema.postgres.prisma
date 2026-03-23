@@ -998,7 +998,8 @@ model Tenant {
   email                  String?
   phone                  String?
   address                String?
-  databaseUrl            String                 @unique // URL de la base de datos específica del tenant
+  databaseUrl            String                 @unique
+  adminPassword          String?
   active                 Boolean                @default(true)
   createdAt              DateTime               @default(now())
   updatedAt              DateTime               @updatedAt

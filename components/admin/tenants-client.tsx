@@ -312,6 +312,14 @@ export function TenantsClient() {
                             <span className="ml-2">{tenant.email}</span>
                           </div>
                         )}
+                        {tenant.adminPassword && (
+                          <div className="flex items-center gap-1">
+                            <span className="text-gray-500 dark:text-gray-400">Password:</span>
+                            <span className="ml-2 font-mono bg-yellow-100 dark:bg-yellow-900 px-1 rounded">
+                              {tenant.adminPassword}
+                            </span>
+                          </div>
+                        )}
                         {plan && (
                           <div>
                             <span className="text-gray-500 dark:text-gray-400">Plan:</span>
