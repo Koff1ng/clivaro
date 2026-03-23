@@ -239,7 +239,10 @@ export default function TenantLoginPage({ params }: { params: { tenantSlug: stri
                 <Label htmlFor="password" className="text-gray-700 dark:text-gray-300 font-medium">
                   Contraseña
                 </Label>
-                <Link href="#" className="text-sm text-blue-600 hover:text-blue-700 font-medium hover:underline transition-colors">
+                <Link
+                  href={`/login/${params.tenantSlug}/forgot-password`}
+                  className="text-sm text-blue-600 hover:text-blue-700 font-medium hover:underline transition-colors"
+                >
                   ¿Olvidó su contraseña?
                 </Link>
               </div>
