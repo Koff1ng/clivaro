@@ -192,7 +192,7 @@ async function openShift(startingCash: number) {
 interface RestaurantTable {
   id: string
   name: string
-  status: 'AVAILABLE' | 'OCCUPIED' | 'RESERVED' | 'CLEANING' | string
+  status: 'AVAILABLE' | 'OCCUPIED' | 'RESERVED' | 'CLEANING'
   x: number
   y: number
 }
@@ -1267,6 +1267,8 @@ export function POSScreen({ mode = 'retail', waiterData, waiterToken, preselecte
       return
     }
 
+    const saleData: any = {}
+
     if (!selectedWarehouse) {
       toast('Seleccione un almacén', 'warning')
       return
@@ -1284,8 +1286,24 @@ export function POSScreen({ mode = 'retail', waiterData, waiterToken, preselecte
       const received = parseFloat(cashReceived || '0')
 
       if (!cashReceived || isNaN(received) || received < total) {
-        toast(`El efectivo recibido (${formatCurrency(received)}) debe ser mayor o igual al total (${formatCurrency(total)})`, 'warning')
-        return
+        if (selectedCustomer && selectedCustomer.id && selectedCustomer.name !== 'Cliente General') {
+          const missing = total - (isNaN(received) ? 0 : received)
+          const wantCredit = window.confirm(`Monto incompleto. Faltan ${formatCurrency(missing)}.\n\n¿Deseas registrar un abono de ${formatCurrency(isNaN(received) ? 0 : received)} y enviar el saldo restante a la deuda de ${selectedCustomer.name} (Crédito)?`)
+          if (!wantCredit) return
+          
+          const creditMethod = paymentMethods.find(m => m.type === 'CREDIT')
+          if (!creditMethod) {
+            toast('No hay un método de pago de tipo Crédito configurado en el sistema.', 'error')
+            return
+          }
+          saleData.payments = [
+            { paymentMethodId: paymentMethodId, amount: isNaN(received) ? 0 : received },
+            { paymentMethodId: creditMethod.id, amount: missing }
+          ].filter(p => p.amount > 0)
+        } else {
+          toast(`El efectivo recibido debe ser mayor o igual al total. Selecciona un cliente si deseas dejar fiado o hacer un abono.`, 'warning')
+          return
+        }
       }
     } else if (paymentMode === 'SINGLE' && selectedMethod?.type === 'CREDIT') {
       if (!selectedCustomer || !selectedCustomer.id || selectedCustomer.name === 'Cliente General') {
@@ -1311,12 +1329,10 @@ export function POSScreen({ mode = 'retail', waiterData, waiterToken, preselecte
     })
 
     // Prepare sale data
-    const saleData: any = {
-      customerId: selectedCustomer?.id,
-      warehouseId: selectedWarehouse,
-      items: validItems,
-      discount: 0,
-    }
+    saleData.customerId = selectedCustomer?.id
+    saleData.warehouseId = selectedWarehouse
+    saleData.items = validItems
+    saleData.discount = 0
 
     const hasDiscounts = validItems.some((it: any) => (it.discount || 0) > 0)
     if (hasDiscounts && !canApplyDiscounts && isOverrideValid && discountOverride?.token) {
@@ -1336,11 +1352,24 @@ export function POSScreen({ mode = 'retail', waiterData, waiterToken, preselecte
       const total = calculateTotals().total
       const paid = normalized.reduce((sum, p) => sum + p.amount, 0)
       if (paid < total - 0.01) {
-        toast(`Falta pagar: ${formatCurrency(total - paid)}`, 'warning')
-        return
+        if (selectedCustomer && selectedCustomer.id && selectedCustomer.name !== 'Cliente General') {
+          const missing = total - paid
+          const wantCredit = window.confirm(`Falta pagar ${formatCurrency(missing)}.\n\n¿Deseas enviar el saldo restante a la cuenta de ${selectedCustomer.name} (Crédito)?`)
+          if (!wantCredit) return
+          
+          const creditMethod = paymentMethods.find(m => m.type === 'CREDIT')
+          if (!creditMethod) {
+            toast('No hay un método de pago de tipo Crédito configurado en el sistema.', 'error')
+            return
+          }
+          normalized.push({ paymentMethodId: creditMethod.id, amount: missing })
+        } else {
+          toast(`Falta pagar: ${formatCurrency(total - paid)}. Selecciona un cliente para fiar la cuota pendiente.`, 'warning')
+          return
+        }
       }
       saleData.payments = normalized
-    } else {
+    } else if (!saleData.payments) { // No sobreescribir si ya lo transformamos en mixto arriba
       saleData.payments = [{ paymentMethodId: paymentMethodId, amount: calculateTotals().total }]
       if (selectedMethod?.type === 'CASH') {
         const received = parseFloat(cashReceived || '0')

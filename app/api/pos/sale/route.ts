@@ -316,29 +316,39 @@ export async function POST(request: Request) {
 
       // 7. Payments & Change
       let change = 0
-      let isCreditSale = false
       let isPaid = true
+      let totalCredit = 0
+      let totalImmediate = 0
 
-      // Check if this is a pure Credit sale
-      if (data.payments?.length === 1) {
-        const p = data.payments[0]
-        const methodInfo = paymentMethodMap.get(p.paymentMethodId) as any
-        if (methodInfo && methodInfo.type === 'CREDIT') {
-          isCreditSale = true
+      // Calculate total credit and immediate from data.payments
+      // Single payment mode creates a default if none exists, we map it beforehand
+      const normalizedPayments = data.payments?.length 
+        ? data.payments 
+        : [{ paymentMethodId: data.paymentMethod || 'CASH_FALLBACK', amount: finalTotal }]
+      
+      for (const p of normalizedPayments) {
+        const methodInfo = (data.payments?.length 
+          ? paymentMethodMap.get(p.paymentMethodId) 
+          : { type: p.paymentMethodId === 'CASH_FALLBACK' ? 'CASH' : 'ELECTRONIC', name: data.paymentMethod || 'CASH' }) as any
+          
+        if (methodInfo?.type === 'CREDIT') {
+          totalCredit += p.amount
           isPaid = false
+        } else {
+          totalImmediate += p.amount
         }
       }
 
-      // Logic for Credit Sale
-      if (isCreditSale) {
-        // Validate Customer
+      // Logic for Credit portion
+      if (totalCredit > 0) {
+        if (!customerId) throw new Error('Se requiere un cliente válido para ventas a crédito')
         const customer = await tx.customer.findUnique({ where: { id: customerId } })
         if (!customer) throw new Error('Cliente no encontrado para venta a crédito')
         if (customer.name === 'Cliente General') throw new Error('No se puede vender a crédito a Cliente General')
 
-        // Check Credit Limit if set
+        // Check Credit Limit (only against the new credit added, total balance check)
         if (customer.creditLimit > 0) {
-          if (customer.currentBalance + finalTotal > customer.creditLimit) {
+          if (customer.currentBalance + totalCredit > customer.creditLimit) {
             throw new Error(`Crédito insuficiente. Disponible: ${customer.creditLimit - customer.currentBalance}`)
           }
         }
@@ -348,7 +358,7 @@ export async function POST(request: Request) {
           where: { id: invoice.id },
           data: {
             status: 'EN_COBRANZA',
-            balance: finalTotal,
+            balance: totalCredit,
             paidAt: null
           }
         })
@@ -356,116 +366,115 @@ export async function POST(request: Request) {
         // Update Customer Balance
         await tx.customer.update({
           where: { id: customerId },
-          data: { currentBalance: { increment: finalTotal } }
+          data: { currentBalance: { increment: totalCredit } }
+        })
+      }
+
+      // Logic for Immediate (Paid) portion
+      if (data.payments?.length) {
+        change = tenderedTotal - finalTotal
+        for (const p of data.payments) {
+          const methodInfo = paymentMethodMap.get(p.paymentMethodId) as any
+          if (!methodInfo) throw new Error(`Método de pago ${p.paymentMethodId} no encontrado`)
+
+          // Skip credit payments as they do not generate immediate Cash/Bank entries
+          if (methodInfo.type === 'CREDIT') continue;
+
+          // Deduct change from CASH payments only
+          const amountToApply = methodInfo.type === 'CASH' ? Math.max(0, p.amount - change) : p.amount
+
+          if (amountToApply > 0) {
+            await tx.payment.create({
+              data: {
+                invoice: { connect: { id: invoice.id } },
+                amount: amountToApply,
+                method: methodInfo.name,
+                paymentMethod: { connect: { id: p.paymentMethodId } },
+                reference: p.reference ?? undefined,
+                notes: methodInfo.type === 'CASH' && change > 0 ? `Efectivo: ${p.amount}, Cambio: ${change}` : (p.notes ?? undefined),
+                createdBy: { connect: { id: (session.user as any).id } },
+              }
+            })
+
+            // Update Shift Summary
+            await tx.shiftSummary.upsert({
+              where: {
+                shiftId_paymentMethodId: {
+                  shiftId: openShift.id,
+                  paymentMethodId: p.paymentMethodId
+                }
+              },
+              update: {
+                expectedAmount: { increment: amountToApply }
+              },
+              create: {
+                shiftId: openShift.id,
+                paymentMethodId: p.paymentMethodId,
+                expectedAmount: amountToApply
+              }
+            })
+
+            // If it's CASH, also update the main expectedCash field for legacy support
+            if (methodInfo.type === 'CASH') {
+              await tx.cashShift.update({
+                where: { id: openShift.id },
+                data: { expectedCash: { increment: amountToApply } }
+              })
+
+              await tx.cashMovement.create({
+                data: {
+                  cashShiftId: openShift.id,
+                  type: 'IN',
+                  amount: amountToApply,
+                  reason: `Venta POS - ${invoiceNumber}`,
+                  createdById: (session.user as any).id,
+                }
+              })
+            }
+          }
+        }
+      } else if (totalImmediate > 0) {
+        // Fallback for legacy clients without split payments payload
+        const method = data.paymentMethod || 'CASH'
+        change = method === 'CASH' ? (data.cashReceived || finalTotal) - finalTotal : 0
+
+        let pm = await tx.paymentMethod.findFirst({ where: { name: method } })
+        if (!pm) {
+          pm = await tx.paymentMethod.create({
+            data: { name: method, type: method === 'CASH' ? 'CASH' : 'ELECTRONIC' }
+          })
+        }
+
+        await tx.payment.create({
+          data: {
+            invoice: { connect: { id: invoice.id } },
+            amount: totalImmediate,
+            method: method,
+            paymentMethod: { connect: { id: pm.id } },
+            createdBy: { connect: { id: (session.user as any).id } },
+          }
         })
 
-        // No Payment record created yet, and no cash movement
-      } else {
-        // Normal Payment Logic (PAID)
-        if (data.payments?.length) {
-          change = tenderedTotal - finalTotal
-          for (const p of data.payments) {
-            const methodInfo = paymentMethodMap.get(p.paymentMethodId) as any
-            if (!methodInfo) throw new Error(`Método de pago ${p.paymentMethodId} no encontrado`)
+        await tx.shiftSummary.upsert({
+          where: { shiftId_paymentMethodId: { shiftId: openShift.id, paymentMethodId: pm.id } },
+          update: { expectedAmount: { increment: totalImmediate } },
+          create: { shiftId: openShift.id, paymentMethodId: pm.id, expectedAmount: totalImmediate }
+        })
 
-            // Skip if it were mixed with credit (future feature), for now assume split is only immediate payments
-            if (methodInfo.type === 'CREDIT') continue;
-
-            const amountToApply = methodInfo.type === 'CASH' ? Math.max(0, p.amount - change) : p.amount
-
-            if (amountToApply > 0) {
-              await tx.payment.create({
-                data: {
-                  invoice: { connect: { id: invoice.id } },
-                  amount: amountToApply,
-                  method: methodInfo.name,
-                  paymentMethod: { connect: { id: p.paymentMethodId } },
-                  reference: p.reference ?? undefined,
-                  notes: methodInfo.type === 'CASH' && change > 0 ? `Efectivo: ${p.amount}, Cambio: ${change}` : (p.notes ?? undefined),
-                  createdBy: { connect: { id: (session.user as any).id } },
-                }
-              })
-
-              // Update Shift Summary
-              await tx.shiftSummary.upsert({
-                where: {
-                  shiftId_paymentMethodId: {
-                    shiftId: openShift.id,
-                    paymentMethodId: p.paymentMethodId
-                  }
-                },
-                update: {
-                  expectedAmount: { increment: amountToApply }
-                },
-                create: {
-                  shiftId: openShift.id,
-                  paymentMethodId: p.paymentMethodId,
-                  expectedAmount: amountToApply
-                }
-              })
-
-              // If it's CASH, also update the main expectedCash field for legacy support
-              if (methodInfo.type === 'CASH') {
-                await tx.cashShift.update({
-                  where: { id: openShift.id },
-                  data: { expectedCash: { increment: amountToApply } }
-                })
-
-                await tx.cashMovement.create({
-                  data: {
-                    cashShiftId: openShift.id,
-                    type: 'IN',
-                    amount: amountToApply,
-                    reason: `Venta POS - ${invoiceNumber}`,
-                    createdById: (session.user as any).id,
-                  }
-                })
-              }
-            }
-          }
-        } else {
-          // Fallback for legacy clients
-          const method = data.paymentMethod || 'CASH'
-          change = method === 'CASH' ? (data.cashReceived || finalTotal) - finalTotal : 0
-
-          let pm = await tx.paymentMethod.findFirst({ where: { name: method } })
-          if (!pm) {
-            pm = await tx.paymentMethod.create({
-              data: { name: method, type: method === 'CASH' ? 'CASH' : 'ELECTRONIC' }
-            })
-          }
-
-          await tx.payment.create({
+        if (method === 'CASH') {
+          await tx.cashShift.update({
+            where: { id: openShift.id },
+            data: { expectedCash: { increment: totalImmediate } }
+          })
+          await tx.cashMovement.create({
             data: {
-              invoice: { connect: { id: invoice.id } },
-              amount: finalTotal,
-              method: method,
-              paymentMethod: { connect: { id: pm.id } },
-              createdBy: { connect: { id: (session.user as any).id } },
+              cashShiftId: openShift.id,
+              type: 'IN',
+              amount: totalImmediate,
+              reason: `Venta POS - ${invoiceNumber}`,
+              createdById: (session.user as any).id,
             }
           })
-
-          await tx.shiftSummary.upsert({
-            where: { shiftId_paymentMethodId: { shiftId: openShift.id, paymentMethodId: pm.id } },
-            update: { expectedAmount: { increment: finalTotal } },
-            create: { shiftId: openShift.id, paymentMethodId: pm.id, expectedAmount: finalTotal }
-          })
-
-          if (method === 'CASH') {
-            await tx.cashShift.update({
-              where: { id: openShift.id },
-              data: { expectedCash: { increment: finalTotal } }
-            })
-            await tx.cashMovement.create({
-              data: {
-                cashShiftId: openShift.id,
-                type: 'IN',
-                amount: finalTotal,
-                reason: `Venta POS - ${invoiceNumber}`,
-                createdById: (session.user as any).id,
-              }
-            })
-          }
         }
       }
 
