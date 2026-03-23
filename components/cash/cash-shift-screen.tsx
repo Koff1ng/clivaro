@@ -765,31 +765,49 @@ export function CashShiftScreen() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => {
-                        const content = document.getElementById('shift-report-content')
+                      onClick={async () => {
+                        const content = document.getElementById('shift-report-letter')
                         if (content) {
-                          const printWindow = window.open('', '_blank')
-                          if (printWindow) {
-                            printWindow.document.write(`
+                          try {
+                            // Extract just the innerHTML of the letter container
+                            // and wrap it in a clean document structure
+                            const cleanHtml = `
+                              <!DOCTYPE html>
                               <html>
                                 <head>
-                                  <title>Reporte de Turno - ${closedShiftReport.user?.name || 'N/A'}</title>
+                                  <meta charset="utf-8">
+                                  <title>Reporte de Turno</title>
+                                  <script src="https://cdn.tailwindcss.com"></script>
                                   <style>
-                                    body { font-family: Arial, sans-serif; padding: 20px; }
-                                    h1 { color: #1f2937; }
-                                    table { width: 100%; border-collapse: collapse; margin: 20px 0; }
-                                    th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-                                    th { background-color: #f3f4f6; }
-                                    .total { font-weight: bold; }
+                                    @page { size: letter; margin: 1cm; }
+                                    body { font-family: ui-sans-serif, system-ui, sans-serif; background: white; color: black; }
                                   </style>
                                 </head>
-                                <body>
+                                <body class="p-8">
                                   ${content.innerHTML}
                                 </body>
                               </html>
-                            `)
-                            printWindow.document.close()
-                            printWindow.print()
+                            `;
+
+                            const res = await fetch('/api/pdf/generate', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ html: cleanHtml, format: 'Letter' })
+                            })
+                            
+                            if (!res.ok) throw new Error('Error al generar PDF')
+                              
+                            const blob = await res.blob()
+                            const url = URL.createObjectURL(blob)
+                            const a = document.createElement('a')
+                            a.href = url
+                            a.download = `Reporte-Turno-${closedShiftReport.id || 'Caja'}.pdf`
+                            document.body.appendChild(a)
+                            a.click()
+                            document.body.removeChild(a)
+                            URL.revokeObjectURL(url)
+                          } catch (err) {
+                            console.error('Download error:', err)
                           }
                         }
                       }}

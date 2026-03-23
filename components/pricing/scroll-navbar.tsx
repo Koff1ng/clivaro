@@ -77,7 +77,7 @@ export function ScrollNavbar({ onContactClick }: ScrollNavbarProps) {
         </Link>
 
         {/* Desktop Navigation - Centered */}
-        <nav className="hidden md:flex items-center gap-8 absolute left-1/2 transform -translate-x-1/2">
+        <nav className="hidden lg:flex items-center gap-8 absolute left-1/2 transform -translate-x-1/2">
           {navItems.map((item) => (
             <button
               key={item.label}
@@ -91,7 +91,7 @@ export function ScrollNavbar({ onContactClick }: ScrollNavbarProps) {
         </nav>
 
         {/* Right side actions */}
-        <div className="hidden md:flex items-center gap-4 flex-shrink-0">
+        <div className="hidden lg:flex items-center gap-4 flex-shrink-0">
           <Link
             href="/login"
             className="text-sm font-medium text-blue-100 hover:text-white transition-colors"
@@ -108,7 +108,7 @@ export function ScrollNavbar({ onContactClick }: ScrollNavbarProps) {
         </div>
 
         {/* Mobile Menu Button */}
-        <div className="md:hidden flex items-center gap-2">
+        <div className="lg:hidden flex items-center gap-2">
           <Button
             onClick={onContactClick}
             size="sm"
@@ -127,7 +127,7 @@ export function ScrollNavbar({ onContactClick }: ScrollNavbarProps) {
 
       {/* Mobile Menu */}
       {mobileMenuOpen && (
-        <div className="md:hidden border-t border-blue-500/30 bg-blue-600">
+        <div className="lg:hidden border-t border-blue-500/30 bg-blue-600">
           <div className="container mx-auto px-6 py-4 space-y-3">
             {navItems.filter(item => item.label !== 'Vista Previa').map((item) => (
               <button

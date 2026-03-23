@@ -5,6 +5,7 @@ import { signIn, signOut } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { PasswordInput } from '@/components/ui/password-input'
 import { Label } from '@/components/ui/label'
 import { Lock, Mail, AlertCircle, Loader2, ArrowRight, CheckCircle2, Building2 } from 'lucide-react'
 import { Logo } from '@/components/ui/logo'
@@ -259,9 +260,8 @@ export default function TenantLoginPage({ params }: { params: { tenantSlug: stri
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400 group-focus-within:text-blue-600 transition-colors">
                   <Lock className="w-5 h-5" />
                 </div>
-                <Input
+                <PasswordInput
                   id="password"
-                  type="password"
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}

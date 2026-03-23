@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { PasswordInput } from '@/components/ui/password-input'
 import { Label } from '@/components/ui/label'
 import { AlertCircle, Loader2, ShieldCheck } from 'lucide-react'
 import { signOut } from 'next-auth/react'
@@ -111,9 +112,8 @@ export function ForcedCredentialModal({ open, tenantSlug }: ForcedCredentialModa
 
             <div className="space-y-2">
               <Label htmlFor="new-password">Nueva Contraseña</Label>
-              <Input
+              <PasswordInput
                 id="new-password"
-                type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Mínimo 8 caracteres"
@@ -124,9 +124,8 @@ export function ForcedCredentialModal({ open, tenantSlug }: ForcedCredentialModa
 
             <div className="space-y-2">
               <Label htmlFor="confirm-password">Confirmar Contraseña</Label>
-              <Input
+              <PasswordInput
                 id="confirm-password"
-                type="password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="••••••••"

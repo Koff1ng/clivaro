@@ -401,6 +401,15 @@ export function CommanderOrderScreen({
               ref={searchRef}
               value={searchQuery}
               onChange={(e) => { setSearchQuery(e.target.value); setSelectedCategory(""); }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  if (filteredProducts.length === 1) {
+                    addProduct(filteredProducts[0]);
+                    setSearchQuery("");
+                  }
+                }
+              }}
               placeholder="Buscar..."
               className="w-full bg-slate-800 border border-slate-700 rounded-lg pl-8 pr-7 py-1.5 text-sm text-white outline-none focus:border-amber-500 placeholder:text-slate-600"
             />
@@ -413,7 +422,7 @@ export function CommanderOrderScreen({
         </div>
 
         {/* Product grid */}
-        <div className="flex-1 grid grid-cols-4 grid-rows-3 gap-2 p-3 overflow-hidden">
+        <div className="flex-1 grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 p-3 overflow-y-auto">
           {loadingProducts ? (
             <div className="col-span-4 row-span-3 flex flex-col items-center justify-center gap-2 text-amber-500 text-sm">
               <div className="w-6 h-6 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />

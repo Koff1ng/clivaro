@@ -263,7 +263,7 @@ export function PricingClient() {
       {/* Pricing Cards */}
       <ScrollReveal delay={100}>
         <div id="pricing" className="mx-auto max-w-6xl px-6 py-12 lg:px-8">
-          <div className="grid grid-cols-1 gap-8 lg:gap-6 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
             {plans.map((plan, index) => {
               const Icon = plan.icon
               const displayPrice = billingCycle === 'annual'
@@ -393,7 +393,7 @@ export function PricingClient() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-12">
             {[
               {
                 step: '01',

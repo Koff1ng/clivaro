@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { PasswordInput } from '@/components/ui/password-input'
 import { Label } from '@/components/ui/label'
 import { Lock, AlertCircle, Loader2, ArrowLeft, CheckCircle2 } from 'lucide-react'
 import { Logo } from '@/components/ui/logo'
@@ -136,9 +137,8 @@ export default function ResetPasswordPage({ params }: { params: { tenantSlug: st
             <Label htmlFor="password">Nueva contraseña</Label>
             <div className="relative">
               <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-              <Input
+              <PasswordInput
                 id="password"
-                type="password"
                 autoComplete="new-password"
                 placeholder="Mínimo 8 caracteres"
                 value={password}
@@ -155,9 +155,8 @@ export default function ResetPasswordPage({ params }: { params: { tenantSlug: st
             <Label htmlFor="password2">Confirmar contraseña</Label>
             <div className="relative">
               <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-              <Input
+              <PasswordInput
                 id="password2"
-                type="password"
                 autoComplete="new-password"
                 value={password2}
                 onChange={(e) => setPassword2(e.target.value)}
