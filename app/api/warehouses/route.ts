@@ -7,7 +7,6 @@ import { z } from 'zod'
 const createWarehouseSchema = z.object({
   name: z.string().min(1),
   location: z.string().optional(),
-  description: z.string().optional(),
 })
 
 export async function GET(request: Request) {
@@ -54,7 +53,8 @@ export async function POST(request: Request) {
     const warehouse = await withTenantTx(tenantId, async (prisma) => {
       return prisma.warehouse.create({
         data: {
-          ...data,
+          name: data.name,
+          address: data.location || null,
           active: true,
         },
       })
