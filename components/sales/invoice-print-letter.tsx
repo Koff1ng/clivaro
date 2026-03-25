@@ -64,14 +64,19 @@ export function InvoicePrintLetter({ invoice, settings }: InvoicePrintLetterProp
     const dueDate = invoice.dueDate
 
     // Forma de pago según DIAN
-    const paymentForm =
+    // EN_COBRANZA means there's an outstanding balance — this is a credit sale
+    const isCredit = invoice.status === 'EN_COBRANZA' || invoice.balance > 0 || (
         dueDate && issueDate && new Date(dueDate).getTime() > new Date(issueDate).getTime()
-            ? 'CRÉDITO'
-            : 'CONTADO'
+    )
+    const paymentForm = isCredit ? 'CRÉDITO' : 'CONTADO'
 
     const creditDays = dueDate && issueDate
         ? Math.ceil((new Date(dueDate).getTime() - new Date(issueDate).getTime()) / (1000 * 60 * 60 * 24))
         : 0
+
+    // Abono/payment tracking
+    const totalPaid = (invoice.payments || []).reduce((sum: number, p: any) => sum + (p.amount || 0), 0)
+    const pendingBalance = Math.max(0, (invoice.total || 0) - totalPaid)
 
     // Calcular totales
     const globalDiscount = invoice.discount || 0
@@ -325,6 +330,29 @@ export function InvoicePrintLetter({ invoice, settings }: InvoicePrintLetterProp
                                 <div className="text-lg font-bold text-green-700">{formatCurrency(payment.amount)}</div>
                             </div>
                         ))}
+                    </div>
+                </div>
+            )}
+
+            {/* ======= BALANCE FOR CREDIT INVOICES ======= */}
+            {isCredit && (
+                <div className="mb-6">
+                    <div className="w-80 ml-auto bg-amber-50 p-4 rounded-lg border border-amber-200">
+                        <h3 className="font-bold text-amber-800 mb-2 text-sm uppercase">Estado de Cuenta</h3>
+                        <div className="space-y-1 text-sm">
+                            <div className="flex justify-between">
+                                <span className="text-gray-600">Total Factura:</span>
+                                <span className="font-medium">{formatCurrency(total)}</span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span className="text-gray-600">Abonos Recibidos:</span>
+                                <span className="font-medium text-green-700">{formatCurrency(totalPaid)}</span>
+                            </div>
+                            <div className="flex justify-between text-lg font-bold border-t pt-2 mt-2 text-amber-800">
+                                <span>SALDO PENDIENTE:</span>
+                                <span>{formatCurrency(pendingBalance)}</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
             )}

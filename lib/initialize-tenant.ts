@@ -288,7 +288,6 @@ async function initializePostgresTenant(databaseUrl: string, tenantId: string, t
       },
     })
 
-    // Default Payment Methods
     await tenantPrisma.paymentMethod.upsert({
       where: { name: 'Efectivo' },
       update: {},
@@ -304,11 +303,9 @@ async function initializePostgresTenant(databaseUrl: string, tenantId: string, t
       update: {},
       create: { name: 'Transferencia', type: 'TRANSFER', active: true, color: '#3b82f6', icon: 'smartphone' }
     })
-    await tenantPrisma.paymentMethod.upsert({
-      where: { name: 'ABONO' },
-      update: {},
-      create: { name: 'ABONO', type: 'CREDIT', active: true, color: '#ef4444', icon: 'hand-coins' }
-    })
+    // NOTE: ABONO/CREDIT type is NOT created as a default payment method.
+    // The credit/abono flow is handled internally by the backend when the cashier
+    // selects a customer with credit enabled. It should not appear as a selectable method.
 
 
     // Core permissions every tenant admin needs (All modules)

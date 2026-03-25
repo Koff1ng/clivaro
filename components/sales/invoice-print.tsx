@@ -74,15 +74,20 @@ export function InvoicePrint({ invoice, settings }: InvoicePrintProps) {
   const dueDate = invoice.dueDate
 
   // Forma de pago según DIAN (contado o crédito)
-  const paymentForm =
+  // EN_COBRANZA means there's an outstanding balance — this is a credit sale
+  const isCredit = invoice.status === 'EN_COBRANZA' || invoice.balance > 0 || (
     dueDate && issueDate && new Date(dueDate).getTime() > new Date(issueDate).getTime()
-      ? 'CRÉDITO'
-      : 'CONTADO'
+  )
+  const paymentForm = isCredit ? 'CRÉDITO' : 'CONTADO'
 
   // Calcular días de crédito si aplica
   const creditDays = dueDate && issueDate
     ? Math.ceil((new Date(dueDate).getTime() - new Date(issueDate).getTime()) / (1000 * 60 * 60 * 24))
     : 0
+
+  // Abono/payment tracking
+  const totalPaid = (invoice.payments || []).reduce((sum: number, p: any) => sum + (p.amount || 0), 0)
+  const pendingBalance = Math.max(0, (invoice.total || 0) - totalPaid)
 
   // Calcular totales
   const globalDiscount = invoice.discount || 0
@@ -319,6 +324,24 @@ export function InvoicePrint({ invoice, settings }: InvoicePrintProps) {
                 <span>{formatCurrency(invoice.change)}</span>
               </div>
             )}
+          </div>
+        )}
+
+        {/* Balance section for credit/partial payment invoices */}
+        {isCredit && (
+          <div style={{ marginTop: '6px', padding: '4px', border: '1px dashed #333' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }} className="bold">
+              <span>Total Factura:</span>
+              <span>{formatCurrency(total)}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span>Abonos Recibidos:</span>
+              <span>{formatCurrency(totalPaid)}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '2px' }} className="bold">
+              <span>SALDO PENDIENTE:</span>
+              <span>{formatCurrency(pendingBalance)}</span>
+            </div>
           </div>
         )}
 
