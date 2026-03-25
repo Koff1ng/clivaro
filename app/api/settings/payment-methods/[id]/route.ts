@@ -15,8 +15,9 @@ const updateSchema = z.object({
 
 export async function PUT(
     request: Request,
-    { params }: { params: { id: string } }
+    { params }: { params: { id: string } | Promise<{ id: string }> }
 ) {
+    const resolvedParams = await Promise.resolve(params)
     const session = await requirePermission(request as any, PERMISSIONS.MANAGE_SETTINGS)
     if (session instanceof NextResponse) return session
 
@@ -28,7 +29,7 @@ export async function PUT(
 
         const method = await withTenantTx(tenantId, async (tx: any) => {
             return await tx.paymentMethod.update({
-                where: { id: params.id },
+                where: { id: resolvedParams.id },
                 data
             })
         })
@@ -41,8 +42,9 @@ export async function PUT(
 
 export async function DELETE(
     request: Request,
-    { params }: { params: { id: string } }
+    { params }: { params: { id: string } | Promise<{ id: string }> }
 ) {
+    const resolvedParams = await Promise.resolve(params)
     const session = await requirePermission(request as any, PERMISSIONS.MANAGE_SETTINGS)
     if (session instanceof NextResponse) return session
 
@@ -50,21 +52,26 @@ export async function DELETE(
 
     try {
         await withTenantTx(tenantId, async (tx: any) => {
-            // Check if it's being used
-            const count = await tx.payment.count({
-                where: { paymentMethodId: params.id }
+            // Check if it's being used in payments
+            const paymentCount = await tx.payment.count({
+                where: { paymentMethodId: resolvedParams.id }
             })
 
-            if (count > 0) {
-                // Instead of deleting, just deactivate
+            // Check if it's being used in shift summaries
+            const shiftCount = await tx.shiftSummary.count({
+                where: { paymentMethodId: resolvedParams.id }
+            })
+
+            if (paymentCount > 0 || shiftCount > 0) {
+                // Instead of deleting, just deactivate (has historical references)
                 return await tx.paymentMethod.update({
-                    where: { id: params.id },
+                    where: { id: resolvedParams.id },
                     data: { active: false }
                 })
             }
 
             return await tx.paymentMethod.delete({
-                where: { id: params.id }
+                where: { id: resolvedParams.id }
             })
         })
 
@@ -73,3 +80,4 @@ export async function DELETE(
         return NextResponse.json({ error: error.message }, { status: 500 })
     }
 }
+
