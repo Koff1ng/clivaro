@@ -148,6 +148,7 @@ model Product {
   stockLevels             StockLevel[]
   stockMovements          StockMovement[]
   physicalInventoryItems  PhysicalInventoryItem[]
+  tableOrderLines         TableOrderLine[]
 
   recipe          Recipe?
   recipeItems     RecipeItem[]     @relation("Ingredient")
@@ -179,6 +180,7 @@ model ProductVariant {
   stockMovements         StockMovement[]
   physicalInventoryItems PhysicalInventoryItem[]
   creditNoteItems        CreditNoteItem[]
+  tableOrderLines        TableOrderLine[]
 }
 
 model Warehouse {
@@ -1016,6 +1018,17 @@ model Tenant {
   payrollPeriods         PayrollPeriod[]
   payslips               Payslip[]
 
+  // Email Configuration
+  emailConfig            TenantEmailConfig?
+
+  // Restaurant Configuration
+  restaurantConfig       RestaurantConfig?   @relation("TenantToRestaurantConfig")
+  restaurantZones        RestaurantZone[]    @relation("TenantToRestaurantZones")
+  waiterProfiles         WaiterProfile[]     @relation("TenantToWaiters")
+  tableSessions          TableSession[]      @relation("TenantToSessions")
+  tableOrders            TableOrder[]        @relation("TenantToOrders")
+  restaurantTables       RestaurantTable[]   @relation("TenantToRestaurantTables")
+
   passwordResetTokens    PasswordResetToken[]
 }
 
@@ -1716,4 +1729,145 @@ model BankStatementEntry {
   createdAt DateTime @default(now())
 
   @@index([reconciliationId])
+}
+
+model TenantEmailConfig {
+  id               String   @id @default(cuid())
+  tenantId         String   @unique
+  resendDomainId   String
+  domain           String
+  fromEmail        String
+  fromName         String
+  dnsRecords       Json
+  verified         Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  tenant           Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+}
+
+model RestaurantConfig {
+  id                String   @id @default(cuid())
+  tenantId          String   @unique
+  isActive          Boolean  @default(false)
+  alegraBusinessId  String?
+  alegraEmail       String?
+  alegraToken       String?
+  alegraEnabled     Boolean  @default(false)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  tenant            Tenant   @relation("TenantToRestaurantConfig", fields: [tenantId], references: [id], onDelete: Cascade)
+}
+
+model RestaurantZone {
+  id          String   @id @default(cuid())
+  tenantId    String
+  name        String
+  description String?
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant      Tenant   @relation("TenantToRestaurantZones", fields: [tenantId], references: [id], onDelete: Cascade)
+  tables      RestaurantTable[]
+}
+
+model RestaurantTable {
+  id        String   @id @default(cuid())
+  tenantId  String
+  zoneId    String
+  name      String
+  capacity  Int      @default(2)
+  status    String   @default("AVAILABLE")
+  x         Int      @default(0)
+  y         Int      @default(0)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant    Tenant         @relation("TenantToRestaurantTables", fields: [tenantId], references: [id], onDelete: Cascade)
+  zone      RestaurantZone @relation(fields: [zoneId], references: [id], onDelete: Cascade)
+  sessions  TableSession[] @relation("TableToSessions")
+
+  @@index([tenantId])
+}
+
+model WaiterProfile {
+  id             String    @id @default(cuid())
+  tenantId       String
+  name           String
+  code           String
+  pin            String
+  active         Boolean   @default(true)
+  lastLogin      DateTime?
+  failedAttempts Int       @default(0)
+  lockedUntil    DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  tenant    Tenant   @relation("TenantToWaiters", fields: [tenantId], references: [id], onDelete: Cascade)
+  sessions  TableSession[] @relation("WaiterToSessions")
+  orders    TableOrder[]   @relation("WaiterToOrders")
+
+  @@unique([tenantId, code])
+  @@index([tenantId])
+}
+
+model TableSession {
+  id          String   @id @default(cuid())
+  tenantId    String
+  tableId     String
+  waiterId    String
+  status      String   @default("OPEN")
+  openedAt    DateTime @default(now())
+  closedAt    DateTime?
+  totalAmount Float    @default(0)
+  tipAmount   Float    @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant    Tenant          @relation("TenantToSessions", fields: [tenantId], references: [id], onDelete: Cascade)
+  table     RestaurantTable @relation("TableToSessions", fields: [tableId], references: [id])
+  waiter    WaiterProfile   @relation("WaiterToSessions", fields: [waiterId], references: [id])
+  orders    TableOrder[]    @relation("SessionToOrders")
+
+  @@index([tenantId, status])
+  @@index([tableId])
+}
+
+model TableOrder {
+  id          String   @id @default(cuid())
+  tenantId    String
+  sessionId   String
+  waiterId    String
+  status      String   @default("PENDING")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant    Tenant          @relation("TenantToOrders", fields: [tenantId], references: [id], onDelete: Cascade)
+  session   TableSession    @relation("SessionToOrders", fields: [sessionId], references: [id], onDelete: Cascade)
+  waiter    WaiterProfile   @relation("WaiterToOrders", fields: [waiterId], references: [id])
+  items     TableOrderLine[] @relation("OrderToLines")
+
+  @@index([sessionId])
+}
+
+model TableOrderLine {
+  id          String   @id @default(cuid())
+  orderId     String
+  productId   String
+  variantId   String?
+  quantity    Float
+  unitPrice   Float
+  notes       String?
+  status      String   @default("PENDING")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  order     TableOrder      @relation("OrderToLines", fields: [orderId], references: [id], onDelete: Cascade)
+  product   Product         @relation(fields: [productId], references: [id])
+  variant   ProductVariant? @relation(fields: [variantId], references: [id])
+
+  @@index([orderId])
 }
