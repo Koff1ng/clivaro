@@ -26,7 +26,8 @@ import {
   UtensilsCrossed,
   Globe,
   ChevronRight,
-  LayoutDashboard
+  LayoutDashboard,
+  ArrowLeftRight
 } from 'lucide-react'
 import { useToast } from '@/components/ui/toast'
 import { useSession } from 'next-auth/react'
@@ -41,6 +42,7 @@ import { TaxesPage } from './taxes-page'
 import { PrivacyConfig } from './privacy-config'
 import { EmailConfigTab } from './email-config-tab'
 import { RestaurantSettingsView } from './restaurant-settings-view'
+import { UnitConversionsConfig } from './unit-conversions-config'
 import { cn } from '@/lib/utils'
 import { motion } from 'framer-motion'
 
@@ -185,6 +187,7 @@ export function SettingsScreen() {
         { id: 'payments-methods', label: 'Métodos de Pago', icon: Wallet, desc: 'Cajas y formas de cobro' },
         { id: 'taxes', label: 'Impuestos', icon: Percent, desc: 'IVA y retenciones' },
         { id: 'warehouses', label: 'Almacenes', icon: Warehouse, desc: 'Puntos físicos de stock' },
+        { id: 'unit-conversions', label: 'Unidades de Medida', icon: ArrowLeftRight, desc: 'Conversiones para venta fraccionada' },
       ]
     },
     {
@@ -249,6 +252,7 @@ export function SettingsScreen() {
       case 'subscription': return <SubscriptionConfig settings={settings} onSave={(data) => updateSettingsMutation.mutate(data)} isLoading={updateSettingsMutation.isPending} />
       case 'payments-methods': return <PaymentMethodsConfig />
       case 'taxes': return <TaxesPage />
+      case 'unit-conversions': return <UnitConversionsConfig />
       case 'data': return <DataConfig settings={settings} onSave={(data) => updateSettingsMutation.mutate(data)} isLoading={updateSettingsMutation.isPending} />
       case 'privacy': return <PrivacyConfig />
       default: return null
