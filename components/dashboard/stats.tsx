@@ -1,45 +1,35 @@
 'use client'
 
+import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Skeleton } from '@/components/ui/skeleton'
 import { formatCurrency } from '@/lib/utils'
-import { TrendingUp, Package, DollarSign, AlertTriangle } from 'lucide-react'
-import { AppIcon } from '@/components/ui/app-icon'
+import { TrendingUp, TrendingDown, DollarSign, AlertTriangle, ShoppingCart, Package, ArrowUpRight, ArrowDownRight, Minus } from 'lucide-react'
 
-async function fetchStats() {
-  const res = await fetch('/api/dashboard/stats')
+type Period = 'today' | 'week' | 'month' | 'year'
+
+const PERIOD_LABELS: Record<Period, string> = {
+  today: 'Hoy',
+  week: 'Semana',
+  month: 'Mes',
+  year: 'Año',
+}
+
+async function fetchStats(period: Period) {
+  const res = await fetch(`/api/dashboard/stats?period=${period}`)
   if (!res.ok) throw new Error('Failed to fetch stats')
   return res.json()
 }
 
 export function DashboardStats() {
-  const { data, isLoading } = useQuery({
-    queryKey: ['dashboard-stats'],
-    queryFn: fetchStats,
-    refetchInterval: 30 * 1000, // Actualizar cada 30 segundos
-    staleTime: 20 * 1000, // Los datos se consideran frescos por 20 segundos
-    gcTime: 2 * 60 * 1000, // 2 minutos en cache
-    refetchOnWindowFocus: true, // Refrescar cuando se vuelve a la pestaña
-  })
+  const [period, setPeriod] = useState<Period>('month')
 
-  if (isLoading) {
-    return (
-      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-        {[1, 2, 3, 4].map((i) => (
-          <Card key={i}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <Skeleton className="h-4 w-24" />
-              <Skeleton className="h-4 w-4" />
-            </CardHeader>
-            <CardContent>
-              <Skeleton className="h-8 w-32" />
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-    )
-  }
+  const { data, isLoading } = useQuery({
+    queryKey: ['dashboard-stats', period],
+    queryFn: () => fetchStats(period),
+    refetchInterval: 30 * 1000,
+    staleTime: 20 * 1000,
+    refetchOnWindowFocus: true,
+  })
 
   const stats = data || {
     salesToday: 0,
@@ -49,82 +39,155 @@ export function DashboardStats() {
     totalProducts: 0,
     lowStockCount: 0,
     inCollection: 0,
+    previousSales: 0,
+    previousProfit: 0,
+    previousSalesCount: 0,
   }
 
-  const earnings = stats.profitMonth || 0
-  // En cobranza viene directamente del API (suma de facturas pendientes)
+  const revenue = stats.salesMonth || stats.salesToday || 0
+  const profit = stats.profitMonth || 0
   const inCollection = stats.inCollection || 0
+  const salesCount = stats.salesCount || 0
+
+  // Previous period comparisons
+  const prevRevenue = stats.previousSales || 0
+  const prevProfit = stats.previousProfit || 0
+  const prevCount = stats.previousSalesCount || 0
+
+  const calcChange = (current: number, previous: number) => {
+    if (previous === 0) return current > 0 ? 100 : 0
+    return ((current - previous) / previous) * 100
+  }
+
+  const revenueChange = calcChange(revenue, prevRevenue)
+  const profitChange = calcChange(profit, prevProfit)
+  const countChange = calcChange(salesCount, prevCount)
+
+  const cards = [
+    {
+      label: 'Ingresos',
+      value: formatCurrency(revenue),
+      change: revenueChange,
+      icon: TrendingUp,
+      gradient: 'from-blue-500 to-blue-600',
+      bgGlow: 'bg-blue-500/10',
+      iconBg: 'bg-blue-500/20 text-blue-600',
+    },
+    {
+      label: 'Ganancias',
+      value: formatCurrency(profit),
+      change: profitChange,
+      icon: DollarSign,
+      gradient: 'from-emerald-500 to-emerald-600',
+      bgGlow: 'bg-emerald-500/10',
+      iconBg: 'bg-emerald-500/20 text-emerald-600',
+    },
+    {
+      label: 'En Cobranza',
+      value: formatCurrency(inCollection),
+      change: null, // No comparison for accounts receivable
+      icon: AlertTriangle,
+      gradient: 'from-amber-500 to-amber-600',
+      bgGlow: 'bg-amber-500/10',
+      iconBg: 'bg-amber-500/20 text-amber-600',
+      isWarning: inCollection > 0,
+    },
+    {
+      label: 'Ventas',
+      value: String(salesCount),
+      subtitle: `${stats.totalProducts || 0} productos · ${stats.lowStockCount || 0} bajo stock`,
+      change: countChange,
+      icon: ShoppingCart,
+      gradient: 'from-violet-500 to-violet-600',
+      bgGlow: 'bg-violet-500/10',
+      iconBg: 'bg-violet-500/20 text-violet-600',
+    },
+  ]
 
   return (
-    <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-      {/* Ingresos */}
-      <Card className="group border-none bg-gradient-to-b from-slate-50 to-white dark:from-slate-900/50 dark:to-slate-900 hover:-translate-y-[1px] hover:shadow-[0_18px_40px_rgba(15,23,42,0.08)] transition-all duration-150 ease-out">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-xs font-medium text-muted-foreground tracking-[0.12em] uppercase">
-            Ingresos
-          </CardTitle>
-          <div className="rounded-full bg-blue-50 dark:bg-blue-900/30 p-2">
-            <AppIcon icon={TrendingUp} size={18} className="text-blue-600 dark:text-blue-400" />
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-semibold tracking-tight">
-            {formatCurrency(stats.salesMonth)}
-          </div>
-        </CardContent>
-      </Card>
+    <div className="space-y-4">
+      {/* Period Selector */}
+      <div className="flex items-center justify-between">
+        <h2 className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Resumen</h2>
+        <div className="flex items-center gap-1 p-1 rounded-xl bg-slate-100 dark:bg-slate-800">
+          {(Object.keys(PERIOD_LABELS) as Period[]).map((p) => (
+            <button
+              key={p}
+              onClick={() => setPeriod(p)}
+              className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all duration-200 ${
+                period === p
+                  ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm'
+                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+              }`}
+            >
+              {PERIOD_LABELS[p]}
+            </button>
+          ))}
+        </div>
+      </div>
 
-      {/* Ganancias */}
-      <Card className="group border-none bg-gradient-to-b from-slate-50 to-white dark:from-slate-900/50 dark:to-slate-900 hover:-translate-y-[1px] hover:shadow-[0_18px_40px_rgba(15,23,42,0.08)] transition-all duration-150 ease-out">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-xs font-medium text-muted-foreground tracking-[0.12em] uppercase">
-            Ganancias
-          </CardTitle>
-          <div className="rounded-full bg-teal-50 dark:bg-teal-900/30 p-2">
-            <AppIcon icon={DollarSign} size={18} className="text-teal-600 dark:text-teal-400" />
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-semibold tracking-tight">
-            {formatCurrency(earnings)}
-          </div>
-        </CardContent>
-      </Card>
+      {/* Stats Grid */}
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+        {cards.map((card) => {
+          const Icon = card.icon
+          const isPositive = card.change !== null && card.change > 0
+          const isNegative = card.change !== null && card.change < 0
+          const isNeutral = card.change === null || card.change === 0
 
-      {/* En Cobranza */}
-      <Card className="group border-none bg-gradient-to-b from-slate-50 to-white dark:from-slate-900/50 dark:to-slate-900 hover:-translate-y-[1px] hover:shadow-[0_18px_40px_rgba(15,23,42,0.08)] transition-all duration-150 ease-out">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-xs font-medium text-muted-foreground tracking-[0.12em] uppercase">
-            En cobranza
-          </CardTitle>
-          <div className="rounded-full bg-amber-50 dark:bg-amber-900/30 p-2">
-            <AppIcon icon={AlertTriangle} size={18} className="text-amber-600 dark:text-amber-400" />
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-semibold tracking-tight">
-            {formatCurrency(inCollection)}
-          </div>
-        </CardContent>
-      </Card>
+          return (
+            <div
+              key={card.label}
+              className="group relative overflow-hidden rounded-2xl border border-slate-200/60 dark:border-slate-700/60 bg-white dark:bg-slate-900 p-5 hover:shadow-lg hover:shadow-slate-200/50 dark:hover:shadow-slate-900/50 hover:-translate-y-0.5 transition-all duration-300"
+            >
+              {/* Subtle gradient glow */}
+              <div className={`absolute -top-12 -right-12 w-32 h-32 rounded-full ${card.bgGlow} blur-2xl opacity-60 group-hover:opacity-100 transition-opacity`} />
 
-      {/* Ventas */}
-      <Card className="group border-none bg-gradient-to-b from-slate-50 to-white dark:from-slate-900/50 dark:to-slate-900 hover:-translate-y-[1px] hover:shadow-[0_18px_40px_rgba(15,23,42,0.08)] transition-all duration-150 ease-out">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-xs font-medium text-muted-foreground tracking-[0.12em] uppercase">
-            Ventas
-          </CardTitle>
-          <div className="rounded-full bg-indigo-50 dark:bg-indigo-900/30 p-2">
-            <AppIcon icon={Package} size={18} className="text-indigo-600 dark:text-indigo-400" />
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-semibold tracking-tight">
-            {stats.salesCount || 0}
-          </div>
-        </CardContent>
-      </Card>
+              <div className="relative">
+                {/* Header */}
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.15em]">
+                    {card.label}
+                  </span>
+                  <div className={`h-8 w-8 rounded-xl ${card.iconBg} flex items-center justify-center`}>
+                    <Icon size={16} />
+                  </div>
+                </div>
+
+                {/* Value */}
+                {isLoading ? (
+                  <div className="h-8 w-28 bg-slate-100 dark:bg-slate-800 rounded animate-pulse" />
+                ) : (
+                  <div className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+                    {card.value}
+                  </div>
+                )}
+
+                {/* Change indicator + subtitle */}
+                <div className="mt-2 flex items-center gap-2">
+                  {!isLoading && card.change !== null && (
+                    <span className={`inline-flex items-center gap-0.5 text-[11px] font-bold px-1.5 py-0.5 rounded-md ${
+                      isPositive ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' :
+                      isNegative ? 'bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-400' :
+                      'bg-slate-50 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
+                    }`}>
+                      {isPositive ? <ArrowUpRight size={12} /> : isNegative ? <ArrowDownRight size={12} /> : <Minus size={12} />}
+                      {Math.abs(card.change).toFixed(1)}%
+                    </span>
+                  )}
+                  {card.subtitle && (
+                    <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">
+                      {card.subtitle}
+                    </span>
+                  )}
+                  {card.isWarning && !isLoading && inCollection > 0 && (
+                    <span className="text-[10px] text-amber-500 font-bold">Pendiente</span>
+                  )}
+                </div>
+              </div>
+            </div>
+          )
+        })}
+      </div>
     </div>
   )
 }
-
