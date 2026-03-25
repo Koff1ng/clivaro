@@ -216,7 +216,7 @@ export function ProductForm({ product, onSuccess }: { product?: any; onSuccess: 
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div>
-          <Label htmlFor="cost">Costo *</Label>
+          <Label htmlFor="cost">Costo (sin IVA) *</Label>
           <Input
             id="cost"
             type="number"
@@ -224,9 +224,14 @@ export function ProductForm({ product, onSuccess }: { product?: any; onSuccess: 
             {...register('cost', { valueAsNumber: true })}
           />
           {errors.cost && <p className="text-sm text-red-500">{errors.cost.message}</p>}
+          {watch('taxRate') > 0 && watch('cost') > 0 && (
+            <p className="text-[10px] text-blue-500 mt-1 font-medium">
+              Con IVA: ${((watch('cost') || 0) * (1 + (watch('taxRate') || 0) / 100)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </p>
+          )}
         </div>
         <div>
-          <Label htmlFor="price">Precio *</Label>
+          <Label htmlFor="price">Precio de venta (sin IVA) *</Label>
           <Input
             id="price"
             type="number"
@@ -234,6 +239,11 @@ export function ProductForm({ product, onSuccess }: { product?: any; onSuccess: 
             {...register('price', { valueAsNumber: true })}
           />
           {errors.price && <p className="text-sm text-red-500">{errors.price.message}</p>}
+          {watch('taxRate') > 0 && watch('price') > 0 && (
+            <p className="text-[10px] text-green-600 mt-1 font-medium">
+              PVP con IVA: ${((watch('price') || 0) * (1 + (watch('taxRate') || 0) / 100)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </p>
+          )}
         </div>
         <div>
           <Label htmlFor="taxRate">IVA (%) *</Label>
