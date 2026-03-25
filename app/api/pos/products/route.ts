@@ -77,28 +77,53 @@ export async function GET(request: Request) {
         } as any,
       })
 
-      // Fetch unit conversions for all products
-      const allUnits = await prisma.unit.findMany()
-      const unitMap = new Map(allUnits.map((u: any) => [u.id, u]))
+      // ── Built-in unit conversions matching COMMON_UNITS from product form ──
+      // These work immediately without needing DB configuration.
+      const DEFAULT_CONVERSIONS: Record<string, Array<{ unitSymbol: string, unitName: string, multiplier: number }>> = {
+        'DOZEN':  [{ unitSymbol: 'UNIT', unitName: 'Unidad', multiplier: 12 }],
+        'BOX':    [{ unitSymbol: 'UNIT', unitName: 'Unidad', multiplier: 12 }],
+        'PACK':   [{ unitSymbol: 'UNIT', unitName: 'Unidad', multiplier: 10 }],
+        'PAIR':   [{ unitSymbol: 'UNIT', unitName: 'Unidad', multiplier: 2 }],
+        'ROLL':   [{ unitSymbol: 'UNIT', unitName: 'Unidad', multiplier: 1 }],
+        'KILO':   [{ unitSymbol: 'GRAM', unitName: 'Gramo', multiplier: 1000 }],
+        'POUND':  [{ unitSymbol: 'GRAM', unitName: 'Gramo', multiplier: 453.592 }],
+        'LITER':  [{ unitSymbol: 'MILLILITER', unitName: 'Mililitro', multiplier: 1000 }],
+        'GALLON': [{ unitSymbol: 'LITER', unitName: 'Litro', multiplier: 3.785 }],
+        'METER':  [{ unitSymbol: 'CENTIMETER', unitName: 'Centímetro', multiplier: 100 }],
+        'FOOT':   [{ unitSymbol: 'INCH', unitName: 'Pulgada', multiplier: 12 }],
+        'YARD':   [{ unitSymbol: 'FOOT', unitName: 'Pie', multiplier: 3 }],
+        'TON':    [{ unitSymbol: 'KILO', unitName: 'Kilogramo', multiplier: 1000 }],
+      }
 
-      const unitConversions = await prisma.unitConversion.findMany()
-
-      // Build conversion map: for each unit symbol, list available sale units
+      // Build conversion map starting with defaults
       const conversionsBySymbol = new Map<string, Array<{ unitSymbol: string, unitName: string, multiplier: number }>>()
-      for (const conv of unitConversions as any[]) {
-        const fromUnit = unitMap.get(conv.fromUnitId)
-        const toUnit = unitMap.get(conv.toUnitId)
-        if (!fromUnit || !toUnit) continue
+      for (const [key, conversions] of Object.entries(DEFAULT_CONVERSIONS)) {
+        conversionsBySymbol.set(key, [...conversions])
+      }
 
-        const fromSymbol = (fromUnit as any).symbol
-        if (!conversionsBySymbol.has(fromSymbol)) {
-          conversionsBySymbol.set(fromSymbol, [])
+      // Overlay any custom DB conversions (from Unit/UnitConversion tables)
+      try {
+        const allUnits = await prisma.unit.findMany()
+        const unitMap = new Map(allUnits.map((u: any) => [u.id, u]))
+        const unitConversions = await prisma.unitConversion.findMany()
+
+        for (const conv of unitConversions as any[]) {
+          const fromUnit = unitMap.get(conv.fromUnitId)
+          const toUnit = unitMap.get(conv.toUnitId)
+          if (!fromUnit || !toUnit) continue
+
+          const fromSymbol = (fromUnit as any).symbol
+          if (!conversionsBySymbol.has(fromSymbol)) {
+            conversionsBySymbol.set(fromSymbol, [])
+          }
+          conversionsBySymbol.get(fromSymbol)!.push({
+            unitSymbol: (toUnit as any).symbol,
+            unitName: (toUnit as any).name,
+            multiplier: conv.multiplier as number,
+          })
         }
-        conversionsBySymbol.get(fromSymbol)!.push({
-          unitSymbol: (toUnit as any).symbol,
-          unitName: (toUnit as any).name,
-          multiplier: conv.multiplier as number,
-        })
+      } catch (e) {
+        // Unit/UnitConversion tables may not exist yet, defaults still work
       }
 
       const products = productsRaw.map((p: any) => {

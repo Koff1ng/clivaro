@@ -307,6 +307,10 @@ async function initializePostgresTenant(databaseUrl: string, tenantId: string, t
     // The credit/abono flow is handled internally by the backend when the cashier
     // selects a customer with credit enabled. It should not appear as a selectable method.
 
+    // NOTE: Unit conversions for fractional sales (e.g., selling 1 unidad from a docena)
+    // are handled via hardcoded defaults in app/api/pos/products/route.ts matching
+    // the COMMON_UNITS IDs from components/products/unit-select.tsx.
+    // Custom conversions can be added by the user via the Unit/UnitConversion tables.
 
     // Core permissions every tenant admin needs (All modules)
     const corePermissions = [
