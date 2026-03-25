@@ -52,23 +52,18 @@ export async function DELETE(
 
     try {
         await withTenantTx(tenantId, async (tx: any) => {
-            // Check if it's being used in payments
-            const paymentCount = await tx.payment.count({
-                where: { paymentMethodId: resolvedParams.id }
+            // Nullify FK references so we can delete cleanly
+            await tx.payment.updateMany({
+                where: { paymentMethodId: resolvedParams.id },
+                data: { paymentMethodId: null }
             })
 
-            // Check if it's being used in shift summaries
-            const shiftCount = await tx.shiftSummary.count({
-                where: { paymentMethodId: resolvedParams.id }
-            })
-
-            if (paymentCount > 0 || shiftCount > 0) {
-                // Instead of deleting, just deactivate (has historical references)
-                return await tx.paymentMethod.update({
-                    where: { id: resolvedParams.id },
-                    data: { active: false }
+            try {
+                await tx.shiftSummary.updateMany({
+                    where: { paymentMethodId: resolvedParams.id },
+                    data: { paymentMethodId: null }
                 })
-            }
+            } catch (_) { /* table may not exist */ }
 
             return await tx.paymentMethod.delete({
                 where: { id: resolvedParams.id }
