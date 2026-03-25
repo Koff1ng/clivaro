@@ -888,6 +888,21 @@ model PurchaseOrder {
   goodsReceipts GoodsReceipt[]
   supplier      Supplier            @relation(fields: [supplierId], references: [id])
   items         PurchaseOrderItem[]
+  attachments   PurchaseOrderAttachment[]
+}
+
+model PurchaseOrderAttachment {
+  id              String        @id @default(cuid())
+  purchaseOrderId String
+  fileName        String
+  fileUrl         String
+  fileType        String        @default("OTRO") // FACTURA, ACUSE_RECIBO, NOTA_CREDITO, REMISION, SOPORTE_PAGO, OTRO
+  fileSize        Int           @default(0)
+  mimeType        String        @default("application/octet-stream")
+  notes           String?
+  uploadedById    String?
+  createdAt       DateTime      @default(now())
+  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
 }
 
 model PurchaseOrderItem {

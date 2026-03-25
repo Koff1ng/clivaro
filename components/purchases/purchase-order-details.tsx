@@ -1,17 +1,98 @@
 'use client'
 
-import { useState } from 'react'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useState, useRef } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { useToast } from '@/components/ui/toast'
-import { Mail, Phone, MapPin, FileText, Package, CheckCircle, XCircle } from 'lucide-react'
+import { Mail, Phone, MapPin, FileText, Package, CheckCircle, XCircle, Upload, Download, Trash2, Paperclip, Loader2 } from 'lucide-react'
 
 export function PurchaseOrderDetails({ order }: { order: any }) {
   const { toast } = useToast()
-  const [loading, setLoading] = useState(false)
   const queryClient = useQueryClient()
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [selectedFileType, setSelectedFileType] = useState('FACTURA')
+  const [isUploading, setIsUploading] = useState(false)
+
+  const FILE_TYPE_LABELS: Record<string, string> = {
+    'FACTURA': 'Factura del Proveedor',
+    'ACUSE_RECIBO': 'Acuse de Recibo',
+    'NOTA_CREDITO': 'Nota Crédito',
+    'REMISION': 'Remisión',
+    'SOPORTE_PAGO': 'Soporte de Pago',
+    'OTRO': 'Otro Documento',
+  }
+
+  // Fetch attachments
+  const { data: attachmentsData, isLoading: isLoadingAttachments } = useQuery({
+    queryKey: ['po-attachments', order.id],
+    queryFn: async () => {
+      const res = await fetch(`/api/purchases/orders/${order.id}/attachments`)
+      if (!res.ok) throw new Error('Failed')
+      return res.json()
+    }
+  })
+
+  const attachments = attachmentsData?.attachments || []
+
+  // Upload handler
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setIsUploading(true)
+    try {
+      // 1. Upload file to Supabase Storage
+      const formData = new FormData()
+      formData.append('file', file)
+      const uploadRes = await fetch('/api/uploads', { method: 'POST', body: formData })
+      if (!uploadRes.ok) { const err = await uploadRes.json(); throw new Error(err.error || 'Upload failed') }
+      const uploadData = await uploadRes.json()
+
+      // 2. Create attachment record
+      const attachRes = await fetch(`/api/purchases/orders/${order.id}/attachments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fileName: uploadData.fileName,
+          fileUrl: uploadData.fileUrl,
+          fileType: selectedFileType,
+          fileSize: uploadData.fileSize,
+          mimeType: uploadData.mimeType,
+        }),
+      })
+      if (!attachRes.ok) { const err = await attachRes.json(); throw new Error(err.error || 'Failed to save') }
+
+      queryClient.invalidateQueries({ queryKey: ['po-attachments', order.id] })
+      toast('Documento adjuntado exitosamente', 'success')
+    } catch (err: any) {
+      toast(err.message || 'Error al subir archivo', 'error')
+    } finally {
+      setIsUploading(false)
+      if (fileInputRef.current) fileInputRef.current.value = ''
+    }
+  }
+
+  // Delete attachment
+  const deleteAttachmentMutation = useMutation({
+    mutationFn: async (attachmentId: string) => {
+      const res = await fetch(`/api/purchases/orders/${order.id}/attachments?attachmentId=${attachmentId}`, { method: 'DELETE' })
+      if (!res.ok) throw new Error('Failed to delete')
+      return res.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['po-attachments', order.id] })
+      toast('Documento eliminado', 'success')
+    },
+    onError: () => toast('Error al eliminar documento', 'error'),
+  })
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024) return `${bytes} B`
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+  }
 
   const updateStatusMutation = useMutation({
     mutationFn: async (status: string) => {
@@ -81,14 +162,14 @@ export function PurchaseOrderDetails({ order }: { order: any }) {
             <Button
               variant="outline"
               onClick={() => handleStatusChange('SENT')}
-              disabled={loading || updateStatusMutation.isPending}
+              disabled={updateStatusMutation.isPending}
             >
               Marcar como Enviada
             </Button>
             <Button
               variant="outline"
               onClick={() => handleStatusChange('CANCELLED')}
-              disabled={loading || updateStatusMutation.isPending}
+              disabled={updateStatusMutation.isPending}
               className="text-red-600"
             >
               Cancelar
@@ -99,7 +180,7 @@ export function PurchaseOrderDetails({ order }: { order: any }) {
           <div className="flex gap-2">
             <Button
               onClick={() => handleStatusChange('RECEIVED')}
-              disabled={loading || updateStatusMutation.isPending}
+              disabled={updateStatusMutation.isPending}
             >
               Marcar como Recibida
             </Button>
@@ -252,6 +333,98 @@ export function PurchaseOrderDetails({ order }: { order: any }) {
           <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded">{order.notes}</p>
         </div>
       )}
+
+      {/* Attachments */}
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="font-semibold flex items-center gap-2">
+            <Paperclip className="h-4 w-4" />
+            Documentos Adjuntos
+          </h3>
+          <div className="flex items-center gap-2">
+            <select
+              value={selectedFileType}
+              onChange={(e) => setSelectedFileType(e.target.value)}
+              className="h-8 text-xs rounded-md border border-input bg-background px-2"
+            >
+              {Object.entries(FILE_TYPE_LABELS).map(([key, label]) => (
+                <option key={key} value={key}>{label}</option>
+              ))}
+            </select>
+            <input
+              ref={fileInputRef}
+              type="file"
+              className="hidden"
+              accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx,.xml"
+              onChange={handleFileUpload}
+            />
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isUploading}
+              className="gap-1 h-8 text-xs"
+            >
+              {isUploading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Upload className="h-3 w-3" />}
+              {isUploading ? 'Subiendo...' : 'Adjuntar'}
+            </Button>
+          </div>
+        </div>
+
+        {attachments.length > 0 ? (
+          <div className="border rounded-lg divide-y">
+            {attachments.map((att: any) => (
+              <div key={att.id} className="flex items-center justify-between p-3 hover:bg-gray-50">
+                <div className="flex items-center gap-3">
+                  <div className="h-8 w-8 rounded bg-blue-50 flex items-center justify-center">
+                    <FileText className="h-4 w-4 text-blue-600" />
+                  </div>
+                  <div>
+                    <div className="text-sm font-medium">{att.fileName}</div>
+                    <div className="text-[10px] text-gray-400 flex items-center gap-2">
+                      <span className="bg-gray-100 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase">
+                        {FILE_TYPE_LABELS[att.fileType] || att.fileType}
+                      </span>
+                      <span>{formatFileSize(att.fileSize)}</span>
+                      <span>{formatDate(att.createdAt)}</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex gap-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 w-7 p-0 text-blue-600"
+                    onClick={() => window.open(att.fileUrl, '_blank')}
+                    title="Descargar"
+                  >
+                    <Download className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 w-7 p-0 text-red-500"
+                    onClick={() => {
+                      if (confirm('¿Eliminar este documento?')) {
+                        deleteAttachmentMutation.mutate(att.id)
+                      }
+                    }}
+                    title="Eliminar"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="border border-dashed rounded-lg p-6 text-center text-sm text-gray-400">
+            <Paperclip className="h-6 w-6 mx-auto mb-2 opacity-30" />
+            Sin documentos adjuntos. Sube facturas, acuses de recibo, notas crédito, etc.
+          </div>
+        )}
+      </div>
     </div>
   )
 }

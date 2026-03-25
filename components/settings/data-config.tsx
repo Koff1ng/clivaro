@@ -12,6 +12,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { FileDown, FileUp, Database, Download, Upload, AlertCircle, Loader2, FileSpreadsheet, FileJson, Archive, CheckCircle2 } from 'lucide-react'
 import { useToast } from '@/components/ui/toast'
 import { useMutation } from '@tanstack/react-query'
+import { useQuery as useBackupQuery } from '@tanstack/react-query'
 import * as XLSX from 'xlsx'
 import { ResetDatabaseDialog } from './reset-database-dialog'
 
@@ -24,6 +25,18 @@ interface DataConfigProps {
 export function DataConfig({ settings, onSave, isLoading }: DataConfigProps) {
     const { toast } = useToast()
     const [activeTab, setActiveTab] = useState('export')
+
+    // Fetch backup history
+    const { data: backupHistoryData } = useBackupQuery({
+        queryKey: ['backup-history'],
+        queryFn: async () => {
+            const res = await fetch('/api/settings/data/backups')
+            if (!res.ok) return { backups: [] }
+            return res.json()
+        },
+        enabled: activeTab === 'backups',
+    })
+    const backupHistory = backupHistoryData?.backups || []
 
     // Export State
     const [exportFormat, setExportFormat] = useState('xlsx')
@@ -391,16 +404,42 @@ export function DataConfig({ settings, onSave, isLoading }: DataConfigProps) {
                             </Button>
                         </div>
 
-                        <div className="p-4 border rounded-lg bg-green-50/50 dark:bg-green-900/10 border-green-200 dark:border-green-800">
+                        <div className="p-6 border rounded-lg bg-green-50/50 dark:bg-green-900/10 border-green-200 dark:border-green-800 space-y-4">
                             <div className="space-y-1">
                                 <h3 className="font-medium flex items-center gap-2 text-green-800 dark:text-green-200">
                                     <CheckCircle2 className="h-4 w-4" />
-                                    Backups Automáticos (Supabase)
+                                    Backups Automáticos (Diario 3AM)
                                 </h3>
                                 <p className="text-sm text-green-700/80 dark:text-green-300/80">
-                                    Su base de datos cuenta con respaldos automáticos diarios gestionados por Supabase. Estos respaldos son independientes de este sistema y se retienen según su plan de servicio.
+                                    Se genera un respaldo JSON completo cada noche. Se conservan los últimos 7 backups.
                                 </p>
                             </div>
+
+                            {backupHistory.length > 0 ? (
+                                <div className="space-y-2">
+                                    {backupHistory.map((b: any) => (
+                                        <div key={b.id || b.name} className="flex items-center justify-between p-3 bg-white dark:bg-slate-900 rounded-md border text-sm">
+                                            <div>
+                                                <div className="font-medium text-slate-700 dark:text-slate-200">{b.name}</div>
+                                                <div className="text-[10px] text-gray-400">
+                                                    {b.createdAt ? new Date(b.createdAt).toLocaleString('es-CO') : '—'}
+                                                    {b.size > 0 && ` · ${(b.size / 1024).toFixed(0)} KB`}
+                                                </div>
+                                            </div>
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                className="h-7 gap-1 text-xs text-blue-600"
+                                                onClick={() => window.open(b.downloadUrl, '_blank')}
+                                            >
+                                                <Download className="h-3 w-3" /> Descargar
+                                            </Button>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <p className="text-xs text-green-600/60 italic">Aún no hay backups automáticos. El primero se generará esta noche a las 3AM.</p>
+                            )}
                         </div>
 
                         {/* Danger Zone */}
