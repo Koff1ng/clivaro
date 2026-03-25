@@ -12,6 +12,50 @@ import { StockTransferForm } from './transfer-form'
 import { formatCurrency } from '@/lib/utils'
 import { Search, Plus, AlertTriangle, ArrowRightLeft } from 'lucide-react'
 
+// Conversion map matching COMMON_UNITS IDs from product form
+const UNIT_CONVERSIONS: Record<string, { toUnit: string, toLabel: string, multiplier: number }> = {
+  'DOZEN':  { toUnit: 'UNIT', toLabel: 'Unidades', multiplier: 12 },
+  'BOX':    { toUnit: 'UNIT', toLabel: 'Unidades', multiplier: 12 },
+  'PACK':   { toUnit: 'UNIT', toLabel: 'Unidades', multiplier: 10 },
+  'PAIR':   { toUnit: 'UNIT', toLabel: 'Unidades', multiplier: 2 },
+  'ROLL':   { toUnit: 'UNIT', toLabel: 'Unidades', multiplier: 1 },
+  'KILO':   { toUnit: 'GRAM', toLabel: 'Gramos', multiplier: 1000 },
+  'POUND':  { toUnit: 'GRAM', toLabel: 'Gramos', multiplier: 453.592 },
+  'LITER':  { toUnit: 'MILLILITER', toLabel: 'Mililitros', multiplier: 1000 },
+  'GALLON': { toUnit: 'LITER', toLabel: 'Litros', multiplier: 3.785 },
+  'METER':  { toUnit: 'CENTIMETER', toLabel: 'Centímetros', multiplier: 100 },
+  'FOOT':   { toUnit: 'INCH', toLabel: 'Pulgadas', multiplier: 12 },
+  'YARD':   { toUnit: 'FOOT', toLabel: 'Pies', multiplier: 3 },
+  'TON':    { toUnit: 'KILO', toLabel: 'Kilogramos', multiplier: 1000 },
+}
+
+const UNIT_LABELS: Record<string, string> = {
+  'UNIT': 'Und', 'DOZEN': 'Doc', 'BOX': 'Caja', 'PACK': 'Pqt', 'PAIR': 'Par',
+  'KILO': 'Kg', 'GRAM': 'g', 'POUND': 'Lb', 'LITER': 'Lt', 'MILLILITER': 'ml',
+  'GALLON': 'Gal', 'METER': 'm', 'CENTIMETER': 'cm', 'FOOT': 'ft', 'YARD': 'yd',
+  'TON': 'Ton', 'ROLL': 'Rollo', 'PALLET': 'Pallet',
+}
+
+/** Returns a human-friendly breakdown of fractional stock, e.g., "2 Doc + 9 Und" */
+function getFractionalDisplay(quantity: number, unitOfMeasure: string): string | null {
+  const conv = UNIT_CONVERSIONS[unitOfMeasure]
+  if (!conv) return null
+  // Only show if there's a fractional part
+  const totalSmall = Math.round(quantity * conv.multiplier)
+  const fromLabel = UNIT_LABELS[unitOfMeasure] || unitOfMeasure
+  const toLabel = UNIT_LABELS[conv.toUnit] || conv.toLabel
+  const wholeUnits = Math.floor(quantity)
+  const remainderSmall = totalSmall - (wholeUnits * conv.multiplier)
+  if (wholeUnits > 0 && remainderSmall > 0) {
+    return `${wholeUnits} ${fromLabel} + ${remainderSmall} ${toLabel}`
+  }
+  // Show total in smaller units as approximation
+  if (totalSmall !== quantity) {
+    return `≈ ${totalSmall.toLocaleString()} ${conv.toLabel}`
+  }
+  return null
+}
+
 interface StockLevelItem {
   id: string
   productId: string
@@ -210,6 +254,12 @@ export function StockLevels() {
                       {item.quantity.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </span>
                     <span className="text-[10px] text-gray-400 ml-1 uppercase">{item.unitOfMeasure}</span>
+                    {(() => {
+                      const breakdown = getFractionalDisplay(item.quantity, item.unitOfMeasure)
+                      return breakdown ? (
+                        <div className="text-[10px] text-blue-500 font-medium mt-0.5">{breakdown}</div>
+                      ) : null
+                    })()}
                   </TableCell>
                   <TableCell>
                     {item.isLowStock ? (
