@@ -31,6 +31,11 @@ interface CartItem {
   appliedTaxes: Array<{ id: string; name: string; rate: number; type: string }>
   subtotal: number
   preparationNotes?: string
+  // Fractional unit sales
+  saleUnitSymbol?: string
+  conversionMultiplier?: number
+  originalPrice?: number
+  saleUnits?: Array<{ unitSymbol: string; unitName: string; multiplier: number; unitPrice: number }>
 }
 
 interface Product {
@@ -42,6 +47,8 @@ interface Product {
   taxRate: number
   trackStock: boolean
   stockLevels: Array<{ warehouseId: string; quantity: number }>
+  unitOfMeasure?: string
+  saleUnits?: Array<{ unitSymbol: string; unitName: string; multiplier: number; unitPrice: number }>
 }
 
 interface PaymentMethodInfo {
@@ -444,6 +451,7 @@ export function POSScreen({ mode = 'retail', waiterData, waiterToken, preselecte
     appliedTaxes: Array<{ id: string; name: string; rate: number; type: string }>
     trackStock: boolean
     stockLevels: Array<{ warehouseId: string; quantity: number }>
+    saleUnits?: Array<{ unitSymbol: string; unitName: string; multiplier: number; unitPrice: number }>
   }) => {
     const warehouseStock = line.stockLevels.find((sl) => sl.warehouseId === selectedWarehouse)
     const availableStock = warehouseStock?.quantity ?? 0
@@ -472,6 +480,8 @@ export function POSScreen({ mode = 'retail', waiterData, waiterToken, preselecte
           taxRate: line.taxRate || 0,
           appliedTaxes: line.appliedTaxes,
           subtotal,
+          saleUnits: line.saleUnits,
+          originalPrice: line.unitPrice,
         },
       ])
     }
@@ -1147,7 +1157,26 @@ export function POSScreen({ mode = 'retail', waiterData, waiterToken, preselecte
       appliedTaxes: product.taxRate > 0 ? [{ id: 'default', name: 'IVA', rate: product.taxRate, type: 'IVA' }] : [],
       trackStock: product.trackStock,
       stockLevels: product.stockLevels || [],
+      saleUnits: product.saleUnits,
     })
+  }
+
+  // Handler to change the sale unit for a cart item (e.g., Docena -> Unidad)
+  const changeCartUnit = (productId: string, variantId: string | null, unitSymbol: string | null) => {
+    setCart(cart.map(item => {
+      if (item.productId !== productId || (item.variantId || null) !== (variantId || null)) return item
+      if (!unitSymbol) {
+        // Revert to original bulk unit
+        const newPrice = item.originalPrice || item.unitPrice
+        const subtotal = item.quantity * newPrice * (1 - (item.discount || 0) / 100) * (1 + (item.taxRate || 0) / 100)
+        return { ...item, unitPrice: newPrice, saleUnitSymbol: undefined, conversionMultiplier: undefined, subtotal }
+      }
+      const su = item.saleUnits?.find(u => u.unitSymbol === unitSymbol)
+      if (!su) return item
+      const newPrice = su.unitPrice
+      const subtotal = item.quantity * newPrice * (1 - (item.discount || 0) / 100) * (1 + (item.taxRate || 0) / 100)
+      return { ...item, unitPrice: newPrice, saleUnitSymbol: su.unitSymbol, conversionMultiplier: su.multiplier, subtotal }
+    }))
   }
 
   const updateCartItemTaxes = (productId: string, taxes: any[], variantId?: string | null) => {
@@ -1327,6 +1356,9 @@ export function POSScreen({ mode = 'retail', waiterData, waiterToken, preselecte
         discount: Number(item.discount || 0),
         taxRate: Number(item.taxRate || 0),
         appliedTaxes: item.appliedTaxes,
+        // Fractional unit data for stock deduction
+        ...(item.saleUnitSymbol ? { saleUnitSymbol: item.saleUnitSymbol } : {}),
+        ...(item.conversionMultiplier ? { conversionMultiplier: item.conversionMultiplier } : {}),
       }
     })
 
@@ -1936,8 +1968,22 @@ export function POSScreen({ mode = 'retail', waiterData, waiterToken, preselecte
                           <div className="flex-1 min-w-0 pr-2">
                             <div className="font-semibold text-sm mb-0.5 truncate">{item.productName}</div>
                             <div className="text-xs text-gray-500">SKU: {item.sku}</div>
+                            {item.saleUnits && item.saleUnits.length > 0 && (
+                              <select
+                                className="mt-1 text-xs border rounded px-1 py-0.5 bg-background w-full"
+                                value={item.saleUnitSymbol || ''}
+                                onChange={(e) => changeCartUnit(item.productId, item.variantId || null, e.target.value || null)}
+                              >
+                                <option value="">Original ({formatCurrency(item.originalPrice || item.unitPrice)})</option>
+                                {item.saleUnits.map(su => (
+                                  <option key={su.unitSymbol} value={su.unitSymbol}>
+                                    {su.unitName} ({formatCurrency(su.unitPrice)} c/u)
+                                  </option>
+                                ))}
+                              </select>
+                            )}
                             <div className="text-xs text-gray-600 mt-0.5">
-                              {formatCurrency(item.unitPrice)} c/u
+                              {formatCurrency(item.unitPrice)} c/u{item.saleUnitSymbol ? ` (${item.saleUnitSymbol})` : ''}
                             </div>
                             {hasStockConflict && (
                               <div className="mt-2 rounded-md border border-red-200 bg-background p-2">
