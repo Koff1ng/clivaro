@@ -55,6 +55,7 @@ export function PaymentMethodsConfig() {
     const queryClient = useQueryClient()
     const [isOpen, setIsOpen] = useState(false)
     const [editingMethod, setEditingMethod] = useState<PaymentMethod | null>(null)
+    const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
 
     // Form state
     const [name, setName] = useState('')
@@ -99,12 +100,20 @@ export function PaymentMethodsConfig() {
             const res = await fetch(`/api/settings/payment-methods/${id}`, {
                 method: 'DELETE'
             })
-            if (!res.ok) throw new Error('Failed to delete payment method')
+            if (!res.ok) {
+                const data = await res.json().catch(() => ({}))
+                throw new Error(data.error || 'Failed to delete payment method')
+            }
             return res.json()
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['payment-methods'] })
-            toast('Método eliminado o desactivado', 'success')
+            toast('Método eliminado correctamente', 'success')
+            setDeleteConfirmId(null)
+        },
+        onError: (error: any) => {
+            toast('Error al eliminar: ' + error.message, 'error')
+            setDeleteConfirmId(null)
         }
     })
 
@@ -205,7 +214,7 @@ export function PaymentMethodsConfig() {
                                     <Button variant="ghost" size="icon" onClick={() => openDialog(method)}>
                                         <Edit2 className="h-4 w-4" />
                                     </Button>
-                                    <Button variant="ghost" size="icon" className="text-destructive" onClick={() => deleteMutation.mutate(method.id)}>
+                                    <Button variant="ghost" size="icon" className="text-destructive" onClick={() => setDeleteConfirmId(method.id)}>
                                         <Trash2 className="h-4 w-4" />
                                     </Button>
                                 </TableCell>
@@ -319,6 +328,29 @@ export function PaymentMethodsConfig() {
                                 </Button>
                             </DialogFooter>
                         </form>
+                    </DialogContent>
+                </Dialog>
+
+                {/* Delete Confirmation Dialog */}
+                <Dialog open={!!deleteConfirmId} onOpenChange={(open) => { if (!open) setDeleteConfirmId(null) }}>
+                    <DialogContent className="max-w-sm">
+                        <DialogHeader>
+                            <DialogTitle>¿Eliminar método de pago?</DialogTitle>
+                            <DialogDescription>
+                                Esta acción no se puede deshacer. Si el método tiene pagos registrados, será desactivado en lugar de eliminado.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <DialogFooter className="gap-2">
+                            <Button variant="outline" onClick={() => setDeleteConfirmId(null)}>Cancelar</Button>
+                            <Button
+                                variant="destructive"
+                                disabled={deleteMutation.isPending}
+                                onClick={() => { if (deleteConfirmId) deleteMutation.mutate(deleteConfirmId) }}
+                            >
+                                {deleteMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                                Sí, eliminar
+                            </Button>
+                        </DialogFooter>
                     </DialogContent>
                 </Dialog>
             </CardContent>
