@@ -1292,14 +1292,16 @@ export function POSScreen({ mode = 'retail', waiterData, waiterToken, preselecte
           if (!wantCredit) return
           
           const creditMethod = paymentMethods.find(m => m.name === 'ABONO' || m.type === 'CREDIT')
-          if (!creditMethod) {
-            toast('No hay un método de pago llamado "ABONO" configurado en el sistema.', 'error')
-            return
-          }
-          saleData.payments = [
+          // Build payments: only include the actual cash received. The backend will
+          // detect underpayment and set invoice to EN_COBRANZA (credit) automatically.
+          const actualPayments = [
             { paymentMethodId: paymentMethodId, amount: isNaN(received) ? 0 : received },
-            { paymentMethodId: creditMethod.id, amount: missing }
           ].filter(p => p.amount > 0)
+          // If there's a CREDIT method, add it; otherwise backend handles it via balance
+          if (creditMethod) {
+            actualPayments.push({ paymentMethodId: creditMethod.id, amount: missing })
+          }
+          saleData.payments = actualPayments
         } else {
           toast(`El efectivo recibido debe ser mayor o igual al total. Selecciona un cliente si deseas dejar fiado o hacer un abono.`, 'warning')
           return
@@ -1358,11 +1360,11 @@ export function POSScreen({ mode = 'retail', waiterData, waiterToken, preselecte
           if (!wantCredit) return
           
           const creditMethod = paymentMethods.find(m => m.name === 'ABONO' || m.type === 'CREDIT')
-          if (!creditMethod) {
-            toast('No hay un método de pago llamado "ABONO" configurado en el sistema.', 'error')
-            return
+          // If credit method exists, add it; otherwise backend handles via balance
+          if (creditMethod) {
+            normalized.push({ paymentMethodId: creditMethod.id, amount: missing })
           }
-          normalized.push({ paymentMethodId: creditMethod.id, amount: missing })
+          // The backend will detect underpayment and set to EN_COBRANZA
         } else {
           toast(`Falta pagar: ${formatCurrency(total - paid)}. Selecciona un cliente para fiar la cuota pendiente (ABONO).`, 'warning')
           return

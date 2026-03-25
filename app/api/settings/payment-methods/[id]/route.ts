@@ -52,21 +52,22 @@ export async function DELETE(
 
     try {
         await withTenantTx(tenantId, async (tx: any) => {
-            // Nullify FK references so we can delete cleanly
+            const id = resolvedParams.id
+
+            // Nullify FK on Payment (nullable field)
             await tx.payment.updateMany({
-                where: { paymentMethodId: resolvedParams.id },
+                where: { paymentMethodId: id },
                 data: { paymentMethodId: null }
             })
 
-            try {
-                await tx.shiftSummary.updateMany({
-                    where: { paymentMethodId: resolvedParams.id },
-                    data: { paymentMethodId: null }
-                })
-            } catch (_) { /* table may not exist */ }
+            // Delete ShiftSummary records that reference this method (NOT NULL FK)
+            await tx.$executeRawUnsafe(
+                `DELETE FROM "ShiftSummary" WHERE "paymentMethodId" = $1`, id
+            )
 
+            // Delete the payment method
             return await tx.paymentMethod.delete({
-                where: { id: resolvedParams.id }
+                where: { id }
             })
         })
 
