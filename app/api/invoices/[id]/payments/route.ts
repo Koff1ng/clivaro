@@ -53,8 +53,8 @@ export async function POST(
       if (['ANULADA', 'VOID'].includes(invoice.status)) throw new Error('No se puede registrar un pago en una factura anulada')
 
       const totalPaid = invoice.payments.reduce((sum, p) => sum + p.amount, 0)
-      const newTotalPaid = totalPaid + data.amount
-      if (newTotalPaid > invoice.total + 0.01) throw new Error(`El pago excede el total de la factura.`)
+      const newTotalPaid = Math.round((totalPaid + data.amount) * 100) / 100
+      if (newTotalPaid > invoice.total + 0.01) throw new Error(`El pago excede el total de la factura. Total: ${invoice.total}, Ya pagado: ${totalPaid}, Nuevo pago: ${data.amount}`)
 
       const methodStr = data.method
       let pm = await prisma.paymentMethod.findFirst({ where: { name: methodStr } })
@@ -65,8 +65,8 @@ export async function POST(
       }
       const paymentMethodId = pm.id
 
-      const currentBalance = invoice.balance ?? (invoice.total - totalPaid)
-      const newBalance = Math.max(0, currentBalance - data.amount)
+      // Always derive balance from total - totalPaid (not from stored balance which can drift)
+      const newBalance = Math.round(Math.max(0, invoice.total - newTotalPaid) * 100) / 100
 
       const openShift = await prisma.cashShift.findFirst({ where: { userId, status: 'OPEN' } })
 

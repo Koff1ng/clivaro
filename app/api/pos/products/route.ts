@@ -77,6 +77,30 @@ export async function GET(request: Request) {
         } as any,
       })
 
+      // Fetch unit conversions for all products
+      const allUnits = await prisma.unit.findMany()
+      const unitMap = new Map(allUnits.map((u: any) => [u.id, u]))
+
+      const unitConversions = await prisma.unitConversion.findMany()
+
+      // Build conversion map: for each unit symbol, list available sale units
+      const conversionsBySymbol = new Map<string, Array<{ unitSymbol: string, unitName: string, multiplier: number }>>()
+      for (const conv of unitConversions as any[]) {
+        const fromUnit = unitMap.get(conv.fromUnitId)
+        const toUnit = unitMap.get(conv.toUnitId)
+        if (!fromUnit || !toUnit) continue
+
+        const fromSymbol = (fromUnit as any).symbol
+        if (!conversionsBySymbol.has(fromSymbol)) {
+          conversionsBySymbol.set(fromSymbol, [])
+        }
+        conversionsBySymbol.get(fromSymbol)!.push({
+          unitSymbol: (toUnit as any).symbol,
+          unitName: (toUnit as any).name,
+          multiplier: conv.multiplier as number,
+        })
+      }
+
       const products = productsRaw.map((p: any) => {
         let stockLevels = p.stockLevels || []
 
@@ -97,6 +121,9 @@ export async function GET(request: Request) {
           stockLevels = virtualStockLevels
         }
 
+        // Get available sale units for this product
+        const saleUnits = conversionsBySymbol.get(p.unitOfMeasure) || []
+
         return {
           id: p.id,
           name: p.name,
@@ -105,7 +132,17 @@ export async function GET(request: Request) {
           price: p.price,
           taxRate: p.taxRate,
           trackStock: p.trackStock,
+          unitOfMeasure: p.unitOfMeasure,
+          category: p.category,
           stockLevels: stockLevels,
+          // Fractional unit sales: available units to sell individually
+          saleUnits: saleUnits.length > 0 ? saleUnits.map(su => ({
+            unitSymbol: su.unitSymbol,
+            unitName: su.unitName,
+            multiplier: su.multiplier,
+            // Price per individual unit = bulk price / multiplier
+            unitPrice: Math.round((p.price / su.multiplier) * 100) / 100,
+          })) : [],
         }
       })
 

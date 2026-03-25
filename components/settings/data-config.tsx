@@ -346,17 +346,61 @@ export function DataConfig({ settings, onSave, isLoading }: DataConfigProps) {
 
                     {/* === BACKUPS & RESET === */}
                     <TabsContent value="backups" className="space-y-6 pt-4">
-                        <div className="flex items-center justify-between p-4 border rounded-lg bg-yellow-50/50 dark:bg-yellow-900/10 border-yellow-200 dark:border-yellow-800">
+                        {/* Manual Full Backup */}
+                        <div className="p-6 border rounded-lg bg-blue-50/50 dark:bg-blue-900/10 border-blue-200 dark:border-blue-800 space-y-4">
                             <div className="space-y-1">
-                                <h3 className="font-medium flex items-center gap-2 text-yellow-800 dark:text-yellow-200">
-                                    <AlertCircle className="h-4 w-4" />
-                                    Backups Automáticos
+                                <h3 className="font-medium flex items-center gap-2 text-blue-800 dark:text-blue-200">
+                                    <Archive className="h-4 w-4" />
+                                    Respaldo Completo
                                 </h3>
-                                <p className="text-sm text-yellow-700/80 dark:text-yellow-300/80">
-                                    Configura la frecuencia de copias de seguridad automáticas.
+                                <p className="text-sm text-blue-700/80 dark:text-blue-300/80">
+                                    Genera y descarga un respaldo JSON completo de todos tus datos (clientes, productos, ventas, proveedores, inventario y configuración).
                                 </p>
                             </div>
-                            <Switch disabled />
+                            <Button
+                                onClick={async () => {
+                                    try {
+                                        const res = await fetch('/api/settings/data/export', {
+                                            method: 'POST',
+                                            headers: { 'Content-Type': 'application/json' },
+                                            body: JSON.stringify({
+                                                entities: ['clients', 'products', 'sales', 'suppliers', 'movements', 'settings'],
+                                                format: 'json'
+                                            }),
+                                        })
+                                        if (!res.ok) throw new Error('Error generating backup')
+                                        const blob = await res.blob()
+                                        const url = window.URL.createObjectURL(blob)
+                                        const a = document.createElement('a')
+                                        a.href = url
+                                        a.download = `backup-completo-${new Date().toISOString().split('T')[0]}.json`
+                                        document.body.appendChild(a)
+                                        a.click()
+                                        window.URL.revokeObjectURL(url)
+                                        document.body.removeChild(a)
+                                        toast('Respaldo completo descargado exitosamente', 'success')
+                                    } catch (e: any) {
+                                        toast('Error al generar respaldo: ' + e.message, 'error')
+                                    }
+                                }}
+                                variant="outline"
+                                className="gap-2"
+                            >
+                                <Download className="h-4 w-4" />
+                                Descargar Respaldo Completo (JSON)
+                            </Button>
+                        </div>
+
+                        <div className="p-4 border rounded-lg bg-green-50/50 dark:bg-green-900/10 border-green-200 dark:border-green-800">
+                            <div className="space-y-1">
+                                <h3 className="font-medium flex items-center gap-2 text-green-800 dark:text-green-200">
+                                    <CheckCircle2 className="h-4 w-4" />
+                                    Backups Automáticos (Supabase)
+                                </h3>
+                                <p className="text-sm text-green-700/80 dark:text-green-300/80">
+                                    Su base de datos cuenta con respaldos automáticos diarios gestionados por Supabase. Estos respaldos son independientes de este sistema y se retienen según su plan de servicio.
+                                </p>
+                            </div>
                         </div>
 
                         {/* Danger Zone */}

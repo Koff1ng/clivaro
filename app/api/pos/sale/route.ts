@@ -59,6 +59,9 @@ const createPOSSaleSchema = z.object({
       rate: z.number(),
       type: z.string(),
     })).optional(),
+    // Fractional unit sales: when selling in a different unit (e.g., 1 unit from a PACK of 24)
+    saleUnitSymbol: z.string().optional().nullable(),
+    conversionMultiplier: z.number().positive().optional().nullable(),
   })).min(1, "La venta debe tener al menos un producto"),
 
   // Compatibilidad: flujo antiguo (un solo método de texto)
@@ -483,9 +486,14 @@ export async function POST(request: Request) {
         const product = productMap.get(item.productId) as any
         if (!product?.trackStock) continue
 
+        // Calculate stock quantity to deduct, applying conversion if selling in a different unit
+        // E.g., selling 3 individual units from a PACK of 24 → deduct 3/24 = 0.125 packs
+        const conversionMultiplier = item.conversionMultiplier || 1
+        const stockQuantity = item.quantity / conversionMultiplier
+
         const isRestaurant = tenantSettings?.enableRestaurantMode
         if (isRestaurant && (product as any).enableRecipeConsumption) {
-          const ingredients = await resolveAllIngredients(tx, item.productId, item.quantity, item.variantId || null)
+          const ingredients = await resolveAllIngredients(tx, item.productId, stockQuantity, item.variantId || null)
           for (const ing of ingredients) {
             const enoughIngredientStock = await checkStock(
               data.warehouseId,
@@ -512,7 +520,7 @@ export async function POST(request: Request) {
             data.warehouseId,
             item.productId,
             item.variantId || null,
-            item.quantity,
+            stockQuantity,
             tx as any
           )
 
@@ -520,9 +528,9 @@ export async function POST(request: Request) {
             throw new Error(`Stock insuficiente para ${product?.name || item.productId}`)
           }
 
-          await updateStockLevel(data.warehouseId, item.productId, item.variantId || null, -item.quantity, tx, {
+          await updateStockLevel(data.warehouseId, item.productId, item.variantId || null, -stockQuantity, tx, {
             type: 'OUT',
-            reason: 'POS Sale',
+            reason: item.saleUnitSymbol ? `POS Sale (${item.quantity} ${item.saleUnitSymbol})` : 'POS Sale',
             reasonCode: 'SALE',
             reference: invoiceNumber,
             createdById: (session.user as any).id

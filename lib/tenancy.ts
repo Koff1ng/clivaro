@@ -1,6 +1,6 @@
 import { Prisma, PrismaClient } from '@prisma/client'
 import { prisma as masterPrisma } from './db'
-import { getSchemaName } from './tenant-utils'
+import { getSchemaNameAsync } from './tenant-utils'
 
 /**
  * Custom error class for tenancy-related failures (e.g., missing tenant context, invalid schema).
@@ -51,7 +51,7 @@ export async function getTenantPrismaClient(tenantId: string): Promise<PrismaCli
         throw new TenancyError('Tenant context is missing. Database access denied.', 401)
     }
 
-    const schemaName = getSchemaName(tenantId)
+    const schemaName = await getSchemaNameAsync(tenantId)
 
     if (!/^[a-z0-9_]+$/.test(schemaName)) {
         throw new TenancyError(`Invalid schema name derived: ${schemaName}`, 400)
@@ -139,7 +139,7 @@ export async function withTenantRead<T>(
  * @returns True if the schema exists, false otherwise.
  */
 export async function schemaExists(tenantId: string): Promise<boolean> {
-    const schemaName = getSchemaName(tenantId)
+    const schemaName = await getSchemaNameAsync(tenantId)
     const result = await masterPrisma.$queryRaw<any[]>`
         SELECT schema_name 
         FROM information_schema.schemata 
