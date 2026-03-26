@@ -17,6 +17,7 @@ export async function GET(request: Request) {
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '50')
     const warehouseId = searchParams.get('warehouseId')
+    const category = searchParams.get('category') || ''
     const search = searchParams.get('search') || ''
     const skip = (page - 1) * limit
 
@@ -25,6 +26,10 @@ export async function GET(request: Request) {
       const productWhere: any = {
         active: true,
         trackStock: true,
+      }
+
+      if (category) {
+        productWhere.category = category
       }
 
       if (search) {
@@ -36,8 +41,18 @@ export async function GET(request: Request) {
         ]
       }
 
+      // Get distinct categories for the filter dropdown
+      const allProducts = await prisma.product.findMany({
+        where: { active: true, trackStock: true },
+        select: { category: true },
+        distinct: ['category'],
+      })
+      const categories = allProducts
+        .map((p: any) => p.category)
+        .filter(Boolean)
+        .sort()
+
       // Query products first (not stock levels), then include stock levels
-      // This ensures products without stock level records still appear
       const [products, total] = await Promise.all([
         prisma.product.findMany({
           where: productWhere,
@@ -56,7 +71,7 @@ export async function GET(request: Request) {
         prisma.product.count({ where: productWhere }),
       ])
 
-      return { products, total }
+      return { products, total, categories }
     })
 
     // Flatten: one row per product-warehouse combo
@@ -112,6 +127,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({
       stockLevels: allStockLevels,
+      categories: data.categories,
       pagination: {
         page,
         limit,
