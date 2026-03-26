@@ -42,7 +42,7 @@ async function findUserInTenantSchema(
   // Use SSL if connecting to a remote DB (Supabase/Vercel)
   const client = new Client({
     connectionString: connString,
-    ssl: connString.includes('supabase') || connString.includes('localhost') ? false : { rejectUnauthorized: false }
+    ssl: connString.includes('localhost') || connString.includes('127.0.0.1') ? false : { rejectUnauthorized: false }
   })
 
   try {
@@ -201,7 +201,7 @@ export const authOptions: NextAuthOptions = {
           const connString = getDirectPostgresUrl()
           const client = new Client({
             connectionString: connString,
-            ssl: connString.includes('supabase') || connString.includes('localhost') ? false : { rejectUnauthorized: false }
+            ssl: connString.includes('localhost') || connString.includes('127.0.0.1') ? false : { rejectUnauthorized: false }
           })
 
           let superAdmin: any = null
