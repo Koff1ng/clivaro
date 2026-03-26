@@ -43,22 +43,38 @@ export async function GET(request: Request) {
         }
       }
 
-      const [existingStockLevels, total] = await Promise.all([
-        tx.stockLevel.findMany({
-          where: stockLevelWhere,
-          skip,
-          take: limit,
-          include: {
-            product: true,
-            warehouse: true,
-            zone: true,
-          },
-          orderBy: { product: { name: 'asc' } },
-        }),
-        tx.stockLevel.count({ where: stockLevelWhere }),
-      ])
-
-      return { existingStockLevels, total }
+      // Try with zone include first, fallback without it if Zone table doesn't exist
+      let includeOpts: any = { product: true, warehouse: true, zone: true }
+      try {
+        const [existingStockLevels, total] = await Promise.all([
+          tx.stockLevel.findMany({
+            where: stockLevelWhere,
+            skip,
+            take: limit,
+            include: includeOpts,
+            orderBy: { product: { name: 'asc' } },
+          }),
+          tx.stockLevel.count({ where: stockLevelWhere }),
+        ])
+        return { existingStockLevels, total }
+      } catch (e: any) {
+        // Retry without zone if the relation doesn't exist
+        if (e?.message?.includes('zone') || e?.message?.includes('Zone')) {
+          includeOpts = { product: true, warehouse: true }
+          const [existingStockLevels, total] = await Promise.all([
+            tx.stockLevel.findMany({
+              where: stockLevelWhere,
+              skip,
+              take: limit,
+              include: includeOpts,
+              orderBy: { product: { name: 'asc' } },
+            }),
+            tx.stockLevel.count({ where: stockLevelWhere }),
+          ])
+          return { existingStockLevels, total }
+        }
+        throw e
+      }
     })
 
     const allStockLevels = data.existingStockLevels.map((sl: any) => ({

@@ -25,8 +25,6 @@ const updateProductSchema = z.object({
   enableRecipeConsumption: z.boolean().optional(),
   printerStation: z.string().optional().nullable(),
   active: z.boolean().optional(),
-  percentageMerma: z.number().min(0).max(100).optional(),
-  stockAlertEnabled: z.boolean().optional(),
   // Variants (Upsert)
   variants: z.array(z.object({
     id: z.string().optional(), // If present, update. If missing, create.
@@ -37,7 +35,7 @@ const updateProductSchema = z.object({
     cost: z.number().min(0).optional(),
     yieldFactor: z.number().min(0.001).optional(),
   })).optional(),
-})
+}).passthrough()
 
 export async function GET(
   request: Request,
@@ -110,8 +108,8 @@ export async function PATCH(
     const data = updateProductSchema.parse(body)
 
     const result = await withTenantTx(tenantId, async (prisma) => {
-      // Extract variants explicitly
-      const { variants, minStock, maxStock, trackStock, ...directUpdateData } = data
+      // Extract variants and non-Prisma fields explicitly
+      const { variants, minStock, maxStock, trackStock, percentageMerma, stockAlertEnabled, ...directUpdateData } = data as any
 
       const updateData: any = {
         ...directUpdateData,
@@ -134,14 +132,13 @@ export async function PATCH(
           if (v.id) {
             // Update existing
             await prisma.productVariant.update({
-              where: { id: v.id, productId: product.id }, // Security: enforce productId
+              where: { id: v.id, productId: product.id },
               data: {
                 name: v.name,
                 sku: v.sku,
                 barcode: v.barcode,
                 price: v.price,
                 cost: v.cost,
-                yieldFactor: v.yieldFactor,
               }
             })
           } else {
@@ -154,7 +151,6 @@ export async function PATCH(
                 barcode: v.barcode,
                 price: v.price ?? product.price,
                 cost: v.cost ?? product.cost,
-                yieldFactor: v.yieldFactor || 1,
               }
             })
           }
