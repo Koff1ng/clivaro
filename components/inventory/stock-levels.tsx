@@ -350,7 +350,11 @@ export function StockLevels() {
                     })()}
                   </TableCell>
                   <TableCell>
-                    {item.isLowStock ? (
+                    {item.minStock <= 0 ? (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-700 text-[11px] font-medium">
+                        No configurado
+                      </span>
+                    ) : item.isLowStock ? (
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-orange-50 dark:bg-orange-950/30 text-orange-700 dark:text-orange-400 border border-orange-100 dark:border-orange-900/40 text-[11px] font-bold">
                         <AlertTriangle className="h-3 w-3" /> BAJO
                       </span>
