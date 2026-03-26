@@ -32,8 +32,9 @@ const productSchema = z.object({
   productType: z.enum(['RETAIL', 'SERVICE', 'RAW', 'PREPARED', 'SELLABLE']).default('RETAIL'),
   enableRecipeConsumption: z.boolean().default(false),
   printerStation: z.enum(['KITCHEN', 'BAR', 'CASHIER']).optional().nullable().or(z.literal('')),
-  percentageMerma: z.number().min(0).max(100).optional(),
-  stockAlertEnabled: z.boolean().optional(),
+  trackStock: z.boolean().default(true),
+  minStock: z.number().min(0).optional(),
+  maxStock: z.number().min(0).optional(),
   // Variants
   variants: z.array(z.object({
     id: z.string().optional(),
@@ -64,6 +65,8 @@ export function ProductForm({ product, onSuccess }: { product?: any; onSuccess: 
 
   const enableRestaurantMode = settingsData?.enableRestaurantMode || false
 
+  const stockLevel = product?.stockLevels?.[0]
+
   const { register, handleSubmit, formState: { errors }, setValue, watch, control } = useForm<ProductFormData>({
     resolver: zodResolver(productSchema),
     defaultValues: product ? {
@@ -80,8 +83,9 @@ export function ProductForm({ product, onSuccess }: { product?: any; onSuccess: 
       productType: (product as any).productType || 'RETAIL',
       enableRecipeConsumption: (product as any).enableRecipeConsumption || false,
       printerStation: (product as any).printerStation || null,
-      percentageMerma: (product as any).percentageMerma || 0,
-      stockAlertEnabled: (product as any).stockAlertEnabled ?? true,
+      trackStock: product.trackStock ?? true,
+      minStock: stockLevel?.minStock || 0,
+      maxStock: stockLevel?.maxStock || 0,
       variants: product.variants?.map((v: any) => ({
         id: v.id,
         name: v.name,
@@ -99,8 +103,9 @@ export function ProductForm({ product, onSuccess }: { product?: any; onSuccess: 
       productType: 'RETAIL',
       enableRecipeConsumption: false,
       printerStation: null,
-      percentageMerma: 0,
-      stockAlertEnabled: true,
+      trackStock: true,
+      minStock: 0,
+      maxStock: 0,
       variants: [],
     },
   })
@@ -214,7 +219,7 @@ export function ProductForm({ product, onSuccess }: { product?: any; onSuccess: 
         <p className="text-xs text-muted-foreground mt-1">Selecciona dónde se imprimirá la comanda de este producto</p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div>
           <Label htmlFor="cost">Costo (sin IVA) *</Label>
           <Input
@@ -231,7 +236,7 @@ export function ProductForm({ product, onSuccess }: { product?: any; onSuccess: 
           )}
         </div>
         <div>
-          <Label htmlFor="price">Precio de venta (sin IVA) *</Label>
+          <Label htmlFor="price">Precio base (sin IVA) *</Label>
           <Input
             id="price"
             type="number"
@@ -239,11 +244,6 @@ export function ProductForm({ product, onSuccess }: { product?: any; onSuccess: 
             {...register('price', { valueAsNumber: true })}
           />
           {errors.price && <p className="text-sm text-red-500">{errors.price.message}</p>}
-          {watch('taxRate') > 0 && watch('price') > 0 && (
-            <p className="text-[10px] text-green-600 mt-1 font-medium">
-              PVP con IVA: ${((watch('price') || 0) * (1 + (watch('taxRate') || 0) / 100)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </p>
-          )}
         </div>
         <div>
           <Label htmlFor="taxRate">IVA (%) *</Label>
@@ -254,6 +254,15 @@ export function ProductForm({ product, onSuccess }: { product?: any; onSuccess: 
             {...register('taxRate', { valueAsNumber: true })}
           />
           {errors.taxRate && <p className="text-sm text-red-500">{errors.taxRate.message}</p>}
+        </div>
+        <div>
+          <Label className="text-green-700 dark:text-green-400 font-bold">Precio Unitario (PVP)</Label>
+          <div className="flex h-10 w-full rounded-md border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950/30 px-3 py-2 text-sm items-center">
+            <span className="text-lg font-bold text-green-700 dark:text-green-400">
+              ${((watch('price') || 0) * (1 + (watch('taxRate') || 0) / 100)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </span>
+          </div>
+          <p className="text-[10px] text-muted-foreground mt-1">Precio + IVA · por {watch('unitOfMeasure') || 'unidad'}</p>
         </div>
       </div>
 
@@ -267,11 +276,74 @@ export function ProductForm({ product, onSuccess }: { product?: any; onSuccess: 
         />
       </div>
 
+      {/* Configuración de Inventario */}
+      <div className="space-y-4 pt-4 border-t">
+        <Label className="text-base font-semibold">Configuración de Inventario</Label>
+        <div className="flex items-center gap-2 mb-3">
+          <input
+            id="trackStock"
+            type="checkbox"
+            {...register('trackStock')}
+            className="h-4 w-4 rounded border-gray-300"
+          />
+          <Label htmlFor="trackStock" className="text-sm">Controlar inventario para este producto</Label>
+        </div>
+
+        {watch('trackStock') && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-blue-50/30 dark:bg-blue-950/10 border border-blue-100 dark:border-blue-900/30 rounded-xl">
+            <div>
+              <Label htmlFor="minStock">Stock Mínimo</Label>
+              <Input
+                id="minStock"
+                type="number"
+                step="0.01"
+                {...register('minStock', { valueAsNumber: true })}
+                placeholder="0"
+              />
+              <p className="text-[10px] text-muted-foreground mt-1">Se marcará como "BAJO" cuando el stock sea menor o igual a este valor</p>
+            </div>
+            <div>
+              <Label htmlFor="maxStock">Stock Máximo</Label>
+              <Input
+                id="maxStock"
+                type="number"
+                step="0.01"
+                {...register('maxStock', { valueAsNumber: true })}
+                placeholder="0"
+              />
+              <p className="text-[10px] text-muted-foreground mt-1">Referencia para reabastecimiento. 0 = sin máximo configurado</p>
+            </div>
+            {product && stockLevel && (
+              <div className="col-span-full grid grid-cols-3 gap-4 pt-2 border-t border-blue-100 dark:border-blue-900/30">
+                <div className="space-y-0.5">
+                  <Label className="text-[10px] uppercase font-bold text-muted-foreground">Stock Actual</Label>
+                  <div className="text-sm font-mono font-bold text-slate-700 dark:text-slate-200">
+                    {(stockLevel.quantity || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                  </div>
+                </div>
+                <div className="space-y-0.5">
+                  <Label className="text-[10px] uppercase font-bold text-muted-foreground">Mín. Actual</Label>
+                  <div className="text-sm font-mono font-bold text-orange-600">
+                    {(stockLevel.minStock || 0).toLocaleString()}
+                  </div>
+                </div>
+                <div className="space-y-0.5">
+                  <Label className="text-[10px] uppercase font-bold text-muted-foreground">Máx. Actual</Label>
+                  <div className="text-sm font-mono font-bold text-blue-600">
+                    {(stockLevel.maxStock || 0).toLocaleString()}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
       {enableRestaurantMode && (
         <div className="space-y-4 pt-4 border-t">
           <Label className="text-base font-semibold">Configuración de Restaurante</Label>
 
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 bg-orange-50/30 dark:bg-orange-950/10 border border-orange-100 dark:border-orange-900/30 rounded-xl">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-orange-50/30 dark:bg-orange-950/10 border border-orange-100 dark:border-orange-900/30 rounded-xl">
             <div className="space-y-1">
               <Label className="text-[10px] uppercase font-bold text-muted-foreground">Último Costo</Label>
               <div className="text-sm font-mono font-bold text-orange-600">
@@ -290,15 +362,9 @@ export function ProductForm({ product, onSuccess }: { product?: any; onSuccess: 
                 ${((watch('cost') || 0) * (1 + (watch('taxRate') || 0) / 100)).toLocaleString()}
               </div>
             </div>
-            <div className="space-y-1">
-              <Label className="text-[10px] uppercase font-bold text-muted-foreground">Costo c/ Merma</Label>
-              <div className="text-sm font-mono font-bold text-red-600">
-                ${((watch('cost') || 0) / (1 - (watch('percentageMerma') || 0) / 100)).toLocaleString()}
-              </div>
-            </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <Label htmlFor="productType">Tipo de Producto</Label>
               <select
@@ -314,36 +380,14 @@ export function ProductForm({ product, onSuccess }: { product?: any; onSuccess: 
               </select>
             </div>
 
-            <div>
-              <Label htmlFor="percentageMerma">% Merma (Desperdicio)</Label>
-              <Input
-                id="percentageMerma"
-                type="number"
-                step="0.01"
-                {...register('percentageMerma', { valueAsNumber: true })}
-                placeholder="0.00 %"
+            <div className="flex items-center gap-2 pt-6">
+              <input
+                id="enableRecipeConsumption"
+                type="checkbox"
+                {...register('enableRecipeConsumption')}
+                className="h-4 w-4 rounded border-gray-300"
               />
-            </div>
-
-            <div className="flex flex-col gap-3 justify-center pt-2">
-              <div className="flex items-center gap-2">
-                <input
-                  id="enableRecipeConsumption"
-                  type="checkbox"
-                  {...register('enableRecipeConsumption')}
-                  className="h-4 w-4 rounded border-gray-300"
-                />
-                <Label htmlFor="enableRecipeConsumption" className="text-xs">Habilitar Receta</Label>
-              </div>
-              <div className="flex items-center gap-2">
-                <input
-                  id="stockAlertEnabled"
-                  type="checkbox"
-                  {...register('stockAlertEnabled')}
-                  className="h-4 w-4 rounded border-gray-300"
-                />
-                <Label htmlFor="stockAlertEnabled" className="text-xs">Alerta de Existencias</Label>
-              </div>
+              <Label htmlFor="enableRecipeConsumption" className="text-xs">Habilitar Receta</Label>
             </div>
           </div>
 

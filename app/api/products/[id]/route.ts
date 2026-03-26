@@ -35,7 +35,7 @@ const updateProductSchema = z.object({
     cost: z.number().min(0).optional(),
     yieldFactor: z.number().min(0.001).optional(),
   })).optional(),
-}).passthrough()
+})
 
 export async function GET(
   request: Request,
