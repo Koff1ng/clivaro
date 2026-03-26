@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { requireAnyPermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
 import { logger } from '@/lib/logger'
-import { withTenantTx, getTenantIdFromSession } from '@/lib/tenancy'
+import { withTenantRead, getTenantIdFromSession } from '@/lib/tenancy'
 
 export const dynamic = 'force-dynamic'
 
@@ -20,81 +20,95 @@ export async function GET(request: Request) {
     const search = searchParams.get('search') || ''
     const skip = (page - 1) * limit
 
-    const data = await withTenantTx(tenantId, async (tx: any) => {
-      const stockLevelWhere: any = {
-        product: {
-          active: true,
-          trackStock: true,
-        },
-      }
-
-      if (warehouseId) {
-        stockLevelWhere.warehouseId = warehouseId
+    const data = await withTenantRead(tenantId, async (prisma: any) => {
+      // Build product-level where clause
+      const productWhere: any = {
+        active: true,
+        trackStock: true,
       }
 
       if (search) {
-        stockLevelWhere.product = {
-          ...stockLevelWhere.product,
-          OR: [
-            { name: { contains: search, mode: 'insensitive' } },
-            { sku: { contains: search, mode: 'insensitive' } },
-            { barcode: { contains: search, mode: 'insensitive' } },
-          ],
-        }
+        productWhere.OR = [
+          { name: { contains: search, mode: 'insensitive' } },
+          { sku: { contains: search, mode: 'insensitive' } },
+          { barcode: { contains: search, mode: 'insensitive' } },
+          { category: { contains: search, mode: 'insensitive' } },
+        ]
       }
 
-      // Try with zone include first, fallback without it if Zone table doesn't exist
-      let includeOpts: any = { product: true, warehouse: true, zone: true }
-      try {
-        const [existingStockLevels, total] = await Promise.all([
-          tx.stockLevel.findMany({
-            where: stockLevelWhere,
-            skip,
-            take: limit,
-            include: includeOpts,
-            orderBy: { product: { name: 'asc' } },
-          }),
-          tx.stockLevel.count({ where: stockLevelWhere }),
-        ])
-        return { existingStockLevels, total }
-      } catch (e: any) {
-        // Retry without zone if the relation doesn't exist
-        if (e?.message?.includes('zone') || e?.message?.includes('Zone')) {
-          includeOpts = { product: true, warehouse: true }
-          const [existingStockLevels, total] = await Promise.all([
-            tx.stockLevel.findMany({
-              where: stockLevelWhere,
-              skip,
-              take: limit,
-              include: includeOpts,
-              orderBy: { product: { name: 'asc' } },
-            }),
-            tx.stockLevel.count({ where: stockLevelWhere }),
-          ])
-          return { existingStockLevels, total }
-        }
-        throw e
-      }
+      // Query products first (not stock levels), then include stock levels
+      // This ensures products without stock level records still appear
+      const [products, total] = await Promise.all([
+        prisma.product.findMany({
+          where: productWhere,
+          skip,
+          take: limit,
+          include: {
+            stockLevels: {
+              include: {
+                warehouse: true,
+              },
+              ...(warehouseId ? { where: { warehouseId } } : {}),
+            },
+          },
+          orderBy: { name: 'asc' },
+        }),
+        prisma.product.count({ where: productWhere }),
+      ])
+
+      return { products, total }
     })
 
-    const allStockLevels = data.existingStockLevels.map((sl: any) => ({
-      id: sl.id,
-      productId: sl.productId,
-      productName: sl.product?.name,
-      productSku: sl.product?.sku,
-      productBarcode: sl.product?.barcode,
-      unitOfMeasure: sl.product?.unitOfMeasure || 'UND',
-      warehouseId: sl.warehouseId,
-      warehouseName: sl.warehouse?.name,
-      zoneId: sl.zoneId,
-      zoneName: sl.zone?.name || 'General',
-      quantity: sl.quantity,
-      minStock: sl.minStock,
-      maxStock: sl.maxStock ?? 0,
-      isLowStock: sl.quantity <= sl.minStock,
-      trackStock: sl.product?.trackStock ?? true,
-    }))
+    // Flatten: one row per product-warehouse combo
+    // If a product has no stock levels, show it with 0 quantity
+    const allStockLevels: any[] = []
 
+    for (const product of data.products) {
+      if (product.stockLevels && product.stockLevels.length > 0) {
+        for (const sl of product.stockLevels) {
+          allStockLevels.push({
+            id: sl.id,
+            productId: product.id,
+            productName: product.name,
+            productSku: product.sku,
+            productBarcode: product.barcode,
+            unitOfMeasure: product.unitOfMeasure || 'UNIT',
+            warehouseId: sl.warehouseId,
+            warehouseName: sl.warehouse?.name || 'Sin almacén',
+            zoneName: 'General',
+            quantity: sl.quantity,
+            minStock: sl.minStock,
+            maxStock: sl.maxStock ?? 0,
+            isLowStock: sl.minStock > 0 && sl.quantity <= sl.minStock,
+            trackStock: product.trackStock ?? true,
+            cost: product.cost,
+            price: product.price,
+            category: product.category,
+          })
+        }
+      } else {
+        // Product has trackStock but no StockLevel record yet
+        allStockLevels.push({
+          id: `no-stock-${product.id}`,
+          productId: product.id,
+          productName: product.name,
+          productSku: product.sku,
+          productBarcode: product.barcode,
+          unitOfMeasure: product.unitOfMeasure || 'UNIT',
+          warehouseId: null,
+          warehouseName: 'Sin asignar',
+          zoneName: 'General',
+          quantity: 0,
+          minStock: 0,
+          maxStock: 0,
+          isLowStock: false,
+          trackStock: product.trackStock ?? true,
+          cost: product.cost,
+          price: product.price,
+          category: product.category,
+        })
+      }
+    }
 
     return NextResponse.json({
       stockLevels: allStockLevels,
@@ -113,4 +127,3 @@ export async function GET(request: Request) {
     )
   }
 }
-
