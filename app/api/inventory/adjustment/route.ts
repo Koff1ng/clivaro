@@ -9,7 +9,7 @@ import { handleError } from '@/lib/error-handler'
 
 const adjustmentSchema = z.object({
   warehouseId: z.string().optional().nullable(),
-  productId: z.string().optional(),
+  productId: z.string().optional().nullable(),
   variantId: z.string().optional().nullable(),
   quantity: z.number(),
   reason: z.string().min(1),
@@ -26,17 +26,27 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json()
+
+    // Validate OUTSIDE the transaction
+    const parsed = adjustmentSchema.safeParse(body)
+    if (!parsed.success) {
+      console.error('[ADJUSTMENT] Validation failed:', JSON.stringify(parsed.error.flatten()), 'Body:', JSON.stringify(body))
+      return NextResponse.json(
+        { error: 'Error de validación', details: parsed.error.flatten() },
+        { status: 400 }
+      )
+    }
+
+    const data = parsed.data
+
+    if (!data.productId && !data.variantId) {
+      return NextResponse.json(
+        { error: 'Se requiere productId o variantId' },
+        { status: 400 }
+      )
+    }
+
     const result = await withTenantTx(tenantId, async (prisma) => {
-      const parsed = adjustmentSchema.safeParse(body)
-      if (!parsed.success) {
-        return { error: 'Error de validación', details: parsed.error.flatten(), status: 400 }
-      }
-      const data = parsed.data
-
-      if (!data.productId && !data.variantId) {
-        return { error: 'Either productId or variantId is required', status: 400 }
-      }
-
       // Auto-resolve warehouseId if not provided
       let warehouseId = data.warehouseId
       if (!warehouseId) {
@@ -46,9 +56,10 @@ export async function POST(request: Request) {
           select: { id: true },
         })
         if (!firstWarehouse) {
-          return { error: 'No hay almacenes activos para asignar el inventario', status: 400 }
+          throw new Error('NO_WAREHOUSE: No hay almacenes activos para asignar el inventario')
         }
         warehouseId = firstWarehouse.id
+        console.log(`[ADJUSTMENT] Auto-resolved warehouse: ${warehouseId}`)
       }
 
       const quantity = data.quantity
@@ -92,15 +103,17 @@ export async function POST(request: Request) {
       return { success: true }
     })
 
-    if ('error' in result) {
-      return NextResponse.json({ error: result.error, details: result.details }, { status: result.status })
+    return NextResponse.json(result)
+  } catch (error: any) {
+    console.error(`[INVENTORY_ADJUSTMENT_POST] Error:`, error?.message || error)
+
+    if (error?.message?.startsWith('NO_WAREHOUSE')) {
+      return NextResponse.json(
+        { error: 'No hay almacenes activos para asignar el inventario' },
+        { status: 400 }
+      )
     }
 
-    return NextResponse.json(result)
-  } catch (error: unknown) {
-    // Log the error for better server-side debugging
-    console.error(`[INVENTORY_ADJUSTMENT_POST] Error:`, error)
     return handleError(error, 'INVENTORY_ADJUSTMENT_POST')
   }
 }
-
