@@ -302,6 +302,7 @@ export function StockLevels() {
               <TableHead>Producto</TableHead>
               <TableHead>SKU</TableHead>
               <TableHead>Categoría</TableHead>
+              <TableHead>Unidad</TableHead>
               <TableHead>Almacén</TableHead>
               <TableHead className="text-right">Stock</TableHead>
               <TableHead>Estado</TableHead>
@@ -311,7 +312,7 @@ export function StockLevels() {
           <TableBody>
             {stockLevels.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="h-48 text-center">
+                <TableCell colSpan={8} className="h-48 text-center">
                   <div className="flex flex-col items-center justify-center text-gray-400">
                     <Package className="h-10 w-10 mb-2 opacity-20" />
                     <p className="text-gray-500 font-medium">No se encontraron productos</p>
@@ -335,6 +336,11 @@ export function StockLevels() {
                     ) : (
                       <span className="text-gray-300 text-xs">—</span>
                     )}
+                  </TableCell>
+                  <TableCell>
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 text-[11px] font-medium">
+                      {UNIT_LABELS[item.unitOfMeasure] || item.unitOfMeasure}
+                    </span>
                   </TableCell>
                   <TableCell className="text-xs text-gray-600 dark:text-gray-400">{item.warehouseName}</TableCell>
                   <TableCell className="text-right whitespace-nowrap">
