@@ -34,9 +34,10 @@ function getDirectPostgresUrl(): string {
  */
 async function findUserInTenantSchema(
   tenantId: string,
-  usernameOrEmail: string
+  usernameOrEmail: string,
+  tenantSlug?: string
 ): Promise<any | null> {
-  const schemaName = getSchemaName(tenantId)
+  const schemaName = getSchemaName(tenantId, tenantSlug)
   const connString = getDirectPostgresUrl()
 
   // Use SSL if connecting to a remote DB (Supabase/Vercel)
@@ -159,7 +160,7 @@ export const authOptions: NextAuthOptions = {
             // This is 100% isolated — no shared connection pool, no contamination
             let tenantUser: any
             try {
-              tenantUser = await findUserInTenantSchema(tenant.id, credentials.username)
+              tenantUser = await findUserInTenantSchema(tenant.id, credentials.username, tenant.slug)
             } catch (dbError: any) {
               console.error(`[AUTH] DB error for tenant schema "${schemaName}":`, dbError?.message)
               throw new Error('TENANT_DB_ERROR: No se pudo conectar con la base de datos de la empresa.')
