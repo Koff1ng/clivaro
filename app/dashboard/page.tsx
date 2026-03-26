@@ -2,16 +2,10 @@ import { MainLayout } from '@/components/layout/main-layout'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { redirect } from 'next/navigation'
-import { Suspense } from 'react'
-import { DashboardStats } from '@/components/dashboard/stats'
-import { TopClients } from '@/components/dashboard/top-clients'
-import { LowStockDashboard } from '@/components/dashboard/low-stock-dashboard'
-import { RecentProducts } from '@/components/dashboard/recent-products'
-import { Last30DaysChartLazy, ProductCategoriesLazy } from '@/components/dashboard/lazy-charts'
 import { PageHeader } from '@/components/ui/page-header'
 import { PageHeaderBadges } from '@/components/ui/page-header-badges'
 import { DashboardGreeting } from '@/components/dashboard/greeting'
-import { InventoryValueReport } from '@/components/dashboard/inventory-value-report'
+import { DashboardContent } from '@/components/dashboard/dashboard-content'
 
 export default async function DashboardPage() {
   const session = await getServerSession(authOptions)
@@ -24,8 +18,6 @@ export default async function DashboardPage() {
   const isSuperAdmin = (session.user as any).isSuperAdmin || false
   const tenantId = (session.user as any).tenantId
 
-  // Super admins and tenant users (who have a tenantId) can always access dashboard.
-  // For global non-admin users, require at least one basic permission.
   if (!isSuperAdmin && !tenantId && !userPermissions.includes('view_reports') && !userPermissions.includes('manage_sales')) {
     redirect('/login')
   }
@@ -38,38 +30,11 @@ export default async function DashboardPage() {
           badges={<PageHeaderBadges />}
         />
 
-        {/* Saludo Personalizado */}
         <DashboardGreeting />
 
-        {/* Cards de métricas - 4 columnas */}
-        <Suspense fallback={<div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4"><div className="h-24 bg-gray-100 animate-pulse rounded" /><div className="h-24 bg-gray-100 animate-pulse rounded" /><div className="h-24 bg-gray-100 animate-pulse rounded" /><div className="h-24 bg-gray-100 animate-pulse rounded" /></div>}>
-          <DashboardStats />
-        </Suspense>
-
-        {/* Gráfico de últimos 30 días - ancho completo */}
-        <Last30DaysChartLazy />
-
-        {/* Reporte de Inventario y Categorías */}
-        <div className="grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-3">
-          <InventoryValueReport />
-          <ProductCategoriesLazy />
-        </div>
-
-        {/* Grid de 3 columnas: Top Clientes, Stock Bajo, Productos */}
-        <div className="grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-3">
-          <Suspense fallback={<div className="h-64 bg-gray-100 animate-pulse rounded-lg" />}>
-            <TopClients />
-          </Suspense>
-          <Suspense fallback={<div className="h-64 bg-gray-100 animate-pulse rounded-lg" />}>
-            <LowStockDashboard />
-          </Suspense>
-          <Suspense fallback={<div className="h-64 bg-gray-100 animate-pulse rounded-lg" />}>
-            <RecentProducts />
-          </Suspense>
-        </div>
-
+        {/* All dashboard content with shared period state */}
+        <DashboardContent />
       </div>
     </MainLayout>
   )
 }
-
