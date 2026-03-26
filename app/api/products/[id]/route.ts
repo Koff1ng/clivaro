@@ -105,28 +105,39 @@ export async function PATCH(
 
   try {
     const body = await request.json()
+    // Strip unknown fields — do NOT use .passthrough()
     const data = updateProductSchema.parse(body)
 
     const result = await withTenantTx(tenantId, async (prisma) => {
-      // Extract variants and non-Prisma fields explicitly
-      const { variants, minStock, maxStock, trackStock, percentageMerma, stockAlertEnabled, ...directUpdateData } = data as any
-
+      // Explicitly pick only fields that exist in Prisma Product model
       const updateData: any = {
-        ...directUpdateData,
         updatedById: (session.user as any).id,
       }
 
+      // Only set fields that are actually provided and exist in Prisma
+      if (data.sku !== undefined) updateData.sku = data.sku
+      if (data.name !== undefined) updateData.name = data.name
+      if (data.brand !== undefined) updateData.brand = data.brand || null
+      if (data.category !== undefined) updateData.category = data.category || null
+      if (data.unitOfMeasure !== undefined) updateData.unitOfMeasure = data.unitOfMeasure
       if (data.cost !== undefined) updateData.cost = data.cost
       if (data.price !== undefined) updateData.price = data.price
       if (data.taxRate !== undefined) updateData.taxRate = data.taxRate
+      if (data.description !== undefined) updateData.description = data.description || null
+      if (data.productType !== undefined) updateData.productType = data.productType
+      if (data.enableRecipeConsumption !== undefined) updateData.enableRecipeConsumption = data.enableRecipeConsumption
+      if (data.printerStation !== undefined) updateData.printerStation = data.printerStation || null
+      if (data.active !== undefined) updateData.active = data.active
+      // Sanitize barcode: empty string → null (unique constraint)
+      if (data.barcode !== undefined) updateData.barcode = data.barcode?.trim() || null
 
-      // Use the provided transaction context (prisma)
       const product = await prisma.product.update({
         where: { id: params.id },
         data: updateData,
       })
 
       // Handle Variants
+      const variants = (data as any).variants
       if (variants && variants.length > 0) {
         for (const v of variants) {
           if (v.id) {
@@ -158,6 +169,9 @@ export async function PATCH(
       }
 
       // Handle Stock Levels
+      const trackStock = (data as any).trackStock
+      const minStock = (data as any).minStock
+      const maxStock = (data as any).maxStock
       if (trackStock !== undefined || minStock !== undefined || maxStock !== undefined) {
         const warehouse = await prisma.warehouse.findFirst({
           where: { active: true },
@@ -229,7 +243,7 @@ export async function PATCH(
         subject: `Producto actualizado: ${product.name}`,
         description: `Actualizado por usuario. ${variants ? `Variantes procesadas: ${variants.length}` : ''}`,
         userId: (session.user as any).id,
-        metadata: { productId: product.id, updates: Object.keys(directUpdateData) }
+        metadata: { productId: product.id, updates: Object.keys(updateData) }
       })
 
       return product
