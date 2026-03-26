@@ -8,7 +8,7 @@ import { logActivity } from '@/lib/activity'
 import { handleError } from '@/lib/error-handler'
 
 const adjustmentSchema = z.object({
-  warehouseId: z.string(),
+  warehouseId: z.string().optional().nullable(),
   productId: z.string().optional(),
   variantId: z.string().optional().nullable(),
   quantity: z.number(),
@@ -37,13 +37,27 @@ export async function POST(request: Request) {
         return { error: 'Either productId or variantId is required', status: 400 }
       }
 
+      // Auto-resolve warehouseId if not provided
+      let warehouseId = data.warehouseId
+      if (!warehouseId) {
+        const firstWarehouse = await prisma.warehouse.findFirst({
+          where: { active: true },
+          orderBy: { createdAt: 'asc' },
+          select: { id: true },
+        })
+        if (!firstWarehouse) {
+          return { error: 'No hay almacenes activos para asignar el inventario', status: 400 }
+        }
+        warehouseId = firstWarehouse.id
+      }
+
       const quantity = data.quantity
       const movementType = quantity > 0 ? 'IN' : 'OUT'
 
       // Create stock movement
       await prisma.stockMovement.create({
         data: {
-          warehouseId: data.warehouseId,
+          warehouseId,
           productId: data.productId || null,
           variantId: data.variantId || null,
           type: movementType,
@@ -58,7 +72,7 @@ export async function POST(request: Request) {
 
       // Update stock level
       await updateStockLevel(
-        data.warehouseId,
+        warehouseId,
         data.productId || null,
         data.variantId || null,
         quantity,
@@ -72,7 +86,7 @@ export async function POST(request: Request) {
         subject: `Ajuste de inventario: ${data.reason}`,
         description: `${movementType === 'IN' ? 'Entrada' : 'Salida'} de ${Math.abs(quantity)} unidades.`,
         userId: user.id,
-        metadata: { warehouseId: data.warehouseId, productId: data.productId, variantId: data.variantId, quantity }
+        metadata: { warehouseId, productId: data.productId, variantId: data.variantId, quantity }
       })
 
       return { success: true }
