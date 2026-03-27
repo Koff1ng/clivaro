@@ -1,6 +1,7 @@
 import puppeteer, { Browser } from 'puppeteer-core'
 import chromium from '@sparticuz/chromium'
 import { formatCurrency, formatDate } from './utils'
+import QRCode from 'qrcode'
 import fs from 'fs'
 
 export interface QuotationPDFData {
@@ -551,6 +552,21 @@ export async function generateInvoicePDF(invoice: InvoicePDFData): Promise<Buffe
 
   const isElectronic = !!invoice.cufe
 
+  // Generate QR code as base64 data URI for reliable embedding
+  let qrDataUri = ''
+  if (isElectronic && invoice.cufe) {
+    try {
+      const dianUrl = `https://catalogo-vpfe.dian.gov.co/document/searchqr?documentkey=${invoice.cufe}`
+      qrDataUri = await QRCode.toDataURL(dianUrl, {
+        width: 150,
+        margin: 1,
+        color: { dark: '#1e3a8a', light: '#ffffff' },
+      })
+    } catch (e) {
+      // Fallback: no QR if generation fails
+    }
+  }
+
   const html = `
     <!DOCTYPE html>
     <html>
@@ -1020,13 +1036,15 @@ export async function generateInvoicePDF(invoice: InvoicePDFData): Promise<Buffe
             </svg>
             Factura Electrónica Validada por la DIAN
           </div>
-          <div style="margin-bottom: 10px; font-size: 9px; color: #1e3a8a;"><strong>CUFE:</strong></div>
-          <div class="cufe-code">${invoice.cufe}</div>
-          <div class="qr-section">
-            <img src="https://chart.googleapis.com/chart?cht=qr&chs=120x120&chl=${encodeURIComponent(invoice.cufe || invoice.qrCode || '')}" alt="QR" style="width: 120px; height: 120px;" />
-            <div style="flex: 1;">
-              <div style="font-size: 9px; color: #1e3a8a; margin-bottom: 4px;"><strong>Verificar en:</strong></div>
-              <div style="font-size: 8px; color: #2563eb; word-break: break-all;">https://catalogo-vpfe.dian.gov.co/document/searchqr?documentkey=${invoice.cufe}</div>
+          <div style="display: flex; gap: 16px; align-items: flex-start; margin-top: 12px;">
+            ${qrDataUri ? `<img src="${qrDataUri}" alt="QR" style="width: 130px; height: 130px; flex-shrink: 0; border: 1px solid #bfdbfe; border-radius: 6px;" />` : ''}
+            <div style="flex: 1; min-width: 0;">
+              <div style="font-size: 9px; font-weight: 700; color: #1e3a8a; margin-bottom: 6px;">CUFE:</div>
+              <div class="cufe-code">${invoice.cufe}</div>
+              <div style="margin-top: 8px; font-size: 8px; color: #2563eb;">
+                <strong>Verificar en:</strong><br/>
+                <span style="word-break: break-all;">https://catalogo-vpfe.dian.gov.co/document/searchqr?documentkey=${invoice.cufe}</span>
+              </div>
             </div>
           </div>
         </div>` : ''}
