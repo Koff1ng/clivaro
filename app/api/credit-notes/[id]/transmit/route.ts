@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { requirePermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
 import { withTenantTx, getTenantIdFromSession } from '@/lib/tenancy'
-import { masterPrisma } from '@/lib/master-prisma'
+import { prisma as masterPrisma } from '@/lib/db'
 import { logger } from '@/lib/logger'
 import { FactusClient } from '@/lib/factus/client'
 
