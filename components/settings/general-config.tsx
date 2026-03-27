@@ -471,25 +471,48 @@ export function GeneralConfig({ settings, onSave, isLoading, initialTab = 'ident
               )}
             </div>
 
-            {/* Ticket Design Editor Button */}
-            <div className="p-8 border rounded-[2.5rem] bg-white shadow-sm hover:shadow-xl transition-all duration-300">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-5">
-                  <div className="p-4 bg-amber-50 rounded-2xl text-amber-600">
-                    <Receipt size={28} />
+            {/* Document Design Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Tirilla Design Card */}
+              <div className="p-6 border rounded-[2rem] bg-white shadow-sm hover:shadow-xl transition-all duration-300 group">
+                <div className="flex flex-col items-center text-center gap-4">
+                  <div className="p-4 bg-amber-50 rounded-2xl text-amber-600 group-hover:bg-amber-100 transition-colors">
+                    <Receipt size={32} />
                   </div>
                   <div>
-                    <h3 className="font-black text-slate-800 text-lg tracking-tight">Diseño de Factura / Tirilla</h3>
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Personaliza cómo se ven tus facturas impresas</p>
+                    <h3 className="font-black text-slate-800 text-lg tracking-tight">Tirilla / Recibo</h3>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Impresión térmica POS</p>
+                    <p className="text-xs text-slate-500 mt-2">Configura plantilla (Clásica, Moderna, Minimalista), logo, CUFE, QR, footer legal, tipografía y márgenes.</p>
                   </div>
+                  <Button
+                    type="button"
+                    className="rounded-full bg-amber-600 hover:bg-amber-700 font-bold px-8 w-full"
+                    onClick={() => setShowTicketEditor(true)}
+                  >
+                    <Edit size={16} className="mr-2" /> Diseñar Tirilla
+                  </Button>
                 </div>
-                <Button
-                  type="button"
-                  className="rounded-full bg-amber-600 hover:bg-amber-700 font-bold px-8"
-                  onClick={() => setShowTicketEditor(true)}
-                >
-                  <Edit size={16} className="mr-2" /> Diseñar Tirilla
-                </Button>
+              </div>
+
+              {/* PDF / Letter Design Card */}
+              <div className="p-6 border rounded-[2rem] bg-white shadow-sm hover:shadow-xl transition-all duration-300 group">
+                <div className="flex flex-col items-center text-center gap-4">
+                  <div className="p-4 bg-indigo-50 rounded-2xl text-indigo-600 group-hover:bg-indigo-100 transition-colors">
+                    <FileText size={32} />
+                  </div>
+                  <div>
+                    <h3 className="font-black text-slate-800 text-lg tracking-tight">PDF / Carta</h3>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Formato de impresión en carta</p>
+                    <p className="text-xs text-slate-500 mt-2">El formato PDF utiliza logo, pie de página legal, CUFE y frase de agradecimiento configurados en el editor de tirilla.</p>
+                  </div>
+                  <Button
+                    type="button"
+                    className="rounded-full bg-indigo-600 hover:bg-indigo-700 font-bold px-8 w-full"
+                    onClick={() => setShowTicketEditor(true)}
+                  >
+                    <Edit size={16} className="mr-2" /> Configurar PDF
+                  </Button>
+                </div>
               </div>
             </div>
           </div>
@@ -527,6 +550,7 @@ export function GeneralConfig({ settings, onSave, isLoading, initialTab = 'ident
                     showQr: true,
                     showCufe: true,
                     footerText: 'Gracias por su compra',
+                    footerTemplate: 'general',
                     separator: 'dashes',
                     fontSize: 'medium',
                     fontWeight: 'bold',
