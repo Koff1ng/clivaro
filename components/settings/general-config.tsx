@@ -32,7 +32,8 @@ import {
 } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useToast } from '@/components/ui/toast'
-import { TicketEditor, TicketDesignSettings } from './ticket-editor'
+import { TicketEditor, type TicketDesignSettings } from '@/components/settings/ticket-editor'
+import { PdfEditor } from '@/components/settings/pdf-editor'
 import { MetaConfig } from './meta-config'
 import { ZoneManager } from '../warehouses/zone-manager'
 import { cn } from '@/lib/utils'
@@ -150,6 +151,7 @@ export function GeneralConfig({ settings, onSave, isLoading, initialTab = 'ident
   const [isScanning, setIsScanning] = useState(false)
   const [showScanDialog, setShowScanDialog] = useState(false)
   const [showTicketEditor, setShowTicketEditor] = useState(false)
+  const [showPdfEditor, setShowPdfEditor] = useState(false)
   const [showWarehouseDialog, setShowWarehouseDialog] = useState(false)
   const [expandedWarehouseId, setExpandedWarehouseId] = useState<string | null>(null)
   const [newWarehouse, setNewWarehouse] = useState({ name: '', location: '', active: true })
@@ -508,7 +510,7 @@ export function GeneralConfig({ settings, onSave, isLoading, initialTab = 'ident
                   <Button
                     type="button"
                     className="rounded-full bg-indigo-600 hover:bg-indigo-700 font-bold px-8 w-full"
-                    onClick={() => setShowTicketEditor(true)}
+                    onClick={() => setShowPdfEditor(true)}
                   >
                     <Edit size={16} className="mr-2" /> Configurar PDF
                   </Button>
@@ -605,7 +607,92 @@ export function GeneralConfig({ settings, onSave, isLoading, initialTab = 'ident
           </Dialog>
         )}
 
-        {/* Almacenes */}
+        {/* PDF Editor Dialog */}
+        {showPdfEditor && (
+          <Dialog open={showPdfEditor} onOpenChange={setShowPdfEditor}>
+            <DialogContent className="max-w-[1200px] max-h-[90vh] overflow-y-auto rounded-[2rem] border-none shadow-2xl p-0">
+              <DialogHeader className="p-6 bg-indigo-900 text-white">
+                <DialogTitle className="text-xl font-black flex items-center gap-3">
+                  <FileText size={24} /> Editor de PDF / Carta
+                </DialogTitle>
+                <DialogDescription className="text-indigo-300 uppercase text-[10px] font-bold tracking-widest">
+                  Personaliza la apariencia de tus facturas en formato carta
+                </DialogDescription>
+              </DialogHeader>
+              <div className="p-6">
+                <PdfEditor
+                  settings={initialCustomSettings.printing?.ticketDesign || {
+                    templateStyle: 'classic',
+                    headerAlignment: 'center',
+                    showDescription: false,
+                    showUnitPrice: true,
+                    showLogo: true,
+                    groupData: false,
+                    showUnitOfMeasure: false,
+                    showTotals: true,
+                    showLineCount: true,
+                    showProductCount: true,
+                    paperSize: 80,
+                    marginLeft: 0,
+                    marginRight: 0,
+                    customFooterText: '',
+                    showQr: true,
+                    showCufe: true,
+                    footerText: 'Gracias por su compra',
+                    footerTemplate: 'general',
+                    separator: 'dashes',
+                    fontSize: 'medium',
+                    fontWeight: 'bold',
+                    headerFontSize: 'large',
+                    lineSpacing: 'normal',
+                  }}
+                  companyInfo={{
+                    name: watch('companyName') || '',
+                    nit: watch('companyNit') || '',
+                    address: watch('companyAddress') || '',
+                    city: watch('companyCity') || '',
+                    phone: watch('companyPhone') || '',
+                    email: watch('companyEmail') || '',
+                    regime: watch('companyRegime') || 'Responsable de IVA',
+                  }}
+                  onChange={(newDesign) => {
+                    handlePrintingChange('ticketDesign', newDesign)
+                  }}
+                  onClose={() => setShowPdfEditor(false)}
+                />
+              </div>
+              {/* Save Button Footer */}
+              <div className="sticky bottom-0 bg-white border-t p-4 flex items-center justify-between rounded-b-[2rem] shadow-[0_-4px_12px_rgba(0,0,0,0.05)]">
+                <p className="text-xs text-muted-foreground">
+                  Los cambios también se aplican al formato tirilla.
+                </p>
+                <div className="flex gap-3">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="rounded-full px-6"
+                    onClick={() => setShowPdfEditor(false)}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button
+                    type="button"
+                    className="rounded-full bg-green-600 hover:bg-green-700 font-bold px-8"
+                    disabled={isLoading}
+                    onClick={() => {
+                      handleSubmit(onSubmit)()
+                      toast('Diseño de PDF guardado correctamente', 'success')
+                      setShowPdfEditor(false)
+                    }}
+                  >
+                    {isLoading ? <Loader2 className="animate-spin h-4 w-4 mr-2" /> : <Save size={16} className="mr-2" />}
+                    Guardar Cambios
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+        )}
         {activeTab === 'warehouses' && (
           <div className="space-y-8 animate-in fade-in slide-in-from-right-8 duration-700">
             {renderSectionHeader('Gestión de Almacenes', Warehouse, 'PUNTOS FÍSICOS DE STOCK')}
