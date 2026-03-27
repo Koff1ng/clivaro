@@ -24,13 +24,17 @@ export async function GET(request: Request) {
 
     const result = await withTenantRead(tenantId, async (prisma) => {
       const where: any = {}
+      // C3 FIX: Use AND array to avoid OR overwrite when combining search + electronicStatus
+      const andConditions: any[] = []
 
       if (search) {
-        where.OR = [
-          { number: { contains: search, mode: 'insensitive' } },
-          { cufe: { contains: search, mode: 'insensitive' } },
-          { customer: { name: { contains: search, mode: 'insensitive' } } },
-        ]
+        andConditions.push({
+          OR: [
+            { number: { contains: search, mode: 'insensitive' } },
+            { cufe: { contains: search, mode: 'insensitive' } },
+            { customer: { name: { contains: search, mode: 'insensitive' } } },
+          ]
+        })
       }
 
       if (status) {
@@ -52,14 +56,19 @@ export async function GET(request: Request) {
         if (electronicStatus === 'SENT') {
           where.electronicStatus = { in: ['SENT', 'ACCEPTED'] }
         } else if (electronicStatus === 'PENDING') {
-          where.OR = [
-            ...(where.OR || []),
-            { electronicStatus: null },
-            { electronicStatus: 'PENDING' },
-          ]
+          andConditions.push({
+            OR: [
+              { electronicStatus: null },
+              { electronicStatus: 'PENDING' },
+            ]
+          })
         } else if (electronicStatus === 'REJECTED') {
           where.electronicStatus = 'REJECTED'
         }
+      }
+
+      if (andConditions.length > 0) {
+        where.AND = andConditions
       }
 
       const [invoices, total] = await Promise.all([

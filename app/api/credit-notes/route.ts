@@ -31,6 +31,10 @@ export async function GET(request: Request) {
             if (startDate) where.createdAt.gte = startDate
             if (endDate) where.createdAt.lte = endDate
         }
+        // M8 FIX: Add customerId filter (was extracted but never used)
+        if (customerId) {
+            where.invoice = { customerId }
+        }
 
         const creditNotes = await withTenantRead(tenantId, async (prisma) => {
             return await prisma.creditNote.findMany({

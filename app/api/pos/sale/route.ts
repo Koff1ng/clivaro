@@ -265,10 +265,16 @@ export async function POST(request: Request) {
 
       // 6. Persistence
       const tenantSettings = await masterPrisma.tenantSettings.findUnique({ where: { tenantId: (session.user as any).tenantId } })
-      const invoiceCount = await tx.invoice.count()
+      // C1 FIX: Use findFirst desc instead of count() to avoid race condition
+      const lastInvoice = await tx.invoice.findFirst({
+        orderBy: { createdAt: 'desc' },
+        select: { consecutive: true },
+      })
       const prefix = tenantSettings?.invoicePrefix || 'FV'
       const format = tenantSettings?.invoiceNumberFormat || '000000'
-      const consecutive = String(invoiceCount + 1).padStart(format.length || 6, '0')
+      const padLen = format.length || 6
+      const nextNum = lastInvoice?.consecutive ? parseInt(lastInvoice.consecutive, 10) + 1 : 1
+      const consecutive = String(nextNum).padStart(padLen, '0')
       const invoiceNumber = `${prefix}-${consecutive}`
 
       const invoice = await tx.invoice.create({
@@ -375,7 +381,8 @@ export async function POST(request: Request) {
 
       // Logic for Immediate (Paid) portion
       if (data.payments?.length) {
-        change = tenderedTotal - finalTotal
+        change = Math.max(0, tenderedTotal - finalTotal)
+        let remainingChange = change // M2 FIX: track remaining change to deduct across multiple CASH payments
         for (const p of data.payments) {
           const methodInfo = paymentMethodMap.get(p.paymentMethodId) as any
           if (!methodInfo) throw new Error(`Método de pago ${p.paymentMethodId} no encontrado`)
@@ -383,8 +390,13 @@ export async function POST(request: Request) {
           // Skip credit payments as they do not generate immediate Cash/Bank entries
           if (methodInfo.type === 'CREDIT') continue;
 
-          // Deduct change from CASH payments only
-          const amountToApply = methodInfo.type === 'CASH' ? Math.max(0, p.amount - change) : p.amount
+          // M2 FIX: Deduct remaining change from CASH payments, tracking how much is left
+          let amountToApply = p.amount
+          if (methodInfo.type === 'CASH' && remainingChange > 0) {
+            const deduction = Math.min(remainingChange, p.amount)
+            amountToApply = p.amount - deduction
+            remainingChange -= deduction
+          }
 
           if (amountToApply > 0) {
             await tx.payment.create({
@@ -558,12 +570,9 @@ export async function POST(request: Request) {
         }
       }
       // 11. Auto-send to electronic billing (Factus) if enabled
+      // H1 FIX: Reuse existing tenantSettings instead of re-querying (removes shadowing)
       let electronicResult: any = null
       try {
-        const tenantSettings = await masterPrisma.tenantSettings.findUnique({
-          where: { tenantId: (session.user as any).tenantId },
-        })
-
         if ((tenantSettings as any)?.autoSendElectronic && (tenantSettings as any)?.factusClientId) {
           const { sendToElectronicBilling } = await import('@/lib/electronic-billing')
 
@@ -608,8 +617,8 @@ export async function POST(request: Request) {
             const invoiceData = {
               id: fullInvoice.id,
               number: invoiceNumber,
-              prefix: '',
-              consecutive: '',
+              prefix, // M3 FIX: pass real prefix
+              consecutive, // M3 FIX: pass real consecutive
               issueDate: fullInvoice.issuedAt || new Date(),
               issueTime: new Date().toISOString().split('T')[1].split('.')[0] + '-05:00',
               customer: {
@@ -617,8 +626,8 @@ export async function POST(request: Request) {
                 name: fullInvoice.customer?.name || 'Cliente General',
                 email: fullInvoice.customer?.email || undefined,
                 phone: fullInvoice.customer?.phone || undefined,
-                isCompany: false,
-                idType: 'CC',
+                isCompany: fullInvoice.customer?.isCompany ?? false, // M4 FIX: use DB value
+                idType: fullInvoice.customer?.idType || 'CC', // M4 FIX: use DB value
               },
               items: fullInvoice.items.map((item: any) => ({
                 code: item.product?.sku || item.productId,
@@ -681,11 +690,12 @@ export async function POST(request: Request) {
     })
 
   } catch (error: any) {
+    // C2 FIX: Remove stack trace from response (security leak)
+    logger.error('[POS Sale] Error:', error?.message, error?.stack)
     return NextResponse.json(
       {
         error: 'Internal Server Error',
         details: error?.message || String(error),
-        stack: error?.stack
       },
       { status: 500 }
     )

@@ -75,7 +75,7 @@ export async function POST(
                     code_reference: item.product?.sku || item.productId || 'PROD',
                     name: item.product?.name || 'Producto',
                     quantity: item.quantity,
-                    discount_rate: 0,
+                    discount_rate: item.discount || 0, // H4 FIX: use original item discount
                     price: item.unitPrice,
                     tax_rate: ivaRate,
                     unit_measure_id: 70,
@@ -115,7 +115,7 @@ export async function POST(
                 items,
             }
 
-            logger.info('[Factus] Sending credit note:', JSON.stringify(creditNotePayload, null, 2))
+            logger.info('[Factus] Sending credit note', { payload: creditNotePayload })
 
             // 6. Send to Factus
             const response = await (client as any).request('/v1/credit-notes/validate', {

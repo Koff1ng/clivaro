@@ -33,7 +33,7 @@ export async function POST(
     const result = await withTenantTx(tenantId, async (prisma) => {
       const invoice = await prisma.invoice.findUnique({
         where: { id: invoiceId },
-        include: { items: true, payments: true },
+        include: { items: true, payments: { include: { paymentMethod: true } } },
       })
 
       if (!invoice) throw new Error('Factura no encontrada')
@@ -86,6 +86,31 @@ export async function POST(
         })
       }
 
+      // L4 FIX: Revert ShiftSummary for each payment method
+      for (const payment of invoice.payments) {
+        const pmId = (payment as any).paymentMethodId
+        if (!pmId) continue
+        try {
+          const openShiftForSummary = await prisma.cashShift.findFirst({
+            where: { userId, status: 'OPEN' },
+          })
+          if (openShiftForSummary) {
+            await prisma.shiftSummary.updateMany({
+              where: { shiftId: openShiftForSummary.id, paymentMethodId: pmId },
+              data: { expectedAmount: { decrement: payment.amount } },
+            })
+          }
+        } catch { /* ShiftSummary may not exist */ }
+      }
+
+      // H5 FIX: Reverse customer balance for credit sales
+      if (['EN_COBRANZA'].includes(invoice.status) && invoice.balance > 0 && invoice.customerId) {
+        await prisma.customer.update({
+          where: { id: invoice.customerId },
+          data: { currentBalance: { decrement: invoice.balance } },
+        })
+      }
+
       // Restock
       for (const m of outMovements) {
         await prisma.stockMovement.create({
@@ -106,6 +131,7 @@ export async function POST(
             warehouseId: m.warehouseId,
             productId: m.productId,
             variantId: m.variantId,
+            zoneId: m.zoneId ?? null, // M5 FIX: include zoneId
           },
         })
 

@@ -118,14 +118,16 @@ export async function updateStockLevel(
   const client = prismaTx || prisma
   const zoneId = movementDetails?.zoneId || null
 
-  console.log(`[updateStockLevel] Actualizando stock:`, {
-    warehouseId,
-    zoneId,
-    productId,
-    variantId,
-    quantityChange,
-    hasTransaction: !!prismaTx
-  })
+  if (process.env.NODE_ENV !== 'production') {
+    console.log(`[updateStockLevel] Actualizando stock:`, {
+      warehouseId,
+      zoneId,
+      productId,
+      variantId,
+      quantityChange,
+      hasTransaction: !!prismaTx
+    })
+  }
 
   // Manual check instead of Upsert to handle NULLs in composite key reliably
   const existingStock = await client.stockLevel.findFirst({
@@ -142,7 +144,6 @@ export async function updateStockLevel(
       where: { id: existingStock.id },
       data: { quantity: { increment: quantityChange } }
     })
-    console.log(`[updateStockLevel] Stock incrementado en: ${quantityChange}`)
   } else {
     await client.stockLevel.create({
       data: {
@@ -153,7 +154,6 @@ export async function updateStockLevel(
         quantity: quantityChange,
       }
     })
-    console.log(`[updateStockLevel] Nuevo registro de stock creado con: ${quantityChange}`)
   }
 
   // Create movement if details provided
@@ -169,7 +169,7 @@ export async function updateStockLevel(
         reason: movementDetails.reason,
         reasonCode: movementDetails.reasonCode,
         reference: movementDetails.reference,
-        createdById: movementDetails.createdById || 'SYSTEM',
+        createdById: movementDetails.createdById || undefined, // L1 FIX: undefined instead of 'SYSTEM' to avoid FK violation
       }
     })
   }

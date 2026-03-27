@@ -74,7 +74,8 @@ export async function getTenantPrismaClient(tenantId: string): Promise<PrismaCli
         const schemaUrl = buildTenantUrl(schemaName)
         tenantPrisma = new PrismaClient({
             datasources: { db: { url: schemaUrl } },
-            log: ['query', 'error', 'info', 'warn']
+            // H6 FIX: Only log errors in production to avoid SQL+data leaks
+            log: process.env.NODE_ENV === 'production' ? ['error'] : ['query', 'error', 'info', 'warn']
         })
         tenantPrismaClients.set(schemaName, tenantPrisma)
     }

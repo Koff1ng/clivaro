@@ -222,11 +222,8 @@ async function sendToFactus(
         taxRate = incTax.rate || 0
       }
 
-      // Calculate discount as percentage
-      const lineGross = item.unitPrice * item.quantity
-      const discountRate = lineGross > 0 && item.discount > 0
-        ? (item.discount / lineGross) * 100
-        : 0
+      // H2 FIX: item.discount is already a percentage (0-100), use it directly
+      const discountRate = item.discount || 0
 
       // Build withholding taxes array for retentions (ReteFuente, ReteICA, ReteIVA)
       const withholdingTaxes = item.taxes
@@ -256,18 +253,23 @@ async function sendToFactus(
       }
     })
 
+    // H3 FIX: Detect credit sales for payment_form
+    const isCredit = invoiceData.dueDate && new Date(invoiceData.dueDate) > new Date(invoiceData.issueDate)
     const factusRequest: FactusInvoiceRequest = {
       document: invoiceData.typeCode || '01', // 01 = Factura de Venta
       reference_code: invoiceData.number || `CLV-${Date.now()}`,
       observation: `Factura ${invoiceData.number}`,
-      payment_form: 1, // 1 = Contado
+      payment_form: isCredit ? 2 : 1, // H3 FIX: 1=Contado, 2=Crédito
       payment_method_code: '10', // 10 = Efectivo
+      ...(isCredit && invoiceData.dueDate ? { payment_due_date: new Date(invoiceData.dueDate).toISOString().split('T')[0] } : {}),
       customer: factusCustomer,
       items: factusItems,
       send_email: !!invoiceData.customer.email,
     }
 
-    console.log('[Factus] Creating invoice with payload:', JSON.stringify(factusRequest, null, 2))
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('[Factus] Creating invoice with payload:', JSON.stringify(factusRequest, null, 2))
+    }
     const factusResponse = await client.createInvoice(factusRequest)
 
     if (factusResponse.data?.bill) {
