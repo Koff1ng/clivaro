@@ -69,6 +69,7 @@ export interface InvoiceData {
   discount: number
   tax: number // Grand total of taxes
   total: number
+  paymentMethodType?: string // CASH, CARD, TRANSFER, ELECTRONIC - from PaymentMethod.type
 }
 
 export interface ElectronicBillingResponse {
@@ -259,12 +260,23 @@ async function sendToFactus(
 
     // H3 FIX: Detect credit sales for payment_form
     const isCredit = invoiceData.dueDate && new Date(invoiceData.dueDate) > new Date(invoiceData.issueDate)
+    // Map PaymentMethod.type to DIAN payment_method_code
+    const paymentMethodCodeMap: Record<string, string> = {
+      'CASH': '10',        // Efectivo
+      'CARD': '48',        // Tarjeta Crédito (generic card)
+      'TRANSFER': '47',    // Transferencia Débito Bancaria
+      'ELECTRONIC': '31',  // Transferencia Electrónica
+      'CHECK': '20',       // Cheque
+      'CREDIT': '30',      // Crédito (deferred)
+    }
+    const dianPaymentMethodCode = paymentMethodCodeMap[invoiceData.paymentMethodType || ''] || '10'
+
     const factusRequest: FactusInvoiceRequest = {
       document: invoiceData.typeCode || '01', // 01 = Factura de Venta
       reference_code: invoiceData.number || `CLV-${Date.now()}`,
       observation: `Factura ${invoiceData.number}`,
       payment_form: isCredit ? 2 : 1, // H3 FIX: 1=Contado, 2=Crédito
-      payment_method_code: '10', // 10 = Efectivo
+      payment_method_code: dianPaymentMethodCode,
       ...(isCredit && invoiceData.dueDate ? { payment_due_date: new Date(invoiceData.dueDate).toISOString().split('T')[0] } : {}),
       customer: factusCustomer,
       items: factusItems,

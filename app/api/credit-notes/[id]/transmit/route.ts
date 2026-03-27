@@ -104,7 +104,7 @@ export async function POST(
                 reference_code: creditNote.number,
                 observation: creditNote.reason || `Nota crédito para factura ${creditNote.invoice.number}`,
                 payment_form: 1,
-                payment_method_code: '10',
+                payment_method_code: '10', // Credit notes default to cash refund per DIAN
                 // Reference to original invoice
                 billing_reference: {
                     number: creditNote.invoice.number,
