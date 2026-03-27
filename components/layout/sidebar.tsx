@@ -32,7 +32,7 @@ import {
   Globe,
   HelpCircle,
 } from 'iconoir-react'
-import { ChevronsUpDown, Sparkles, LayoutDashboard, Building2, Users, ShieldCheck as LuShieldCheck, ScrollText, CreditCard, Activity, ArrowLeft, ServerCog } from 'lucide-react'
+import { ChevronsUpDown, Sparkles, LayoutDashboard, Building2, Users, ShieldCheck as LuShieldCheck, ScrollText, CreditCard, Activity, ServerCog, BarChart3 } from 'lucide-react'
 import { Logo } from '@/components/ui/logo'
 import { AppIcon } from '@/components/ui/app-icon'
 import { useSidebar } from '@/lib/sidebar-context'
@@ -41,6 +41,13 @@ import { menuGroups, type MenuGroup, type MenuItem } from '@/lib/navigation-data
 
 // Admin-specific navigation for Super Admin panel
 const adminMenuGroups = [
+  {
+    title: 'General',
+    key: 'admin-general',
+    items: [
+      { href: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    ]
+  },
   {
     title: 'Gestión de Plataforma',
     key: 'admin-platform',
@@ -97,7 +104,7 @@ export function Sidebar() {
   const { isOpen, toggle, toggleChat } = useSidebar()
   const userPermissions = (session?.user as any)?.permissions || []
   const isSuperAdmin = (session?.user as any)?.isSuperAdmin || false
-  const isOnAdminRoute = pathname?.startsWith('/admin') || false
+  const isOnAdminRoute = isSuperAdmin && pathname?.startsWith('/admin') && !pathname?.startsWith('/admin/login')
   const { hasFeature: hasPlanFeature, isNewFeature, newFeatures, isLoading, planName } = useTenantPlan()
   
   // Custom queries for module visibility
@@ -286,31 +293,8 @@ export function Sidebar() {
           <div className={cn('flex flex-col gap-1', isOpen ? 'p-3' : 'p-1')}>
 
             {/* SUPER ADMIN MODE: Show admin-specific navigation */}
-            {isSuperAdmin && isOnAdminRoute ? (
+            {isOnAdminRoute ? (
               <>
-                {/* Back to ERP button */}
-                <Link
-                  href="/dashboard"
-                  className={cn(
-                    'flex rounded-lg font-medium transition-all duration-200 relative group mb-3',
-                    isOpen ? 'flex-row items-center gap-3 text-[13px] px-2.5 py-2 mx-1 bg-slate-800/50 hover:bg-slate-700/50' : 'flex-col items-center justify-center gap-1 px-1 py-1.5 hover:bg-slate-800/50',
-                    'text-slate-400 hover:text-white'
-                  )}
-                  title={!isOpen ? 'Volver al ERP' : undefined}
-                >
-                  <ArrowLeft className={cn("flex-shrink-0", isOpen ? "w-4 h-4" : "w-5 h-5 mb-0.5")} />
-                  <span className={cn(
-                    isOpen ? 'text-[12px] whitespace-nowrap' : 'text-[10px] font-medium w-full truncate text-center block'
-                  )}>
-                    {isOpen ? 'Volver al ERP' : 'ERP'}
-                  </span>
-                  {!isOpen && (
-                    <span className="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50 hidden md:block">
-                      Volver al ERP
-                    </span>
-                  )}
-                </Link>
-
                 {/* Admin Navigation Groups — same aesthetic as ERP */}
                 {adminMenuGroups.map((group, groupIndex) => {
                   const isGroupOpen = openGroups[group.key] !== false
