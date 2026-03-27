@@ -6,6 +6,8 @@ import { UserList } from '@/components/admin/user-list'
 import { PageHeader } from '@/components/ui/page-header'
 import { UserCog } from 'lucide-react'
 
+export const dynamic = 'force-dynamic'
+
 export default async function UsersPage() {
   const session = await getServerSession(authOptions)
   

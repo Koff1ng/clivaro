@@ -5,6 +5,8 @@ import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/db'
 import { TenantsClient } from '@/components/admin/tenants-client'
 
+export const dynamic = 'force-dynamic'
+
 export default async function TenantsPage() {
   const session = await getServerSession(authOptions)
   

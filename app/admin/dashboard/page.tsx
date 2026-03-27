@@ -5,6 +5,8 @@ import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/db'
 import { AdminDashboard } from '@/components/admin/admin-dashboard'
 
+export const dynamic = 'force-dynamic'
+
 export default async function AdminDashboardPage() {
   const session = await getServerSession(authOptions)
 

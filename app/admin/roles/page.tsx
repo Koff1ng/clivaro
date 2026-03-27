@@ -6,6 +6,8 @@ import { RoleList } from '@/components/admin/role-list'
 import { PageHeader } from '@/components/ui/page-header'
 import { ShieldCheck } from 'lucide-react'
 
+export const dynamic = 'force-dynamic'
+
 export default async function RolesPage() {
     const session = await getServerSession(authOptions)
 
