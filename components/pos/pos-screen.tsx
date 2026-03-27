@@ -1108,7 +1108,6 @@ export function POSScreen({ mode = 'retail', waiterData, waiterToken, preselecte
       setSearchQuery('')
       setCashReceived('')
       setSelectedCustomer(null)
-      setSelectedCustomer(null)
       setPaymentMode('SINGLE')
       const cashMethod = paymentMethods.find((m) => m.type === 'CASH') || paymentMethods[0]
       if (cashMethod) {
