@@ -340,7 +340,7 @@ export function CashShiftScreen() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* Header – always visible */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <PageHeader
           title="Caja"
@@ -349,26 +349,11 @@ export function CashShiftScreen() {
         />
         <div className="flex flex-wrap gap-2 items-center">
           <MonthlyReport />
-          {!activeShift ? (
+          {!activeShift && (
             <Button onClick={() => setShowOpenDialog(true)} size="lg" className="gap-2 shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-[1.02]">
               <Unlock className="h-5 w-5" />
               Abrir Turno
             </Button>
-          ) : (
-            <>
-              <Button variant="outline" className="gap-2 transition-all duration-200 hover:bg-green-50 hover:text-green-700 hover:border-green-300 dark:hover:bg-green-950/50" onClick={() => { setMovementType('IN'); setShowMovementDialog(true) }}>
-                <Plus className="h-4 w-4" />
-                Entrada
-              </Button>
-              <Button variant="outline" className="gap-2 transition-all duration-200 hover:bg-red-50 hover:text-red-700 hover:border-red-300 dark:hover:bg-red-950/50" onClick={() => { setMovementType('OUT'); setShowMovementDialog(true) }}>
-                <Minus className="h-4 w-4" />
-                Salida
-              </Button>
-              <Button variant="destructive" className="gap-2 shadow-md hover:shadow-lg transition-all duration-200 hover:scale-[1.02]" onClick={() => { setCountedCash(activeShift.expectedCash?.toString() || '0'); setShowCloseDialog(true) }}>
-                <Lock className="h-5 w-5" />
-                Cerrar Turno
-              </Button>
-            </>
           )}
           <Button variant="outline" className="gap-2 transition-all duration-200" onClick={() => setShowHistory(!showHistory)}>
             <FileText className="h-4 w-4" />
@@ -402,11 +387,12 @@ export function CashShiftScreen() {
         </Card>
       ) : (
         <div className="space-y-6 animate-in fade-in-50 duration-300">
-          {/* Live Shift Banner */}
-          <Card className="overflow-hidden border-primary/20">
+          {/* Live Shift Banner + Actions */}
+          <Card className="overflow-hidden border-primary/20 shadow-sm">
             <div className="bg-gradient-to-r from-primary/5 via-primary/10 to-primary/5 px-6 py-4">
-              <div className="flex items-center justify-between flex-wrap gap-3">
-                <div className="flex items-center gap-4 flex-wrap">
+              {/* Top row: shift info + timer */}
+              <div className="flex items-center justify-between flex-wrap gap-3 mb-3">
+                <div className="flex items-center gap-3 flex-wrap">
                   <div className="flex items-center gap-2">
                     <div className="h-2.5 w-2.5 rounded-full bg-green-500 animate-pulse" />
                     <span className="font-semibold text-foreground">Turno Activo</span>
@@ -422,17 +408,32 @@ export function CashShiftScreen() {
                     <span>{formatDate(activeShift.openedAt)}</span>
                   </div>
                 </div>
-                <div className="flex items-center gap-3">
-                  {shiftDuration && (
-                    <div className="flex items-center gap-2 px-3 py-1.5 bg-primary/10 rounded-full border border-primary/20">
-                      <Clock className="h-3.5 w-3.5 text-primary" />
-                      <span className="font-mono text-sm font-bold text-primary tracking-wide">{shiftDuration}</span>
-                    </div>
-                  )}
-                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0 hover:bg-primary/10 transition-colors" onClick={() => { refetchShift(); refetchMovements(); refetchPayments() }} title="Actualizar datos">
-                    <RefreshCw className="h-4 w-4" />
-                  </Button>
-                </div>
+                {shiftDuration && (
+                  <div className="flex items-center gap-2 px-3 py-1.5 bg-primary/10 rounded-full border border-primary/20">
+                    <Clock className="h-3.5 w-3.5 text-primary" />
+                    <span className="font-mono text-sm font-bold text-primary tracking-wide">{shiftDuration}</span>
+                  </div>
+                )}
+              </div>
+              {/* Bottom row: action buttons */}
+              <div className="flex items-center gap-2 flex-wrap pt-2 border-t border-primary/10">
+                <Button size="sm" variant="outline" className="gap-1.5 bg-background/80 hover:bg-green-50 hover:text-green-700 hover:border-green-300 dark:hover:bg-green-950/50 transition-all duration-200" onClick={() => { setMovementType('IN'); setShowMovementDialog(true) }}>
+                  <Plus className="h-3.5 w-3.5" />
+                  Entrada de Efectivo
+                </Button>
+                <Button size="sm" variant="outline" className="gap-1.5 bg-background/80 hover:bg-red-50 hover:text-red-700 hover:border-red-300 dark:hover:bg-red-950/50 transition-all duration-200" onClick={() => { setMovementType('OUT'); setShowMovementDialog(true) }}>
+                  <Minus className="h-3.5 w-3.5" />
+                  Salida de Efectivo
+                </Button>
+                <div className="flex-1" />
+                <Button size="sm" variant="ghost" className="gap-1.5 hover:bg-primary/10 transition-colors" onClick={() => { refetchShift(); refetchMovements(); refetchPayments() }} title="Actualizar datos">
+                  <RefreshCw className="h-3.5 w-3.5" />
+                  Actualizar
+                </Button>
+                <Button size="sm" variant="destructive" className="gap-1.5 shadow-sm hover:shadow-md transition-all duration-200 hover:scale-[1.02]" onClick={() => { setCountedCash(activeShift.expectedCash?.toString() || '0'); setShowCloseDialog(true) }}>
+                  <Lock className="h-3.5 w-3.5" />
+                  Cerrar Turno
+                </Button>
               </div>
             </div>
           </Card>
