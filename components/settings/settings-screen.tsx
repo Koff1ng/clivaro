@@ -36,7 +36,7 @@ import { UsersConfig } from './users-config'
 import { SubscriptionConfig } from './subscription-config'
 import { GeneralConfig } from './general-config'
 import { DataConfig } from './data-config'
-import { AlegraConfig } from './alegra-config'
+import { ElectronicBillingConfig } from './electronic-billing-config'
 import { PaymentMethodsConfig } from './payment-methods-config'
 import { TaxesPage } from './taxes-page'
 import { PrivacyConfig } from './privacy-config'
@@ -178,7 +178,7 @@ export function SettingsScreen() {
         { id: 'numbering', label: 'Folios y Prefijos', icon: Hash, desc: 'Control de documentos' },
         { id: 'printing', label: 'Impresión POS', icon: Printer, desc: 'Tickets y estaciones' },
         { id: 'restaurant', label: 'Restaurante', icon: UtensilsCrossed, desc: 'Zonas, mesas y cocina' },
-        { id: 'billing', label: 'Facturación Elect.', icon: Receipt, desc: 'Integración Alegra' },
+        { id: 'billing', label: 'Facturación Elect.', icon: Receipt, desc: 'Integración Factus' },
       ]
     },
     {
@@ -231,7 +231,13 @@ export function SettingsScreen() {
 
       case 'users': return <UsersConfig />
       case 'email': return <EmailConfigTab />
-      case 'billing': return <AlegraConfig tenantId={(session?.user as any)?.tenantId} />
+      case 'billing': return (
+        <ElectronicBillingConfig
+          settings={settings}
+          onSave={(data) => updateSettingsMutation.mutate(data)}
+          isLoading={updateSettingsMutation.isPending}
+        />
+      )
       case 'payments': return (
         <Card className="border-blue-200 bg-blue-50/10 backdrop-blur-sm">
           <CardHeader>
