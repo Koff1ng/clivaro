@@ -77,7 +77,7 @@ export interface ElectronicBillingResponse {
   qrCode?: string
   pdfUrl?: string
   xmlUrl?: string
-  status?: 'ACCEPTED' | 'REJECTED' | 'PENDING'
+  status?: 'ACCEPTED' | 'REJECTED' | 'PENDING' | 'SENT'
   message?: string
   errors?: string[]
   response?: any
@@ -272,12 +272,17 @@ async function sendToFactus(
 
     if (factusResponse.data?.bill) {
       const bill = factusResponse.data.bill
+      const statusStr = String(bill.status)
+      const isAccepted = statusStr === '1' ||
+        statusStr === 'Validado' || statusStr === 'validated' ||
+        !!bill.validated || !!bill.cufe
+
       return {
         success: true,
         cufe: bill.cufe,
         qrCode: bill.qr,
-        status: bill.status === 'Validado' ? 'ACCEPTED' : 'PENDING',
-        message: `Factura ${bill.number} creada exitosamente en Factus`,
+        status: isAccepted ? 'ACCEPTED' : 'SENT',
+        message: `Factura ${bill.number} ${isAccepted ? 'validada por la DIAN' : 'enviada'} exitosamente`,
         response: factusResponse,
       }
     }
