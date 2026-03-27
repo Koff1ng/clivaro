@@ -42,13 +42,6 @@ import { menuGroups, type MenuGroup, type MenuItem } from '@/lib/navigation-data
 // Admin-specific navigation for Super Admin panel
 const adminMenuGroups = [
   {
-    title: 'Panel Admin',
-    key: 'admin-general',
-    items: [
-      { href: '/admin/tenants', label: 'Dashboard Admin', icon: LayoutDashboard },
-    ]
-  },
-  {
     title: 'Gestión de Plataforma',
     key: 'admin-platform',
     items: [
@@ -295,40 +288,35 @@ export function Sidebar() {
             {/* SUPER ADMIN MODE: Show admin-specific navigation */}
             {isSuperAdmin && isOnAdminRoute ? (
               <>
-                {/* Admin Mode Badge */}
-                {isOpen && (
-                  <div className="mb-3 mx-1 p-3 rounded-xl bg-gradient-to-r from-amber-500/20 to-orange-500/20 border border-amber-500/30">
-                    <div className="flex items-center gap-2">
-                      <LuShieldCheck className="w-4 h-4 text-amber-400" />
-                      <span className="text-[11px] font-black text-amber-400 uppercase tracking-widest">Super Admin</span>
-                    </div>
-                  </div>
-                )}
-
-                {/* Back to ERP */}
+                {/* Back to ERP button */}
                 <Link
                   href="/dashboard"
                   className={cn(
-                    'flex rounded-lg font-medium transition-all duration-200 relative group mb-2',
-                    isOpen ? 'flex-row items-center gap-3 text-[13px] px-2.5 py-2 mx-1 bg-slate-800/40 border border-slate-700/50' : 'flex-col items-center justify-center gap-1 px-1 py-1.5',
-                    'text-slate-400 hover:bg-slate-700/50 hover:text-white'
+                    'flex rounded-lg font-medium transition-all duration-200 relative group mb-3',
+                    isOpen ? 'flex-row items-center gap-3 text-[13px] px-2.5 py-2 mx-1 bg-slate-800/50 hover:bg-slate-700/50' : 'flex-col items-center justify-center gap-1 px-1 py-1.5 hover:bg-slate-800/50',
+                    'text-slate-400 hover:text-white'
                   )}
                   title={!isOpen ? 'Volver al ERP' : undefined}
                 >
                   <ArrowLeft className={cn("flex-shrink-0", isOpen ? "w-4 h-4" : "w-5 h-5 mb-0.5")} />
                   <span className={cn(
-                    isOpen ? 'text-[12px] whitespace-nowrap' : 'text-[9px] font-medium w-full truncate text-center block'
+                    isOpen ? 'text-[12px] whitespace-nowrap' : 'text-[10px] font-medium w-full truncate text-center block'
                   )}>
                     {isOpen ? 'Volver al ERP' : 'ERP'}
                   </span>
+                  {!isOpen && (
+                    <span className="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50 hidden md:block">
+                      Volver al ERP
+                    </span>
+                  )}
                 </Link>
 
-                {/* Admin Navigation Groups */}
+                {/* Admin Navigation Groups — same aesthetic as ERP */}
                 {adminMenuGroups.map((group, groupIndex) => {
                   const isGroupOpen = openGroups[group.key] !== false
 
                   return (
-                    <div key={group.key} className={cn("mb-1", { 'border-t border-slate-800 pt-2 mt-2': groupIndex > 0 && !isOpen })}>
+                    <div key={group.key} className={cn("mb-2", { 'border-t border-slate-800 pt-2 mt-2': groupIndex > 0 && !isOpen })}>
                       {isOpen && (
                         <div
                           className="flex items-center justify-between px-3 py-2 text-xs font-semibold text-slate-400 uppercase tracking-wider cursor-pointer hover:text-white transition-colors select-none"
@@ -356,12 +344,12 @@ export function Sidebar() {
                                 'flex rounded-lg font-medium transition-all duration-200 relative group',
                                 isOpen ? 'flex-row items-center gap-3 text-[13px] px-2.5 py-1.5 ml-1' : 'flex-col items-center justify-center gap-1 px-1 py-1.5',
                                 isActive
-                                  ? 'bg-amber-500/20 text-amber-300 font-semibold border-l-2 border-amber-400'
+                                  ? 'bg-slate-800/80 text-white font-semibold'
                                   : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200',
                               )}
                               title={!isOpen ? item.label : undefined}
                             >
-                              <Icon className={cn("flex-shrink-0 transition-all", isOpen ? "w-[18px] h-[18px]" : "w-5 h-5 mb-0.5")} />
+                              <AppIcon icon={Icon} className={cn("flex-shrink-0 transition-all", isOpen ? "w-[18px] h-[18px]" : "w-5 h-5 mb-0.5")} />
                               <span className={cn(
                                 'transition-all duration-200',
                                 isOpen ? 'whitespace-nowrap' : 'text-[10px] font-medium tracking-tight w-full truncate text-center px-0.5 opacity-90 block'
@@ -545,9 +533,7 @@ export function Sidebar() {
                         {session?.user?.name?.split(' ')[0]}
                       </span>
                       <span className="text-[10px] sm:text-xs font-medium text-slate-400 truncate w-full uppercase tracking-widest opacity-80">
-                        {isSuperAdmin && isOnAdminRoute ? (
-                          <span className="text-amber-400">Super Admin</span>
-                        ) : (planName || 'Plan Gratuito')}
+                        {planName || 'Plan Gratuito'}
                       </span>
                     </div>
                     <ChevronsUpDown className="w-4 h-4 text-slate-500 shrink-0" />
