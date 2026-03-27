@@ -187,6 +187,73 @@ export function InvoicePrint({ invoice, settings }: InvoicePrintProps) {
 
   return (
     <div className="ticket">
+      <style>{`
+        .ticket {
+          width: 80mm;
+          max-width: 80mm;
+          font-family: 'Courier New', 'Lucida Console', monospace;
+          font-size: 11px;
+          color: #000;
+          background: #fff;
+          padding: 8px 4px;
+          line-height: 1.4;
+        }
+        .ticket .center { text-align: center; }
+        .ticket .bold { font-weight: bold; }
+        .ticket .small { font-size: 9px; }
+        .ticket .separator {
+          border-top: 1px dashed #000;
+          margin: 6px 0;
+        }
+        .ticket table.items {
+          width: 100%;
+          border-collapse: collapse;
+          font-size: 10px;
+        }
+        .ticket table.items th {
+          text-align: left;
+          border-bottom: 1px solid #000;
+          padding: 2px 0;
+          font-size: 9px;
+          font-weight: bold;
+        }
+        .ticket table.items th.qty,
+        .ticket table.items td.qty {
+          text-align: center;
+          width: 50px;
+        }
+        .ticket table.items th.price,
+        .ticket table.items td.price {
+          text-align: right;
+          width: 80px;
+        }
+        .ticket table.items th.desc,
+        .ticket table.items td.desc {
+          text-align: left;
+        }
+        .ticket table.items td {
+          padding: 3px 0;
+          vertical-align: top;
+          border-bottom: 1px dotted #ccc;
+        }
+        .ticket table.totals {
+          width: 100%;
+          border-collapse: collapse;
+          font-size: 11px;
+        }
+        .ticket table.totals td {
+          padding: 2px 0;
+        }
+        .ticket table.totals td.label {
+          text-align: left;
+        }
+        .ticket table.totals td.value {
+          text-align: right;
+        }
+        .ticket .footer {
+          font-size: 10px;
+        }
+      `}</style>
       {/* ======= ENCABEZADO EMPRESA (VENDEDOR) ======= */}
       <div className="center">
         {showLogo && logoUrl && (
