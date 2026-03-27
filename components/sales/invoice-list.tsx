@@ -10,15 +10,16 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useDebounce } from '@/lib/hooks/use-debounce'
 import { formatCurrency, formatDate } from '@/lib/utils'
-import { Search, Eye, FileText, QrCode, CheckCircle, XCircle, Clock, Trash2, Loader2 } from 'lucide-react'
+import { Search, Eye, FileText, QrCode, CheckCircle, XCircle, Clock, Trash2, Loader2, ShieldCheck, Send, Copy } from 'lucide-react'
 import { useToast } from '@/components/ui/toast'
+import { Badge } from '@/components/ui/badge'
 
 // Lazy load heavy component
 const InvoiceDetails = dynamic(() => import('./invoice-details').then(mod => ({ default: mod.InvoiceDetails })), {
   loading: () => <div className="p-4">Cargando detalles...</div>,
 })
 
-async function fetchInvoices(page: number, search: string, status: string, customerId: string) {
+async function fetchInvoices(page: number, search: string, status: string, customerId: string, electronicStatus: string) {
   const params = new URLSearchParams({
     page: page.toString(),
     limit: '50',
@@ -26,6 +27,7 @@ async function fetchInvoices(page: number, search: string, status: string, custo
   if (search) params.append('search', search)
   if (status) params.append('status', status)
   if (customerId) params.append('customerId', customerId)
+  if (electronicStatus) params.append('electronicStatus', electronicStatus)
 
   const res = await fetch(`/api/invoices?${params}`)
   if (!res.ok) throw new Error('Failed to fetch invoices')
@@ -45,6 +47,7 @@ export function InvoiceList() {
   const [page, setPage] = useState(1)
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
+  const [electronicStatusFilter, setElectronicStatusFilter] = useState('')
   const [customerFilter, setCustomerFilter] = useState('')
   const [viewInvoice, setViewInvoice] = useState<any>(null)
   const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set())
@@ -81,11 +84,12 @@ export function InvoiceList() {
   })
 
   const { data, isLoading } = useQuery({
-    queryKey: ['invoices', page, debouncedSearch, statusFilter, customerFilter],
-    queryFn: () => fetchInvoices(page, debouncedSearch, statusFilter, customerFilter),
-    staleTime: 2 * 60 * 1000, // 2 minutes
+    queryKey: ['invoices', page, debouncedSearch, statusFilter, customerFilter, electronicStatusFilter],
+    queryFn: () => fetchInvoices(page, debouncedSearch, statusFilter, customerFilter, electronicStatusFilter),
+    staleTime: 30 * 1000, // 30s for real-time feel
     gcTime: 5 * 60 * 1000,
     placeholderData: (prev) => prev,
+    refetchInterval: electronicStatusFilter ? 10000 : undefined, // Auto-refresh when filtering electronic
   })
 
   const sendElectronicMutation = useMutation({
@@ -202,19 +206,24 @@ export function InvoiceList() {
 
   const handleSendElectronic = async (invoice: any) => {
     if (!settingsData?.settings?.electronicBillingProvider) {
-      toast('Configuración incompleta: Por favor configura el proveedor de facturación electrónica en Ajustes.', 'error')
+      toast('Configura las credenciales de Factus en Ajustes > Facturación Electrónica', 'error')
       router.push('/settings?tab=billing')
       return
     }
-    if (confirm(`¿Enviar la factura ${invoice.number} a facturación electrónica?`)) {
+    if (confirm(`¿Enviar la factura ${invoice.number} a la DIAN vía Factus?`)) {
       try {
         const result = await sendElectronicMutation.mutateAsync(invoice.id)
-        toast(`Factura enviada exitosamente. CUFE: ${result.cufe}${result.note ? ` - ${result.note}` : ''}`, 'success')
-        router.push('/dashboard/electronic-invoicing')
+        toast(`✅ Factura ${invoice.number} enviada. CUFE: ${result.cufe?.substring(0, 20)}...`, 'success')
+        queryClient.invalidateQueries({ queryKey: ['invoices'] })
       } catch (error: any) {
-        toast(error.message || 'Error al enviar factura', 'error')
+        toast(error.message || 'Error al enviar factura electrónica', 'error')
       }
     }
+  }
+
+  const copyCufe = (cufe: string) => {
+    navigator.clipboard.writeText(cufe)
+    toast('CUFE copiado al portapapeles', 'success')
   }
 
   const getStatusColor = (status: string) => {
@@ -248,27 +257,37 @@ export function InvoiceList() {
     return labels[status] || status
   }
 
-  const getElectronicStatusIcon = (status: string) => {
+  const getElectronicBadge = (status: string | null, cufe?: string) => {
     switch (status) {
-      case 'SENT':
       case 'ACCEPTED':
         return (
-          <span title="Enviada/Aceptada">
-            <CheckCircle className="h-4 w-4 text-green-600" />
-          </span>
+          <Badge className="bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800 text-[10px]">
+            <ShieldCheck className="h-3 w-3 mr-1" /> Aceptada DIAN
+          </Badge>
+        )
+      case 'SENT':
+        return (
+          <Badge className="bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800 text-[10px]">
+            <Send className="h-3 w-3 mr-1" /> Enviada
+          </Badge>
         )
       case 'REJECTED':
         return (
-          <span title="Rechazada">
-            <XCircle className="h-4 w-4 text-red-600" />
-          </span>
+          <Badge className="bg-red-50 text-red-700 hover:bg-red-100 border border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800 text-[10px]">
+            <XCircle className="h-3 w-3 mr-1" /> Rechazada
+          </Badge>
         )
       case 'PENDING':
+        return (
+          <Badge className="bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800 text-[10px]">
+            <Clock className="h-3 w-3 mr-1" /> Pendiente
+          </Badge>
+        )
       default:
         return (
-          <span title="Pendiente">
-            <Clock className="h-4 w-4 text-yellow-600" />
-          </span>
+          <Badge variant="outline" className="text-gray-400 border-gray-200 text-[10px]">
+            <Clock className="h-3 w-3 mr-1" /> Sin enviar
+          </Badge>
         )
     }
   }
@@ -314,6 +333,19 @@ export function InvoiceList() {
             <option value="PAGADA">Pagada</option>
             <option value="EN_COBRANZA">En Cobranza</option>
             <option value="ANULADA">Anulada</option>
+          </select>
+          <select
+            value={electronicStatusFilter}
+            onChange={(e) => {
+              setElectronicStatusFilter(e.target.value)
+              setPage(1)
+            }}
+            className="flex h-9 rounded-full border border-input bg-background px-3 py-1.5 text-xs md:text-sm"
+          >
+            <option value="">DIAN: Todos</option>
+            <option value="SENT">✅ Enviadas/Aceptadas</option>
+            <option value="PENDING">⏳ Pendientes</option>
+            <option value="REJECTED">❌ Rechazadas</option>
           </select>
           <div className="flex flex-col gap-1 w-full sm:w-auto">
             <Input
@@ -363,7 +395,7 @@ export function InvoiceList() {
             <TableBody>
               {invoices.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center text-gray-500">
+                  <TableCell colSpan={8} className="text-center text-gray-500">
                     No hay facturas
                   </TableCell>
                 </TableRow>
@@ -393,16 +425,21 @@ export function InvoiceList() {
                         </span>
                       </TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-2">
-                          {getElectronicStatusIcon(invoice.electronicStatus)}
-                          {invoice.electronicStatus ? (
-                            <span className="text-xs text-gray-600">
-                              {invoice.electronicStatus === 'SENT' ? 'Enviada' :
-                                invoice.electronicStatus === 'ACCEPTED' ? 'Aceptada' :
-                                  invoice.electronicStatus === 'REJECTED' ? 'Rechazada' : 'Pendiente'}
-                            </span>
-                          ) : (
-                            <span className="text-xs text-gray-400">No enviada</span>
+                        <div className="space-y-1">
+                          {getElectronicBadge(invoice.electronicStatus, invoice.cufe)}
+                          {invoice.cufe && (
+                            <div className="flex items-center gap-1">
+                              <code className="text-[9px] font-mono text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded max-w-[100px] truncate">
+                                {invoice.cufe}
+                              </code>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); copyCufe(invoice.cufe) }}
+                                className="p-0.5 rounded hover:bg-muted transition-colors"
+                                title="Copiar CUFE"
+                              >
+                                <Copy className="h-2.5 w-2.5 text-muted-foreground" />
+                              </button>
+                            </div>
                           )}
                         </div>
                       </TableCell>
@@ -428,15 +465,16 @@ export function InvoiceList() {
                           >
                             <Eye className="h-4 w-4" />
                           </Button>
-                          {(!invoice.electronicStatus || invoice.electronicStatus === 'PENDING') && (
+                          {(!invoice.electronicStatus || invoice.electronicStatus === 'PENDING' || invoice.electronicStatus === 'REJECTED') && (
                             <Button
                               variant="ghost"
                               size="sm"
                               onClick={() => handleSendElectronic(invoice)}
-                              title="Enviar a facturación electrónica"
+                              title={invoice.electronicStatus === 'REJECTED' ? 'Reintentar envío DIAN' : 'Enviar a DIAN vía Factus'}
                               disabled={sendElectronicMutation.isPending}
+                              className={invoice.electronicStatus === 'REJECTED' ? 'text-red-600 hover:text-red-700 hover:bg-red-50' : ''}
                             >
-                              <QrCode className="h-4 w-4" />
+                              {sendElectronicMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                             </Button>
                           )}
                           <Button

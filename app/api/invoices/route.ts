@@ -18,6 +18,7 @@ export async function GET(request: Request) {
     const limit = parseInt(searchParams.get('limit') || '50')
     const search = searchParams.get('search') || ''
     const status = searchParams.get('status')
+    const electronicStatus = searchParams.get('electronicStatus')
     const customerId = searchParams.get('customerId')
     const skip = (page - 1) * limit
 
@@ -45,6 +46,20 @@ export async function GET(request: Request) {
 
       if (customerId) {
         where.customerId = customerId
+      }
+
+      if (electronicStatus) {
+        if (electronicStatus === 'SENT') {
+          where.electronicStatus = { in: ['SENT', 'ACCEPTED'] }
+        } else if (electronicStatus === 'PENDING') {
+          where.OR = [
+            ...(where.OR || []),
+            { electronicStatus: null },
+            { electronicStatus: 'PENDING' },
+          ]
+        } else if (electronicStatus === 'REJECTED') {
+          where.electronicStatus = 'REJECTED'
+        }
       }
 
       const [invoices, total] = await Promise.all([

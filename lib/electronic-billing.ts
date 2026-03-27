@@ -194,21 +194,65 @@ async function sendToFactus(
 
     // Map items to Factus format
     const factusItems: FactusItem[] = invoiceData.items.map(item => {
-      // Determine tax rate from item taxes
-      const ivaRate = item.taxes.find(t => t.name.toUpperCase().includes('IVA'))?.rate || 0
-      const isExcluded = ivaRate === 0 ? 1 : 0
+      // Classify taxes by type (from TaxRate.type field)
+      const ivaTax = item.taxes.find(t =>
+        t.name.toUpperCase().includes('IVA') ||
+        (t as any).type === 'IVA'
+      )
+      const incTax = item.taxes.find(t =>
+        t.name.toUpperCase().includes('INC') ||
+        (t as any).type === 'INC'
+      )
+
+      // Determine IVA rate and exclusion status per Colombian DIAN rules:
+      // - Gravado: IVA > 0% (e.g., 19%, 5%) → is_excluded=0, tax_rate=19/5
+      // - Excluido: No IVA tax exists on item → is_excluded=1, tax_rate=0
+      // - Exento: IVA exists but rate=0% → is_excluded=0, tax_rate=0
+      const ivaRate = ivaTax?.rate || 0
+      const hasIvaTax = !!ivaTax
+      const isExcluded = hasIvaTax ? 0 : 1
+
+      // Determine tribute: 1=IVA (default), 4=INC
+      let tributeId = 1 // IVA by default
+      let taxRate = ivaRate
+
+      // If item has INC instead of IVA
+      if (!hasIvaTax && incTax) {
+        tributeId = 4 // INC
+        taxRate = incTax.rate || 0
+      }
+
+      // Calculate discount as percentage
+      const lineGross = item.unitPrice * item.quantity
+      const discountRate = lineGross > 0 && item.discount > 0
+        ? (item.discount / lineGross) * 100
+        : 0
+
+      // Build withholding taxes array for retentions (ReteFuente, ReteICA, ReteIVA)
+      const withholdingTaxes = item.taxes
+        .filter(t =>
+          t.name.toUpperCase().includes('RETE') ||
+          (t as any).type?.startsWith('RETE') ||
+          (t as any).type === 'WHT' ||
+          (t as any).type === 'RETENTION'
+        )
+        .map(t => ({
+          code: (t as any).type === 'RETE_ICA' ? '03' : (t as any).type === 'RETE_IVA' ? '05' : '06',
+          withholding_tax_rate: Math.abs(t.rate),
+        }))
 
       return {
         code_reference: item.code || 'PROD',
         name: item.description,
         quantity: item.quantity,
-        discount_rate: item.discount > 0 ? (item.discount / (item.unitPrice * item.quantity)) * 100 : 0,
+        discount_rate: Math.round(discountRate * 100) / 100,
         price: item.unitPrice,
-        tax_rate: ivaRate,
+        tax_rate: taxRate,
         unit_measure_id: 70, // "Unidad" by default
         standard_code_id: 1, // UNSPSC
         is_excluded: isExcluded,
-        tribute_id: 1, // Always IVA (1) — is_excluded flag handles exclusion
+        tribute_id: tributeId,
+        ...(withholdingTaxes.length > 0 ? { withholding_taxes: withholdingTaxes } : {}),
       }
     })
 
