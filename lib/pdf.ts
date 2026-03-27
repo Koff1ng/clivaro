@@ -582,7 +582,7 @@ export async function generateInvoicePDF(invoice: InvoicePDFData): Promise<Buffe
           font-size: 11px;
         }
         .page {
-          padding: 30px 40px;
+          padding: 20px 30px;
           max-width: 210mm;
           margin: 0 auto;
         }
@@ -593,39 +593,39 @@ export async function generateInvoicePDF(invoice: InvoicePDFData): Promise<Buffe
           justify-content: space-between;
           align-items: flex-start;
           border-bottom: 3px solid #1e40af;
-          padding-bottom: 20px;
-          margin-bottom: 20px;
+          padding-bottom: 12px;
+          margin-bottom: 12px;
         }
         .company-info {
           flex: 1;
         }
         .company-name {
-          font-size: 22px;
+          font-size: 18px;
           font-weight: 700;
           color: #1e40af;
-          margin-bottom: 8px;
+          margin-bottom: 4px;
         }
         .company-details {
-          font-size: 10px;
+          font-size: 9px;
           color: #475569;
-          line-height: 1.6;
+          line-height: 1.5;
         }
         .company-details div {
-          margin: 2px 0;
+          margin: 1px 0;
         }
         .invoice-type {
           text-align: right;
           min-width: 200px;
         }
         .invoice-type-label {
-          font-size: 14px;
+          font-size: 12px;
           font-weight: 700;
           color: #1e40af;
           text-transform: uppercase;
-          margin-bottom: 5px;
+          margin-bottom: 3px;
         }
         .invoice-number {
-          font-size: 24px;
+          font-size: 20px;
           font-weight: 700;
           color: #0f172a;
         }
@@ -641,29 +641,29 @@ export async function generateInvoicePDF(invoice: InvoicePDFData): Promise<Buffe
         .info-grid {
           display: grid;
           grid-template-columns: 1fr 1fr;
-          gap: 20px;
-          margin-bottom: 20px;
+          gap: 12px;
+          margin-bottom: 12px;
         }
         .info-box {
           background: #f8fafc;
           border: 1px solid #e2e8f0;
-          border-radius: 8px;
-          padding: 15px;
+          border-radius: 6px;
+          padding: 10px;
         }
         .info-box-title {
-          font-size: 10px;
+          font-size: 9px;
           font-weight: 700;
           color: #1e40af;
           text-transform: uppercase;
-          margin-bottom: 10px;
-          padding-bottom: 5px;
+          margin-bottom: 6px;
+          padding-bottom: 4px;
           border-bottom: 2px solid #1e40af;
         }
         .info-row {
           display: flex;
           justify-content: space-between;
-          margin: 4px 0;
-          font-size: 10px;
+          margin: 3px 0;
+          font-size: 9px;
         }
         .info-label {
           color: #64748b;
@@ -675,37 +675,38 @@ export async function generateInvoicePDF(invoice: InvoicePDFData): Promise<Buffe
           text-align: right;
         }
         .customer-name {
-          font-size: 13px;
+          font-size: 11px;
           font-weight: 700;
           color: #0f172a;
-          margin-bottom: 8px;
+          margin-bottom: 4px;
         }
         
         /* Table */
         table {
           width: 100%;
           border-collapse: collapse;
-          margin: 20px 0;
-          font-size: 10px;
+          margin: 10px 0;
+          font-size: 9px;
         }
         thead tr {
           background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
         }
         th {
           color: white;
-          padding: 10px 8px;
+          padding: 6px 8px;
           text-align: left;
           font-weight: 600;
-          font-size: 9px;
+          font-size: 8px;
           text-transform: uppercase;
           letter-spacing: 0.5px;
         }
         th.right { text-align: right; }
         th.center { text-align: center; }
         td {
-          padding: 10px 8px;
+          padding: 6px 8px;
           border-bottom: 1px solid #e2e8f0;
           vertical-align: top;
+          font-size: 9px;
         }
         td.right { text-align: right; }
         td.center { text-align: center; }
@@ -726,55 +727,55 @@ export async function generateInvoicePDF(invoice: InvoicePDFData): Promise<Buffe
         .totals-section {
           display: flex;
           justify-content: flex-end;
-          margin-top: 10px;
+          margin-top: 6px;
         }
         .totals-box {
-          width: 280px;
+          width: 260px;
           background: #f8fafc;
           border: 1px solid #e2e8f0;
-          border-radius: 8px;
-          padding: 15px;
+          border-radius: 6px;
+          padding: 10px;
         }
         .totals-row {
           display: flex;
           justify-content: space-between;
-          padding: 5px 0;
-          font-size: 11px;
+          padding: 3px 0;
+          font-size: 10px;
         }
         .totals-row.subtotal {
           border-bottom: 1px solid #e2e8f0;
-          padding-bottom: 8px;
-          margin-bottom: 5px;
+          padding-bottom: 5px;
+          margin-bottom: 3px;
         }
         .tax-breakdown {
           background: #eff6ff;
-          border-radius: 6px;
-          padding: 8px;
-          margin: 8px 0;
+          border-radius: 4px;
+          padding: 6px;
+          margin: 4px 0;
         }
         .tax-row {
           display: flex;
           justify-content: space-between;
-          font-size: 9px;
+          font-size: 8px;
           color: #475569;
-          padding: 2px 0;
+          padding: 1px 0;
         }
         .totals-row.total {
-          font-size: 16px;
+          font-size: 14px;
           font-weight: 700;
           color: #1e40af;
           border-top: 2px solid #1e40af;
-          padding-top: 10px;
-          margin-top: 8px;
+          padding-top: 6px;
+          margin-top: 4px;
         }
         
         /* Electronic Invoice Info */
         .electronic-section {
           background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
           border: 1px solid #93c5fd;
-          border-radius: 8px;
-          padding: 15px;
-          margin-top: 20px;
+          border-radius: 6px;
+          padding: 10px;
+          margin-top: 12px;
         }
         .electronic-title {
           font-size: 11px;
@@ -804,23 +805,23 @@ export async function generateInvoicePDF(invoice: InvoicePDFData): Promise<Buffe
         
         /* Footer */
         .footer {
-          margin-top: 30px;
-          padding-top: 15px;
+          margin-top: 14px;
+          padding-top: 8px;
           border-top: 1px solid #e2e8f0;
         }
         .legal-text {
-          font-size: 8px;
+          font-size: 7px;
           color: #64748b;
           text-align: center;
-          line-height: 1.6;
+          line-height: 1.4;
         }
         .legal-text p {
-          margin: 3px 0;
+          margin: 2px 0;
         }
         .thank-you {
           text-align: center;
-          margin-top: 20px;
-          font-size: 12px;
+          margin-top: 8px;
+          font-size: 11px;
           font-weight: 600;
           color: #1e40af;
         }
@@ -1037,7 +1038,7 @@ export async function generateInvoicePDF(invoice: InvoicePDFData): Promise<Buffe
             Factura Electrónica Validada por la DIAN
           </div>
           <div style="display: flex; gap: 16px; align-items: flex-start; margin-top: 12px;">
-            ${qrDataUri ? `<img src="${qrDataUri}" alt="QR" style="width: 130px; height: 130px; flex-shrink: 0; border: 1px solid #bfdbfe; border-radius: 6px;" />` : ''}
+            ${qrDataUri ? `<img src="${qrDataUri}" alt="QR" style="width: 100px; height: 100px; flex-shrink: 0; border: 1px solid #bfdbfe; border-radius: 4px;" />` : ''}
             <div style="flex: 1; min-width: 0;">
               <div style="font-size: 9px; font-weight: 700; color: #1e3a8a; margin-bottom: 6px;">CUFE:</div>
               <div class="cufe-code">${invoice.cufe}</div>
