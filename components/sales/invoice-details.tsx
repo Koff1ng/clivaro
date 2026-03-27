@@ -44,9 +44,12 @@ export function InvoiceDetails({ invoice }: { invoice: any }) {
     staleTime: 5 * 60 * 1000 // 5 min
   })
 
-  const configuredPrinters = settingsData?.settings?.customSettings
-    ? JSON.parse(settingsData.settings.customSettings)?.printing?.printers || []
-    : []
+  let configuredPrinters: any[] = []
+  try {
+    configuredPrinters = settingsData?.settings?.customSettings
+      ? JSON.parse(settingsData.settings.customSettings)?.printing?.printers || []
+      : []
+  } catch { configuredPrinters = [] }
 
   const lanPrinters = Array.isArray(configuredPrinters)
     ? configuredPrinters.filter((p: any) => p.active && (p.interfaceType === 'lan' || p.type === 'thermal'))
@@ -76,21 +79,7 @@ export function InvoiceDetails({ invoice }: { invoice: any }) {
 
   const [isLoadingPDF, setIsLoadingPDF] = useState(false)
 
-  const sendToAlegraMutation = useMutation({
-    mutationFn: async () => {
-      const res = await fetch(`/api/invoices/${invoice.id}/electronic-transmission`, { method: 'POST' })
-      if (!res.ok) throw new Error('Error al enviar a Alegra')
-      return res.json()
-    },
-    onSuccess: () => {
-      toast('Transmisión programada satisfactoriamente', 'success')
-      queryClient.invalidateQueries({ queryKey: ['invoice', invoice.id] })
-      router.push('/dashboard/electronic-invoicing')
-    },
-    onError: (err: any) => {
-      toast(err.message, 'error')
-    }
-  })
+  // (Removed dead sendToAlegraMutation — system uses Factus now)
 
   // Print hooks for proper dimensions
   const { print: printThermal } = useThermalPrint({ targetId: 'invoice-thermal-print', widthMm: 80 })
@@ -237,31 +226,12 @@ export function InvoiceDetails({ invoice }: { invoice: any }) {
   }
 
   const handlePrintLan = async () => {
-    // Legacy / Fallback to local storage if no printer selected
     const printerIp = localStorage.getItem('printer_lan_ip')
     if (!printerIp) {
       toast('Configura la IP de la impresora LAN primero', 'warning')
       return
     }
     await handlePrintLanWithIp(printerIp)
-
-    try {
-      toast('Enviando a impresora LAN...', 'info')
-      const res = await fetch(`/api/invoices/${invoice.id}/print-lan`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ printerInterface: printerIp }),
-      })
-
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}))
-        throw new Error(data.error || 'Error al imprimir en LAN')
-      }
-
-      toast('Impresión LAN enviada correctamente', 'success')
-    } catch (error: any) {
-      toast(error.message || 'Error de impresión LAN', 'error')
-    }
   }
 
   const handlePrintOption = (type: 'thermal' | 'normal') => {
@@ -273,7 +243,7 @@ export function InvoiceDetails({ invoice }: { invoice: any }) {
     }
   }
 
-  // Validar y normalizar datos
+  // Guard: validate invoice data exists (placed after all hooks)
   if (!invoice) {
     return <div className="p-8 text-center text-red-600">Error: No se pudo cargar la factura</div>
   }
@@ -501,134 +471,113 @@ export function InvoiceDetails({ invoice }: { invoice: any }) {
 
       {/* Vista normal en pantalla */}
       <div className="space-y-6 print:hidden">
-        {/* Header */}
-        <div className="flex justify-between items-start">
-          <div>
-            <h2 className="text-2xl font-bold">{invoice.number}</h2>
-            <div className="mt-2 flex items-center gap-3">
-              <span className={`px-3 py-1 text-sm rounded ${getStatusColor(invoice.status)}`}>
-                {getStatusLabel(invoice.status)}
-              </span>
-              {invoice.electronicStatus && (
-                <span className={`flex items-center gap-1 px-3 py-1 text-sm rounded bg-gray-100 ${electronicStatus.color}`}>
-                  <StatusIcon className="h-4 w-4" />
-                  {electronicStatus.label}
+        {/* Header Card */}
+        <div className="bg-white dark:bg-gray-900 border rounded-xl p-5 shadow-sm">
+          <div className="flex justify-between items-start gap-4">
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                <h2 className="text-2xl font-bold tracking-tight">{invoice.number}</h2>
+                <span className={`inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-full ${getStatusColor(invoice.status)}`}>
+                  {invoice.status === 'PAGADA' || invoice.status === 'PAID'
+                    ? <CheckCircle className="h-3.5 w-3.5" />
+                    : invoice.status === 'ANULADA' || invoice.status === 'VOID'
+                      ? <XCircle className="h-3.5 w-3.5" />
+                      : <Clock className="h-3.5 w-3.5" />}
+                  {getStatusLabel(invoice.status)}
                 </span>
+              </div>
+              {invoice.electronicStatus && (
+                <div className="flex items-center gap-2">
+                  <StatusIcon className={`h-4 w-4 ${electronicStatus.color}`} />
+                  <span className={`text-sm font-medium ${electronicStatus.color}`}>{electronicStatus.label}</span>
+                </div>
+              )}
+              {invoice.customer?.name && (
+                <p className="text-sm text-muted-foreground">Cliente: <span className="font-medium text-foreground">{invoice.customer.name}</span></p>
               )}
             </div>
-          </div>
-          <div className="flex gap-2 flex-wrap">
-            {/* Botones principales */}
-            <Button
-              variant="destructive"
-              onClick={() => setShowVoidDialog(true)}
-              disabled={isVoided || blockedByDian}
-              title={blockedByDian ? 'Si está enviada/aceptada por DIAN, debe hacerse Nota Crédito' : 'Anular factura'}
-              size="sm"
-            >
-              <Ban className="h-4 w-4 mr-2" />
-              Anular
-            </Button>
-
-            <Button
-              variant="outline"
-              onClick={() => setShowPartialReturn(true)}
-              disabled={isVoided || blockedByDian || !hasItems}
-              title={blockedByDian ? 'Si está enviada/aceptada por DIAN, debe hacerse Nota Crédito' : 'Devolver parcialmente items'}
-              size="sm"
-            >
-              Devolución
-            </Button>
-
-            <Button
-              variant="secondary"
-              onClick={() => {
-                setAbonoAmount(balance.toString())
-                setShowAbonoDialog(true)
-              }}
-              disabled={isVoided || balance <= 0}
-              size="sm"
-            >
-              <Receipt className="h-4 w-4 mr-2" />
-              Registrar Abono
-            </Button>
-
-            {/* Menú de acciones */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm">
-                  <MoreVertical className="h-4 w-4 mr-2" />
-                  Más acciones
+            <div className="flex items-center gap-2 flex-shrink-0">
+              {/* Primary actions */}
+              {balance > 0 && !isVoided && (
+                <Button
+                  onClick={() => {
+                    setAbonoAmount(balance.toString())
+                    setShowAbonoDialog(true)
+                  }}
+                  size="sm"
+                  className="bg-green-600 hover:bg-green-700 text-white"
+                >
+                  <DollarSign className="h-4 w-4 mr-1.5" />
+                  Registrar Abono
                 </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuLabel>Imprimir</DropdownMenuLabel>
-                {escposSupported && escposStatus === 'connected' && (
-                  <DropdownMenuItem onClick={handlePrintEscPos}>
-                    <Usb className="h-4 w-4 mr-2" />
-                    🖨️ Imprimir Ticket (POS USB)
-                  </DropdownMenuItem>
-                )}
-                {lanPrinters.length > 0 ? (
-                  <DropdownMenuSub>
-                    <DropdownMenuSubTrigger>
-                      <Network className="h-4 w-4 mr-2" />
-                      Imprimir LAN (Red)
-                    </DropdownMenuSubTrigger>
-                    <DropdownMenuPortal>
-                      <DropdownMenuSubContent>
-                        {lanPrinters.map((p: any) => (
-                          <DropdownMenuItem key={p.id} onClick={() => handlePrintLanWithIp(p.interfaceConfig)}>
-                            <Printer className="h-4 w-4 mr-2" />
-                            {p.name}
+              )}
+              <Button variant="outline" size="sm" onClick={handleDownloadPDF}>
+                <FileDown className="h-4 w-4 mr-1.5" />
+                PDF
+              </Button>
+
+              {/* More actions menu */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    <MoreVertical className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuLabel>Imprimir</DropdownMenuLabel>
+                  {escposSupported && escposStatus === 'connected' && (
+                    <DropdownMenuItem onClick={handlePrintEscPos}>
+                      <Usb className="h-4 w-4 mr-2" />
+                      Ticket POS (USB)
+                    </DropdownMenuItem>
+                  )}
+                  {lanPrinters.length > 0 ? (
+                    <DropdownMenuSub>
+                      <DropdownMenuSubTrigger>
+                        <Network className="h-4 w-4 mr-2" />
+                        Imprimir LAN
+                      </DropdownMenuSubTrigger>
+                      <DropdownMenuPortal>
+                        <DropdownMenuSubContent>
+                          {lanPrinters.map((p: any) => (
+                            <DropdownMenuItem key={p.id} onClick={() => handlePrintLanWithIp(p.interfaceConfig)}>
+                              <Printer className="h-4 w-4 mr-2" />
+                              {p.name}
+                            </DropdownMenuItem>
+                          ))}
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={handlePrintLan}>
+                            Otra IP (Manual)
                           </DropdownMenuItem>
-                        ))}
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={handlePrintLan}>
-                          <MoreVertical className="h-4 w-4 mr-2" />
-                          Otra IP (Manual)
-                        </DropdownMenuItem>
-                      </DropdownMenuSubContent>
-                    </DropdownMenuPortal>
-                  </DropdownMenuSub>
-                ) : (
-                  <DropdownMenuItem onClick={handlePrintLan}>
-                    <Network className="h-4 w-4 mr-2" />
-                    Imprimir LAN (Red 80mm)
+                        </DropdownMenuSubContent>
+                      </DropdownMenuPortal>
+                    </DropdownMenuSub>
+                  ) : (
+                    <DropdownMenuItem onClick={handlePrintLan}>
+                      <Network className="h-4 w-4 mr-2" />
+                      Imprimir LAN
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuItem onClick={() => handlePrintOption('thermal')}>
+                    <Printer className="h-4 w-4 mr-2" />
+                    Tirilla (80mm)
                   </DropdownMenuItem>
-                )}
-                <DropdownMenuItem onClick={() => handlePrintOption('thermal')}>
-                  <Printer className="h-4 w-4 mr-2" />
-                  Tirilla (80mm) - Navegador
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handlePrintOption('normal')}>
-                  <Printer className="h-4 w-4 mr-2" />
-                  Hoja normal (A4)
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                {escposSupported && (
-                  <>
-                    <DropdownMenuLabel className="text-xs font-normal text-gray-500">
-                      Impresora POS: {escposStatus === 'connected' ? '✅ Conectada' : '❌ Desconectada'}
-                    </DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                  </>
-                )}
-                <DropdownMenuItem onClick={() => setShowTicketPreview(true)}>
-                  <FileText className="h-4 w-4 mr-2" />
-                  Vista previa
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleDownloadPDF}>
-                  <FileDown className="h-4 w-4 mr-2" />
-                  Descargar PDF
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                {(!invoice.electronicStatus || invoice.electronicStatus === 'PENDING') && (
-                  <>
+                  <DropdownMenuItem onClick={() => handlePrintOption('normal')}>
+                    <Printer className="h-4 w-4 mr-2" />
+                    Hoja A4
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => setShowTicketPreview(true)}>
+                    <Eye className="h-4 w-4 mr-2" />
+                    Vista previa
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuLabel>Facturación Electrónica</DropdownMenuLabel>
+                  {(!invoice.electronicStatus || invoice.electronicStatus === 'PENDING') && (
                     <DropdownMenuItem
                       onClick={() => {
                         if (!settingsData?.settings?.electronicBillingProvider) {
-                          toast('Configuración incompleta: Por favor configura el proveedor de facturación electrónica en Ajustes.', 'error')
+                          toast('Configura el proveedor de facturación electrónica en Ajustes.', 'error')
                           router.push('/settings?tab=billing')
                           return
                         }
@@ -639,23 +588,39 @@ export function InvoiceDetails({ invoice }: { invoice: any }) {
                       disabled={sendElectronicMutation.isPending}
                     >
                       <QrCode className="h-4 w-4 mr-2" />
-                      Enviar a Facturación Electrónica (DIAN)
+                      Enviar a DIAN
                     </DropdownMenuItem>
-                  </>
-                )}
-                {invoice.qrCode && (
-                  <DropdownMenuItem onClick={() => window.open(invoice.qrCode, '_blank')}>
-                    <Download className="h-4 w-4 mr-2" />
-                    Ver QR DIAN
+                  )}
+                  {invoice.cufe && (
+                    <DropdownMenuItem onClick={() => window.open(`https://catalogo-vpfe.dian.gov.co/document/searchqr?documentkey=${invoice.cufe}`, '_blank')}>
+                      <Download className="h-4 w-4 mr-2" />
+                      Verificar en DIAN
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuLabel>Acciones</DropdownMenuLabel>
+                  <DropdownMenuItem
+                    onClick={() => setShowPartialReturn(true)}
+                    disabled={isVoided || blockedByDian || !hasItems}
+                  >
+                    <PackageX className="h-4 w-4 mr-2" />
+                    Devolución parcial
                   </DropdownMenuItem>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
+                  <DropdownMenuItem
+                    onClick={() => setShowVoidDialog(true)}
+                    disabled={isVoided || blockedByDian}
+                    className="text-red-600 focus:text-red-600"
+                  >
+                    <Ban className="h-4 w-4 mr-2" />
+                    Anular factura
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
 
-            {/* ESC/POS Printer Setup */}
-            {escposSupported && (
-              <PrinterSetupDialog />
-            )}
+              {escposSupported && (
+                <PrinterSetupDialog />
+              )}
+            </div>
           </div>
         </div>
 
@@ -928,82 +893,86 @@ export function InvoiceDetails({ invoice }: { invoice: any }) {
 
         {/* Facturación Electrónica Info */}
         {invoice.cufe && (
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <h3 className="font-semibold mb-3 text-blue-900">Información Facturación Electrónica</h3>
-            <div className="grid grid-cols-2 gap-4 text-sm">
+          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 border border-blue-200 dark:border-blue-800 rounded-xl p-5">
+            <h3 className="font-semibold mb-3 text-blue-900 dark:text-blue-200 flex items-center gap-2">
+              <CheckCircle className="h-4 w-4" />
+              Facturación Electrónica
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
               <div>
-                <span className="text-gray-600">CUFE:</span>
-                <div className="font-mono text-xs break-all">{invoice.cufe}</div>
+                <span className="text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider">CUFE</span>
+                <div className="font-mono text-xs break-all mt-1 bg-white dark:bg-gray-900 p-2 rounded border">{invoice.cufe}</div>
               </div>
-              {invoice.qrCode && (
-                <div>
-                  <span className="text-gray-600">Código QR:</span>
-                  <div className="text-xs break-all">
-                    <a href={invoice.qrCode} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
-                      {invoice.qrCode}
-                    </a>
+              <div className="space-y-2">
+                {invoice.electronicSentAt && (
+                  <div>
+                    <span className="text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider">Fecha envío</span>
+                    <div className="mt-1 font-medium">{formatDate(invoice.electronicSentAt)}</div>
                   </div>
-                </div>
-              )}
-              {invoice.electronicSentAt && (
-                <div>
-                  <span className="text-gray-600">Enviada:</span>
-                  <div>{formatDate(invoice.electronicSentAt)}</div>
-                </div>
-              )}
-              {invoice.resolutionNumber && (
-                <div>
-                  <span className="text-gray-600">Resolución:</span>
-                  <div>{invoice.resolutionNumber}</div>
-                </div>
-              )}
+                )}
+                {invoice.resolutionNumber && (
+                  <div>
+                    <span className="text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider">Resolución DIAN</span>
+                    <div className="mt-1 font-medium">{invoice.resolutionNumber}</div>
+                  </div>
+                )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mt-2"
+                  onClick={() => window.open(`https://catalogo-vpfe.dian.gov.co/document/searchqr?documentkey=${invoice.cufe}`, '_blank')}
+                >
+                  <QrCode className="h-4 w-4 mr-1.5" />
+                  Verificar en DIAN
+                </Button>
+              </div>
             </div>
           </div>
         )}
 
-        {/* Customer Info */}
-        <div className="grid grid-cols-2 gap-6">
-          <div>
-            <h3 className="font-semibold mb-3">Cliente</h3>
+        {/* Customer & Document Info */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="bg-white dark:bg-gray-900 border rounded-xl p-5">
+            <h3 className="font-semibold mb-3 text-sm uppercase tracking-wider text-muted-foreground">Cliente</h3>
             <div className="space-y-2 text-sm">
-              <div className="font-medium">{invoice.customer?.name || 'Cliente General'}</div>
+              <div className="font-semibold text-base">{invoice.customer?.name || 'Cliente General'}</div>
               {invoice.customer?.taxId && (
-                <div className="flex items-center gap-2">
-                  <FileText className="h-4 w-4 text-gray-400" />
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <FileText className="h-4 w-4" />
                   <span>NIT: {invoice.customer.taxId}</span>
                 </div>
               )}
               {invoice.customer?.email && (
-                <div className="flex items-center gap-2">
-                  <Mail className="h-4 w-4 text-gray-400" />
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Mail className="h-4 w-4" />
                   <span>{invoice.customer.email}</span>
                 </div>
               )}
               {invoice.customer?.phone && (
-                <div className="flex items-center gap-2">
-                  <Phone className="h-4 w-4 text-gray-400" />
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Phone className="h-4 w-4" />
                   <span>{invoice.customer.phone}</span>
                 </div>
               )}
               {invoice.customer?.address && (
-                <div className="flex items-center gap-2">
-                  <MapPin className="h-4 w-4 text-gray-400" />
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <MapPin className="h-4 w-4" />
                   <span>{invoice.customer.address}</span>
                 </div>
               )}
             </div>
           </div>
-          <div>
-            <h3 className="font-semibold mb-3">Información</h3>
+          <div className="bg-white dark:bg-gray-900 border rounded-xl p-5">
+            <h3 className="font-semibold mb-3 text-sm uppercase tracking-wider text-muted-foreground">Documento</h3>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
-                <span className="text-gray-600">Fecha Emisión:</span>
+                <span className="text-muted-foreground">Fecha Emisión:</span>
                 <span className="font-semibold">
                   {issuedDate ? (
                     <>
                       {formatDate(issuedDate)}
-                      <span className="text-xs text-gray-500 ml-2">
-                        {new Date(issuedDate).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                      <span className="text-xs text-muted-foreground ml-2">
+                        {new Date(issuedDate).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}
                       </span>
                     </>
                   ) : (
@@ -1013,14 +982,14 @@ export function InvoiceDetails({ invoice }: { invoice: any }) {
               </div>
               {invoice.dueDate && (
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Fecha Vencimiento:</span>
+                  <span className="text-muted-foreground">Vencimiento:</span>
                   <span>{formatDate(invoice.dueDate)}</span>
                 </div>
               )}
               {invoice.paidAt && (
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Fecha Pago:</span>
-                  <span>{formatDate(invoice.paidAt)}</span>
+                  <span className="text-muted-foreground">Fecha Pago:</span>
+                  <span className="text-green-600 font-medium">{formatDate(invoice.paidAt)}</span>
                 </div>
               )}
             </div>
@@ -1028,83 +997,74 @@ export function InvoiceDetails({ invoice }: { invoice: any }) {
         </div>
 
         {/* Items */}
-        <div>
-          <h3 className="font-semibold mb-3">Productos</h3>
-          <div className="border rounded-lg">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Código</TableHead>
-                  <TableHead>Producto</TableHead>
-                  <TableHead>Cantidad</TableHead>
-                  <TableHead>Precio Unit.</TableHead>
-                  <TableHead>Descuento</TableHead>
-                  <TableHead>IVA</TableHead>
-                  <TableHead>Subtotal</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {hasItems ? (
-                  invoiceItems.map((item: any, index: number) => {
-                    const itemTax = item.lineTaxes && item.lineTaxes.length > 0
-                      ? item.lineTaxes.reduce((sum: number, lt: any) => sum + (lt.taxAmount || 0), 0)
-                      : (item.subtotal * (item.taxRate || 0) / 100)
-
-                    return (
-                      <TableRow key={item.id || `item-${index}`}>
-                        <TableCell className="font-mono text-xs">
-                          {item.product?.sku || '-'}
-                        </TableCell>
-                        <TableCell>
-                          <div>
-                            <div className="font-medium">{item.product?.name || 'Producto'}</div>
-                            {item.variant?.name && (
-                              <div className="text-xs text-gray-500">{item.variant.name}</div>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell>{item.quantity}</TableCell>
-                        <TableCell>{formatCurrency(item.unitPrice)}</TableCell>
-                        <TableCell>{item.discount}%</TableCell>
-                        <TableCell>
-                          <div className="flex flex-col">
-                            <span>{formatCurrency(itemTax)}</span>
-                            {item.lineTaxes && item.lineTaxes.length > 1 && (
-                              <span className="text-[10px] text-muted-foreground">
-                                ({item.lineTaxes.length} imp.)
-                              </span>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell className="font-semibold">
-                          {formatCurrency(item.subtotal)}
-                        </TableCell>
-                      </TableRow>
-                    )
-                  })
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={7} className="text-center text-gray-500 py-8">
-                      No hay productos en esta factura
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
+        <div className="bg-white dark:bg-gray-900 border rounded-xl overflow-hidden">
+          <div className="px-5 py-3 border-b bg-gray-50 dark:bg-gray-800">
+            <h3 className="font-semibold text-sm uppercase tracking-wider text-muted-foreground">Productos ({invoiceItems.length})</h3>
           </div>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-[80px]">Código</TableHead>
+                <TableHead>Producto</TableHead>
+                <TableHead className="text-center w-[70px]">Cant.</TableHead>
+                <TableHead className="text-right">P. Unit.</TableHead>
+                <TableHead className="text-center w-[70px]">Dcto.</TableHead>
+                <TableHead className="text-right">IVA</TableHead>
+                <TableHead className="text-right">Subtotal</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {hasItems ? (
+                invoiceItems.map((item: any, index: number) => {
+                  const itemTax = item.lineTaxes && item.lineTaxes.length > 0
+                    ? item.lineTaxes.reduce((sum: number, lt: any) => sum + (lt.taxAmount || 0), 0)
+                    : (item.subtotal * (item.taxRate || 0) / 100)
+
+                  return (
+                    <TableRow key={item.id || `item-${index}`}>
+                      <TableCell className="font-mono text-xs text-muted-foreground">
+                        {item.product?.sku || '-'}
+                      </TableCell>
+                      <TableCell>
+                        <div className="font-medium">{item.product?.name || 'Producto'}</div>
+                        {item.variant?.name && (
+                          <div className="text-xs text-muted-foreground">{item.variant.name}</div>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-center">{item.quantity}</TableCell>
+                      <TableCell className="text-right">{formatCurrency(item.unitPrice)}</TableCell>
+                      <TableCell className="text-center">{item.discount > 0 ? `${item.discount}%` : '-'}</TableCell>
+                      <TableCell className="text-right">{formatCurrency(itemTax)}</TableCell>
+                      <TableCell className="text-right font-semibold">
+                        {formatCurrency(item.subtotal)}
+                      </TableCell>
+                    </TableRow>
+                  )
+                })
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                    No hay productos en esta factura
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
         </div>
 
         {/* Totals */}
         <div className="flex justify-end">
-          <div className="w-64 space-y-2 text-sm">
+          <div className="w-72 bg-white dark:bg-gray-900 border rounded-xl p-4 space-y-2 text-sm">
             <div className="flex justify-between">
-              <span className="text-gray-600">Subtotal:</span>
+              <span className="text-muted-foreground">Subtotal:</span>
               <span>{formatCurrency((invoice.subtotal || 0) + (invoice.discount || 0))}</span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">Descuento:</span>
-              <span>{formatCurrency(invoice.discount || 0)}</span>
-            </div>
+            {(invoice.discount || 0) > 0 && (
+              <div className="flex justify-between text-red-600">
+                <span>(-) Descuento:</span>
+                <span>{formatCurrency(invoice.discount)}</span>
+              </div>
+            )}
 
             {/* Tax Breakdown */}
             {invoice.taxSummary && invoice.taxSummary.length > 0 ? (
@@ -1116,60 +1076,69 @@ export function InvoiceDetails({ invoice }: { invoice: any }) {
               ))
             ) : (
               <div className="flex justify-between">
-                <span className="text-gray-600">Impuestos:</span>
+                <span className="text-muted-foreground">Impuestos:</span>
                 <span>{formatCurrency(invoice.tax || 0)}</span>
               </div>
             )}
 
-            <div className="flex justify-between border-t pt-2 font-bold text-lg">
+            <div className="flex justify-between border-t pt-3 font-bold text-lg">
               <span>Total:</span>
               <span>{formatCurrency(invoice.total || 0)}</span>
             </div>
-            <div className="flex justify-between text-orange-600 font-semibold text-lg">
-              <span>Saldo:</span>
-              <span>{formatCurrency(balance)}</span>
-            </div>
+            {balance > 0 && (
+              <div className="flex justify-between text-orange-600 font-semibold bg-orange-50 dark:bg-orange-950/30 rounded-lg px-3 py-2">
+                <span>Saldo:</span>
+                <span>{formatCurrency(balance)}</span>
+              </div>
+            )}
           </div>
         </div>
 
         {/* Payments */}
         {invoice.payments && invoice.payments.length > 0 && (
-          <div>
-            <h3 className="font-semibold mb-3">Pagos</h3>
-            <div className="border rounded-lg">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Fecha</TableHead>
-                    <TableHead>Método</TableHead>
-                    <TableHead>Monto</TableHead>
-                    <TableHead>Usuario</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {invoice.payments.map((payment: any) => (
-                    <TableRow key={payment.id}>
-                      <TableCell>{formatDate(payment.createdAt)}</TableCell>
-                      <TableCell>
+          <div className="bg-white dark:bg-gray-900 border rounded-xl overflow-hidden">
+            <div className="px-5 py-3 border-b bg-gray-50 dark:bg-gray-800">
+              <h3 className="font-semibold text-sm uppercase tracking-wider text-muted-foreground">Pagos ({invoice.payments.length})</h3>
+            </div>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Fecha</TableHead>
+                  <TableHead>Método</TableHead>
+                  <TableHead className="text-right">Monto</TableHead>
+                  <TableHead>Usuario</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {invoice.payments.map((payment: any) => (
+                  <TableRow key={payment.id}>
+                    <TableCell>{formatDate(payment.createdAt)}</TableCell>
+                    <TableCell>
+                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
+                        payment.method === 'CASH' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
+                        payment.method === 'CARD' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200' :
+                        payment.method === 'TRANSFER' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' :
+                        'bg-gray-100 text-gray-800'
+                      }`}>
                         {payment.method === 'CASH' ? 'Efectivo' :
                           payment.method === 'CARD' ? 'Tarjeta' :
                             payment.method === 'TRANSFER' ? 'Transferencia' :
                               payment.method === 'CHECK' ? 'Cheque' : payment.method}
-                      </TableCell>
-                      <TableCell>{formatCurrency(payment.amount)}</TableCell>
-                      <TableCell>{payment.createdBy?.name || '-'}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-right font-semibold">{formatCurrency(payment.amount)}</TableCell>
+                    <TableCell className="text-muted-foreground">{payment.createdBy?.name || '-'}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </div>
         )}
 
         {invoice.notes && (
-          <div>
-            <h3 className="font-semibold mb-2">Notas</h3>
-            <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded">{invoice.notes}</p>
+          <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-xl p-4">
+            <h3 className="font-semibold mb-2 text-sm text-amber-800 dark:text-amber-200">Notas</h3>
+            <p className="text-sm text-amber-700 dark:text-amber-300 whitespace-pre-wrap">{invoice.notes}</p>
           </div>
         )}
 
