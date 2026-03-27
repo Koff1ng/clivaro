@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -143,6 +143,9 @@ export function CashShiftScreen() {
   const [closedShiftReport, setClosedShiftReport] = useState<any>(null)
   const [showReportDialog, setShowReportDialog] = useState(false)
 
+  // Live shift duration timer (state declared here, effect runs below after queries)
+  const [shiftDuration, setShiftDuration] = useState('')
+
   // Print hooks for proper print dimensions
   const { print: printThermal } = useThermalPrint({ targetId: 'shift-report-thermal', widthMm: 80 })
   const { print: printLetter } = useLetterPrint({ targetId: 'shift-report-letter' })
@@ -184,6 +187,22 @@ export function CashShiftScreen() {
       refetchClosedShifts()
     }
   }, [showHistory, refetchClosedShifts])
+
+  // Live shift duration timer
+  useEffect(() => {
+    if (!activeShift?.openedAt) { setShiftDuration(''); return }
+    const calcDuration = () => {
+      const start = new Date(activeShift.openedAt).getTime()
+      const diff = Math.max(0, Date.now() - start)
+      const h = Math.floor(diff / 3600000)
+      const m = Math.floor((diff % 3600000) / 60000)
+      const s = Math.floor((diff % 60000) / 1000)
+      setShiftDuration(`${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`)
+    }
+    calcDuration()
+    const interval = setInterval(calcDuration, 1000)
+    return () => clearInterval(interval)
+  }, [activeShift?.openedAt])
 
   const openShiftMutation = useMutation({
     mutationFn: (cash: number) => openShift(cash),
@@ -303,24 +322,18 @@ export function CashShiftScreen() {
     .reduce((sum: number, m: any) => sum + m.amount, 0)
   const netMovement = totalIn - totalOut
 
-  // Payment method labels
-  const getPaymentMethodLabel = (method: string) => {
-    switch (method) {
-      case 'CASH': return 'Efectivo'
-      case 'CARD': return 'Tarjeta'
-      case 'TRANSFER': return 'Transferencia'
-      default: return method
-    }
+  // Payment method icon resolver — handles custom method names too
+  const getPaymentMethodIcon = (method: string) => {
+    const upper = (method || '').toUpperCase()
+    if (upper.includes('EFECTIVO') || upper === 'CASH') return DollarSign
+    if (upper.includes('TARJETA') || upper === 'CARD' || upper.includes('CREDIT') || upper.includes('DEBIT')) return CreditCard
+    if (upper.includes('TRANSFER') || upper.includes('PSE') || upper.includes('NEQUI') || upper.includes('DAVIPLATA')) return ArrowLeftRight
+    if (upper.includes('ELECTR') || upper === 'ELECTRONIC') return Receipt
+    return DollarSign
   }
 
-  const getPaymentMethodIcon = (method: string) => {
-    switch (method) {
-      case 'CASH': return DollarSign
-      case 'CARD': return CreditCard
-      case 'TRANSFER': return ArrowLeftRight
-      default: return DollarSign
-    }
-  }
+  // Cash in drawer = starting + net movements (no sales — sales go to their own methods)
+  const cashInDrawer = (activeShift?.startingCash || 0) + netMovement
 
   return (
     <div className="space-y-6">
@@ -421,33 +434,47 @@ export function CashShiftScreen() {
                       <span className="ml-2 px-2 py-0.5 bg-green-100 text-green-700 rounded text-xs font-medium">
                         Abierto
                       </span>
+                      {shiftDuration && (
+                        <span className="ml-1 px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-xs font-mono font-semibold animate-pulse">
+                          ⏱ {shiftDuration}
+                        </span>
+                      )}
                     </div>
                   </div>
+                  <Button variant="ghost" size="sm" onClick={() => { refetchShift(); refetchMovements(); refetchPayments() }} title="Actualizar datos">
+                    <RefreshCw className="h-4 w-4" />
+                  </Button>
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-3 gap-4 mb-6">
-                  <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-4 border border-blue-200">
-                    <div className="text-xs font-medium text-blue-700 mb-1">Efectivo Inicial</div>
-                    <div className="text-2xl font-bold text-blue-600">
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                  <div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950/50 dark:to-blue-900/30 rounded-xl p-4 border border-blue-200 dark:border-blue-800">
+                    <div className="text-xs font-medium text-blue-700 dark:text-blue-300 mb-1">Efectivo Inicial</div>
+                    <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
                       {formatCurrency(activeShift.startingCash || 0)}
                     </div>
                   </div>
-                  <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-lg p-4 border border-green-200">
-                    <div className="text-xs font-medium text-green-700 mb-1">Efectivo Esperado</div>
-                    <div className="text-2xl font-bold text-green-600">
-                      {formatCurrency(activeShift.expectedCash || 0)}
+                  <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-950/50 dark:to-emerald-900/30 rounded-xl p-4 border border-emerald-200 dark:border-emerald-800">
+                    <div className="text-xs font-medium text-emerald-700 dark:text-emerald-300 mb-1">Total Ventas</div>
+                    <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+                      {formatCurrency(totalPayments)}
                     </div>
                   </div>
-                  <div className={`bg-gradient-to-br rounded-lg p-4 border ${netMovement >= 0
-                    ? 'from-green-50 to-green-100 border-green-200'
-                    : 'from-red-50 to-red-100 border-red-200'
+                  <div className={`bg-gradient-to-br rounded-xl p-4 border ${netMovement >= 0
+                    ? 'from-green-50 to-green-100 dark:from-green-950/50 dark:to-green-900/30 border-green-200 dark:border-green-800'
+                    : 'from-red-50 to-red-100 dark:from-red-950/50 dark:to-red-900/30 border-red-200 dark:border-red-800'
                     }`}>
-                    <div className={`text-xs font-medium mb-1 ${netMovement >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+                    <div className={`text-xs font-medium mb-1 ${netMovement >= 0 ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'}`}>
                       Movimiento Neto
                     </div>
-                    <div className={`text-2xl font-bold ${netMovement >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    <div className={`text-2xl font-bold ${netMovement >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                       {formatCurrency(netMovement)}
+                    </div>
+                  </div>
+                  <div className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-950/50 dark:to-purple-900/30 rounded-xl p-4 border border-purple-200 dark:border-purple-800">
+                    <div className="text-xs font-medium text-purple-700 dark:text-purple-300 mb-1">Efectivo en Caja</div>
+                    <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
+                      {formatCurrency(cashInDrawer)}
                     </div>
                   </div>
                 </div>
@@ -607,7 +634,7 @@ export function CashShiftScreen() {
                                 {formatCurrency(payment.amount)}
                               </div>
                               <div className="text-xs text-gray-600">
-                                {getPaymentMethodLabel(payment.method)} • {payment.invoiceNumber || 'N/A'}
+                                {payment.method} • {payment.invoiceNumber || 'N/A'}
                               </div>
                             </div>
                           </div>
@@ -1032,7 +1059,7 @@ export function CashShiftScreen() {
                               <TableCell>
                                 <div className="flex items-center gap-2">
                                   <Icon className="h-4 w-4" />
-                                  <span>{getPaymentMethodLabel(payment.method)}</span>
+                                  <span>{payment.method}</span>
                                 </div>
                               </TableCell>
                               <TableCell className="font-mono text-sm">{payment.invoiceNumber || '-'}</TableCell>
