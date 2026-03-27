@@ -134,12 +134,34 @@ export function InvoicePrintLetter({ invoice, settings }: InvoicePrintLetterProp
 
     const isElectronic = !!invoice.cufe
 
+    // Parse ticket design settings from customSettings JSON
+    let td: any = {}
+    let logoUrl: string | null = null
+    try {
+        if (settings?.customSettings) {
+            const custom = typeof settings.customSettings === 'string'
+                ? JSON.parse(settings.customSettings)
+                : settings.customSettings
+            td = custom?.printing?.ticketDesign || {}
+            logoUrl = custom?.identity?.logo || null
+        }
+    } catch (e) { }
+
+    const showCufe = td.showCufe !== false
+    const showLogo = td.showLogo !== false
+    const customFooterText = td.customFooterText || ''
+
     return (
         <div className="letter-print-content p-8 font-sans text-sm bg-white" style={{ maxWidth: '100%' }}>
             {/* ======= ENCABEZADO ======= */}
             <div className="flex justify-between items-start border-b-2 pb-4 mb-6">
                 {/* Logo y datos empresa */}
                 <div className="flex-1">
+                    {showLogo && logoUrl && (
+                        <div className="mb-3">
+                            <img src={logoUrl} alt="Logo" style={{ maxHeight: '60px', objectFit: 'contain' }} />
+                        </div>
+                    )}
                     <h1 className="text-2xl font-bold text-gray-900">{companyName}</h1>
                     <div className="text-sm text-gray-600 mt-2">
                         <div className="font-semibold">NIT: {companyTaxId}</div>
@@ -358,7 +380,7 @@ export function InvoicePrintLetter({ invoice, settings }: InvoicePrintLetterProp
             )}
 
             {/* ======= FACTURACIÓN ELECTRÓNICA DIAN ======= */}
-            {isElectronic && (
+            {isElectronic && showCufe && (
                 <div className="bg-blue-50 p-4 rounded-lg border border-blue-200 mb-6">
                     <h3 className="font-bold text-blue-800 mb-2 text-sm uppercase">Información de Facturación Electrónica</h3>
                     <div className="grid grid-cols-2 gap-4 text-sm">
@@ -387,6 +409,7 @@ export function InvoicePrintLetter({ invoice, settings }: InvoicePrintLetterProp
             <div className="text-xs text-center text-gray-600 border-t pt-4 space-y-1">
                 <div className="font-medium">INFORMACIÓN LEGAL</div>
                 <div>La presente factura se asimila en todos sus efectos legales a la letra de cambio (Art. 774 C.C.).</div>
+                {customFooterText && <div className="italic mt-2">{customFooterText}</div>}
                 <div className="flex justify-center gap-4 mt-2">
                     <span>{process.env.NEXT_PUBLIC_GRAN_CONTRIBUYENTE === 'true' ? 'Grandes Contribuyentes' : 'No somos Grandes Contribuyentes'}</span>
                     <span>|</span>

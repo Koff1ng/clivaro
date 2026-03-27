@@ -470,7 +470,86 @@ export function GeneralConfig({ settings, onSave, isLoading, initialTab = 'ident
                 </div>
               )}
             </div>
+
+            {/* Ticket Design Editor Button */}
+            <div className="p-8 border rounded-[2.5rem] bg-white shadow-sm hover:shadow-xl transition-all duration-300">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-5">
+                  <div className="p-4 bg-amber-50 rounded-2xl text-amber-600">
+                    <Receipt size={28} />
+                  </div>
+                  <div>
+                    <h3 className="font-black text-slate-800 text-lg tracking-tight">Diseño de Factura / Tirilla</h3>
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Personaliza cómo se ven tus facturas impresas</p>
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  className="rounded-full bg-amber-600 hover:bg-amber-700 font-bold px-8"
+                  onClick={() => setShowTicketEditor(true)}
+                >
+                  <Edit size={16} className="mr-2" /> Diseñar Tirilla
+                </Button>
+              </div>
+            </div>
           </div>
+        )}
+
+        {/* Ticket Editor Dialog */}
+        {showTicketEditor && (
+          <Dialog open={showTicketEditor} onOpenChange={setShowTicketEditor}>
+            <DialogContent className="max-w-[1200px] max-h-[90vh] overflow-y-auto rounded-[2rem] border-none shadow-2xl p-0">
+              <DialogHeader className="p-6 bg-slate-900 text-white">
+                <DialogTitle className="text-xl font-black flex items-center gap-3">
+                  <Receipt size={24} /> Editor de Tirilla / Factura
+                </DialogTitle>
+                <DialogDescription className="text-slate-400 uppercase text-[10px] font-bold tracking-widest">
+                  Personaliza la apariencia de tus facturas impresas
+                </DialogDescription>
+              </DialogHeader>
+              <div className="p-6">
+                <TicketEditor
+                  settings={initialCustomSettings.printing?.ticketDesign || {
+                    templateStyle: 'classic',
+                    headerAlignment: 'center',
+                    showDescription: false,
+                    showUnitPrice: true,
+                    showLogo: true,
+                    groupData: false,
+                    showUnitOfMeasure: false,
+                    showTotals: true,
+                    showLineCount: true,
+                    showProductCount: true,
+                    paperSize: 80,
+                    marginLeft: 0,
+                    marginRight: 0,
+                    customFooterText: '',
+                    showQr: true,
+                    showCufe: true,
+                    footerText: 'Gracias por su compra',
+                    separator: 'dashes',
+                    fontSize: 'medium',
+                    fontWeight: 'bold',
+                    headerFontSize: 'large',
+                    lineSpacing: 'normal',
+                  }}
+                  companyInfo={{
+                    name: watch('companyName') || '',
+                    nit: watch('companyNit') || '',
+                    address: watch('companyAddress') || '',
+                    city: watch('companyCity') || '',
+                    phone: watch('companyPhone') || '',
+                    email: watch('companyEmail') || '',
+                    regime: watch('companyRegime') || 'Responsable de IVA',
+                  }}
+                  onChange={(newDesign) => {
+                    handlePrintingChange('ticketDesign', newDesign)
+                  }}
+                  onClose={() => setShowTicketEditor(false)}
+                />
+              </div>
+            </DialogContent>
+          </Dialog>
         )}
 
         {/* Almacenes */}

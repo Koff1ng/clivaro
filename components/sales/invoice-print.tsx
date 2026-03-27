@@ -28,6 +28,40 @@ interface InvoicePrintProps {
 export function InvoicePrint({ invoice, settings }: InvoicePrintProps) {
   if (!invoice) return null
 
+  // Parse ticket design settings from tenant customSettings JSON
+  let td: any = {}
+  try {
+    if (settings?.customSettings) {
+      const custom = typeof settings.customSettings === 'string'
+        ? JSON.parse(settings.customSettings)
+        : settings.customSettings
+      td = custom?.printing?.ticketDesign || {}
+    }
+  } catch (e) { }
+
+  // Ticket design toggles with defaults
+  const showCufe = td.showCufe !== false
+  const showQr = td.showQr !== false
+  const showLogo = td.showLogo !== false
+  const showDescription = td.showDescription || false
+  const showUnitPrice = td.showUnitPrice !== false
+  const showTotals = td.showTotals !== false
+  const showLineCount = td.showLineCount || false
+  const showProductCount = td.showProductCount || false
+  const showUnitOfMeasure = td.showUnitOfMeasure || false
+  const customFooterText = td.customFooterText || ''
+  const logoUrl = (() => {
+    try {
+      if (settings?.customSettings) {
+        const custom = typeof settings.customSettings === 'string'
+          ? JSON.parse(settings.customSettings)
+          : settings.customSettings
+        return custom?.identity?.logo || null
+      }
+    } catch (e) { }
+    return null
+  })()
+
   const formatDateTime = (date: Date | string | null | undefined) => {
     if (!date) return ''
     const d = new Date(date)
@@ -151,6 +185,11 @@ export function InvoicePrint({ invoice, settings }: InvoicePrintProps) {
     <div className="ticket">
       {/* ======= ENCABEZADO EMPRESA (VENDEDOR) ======= */}
       <div className="center">
+        {showLogo && logoUrl && (
+          <div style={{ marginBottom: '8px', display: 'flex', justifyContent: 'center' }}>
+            <img src={logoUrl} alt="Logo" style={{ maxHeight: '60px', maxWidth: '100%', objectFit: 'contain' }} />
+          </div>
+        )}
         <div className="bold">{companyName}</div>
         <div className="small">
           <div>NIT: {companyTaxId}</div>
@@ -239,13 +278,15 @@ export function InvoicePrint({ invoice, settings }: InvoicePrintProps) {
                   <td className="desc">
                     <div className="bold">{item.product?.name || 'Producto'}</div>
                     {item.product?.sku && <div style={{ fontSize: '9px', color: '#333' }}>{item.product.sku}</div>}
-                    {item.discount > 0 && (
+                    {showDescription && item.product?.description && <div style={{ fontSize: '8px', color: '#555' }}>{item.product.description}</div>}
+                    {showUnitOfMeasure && <div style={{ fontSize: '8px', color: '#999' }}>UN</div>}
+                    {item.discount > 0 && showUnitPrice && (
                       <div style={{ fontSize: '8px', color: '#555' }}>
                         Desc: {item.discount}% de ${formatCurrency(item.unitPrice)}
                       </div>
                     )}
                   </td>
-                  <td className="qty">{item.quantity || 0}</td>
+                  <td className="qty">{item.quantity || 0}{showUnitPrice && <div style={{ fontSize: '8px' }}>x {formatCurrency(item.unitPrice)}</div>}</td>
                   <td className="price">{formatCurrency(item.subtotal || 0)}</td>
                 </tr>
               )
@@ -259,6 +300,7 @@ export function InvoicePrint({ invoice, settings }: InvoicePrintProps) {
       <div className="separator" />
 
       {/* ======= TOTALES ======= */}
+      {showTotals && (
       <table className="totals">
         <tbody>
           <tr>
@@ -299,6 +341,7 @@ export function InvoicePrint({ invoice, settings }: InvoicePrintProps) {
           </tr>
         </tbody>
       </table>
+      )}
 
       <div className="separator" />
 
@@ -351,12 +394,19 @@ export function InvoicePrint({ invoice, settings }: InvoicePrintProps) {
           <div>{companyRegime}</div>
           <div>La presente factura se asimila en todos sus efectos</div>
           <div>legales a la letra de cambio (Art. 774 C.C.).</div>
+          {customFooterText && <div style={{ marginTop: '4px', fontStyle: 'italic' }}>{customFooterText}</div>}
           <div className="bold" style={{ marginTop: '4px' }}>¡GRACIAS POR SU COMPRA!</div>
+          {(showLineCount || showProductCount) && (
+            <div style={{ marginTop: '4px', fontSize: '9px' }}>
+              {showLineCount && <div>Total líneas: {(invoice.items || []).length}</div>}
+              {showProductCount && <div>Total productos: {(invoice.items || []).reduce((sum: number, i: any) => sum + (i.quantity || 0), 0)}</div>}
+            </div>
+          )}
           <div style={{ marginTop: '4px' }}>Conserve esta factura</div>
           <div style={{ fontSize: '8px', color: '#555', marginTop: '2px' }}>Documento generado electrónicamente</div>
         </div>
 
-        {isElectronic && (
+        {isElectronic && showCufe && (
           <div style={{ marginTop: '8px' }}>
             <div className="bold">CUFE:</div>
             <div style={{ wordBreak: 'break-all', fontSize: '8px', marginTop: '2px' }}>{invoice.cufe}</div>
