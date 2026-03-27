@@ -153,12 +153,28 @@ const sampleInvoice = {
 }
 
 export function TicketEditor({ settings: initialSettings, companyInfo, onChange, onClose }: TicketEditorProps) {
-    const [settings, setSettings] = useState<TicketDesignSettings>({ ...defaultSettings, ...initialSettings })
+    const [settings, setSettings] = useState<TicketDesignSettings>(() => ({
+        ...defaultSettings,
+        ...initialSettings,
+        // Ensure footerTemplate always has a value (backwards compat for old saved settings)
+        footerTemplate: initialSettings.footerTemplate || 'general',
+    }))
 
     const updateSetting = <K extends keyof TicketDesignSettings>(key: K, value: TicketDesignSettings[K]) => {
-        const newSettings = { ...settings, [key]: value }
-        setSettings(newSettings)
-        onChange(newSettings)
+        setSettings(prev => {
+            const newSettings = { ...prev, [key]: value }
+            onChange(newSettings)
+            return newSettings
+        })
+    }
+
+    // Batch update multiple settings at once (avoids race conditions)
+    const updateSettings = (updates: Partial<TicketDesignSettings>) => {
+        setSettings(prev => {
+            const newSettings = { ...prev, ...updates }
+            onChange(newSettings)
+            return newSettings
+        })
     }
 
     const resetToDefaults = () => {
@@ -435,30 +451,40 @@ export function TicketEditor({ settings: initialSettings, companyInfo, onChange,
                         Selecciona el tipo de pie de página legal según tu tipo de negocio.
                     </p>
                     <div className="space-y-2">
-                        {(Object.entries(FOOTER_TEMPLATES) as [FooterTemplate, typeof FOOTER_TEMPLATES[FooterTemplate]][]).map(([key, tmpl]) => (
-                            <button
-                                key={key}
-                                type="button"
-                                onClick={() => {
-                                    updateSetting('footerTemplate', key)
-                                    if (key !== 'custom') {
-                                        updateSetting('customFooterText', '')
-                                    }
-                                }}
-                                className={cn(
-                                    "w-full text-left p-3 rounded-lg border-2 transition-all",
-                                    settings.footerTemplate === key
-                                        ? "border-blue-500 bg-blue-50"
-                                        : "border-gray-200 hover:border-gray-300"
-                                )}
-                            >
-                                <div className="flex items-center justify-between">
-                                    <div className="font-semibold text-sm">{tmpl.label}</div>
-                                    {settings.footerTemplate === key && <div className="text-blue-600 text-xs font-bold">✓ Activo</div>}
-                                </div>
-                                <div className="text-[10px] text-muted-foreground mt-1">{tmpl.description}</div>
-                            </button>
-                        ))}
+                        {(Object.keys(FOOTER_TEMPLATES) as FooterTemplate[]).map((key) => {
+                            const tmpl = FOOTER_TEMPLATES[key]
+                            const isActive = (settings.footerTemplate || 'general') === key
+                            return (
+                                <button
+                                    key={key}
+                                    type="button"
+                                    onClick={() => {
+                                        if (key === 'custom') {
+                                            updateSettings({ footerTemplate: key })
+                                        } else {
+                                            updateSettings({ footerTemplate: key, customFooterText: '' })
+                                        }
+                                    }}
+                                    className={cn(
+                                        "w-full text-left p-3 rounded-lg border-2 transition-all",
+                                        isActive
+                                            ? "border-blue-500 bg-blue-50"
+                                            : "border-gray-200 hover:border-gray-300"
+                                    )}
+                                >
+                                    <div className="flex items-center justify-between">
+                                        <div className="font-semibold text-sm">{tmpl.label}</div>
+                                        {isActive && <div className="text-blue-600 text-xs font-bold">✓ Activo</div>}
+                                    </div>
+                                    <div className="text-[10px] text-muted-foreground mt-1">{tmpl.description}</div>
+                                    {isActive && key !== 'custom' && (
+                                        <div className="text-[9px] text-gray-500 mt-2 italic leading-tight border-t pt-2">
+                                            {tmpl.text}
+                                        </div>
+                                    )}
+                                </button>
+                            )
+                        })}
                     </div>
 
                     {settings.footerTemplate === 'custom' && (
