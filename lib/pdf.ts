@@ -506,6 +506,59 @@ export interface InvoicePDFData {
   }
 }
 
+// Helper: convert number to Spanish words for Colombian pesos (SON field)
+function numberToWordsCOP(n: number): string {
+  const units = ['', 'un', 'dos', 'tres', 'cuatro', 'cinco', 'seis', 'siete', 'ocho', 'nueve']
+  const teens = ['diez', 'once', 'doce', 'trece', 'catorce', 'quince', 'dieciséis', 'diecisiete', 'dieciocho', 'diecinueve']
+  const tens = ['', 'diez', 'veinte', 'treinta', 'cuarenta', 'cincuenta', 'sesenta', 'setenta', 'ochenta', 'noventa']
+  const hundreds = ['', 'ciento', 'doscientos', 'trescientos', 'cuatrocientos', 'quinientos', 'seiscientos', 'setecientos', 'ochocientos', 'novecientos']
+
+  function chunk(num: number): string {
+    if (num === 0) return ''
+    if (num === 100) return 'cien'
+    if (num < 10) return units[num]
+    if (num < 20) return teens[num - 10]
+    if (num < 30) return num === 20 ? 'veinte' : 'veinti' + units[num - 20]
+    if (num < 100) {
+      const t = Math.floor(num / 10)
+      const u = num % 10
+      return u === 0 ? tens[t] : tens[t] + ' y ' + units[u]
+    }
+    const h = Math.floor(num / 100)
+    const rest = num % 100
+    return hundreds[h] + (rest > 0 ? ' ' + chunk(rest) : '')
+  }
+
+  const intPart = Math.floor(Math.abs(n))
+  const cents = Math.round((Math.abs(n) - intPart) * 100)
+
+  if (intPart === 0) return 'cero pesos' + (cents > 0 ? ' con ' + chunk(cents) + ' centavos' : '')
+
+  let result = ''
+  if (intPart >= 1000000) {
+    const millions = Math.floor(intPart / 1000000)
+    result += (millions === 1 ? 'un millón' : chunk(millions) + ' millones')
+    const rest = intPart % 1000000
+    if (rest > 0) result += ' ' + convertThousands(rest)
+  } else {
+    result = convertThousands(intPart)
+  }
+
+  function convertThousands(num: number): string {
+    if (num >= 1000) {
+      const t = Math.floor(num / 1000)
+      const rest = num % 1000
+      return (t === 1 ? 'mil' : chunk(t) + ' mil') + (rest > 0 ? ' ' + chunk(rest) : '')
+    }
+    return chunk(num)
+  }
+
+  result += ' pesos'
+  if (cents > 0) result += ' con ' + chunk(cents) + ' centavos'
+  // Capitalize first letter
+  return result.charAt(0).toUpperCase() + result.slice(1)
+}
+
 export async function generateInvoicePDF(invoice: InvoicePDFData): Promise<Buffer> {
   // Company information from arguments or environment
   const companyName = invoice.company?.name || process.env.COMPANY_NAME || process.env.NEXT_PUBLIC_COMPANY_NAME || 'Empresa'
@@ -523,10 +576,16 @@ export async function generateInvoicePDF(invoice: InvoicePDFData): Promise<Buffe
   const resolutionRangeTo = process.env.DIAN_RANGE_TO || ''
   const resolutionValidUntil = process.env.DIAN_VALID_UNTIL || ''
 
-  // Calculate payment form
+  // Calculate payment form and method
   const isCredit = invoice.dueDate && invoice.issuedAt &&
     new Date(invoice.dueDate).getTime() > new Date(invoice.issuedAt).getTime()
-  const paymentForm = isCredit ? 'CRÉDITO' : 'CONTADO'
+  const paymentForm = isCredit ? 'Crédito' : 'Contado'
+
+  // Payment method label (DIAN codes)
+  const medioPago = (invoice as any).paymentMethod || 'Efectivo'
+
+  // SON: total in words
+  const totalInWords = numberToWordsCOP(invoice.total || 0)
 
   // IVA breakdown by rate
   const taxByRate = new Map<number, { base: number; tax: number }>()
@@ -933,24 +992,21 @@ export async function generateInvoicePDF(invoice: InvoicePDFData): Promise<Buffe
               <span class="info-value">${formatDateTime(invoice.dueDate)}</span>
             </div>` : ''}
             <div class="info-row">
+              <span class="info-label">Moneda:</span>
+              <span class="info-value">COP - Pesos Colombianos</span>
+            </div>
+            <div class="info-row">
               <span class="info-label">Forma de Pago:</span>
               <span class="info-value">${paymentForm}</span>
             </div>
             <div class="info-row">
-              <span class="info-label">Estado:</span>
-              <span class="info-value">
-                <span class="status-badge ${invoice.status === 'PAGADA' || invoice.status === 'PAID' ? 'status-paid' : invoice.status === 'ANULADA' || invoice.status === 'VOID' ? 'status-void' : 'status-pending'}">
-                  ${invoice.status === 'PAGADA' || invoice.status === 'PAID' ? 'PAGADA' :
-      invoice.status === 'ANULADA' || invoice.status === 'VOID' ? 'ANULADA' :
-        invoice.status === 'EMITIDA' ? 'EMITIDA' : invoice.status}
-                </span>
-              </span>
+              <span class="info-label">Medio de Pago:</span>
+              <span class="info-value">${medioPago}</span>
             </div>
-            ${invoice.paidAt ? `
             <div class="info-row">
-              <span class="info-label">Fecha Pago:</span>
-              <span class="info-value">${formatDateTime(invoice.paidAt)}</span>
-            </div>` : ''}
+              <span class="info-label">Total de Líneas:</span>
+              <span class="info-value">${invoice.items.length}</span>
+            </div>
           </div>
         </div>
         
@@ -958,18 +1014,25 @@ export async function generateInvoicePDF(invoice: InvoicePDFData): Promise<Buffe
         <table>
           <thead>
             <tr>
-              <th style="width: 15%;">Código</th>
-              <th style="width: 35%;">Descripción</th>
-              <th class="center" style="width: 10%;">Cant.</th>
-              <th class="right" style="width: 12%;">V. Unit.</th>
-              <th class="center" style="width: 8%;">Dcto</th>
-              <th class="center" style="width: 8%;">IVA</th>
-              <th class="right" style="width: 12%;">Subtotal</th>
+              <th style="width: 5%;">#</th>
+              <th style="width: 12%;">Código</th>
+              <th style="width: 25%;">Descripción</th>
+              <th class="center" style="width: 8%;">Cant.</th>
+              <th class="right" style="width: 12%;">Precio U.</th>
+              <th class="center" style="width: 8%;">Imp %</th>
+              <th class="right" style="width: 10%;">Imp $</th>
+              <th class="center" style="width: 8%;">Dcto.</th>
+              <th class="right" style="width: 12%;">Total</th>
             </tr>
           </thead>
           <tbody>
-            ${invoice.items.map(item => `
+            ${invoice.items.map((item, idx) => {
+              const lineBase = item.unitPrice * item.quantity * (1 - (item.discount || 0) / 100)
+              const lineTaxAmt = lineBase * ((item.taxRate || 0) / 100)
+              const lineTotal = item.subtotal + lineTaxAmt
+              return `
               <tr>
+                <td class="center">${idx + 1}</td>
                 <td><span style="font-family: monospace; font-size: 9px;">${item.product.sku || '-'}</span></td>
                 <td>
                   <div class="product-name">${item.product.name}</div>
@@ -977,99 +1040,89 @@ export async function generateInvoicePDF(invoice: InvoicePDFData): Promise<Buffe
                 </td>
                 <td class="center">${item.quantity}</td>
                 <td class="right">${formatCurrency(item.unitPrice)}</td>
+                <td class="center">${item.taxRate || 0}%</td>
+                <td class="right">${formatCurrency(lineTaxAmt)}</td>
                 <td class="center">${item.discount > 0 ? item.discount + '%' : '-'}</td>
-                <td class="center">${item.taxRate}%</td>
-                <td class="right" style="font-weight: 600;">${formatCurrency(item.subtotal)}</td>
+                <td class="right" style="font-weight: 600;">${formatCurrency(lineTotal)}</td>
               </tr>
-            `).join('')}
+            `}).join('')}
           </tbody>
         </table>
         
-            <!-- Totals -->
-            <div class="totals-section">
-              <div class="totals-box">
+            <!-- Notes + Totals side by side -->
+            <div style="display: flex; gap: 12px; margin-top: 8px;">
+              <div style="flex: 1;">
+                ${invoice.notes ? `
+                <div style="background: #fefce8; border-left: 4px solid #eab308; border-radius: 0 6px 6px 0; padding: 8px 10px; margin-bottom: 8px;">
+                  <div style="font-size: 9px; font-weight: 700; color: #854d0e; margin-bottom: 3px;">Notas:</div>
+                  <div style="font-size: 9px; color: #713f12;">${invoice.notes}</div>
+                </div>` : ''}
+                <!-- SON (Total en letras) -->
+                <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; padding: 8px 10px;">
+                  <div style="font-size: 8px; font-weight: 700; color: #166534; margin-bottom: 2px;">SON:</div>
+                  <div style="font-size: 9px; color: #15803d; font-style: italic;">${totalInWords}</div>
+                </div>
+              </div>
+              <div class="totals-box" style="width: 280px; flex-shrink: 0;">
                 <div class="totals-row subtotal">
-                  <span>Subtotal Bruto:</span>
+                  <span>Subtotal:</span>
                   <span>${formatCurrency((invoice.items || []).reduce((sum, it) => sum + (it.unitPrice * it.quantity), 0))}</span>
                 </div>
                 ${(invoice.items || []).reduce((sum, it) => sum + ((it.unitPrice * it.quantity) - it.subtotal), 0) + (invoice.discount || 0) > 0 ? `
                 <div class="totals-row" style="color: #dc2626;">
-                  <span>(-) Descuentos:</span>
+                  <span>Descuento:</span>
                   <span>${formatCurrency((invoice.items || []).reduce((sum, it) => sum + ((it.unitPrice * it.quantity) - it.subtotal), 0) + (invoice.discount || 0))}</span>
                 </div>` : ''}
                 <div class="totals-row">
-                  <span>Base Gravable:</span>
-                  <span>${formatCurrency(invoice.subtotal || 0)}</span>
+                  <span>IVA:</span>
+                  <span>${formatCurrency(invoice.tax || 0)}</span>
                 </div>
-            
-            <!-- Tax Breakdown -->
-            ${taxByRate.size > 0 ? `
-            <div class="tax-breakdown">
-              <div style="font-size: 9px; font-weight: 600; color: #1e40af; margin-bottom: 5px;">Discriminación IVA:</div>
-              ${Array.from(taxByRate.entries())
-        .sort((a, b) => a[0] - b[0])
-        .map(([rate, v]) => `
-                <div class="tax-row">
-                  <span>IVA ${rate}% (Base: ${formatCurrency(v.base)})</span>
-                  <span>${formatCurrency(v.tax)}</span>
+                <div class="totals-row total">
+                  <span>Total:</span>
+                  <span>${formatCurrency(invoice.total || 0)}</span>
                 </div>
-              `).join('')}
-            </div>` : ''}
-            
-            <div class="totals-row">
-              <span>Total IVA:</span>
-              <span>${formatCurrency(invoice.tax || 0)}</span>
-            </div>
-            <div class="totals-row total">
-              <span>TOTAL A PAGAR (COP):</span>
-              <span>${formatCurrency(invoice.total || 0)}</span>
-            </div>
-          </div>
-        </div>
-        
-        <!-- Electronic Invoice Section -->
-        ${isElectronic ? `
-        <div class="electronic-section">
-          <div class="electronic-title">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1e40af" stroke-width="2">
-              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-              <path d="M9 12l2 2 4-4"/>
-            </svg>
-            Factura Electrónica Validada por la DIAN
-          </div>
-          <div style="display: flex; gap: 16px; align-items: flex-start; margin-top: 12px;">
-            ${qrDataUri ? `<img src="${qrDataUri}" alt="QR" style="width: 100px; height: 100px; flex-shrink: 0; border: 1px solid #bfdbfe; border-radius: 4px;" />` : ''}
-            <div style="flex: 1; min-width: 0;">
-              <div style="font-size: 9px; font-weight: 700; color: #1e3a8a; margin-bottom: 6px;">CUFE:</div>
-              <div class="cufe-code">${invoice.cufe}</div>
-              <div style="margin-top: 8px; font-size: 8px; color: #2563eb;">
-                <strong>Verificar en:</strong><br/>
-                <span style="word-break: break-all;">https://catalogo-vpfe.dian.gov.co/document/searchqr?documentkey=${invoice.cufe}</span>
               </div>
             </div>
-          </div>
-        </div>` : ''}
         
-        <!-- Notes -->
-        ${invoice.notes ? `
-        <div class="notes-section">
-          <div class="notes-title">Observaciones:</div>
-          <div class="notes-content">${invoice.notes}</div>
-        </div>` : ''}
+            <!-- Tax Summary Table (DIAN standard) -->
+            ${taxByRate.size > 0 ? `
+            <table style="margin-top: 10px;">
+              <thead>
+                <tr>
+                  <th style="width: 30%;">IMPUESTO</th>
+                  <th class="right" style="width: 25%;">BASE</th>
+                  <th class="center" style="width: 20%;">TARIFA / VALOR NOMINAL</th>
+                  <th class="right" style="width: 25%;">IMPORTE</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${Array.from(taxByRate.entries()).sort((a, b) => a[0] - b[0]).map(([rate, v]) => `
+                <tr>
+                  <td style="font-weight: 600;">01 IVA</td>
+                  <td class="right">${formatCurrency(v.base)}</td>
+                  <td class="center">${rate}%</td>
+                  <td class="right" style="font-weight: 600;">${formatCurrency(v.tax)}</td>
+                </tr>`).join('')}
+              </tbody>
+            </table>` : ''}
+
+            <!-- CUFE + QR Section -->
+            ${isElectronic ? `
+            <div style="display: flex; gap: 12px; align-items: flex-start; margin-top: 10px; padding: 10px; background: #eff6ff; border: 1px solid #93c5fd; border-radius: 6px;">
+              ${qrDataUri ? `<img src="${qrDataUri}" alt="QR DIAN" style="width: 90px; height: 90px; flex-shrink: 0; border: 1px solid #bfdbfe; border-radius: 4px;" />` : ''}
+              <div style="flex: 1; min-width: 0;">
+                <div style="font-size: 8px; font-weight: 700; color: #1e3a8a; margin-bottom: 4px;">CUFE:</div>
+                <div style="font-family: 'Courier New', monospace; font-size: 7px; word-break: break-all; background: white; padding: 6px; border-radius: 4px; border: 1px solid #bfdbfe; color: #1e3a8a;">${invoice.cufe}</div>
+              </div>
+            </div>` : ''}
         
-        <!-- Footer -->
-        <div class="footer">
-          <div class="legal-text">
-            <p>Esta factura se asimila en todos sus efectos legales a la letra de cambio según Art. 774 del Código de Comercio.</p>
-            <p>Autorización de numeración de facturación según Resolución DIAN. Consulte la validez en www.dian.gov.co</p>
-            <p style="margin-top: 8px;">
-              ${process.env.GRAN_CONTRIBUYENTE === 'true' ? '✓ Grandes Contribuyentes' : 'No somos Grandes Contribuyentes'} | 
-              ${process.env.AUTORETENEDOR === 'true' ? '✓ Autoretenedores' : 'No somos Autoretenedores'} |
-              ${process.env.AGENTE_RETENEDOR_IVA === 'true' ? '✓ Agente Retenedor IVA' : ''}
-            </p>
-          </div>
-          <div class="thank-you">¡Gracias por su compra!</div>
-        </div>
+            <!-- Footer -->
+            <div style="margin-top: 10px; padding-top: 6px; border-top: 1px solid #e2e8f0;">
+              <div style="font-size: 7px; color: #64748b; text-align: center; line-height: 1.4;">
+                <p>Esta factura es título valor de acuerdo al art. 774 del C.C. y una vez aceptada declara haber recibido los bienes y servicios a satisfacción.</p>
+                <p style="margin-top: 4px; font-weight: 700; font-size: 8px; color: #1e40af;">Representación Gráfica de la Factura de Venta Electrónica.</p>
+              </div>
+            </div>
       </div>
     </body>
     </html>
