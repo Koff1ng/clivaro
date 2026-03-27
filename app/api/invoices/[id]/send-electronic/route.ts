@@ -52,46 +52,30 @@ export async function POST(
         where: { tenantId },
       })
 
-      if (!settings?.electronicBillingProvider) {
-        throw new Error('La configuración de facturación electrónica está incompleta. Por favor, ve a Configuración > Facturación Electrónica y selecciona un proveedor.')
+      if (!(settings as any)?.factusClientId || !(settings as any)?.factusClientSecret) {
+        throw new Error('Las credenciales de Factus no están configuradas. Ve a Configuración > Facturación Electrónica e ingresa tus credenciales.')
       }
 
-      // 3. Fetch specialized provider config if needed (e.g. Alegra)
-      let providerConfig: any = null
-      if (settings.electronicBillingProvider === 'ALEGRA') {
-        providerConfig = await (tx as any).electronicInvoiceProviderConfig.findUnique({
-          where: {
-            tenantId_provider: {
-              tenantId,
-              provider: 'ALEGRA'
-            }
-          }
-        })
-      }
-
+      const s = settings as any
       const config: ElectronicBillingConfig = {
-        provider: (settings.electronicBillingProvider as any) || 'FEG',
-        apiUrl: settings.electronicBillingApiUrl || undefined,
-        apiKey: providerConfig?.alegraTokenEncrypted
-          ? providerConfig.alegraTokenEncrypted.replace('enc_', '')
-          : settings.electronicBillingApiKey || undefined,
-        companyNit: settings.companyNit || '900000000-1',
-        companyName: settings.companyName || 'Mi Empresa',
-        companyAddress: settings.companyAddress || '',
-        companyPhone: settings.companyPhone || '',
-        companyEmail: providerConfig?.alegraEmail || settings.companyEmail || '',
-        resolutionNumber: settings.billingResolutionNumber || '',
-        resolutionPrefix: settings.billingResolutionPrefix || 'FV',
-        resolutionFrom: settings.billingResolutionFrom || '1',
-        resolutionTo: settings.billingResolutionTo || '999999',
-        resolutionValidFrom: settings.billingResolutionValidFrom?.toISOString() || new Date().toISOString(),
-        resolutionValidTo: settings.billingResolutionValidTo?.toISOString() || new Date().toISOString(),
+        provider: 'FACTUS',
+        companyNit: s.companyNit || '900000000-1',
+        companyName: s.companyName || 'Mi Empresa',
+        companyAddress: s.companyAddress || '',
+        companyPhone: s.companyPhone || '',
+        companyEmail: s.companyEmail || '',
+        resolutionNumber: s.billingResolutionNumber || '',
+        resolutionPrefix: s.billingResolutionPrefix || 'FV',
+        resolutionFrom: s.billingResolutionFrom || '1',
+        resolutionTo: s.billingResolutionTo || '999999',
+        resolutionValidFrom: s.billingResolutionValidFrom?.toISOString() || new Date().toISOString(),
+        resolutionValidTo: s.billingResolutionValidTo?.toISOString() || new Date().toISOString(),
         environment: (process.env.DIAN_ENVIRONMENT as any) || '2',
-        technicalKey: process.env.DIAN_TECHNICAL_KEY, // Should ideally be in settings too
-        alegraEmail: providerConfig?.alegraEmail || undefined,
-        alegraToken: providerConfig?.alegraTokenEncrypted
-          ? providerConfig.alegraTokenEncrypted.replace('enc_', '')
-          : undefined,
+        factusClientId: s.factusClientId,
+        factusClientSecret: s.factusClientSecret,
+        factusUsername: s.factusUsername || '',
+        factusPassword: s.factusPassword || '',
+        factusSandbox: s.factusSandbox ?? true,
       }
 
       // 3. Prepare data in the new format

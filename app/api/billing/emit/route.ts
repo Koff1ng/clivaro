@@ -90,41 +90,27 @@ export async function POST(request: Request) {
                 total: invoice.total
             }
 
-            // 3. Fetch specialized provider config if needed
-            let providerConfig: any = null
-            if (settings.electronicBillingProvider === 'ALEGRA') {
-                providerConfig = await (tx as any).electronicInvoiceProviderConfig.findUnique({
-                    where: {
-                        tenantId_provider: {
-                            tenantId: session.user.tenantId,
-                            provider: 'ALEGRA'
-                        }
-                    }
-                })
-            }
-
-            // 4. Map settings to Config
+            // 4. Map settings to Factus Config
+            const s = settings as any
             const billingConfig: ElectronicBillingConfig = {
-                provider: (settings.electronicBillingProvider as any) || 'FEG',
-                companyNit: settings.companyNit || '',
-                companyName: settings.companyName || '',
-                companyAddress: settings.companyAddress || '',
-                companyPhone: settings.companyPhone || '',
-                companyEmail: providerConfig?.alegraEmail || settings.companyEmail || '',
-                resolutionNumber: settings.billingResolutionNumber || '',
-                resolutionPrefix: settings.billingResolutionPrefix || '',
-                resolutionFrom: settings.billingResolutionFrom || '',
-                resolutionTo: settings.billingResolutionTo || '',
-                resolutionValidFrom: settings.billingResolutionValidFrom ? new Date(settings.billingResolutionValidFrom).toISOString().split('T')[0] : '',
-                resolutionValidTo: settings.billingResolutionValidTo ? new Date(settings.billingResolutionValidTo).toISOString().split('T')[0] : '',
-                softwareId: undefined,
-                softwarePin: undefined,
-                technicalKey: undefined,
+                provider: 'FACTUS',
+                companyNit: s.companyNit || '',
+                companyName: s.companyName || '',
+                companyAddress: s.companyAddress || '',
+                companyPhone: s.companyPhone || '',
+                companyEmail: s.companyEmail || '',
+                resolutionNumber: s.billingResolutionNumber || '',
+                resolutionPrefix: s.billingResolutionPrefix || '',
+                resolutionFrom: s.billingResolutionFrom || '',
+                resolutionTo: s.billingResolutionTo || '',
+                resolutionValidFrom: s.billingResolutionValidFrom ? new Date(s.billingResolutionValidFrom).toISOString().split('T')[0] : '',
+                resolutionValidTo: s.billingResolutionValidTo ? new Date(s.billingResolutionValidTo).toISOString().split('T')[0] : '',
                 environment: '2',
-                alegraEmail: providerConfig?.alegraEmail || undefined,
-                alegraToken: providerConfig?.alegraTokenEncrypted
-                    ? providerConfig.alegraTokenEncrypted.replace('enc_', '')
-                    : undefined
+                factusClientId: s.factusClientId || '',
+                factusClientSecret: s.factusClientSecret || '',
+                factusUsername: s.factusUsername || '',
+                factusPassword: s.factusPassword || '',
+                factusSandbox: s.factusSandbox ?? true,
             }
 
             // 5. Validation
