@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import {
@@ -737,6 +737,7 @@ export function CashShiftScreen() {
             <div className="space-y-6">
               <DialogHeader>
                 <DialogTitle className="text-2xl">Reporte Detallado del Turno</DialogTitle>
+                <DialogDescription className="sr-only">Resumen completo del turno de caja con pagos, movimientos y totales.</DialogDescription>
                 <div className="flex items-center justify-between pt-2">
                   <div className="text-sm text-gray-600">
                     {formatDate(closedShiftReport.openedAt)} - {closedShiftReport.closedAt ? formatDate(closedShiftReport.closedAt) : 'En curso'}
@@ -1066,6 +1067,7 @@ export function CashShiftScreen() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Abrir Turno de Caja</DialogTitle>
+            <DialogDescription className="sr-only">Ingrese el monto inicial de efectivo para abrir un nuevo turno.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
@@ -1099,6 +1101,7 @@ export function CashShiftScreen() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Cerrar Turno de Caja</DialogTitle>
+            <DialogDescription className="sr-only">Ingrese el efectivo contado para cerrar el turno actual.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
@@ -1176,6 +1179,7 @@ export function CashShiftScreen() {
             <DialogTitle>
               Registrar {movementType === 'IN' ? 'Entrada' : 'Salida'} de Efectivo
             </DialogTitle>
+            <DialogDescription className="sr-only">Registre un movimiento de efectivo en la caja.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>

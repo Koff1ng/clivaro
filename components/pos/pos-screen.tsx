@@ -1659,6 +1659,7 @@ export function POSScreen({ mode = 'retail', waiterData, waiterToken, preselecte
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Abrir Turno de Caja</DialogTitle>
+            <DialogDescription className="sr-only">Ingrese el efectivo inicial para abrir un turno.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
@@ -1687,6 +1688,7 @@ export function POSScreen({ mode = 'retail', waiterData, waiterToken, preselecte
         <DialogContent className="max-w-5xl">
           <DialogHeader>
             <DialogTitle>Seleccionar mesa</DialogTitle>
+            <DialogDescription className="sr-only">Seleccione una mesa para asignar el pedido.</DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             {loadingTables ? (
@@ -2367,6 +2369,7 @@ export function POSScreen({ mode = 'retail', waiterData, waiterToken, preselecte
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Seleccionar Cliente</DialogTitle>
+            <DialogDescription className="sr-only">Busque y seleccione un cliente para la venta.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
@@ -2479,6 +2482,7 @@ export function POSScreen({ mode = 'retail', waiterData, waiterToken, preselecte
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Registrar Nuevo Cliente</DialogTitle>
+            <DialogDescription className="sr-only">Complete los datos del nuevo cliente.</DialogDescription>
           </DialogHeader>
           <div className="py-2">
             <CustomerForm
@@ -2731,6 +2735,7 @@ ${saleResult.change > 0 ? `Cambio: ${formatCurrency(saleResult.change)}` : ''}
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Parkear Venta</DialogTitle>
+            <DialogDescription className="sr-only">Nombre para identificar este ticket parqueado.</DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             <div className="text-sm text-gray-600">
@@ -2763,6 +2768,7 @@ ${saleResult.change > 0 ? `Cambio: ${formatCurrency(saleResult.change)}` : ''}
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>Tickets Parqueados</DialogTitle>
+            <DialogDescription className="sr-only">Ventas guardadas temporalmente para continuar después.</DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             {parkedSales.length === 0 ? (
@@ -2799,6 +2805,7 @@ ${saleResult.change > 0 ? `Cambio: ${formatCurrency(saleResult.change)}` : ''}
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Ventas pendientes</DialogTitle>
+            <DialogDescription className="sr-only">Ventas offline pendientes de sincronización.</DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             <div className="flex items-center justify-between text-sm">
@@ -2884,6 +2891,7 @@ ${saleResult.change > 0 ? `Cambio: ${formatCurrency(saleResult.change)}` : ''}
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Notas de Preparación</DialogTitle>
+            <DialogDescription className="sr-only">Agregue instrucciones especiales para este producto.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="text-sm text-muted-foreground">
@@ -2930,6 +2938,7 @@ ${saleResult.change > 0 ? `Cambio: ${formatCurrency(saleResult.change)}` : ''}
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Autorizar descuento</DialogTitle>
+            <DialogDescription className="sr-only">Ingrese las credenciales para autorizar un descuento.</DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             <div className="text-sm text-muted-foreground">
