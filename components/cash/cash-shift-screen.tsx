@@ -332,270 +332,186 @@ export function CashShiftScreen() {
     return DollarSign
   }
 
-  // Cash in drawer = starting + net movements (no sales — sales go to their own methods)
+  // Cash in drawer = starting + net movements
   const cashInDrawer = (activeShift?.startingCash || 0) + netMovement
+  // Operational data
+  const invoiceCount = payments.length
+  const avgTicket = invoiceCount > 0 ? totalPayments / invoiceCount : 0
 
   return (
     <div className="space-y-6">
-      {/* Header Actions */}
-      <div className="flex items-center justify-between">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <PageHeader
           title="Caja"
-          description="Controla turnos, registra entradas/salidas y revisa pagos del día con claridad."
+          description="Controla turnos, registra entradas/salidas y revisa pagos del día."
           icon={<DollarSign className="h-5 w-5" />}
         />
-        <div className="flex gap-2 items-center">
+        <div className="flex flex-wrap gap-2 items-center">
           <MonthlyReport />
           {!activeShift ? (
-            <Button onClick={() => setShowOpenDialog(true)} size="lg">
-              <Unlock className="h-5 w-5 mr-2" />
+            <Button onClick={() => setShowOpenDialog(true)} size="lg" className="gap-2 shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-[1.02]">
+              <Unlock className="h-5 w-5" />
               Abrir Turno
             </Button>
           ) : (
             <>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setMovementType('IN')
-                  setShowMovementDialog(true)
-                }}
-              >
-                <Plus className="h-4 w-4 mr-2" />
+              <Button variant="outline" className="gap-2 transition-all duration-200 hover:bg-green-50 hover:text-green-700 hover:border-green-300 dark:hover:bg-green-950/50" onClick={() => { setMovementType('IN'); setShowMovementDialog(true) }}>
+                <Plus className="h-4 w-4" />
                 Entrada
               </Button>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setMovementType('OUT')
-                  setShowMovementDialog(true)
-                }}
-              >
-                <Minus className="h-4 w-4 mr-2" />
+              <Button variant="outline" className="gap-2 transition-all duration-200 hover:bg-red-50 hover:text-red-700 hover:border-red-300 dark:hover:bg-red-950/50" onClick={() => { setMovementType('OUT'); setShowMovementDialog(true) }}>
+                <Minus className="h-4 w-4" />
                 Salida
               </Button>
-              <Button
-                variant="destructive"
-                onClick={() => {
-                  setCountedCash(activeShift.expectedCash?.toString() || '0')
-                  setShowCloseDialog(true)
-                }}
-              >
-                <Lock className="h-5 w-5 mr-2" />
+              <Button variant="destructive" className="gap-2 shadow-md hover:shadow-lg transition-all duration-200 hover:scale-[1.02]" onClick={() => { setCountedCash(activeShift.expectedCash?.toString() || '0'); setShowCloseDialog(true) }}>
+                <Lock className="h-5 w-5" />
                 Cerrar Turno
               </Button>
             </>
           )}
-          <Button
-            variant="outline"
-            onClick={() => setShowHistory(!showHistory)}
-          >
-            <FileText className="h-4 w-4 mr-2" />
+          <Button variant="outline" className="gap-2 transition-all duration-200" onClick={() => setShowHistory(!showHistory)}>
+            <FileText className="h-4 w-4" />
             {showHistory ? 'Ocultar' : 'Ver'} Historial
           </Button>
         </div>
       </div>
 
       {!activeShift ? (
-        <Card>
-          <CardContent className="py-16 text-center">
-            <div className="flex flex-col items-center">
-              <div className="rounded-full bg-muted p-6 mb-4">
-                <Lock className="h-12 w-12 text-gray-400" />
+        <Card className="border-dashed border-2">
+          <CardContent className="py-20 text-center">
+            <div className="flex flex-col items-center animate-in fade-in-50 duration-500">
+              <div className="relative mb-6">
+                <div className="rounded-full bg-gradient-to-br from-primary/20 to-primary/5 p-8 animate-pulse">
+                  <Lock className="h-16 w-16 text-primary/60" />
+                </div>
+                <div className="absolute -top-1 -right-1 rounded-full bg-orange-400 p-2 shadow-lg">
+                  <Clock className="h-4 w-4 text-white" />
+                </div>
               </div>
-              <h3 className="text-2xl font-bold mb-2">No hay turno de caja abierto</h3>
-              <p className="text-gray-600 mb-6 max-w-md">Abre un turno para comenzar a gestionar la caja y registrar transacciones</p>
-              <Button onClick={() => setShowOpenDialog(true)} size="lg" className="px-8">
-                <Unlock className="h-5 w-5 mr-2" />
+              <h3 className="text-2xl font-bold mb-2 text-foreground">No hay turno de caja abierto</h3>
+              <p className="text-muted-foreground mb-8 max-w-md leading-relaxed">
+                Abre un turno para comenzar a gestionar la caja, registrar transacciones y llevar el control de tu operación diaria.
+              </p>
+              <Button onClick={() => setShowOpenDialog(true)} size="lg" className="px-10 h-12 text-base gap-2 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
+                <Unlock className="h-5 w-5" />
                 Abrir Turno
               </Button>
             </div>
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-6">
-          {/* Current Shift Summary - Improved Design */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Main Summary Card */}
-            <Card className="lg:col-span-2">
-              <CardHeader className="pb-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle className="text-xl">Turno Actual</CardTitle>
-                    <div className="flex items-center gap-3 mt-2 text-sm text-gray-600">
-                      <div className="flex items-center gap-1.5">
-                        <User className="h-4 w-4" />
-                        <span>{activeShift.user?.name || 'N/A'}</span>
-                      </div>
-                      <span>•</span>
-                      <div className="flex items-center gap-1.5">
-                        <Clock className="h-4 w-4" />
-                        <span>{formatDate(activeShift.openedAt)}</span>
-                      </div>
-                      <span className="ml-2 px-2 py-0.5 bg-green-100 text-green-700 rounded text-xs font-medium">
-                        Abierto
-                      </span>
-                      {shiftDuration && (
-                        <span className="ml-1 px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-xs font-mono font-semibold animate-pulse">
-                          ⏱ {shiftDuration}
-                        </span>
-                      )}
-                    </div>
+        <div className="space-y-6 animate-in fade-in-50 duration-300">
+          {/* Live Shift Banner */}
+          <Card className="overflow-hidden border-primary/20">
+            <div className="bg-gradient-to-r from-primary/5 via-primary/10 to-primary/5 px-6 py-4">
+              <div className="flex items-center justify-between flex-wrap gap-3">
+                <div className="flex items-center gap-4 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <div className="h-2.5 w-2.5 rounded-full bg-green-500 animate-pulse" />
+                    <span className="font-semibold text-foreground">Turno Activo</span>
                   </div>
-                  <Button variant="ghost" size="sm" onClick={() => { refetchShift(); refetchMovements(); refetchPayments() }} title="Actualizar datos">
+                  <span className="text-sm text-muted-foreground hidden sm:inline">•</span>
+                  <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                    <User className="h-3.5 w-3.5" />
+                    <span>{activeShift.user?.name || 'N/A'}</span>
+                  </div>
+                  <span className="text-sm text-muted-foreground hidden sm:inline">•</span>
+                  <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                    <Clock className="h-3.5 w-3.5" />
+                    <span>{formatDate(activeShift.openedAt)}</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  {shiftDuration && (
+                    <div className="flex items-center gap-2 px-3 py-1.5 bg-primary/10 rounded-full border border-primary/20">
+                      <Clock className="h-3.5 w-3.5 text-primary" />
+                      <span className="font-mono text-sm font-bold text-primary tracking-wide">{shiftDuration}</span>
+                    </div>
+                  )}
+                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0 hover:bg-primary/10 transition-colors" onClick={() => { refetchShift(); refetchMovements(); refetchPayments() }} title="Actualizar datos">
                     <RefreshCw className="h-4 w-4" />
                   </Button>
                 </div>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                  <div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950/50 dark:to-blue-900/30 rounded-xl p-4 border border-blue-200 dark:border-blue-800">
-                    <div className="text-xs font-medium text-blue-700 dark:text-blue-300 mb-1">Efectivo Inicial</div>
-                    <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                      {formatCurrency(activeShift.startingCash || 0)}
-                    </div>
-                  </div>
-                  <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-950/50 dark:to-emerald-900/30 rounded-xl p-4 border border-emerald-200 dark:border-emerald-800">
-                    <div className="text-xs font-medium text-emerald-700 dark:text-emerald-300 mb-1">Total Ventas</div>
-                    <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
-                      {formatCurrency(totalPayments)}
-                    </div>
-                  </div>
-                  <div className={`bg-gradient-to-br rounded-xl p-4 border ${netMovement >= 0
-                    ? 'from-green-50 to-green-100 dark:from-green-950/50 dark:to-green-900/30 border-green-200 dark:border-green-800'
-                    : 'from-red-50 to-red-100 dark:from-red-950/50 dark:to-red-900/30 border-red-200 dark:border-red-800'
-                    }`}>
-                    <div className={`text-xs font-medium mb-1 ${netMovement >= 0 ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'}`}>
-                      Movimiento Neto
-                    </div>
-                    <div className={`text-2xl font-bold ${netMovement >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                      {formatCurrency(netMovement)}
-                    </div>
-                  </div>
-                  <div className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-950/50 dark:to-purple-900/30 rounded-xl p-4 border border-purple-200 dark:border-purple-800">
-                    <div className="text-xs font-medium text-purple-700 dark:text-purple-300 mb-1">Efectivo en Caja</div>
-                    <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
-                      {formatCurrency(cashInDrawer)}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4 mb-6">
-                  <div className="flex items-center justify-between p-3 bg-muted rounded-lg border">
-                    <div className="flex items-center gap-2">
-                      <TrendingUp className="h-5 w-5 text-green-600" />
-                      <span className="text-sm font-medium text-foreground">Entradas</span>
-                    </div>
-                    <span className="text-lg font-bold text-green-600">{formatCurrency(totalIn)}</span>
-                  </div>
-                  <div className="flex items-center justify-between p-3 bg-muted rounded-lg border">
-                    <div className="flex items-center gap-2">
-                      <TrendingDown className="h-5 w-5 text-red-600" />
-                      <span className="text-sm font-medium text-foreground">Salidas</span>
-                    </div>
-                    <span className="text-lg font-bold text-red-600">{formatCurrency(totalOut)}</span>
-                  </div>
-                </div>
-
-                {/* Payment Methods Summary - Compact */}
-                {activeShift.summaryItems && activeShift.summaryItems.length > 0 && (
-                  <div className="border-t pt-4">
-                    <div className="text-sm font-semibold mb-3 text-foreground">Ingresos por Método de Pago</div>
-                    <div className="space-y-2">
-                      {activeShift.summaryItems.map((item: any) => {
-                        const Icon = getPaymentMethodIcon(item.paymentMethodName.toUpperCase())
-                        return (
-                          <div key={item.paymentMethodId} className="flex items-center justify-between p-3 bg-muted rounded-lg border">
-                            <div className="flex items-center gap-2">
-                              <Icon className="h-4 w-4 text-muted-foreground" />
-                              <span className="text-sm font-medium">{item.paymentMethodName}</span>
-                            </div>
-                            <span className="text-sm font-bold">{formatCurrency(item.expectedAmount)}</span>
-                          </div>
-                        )
-                      })}
-                      <div className="flex items-center justify-between p-3 bg-primary/10 rounded-lg border-2 border-primary/20 mt-2">
-                        <span className="text-sm font-bold text-foreground">Total Ventas</span>
-                        <span className="text-base font-bold text-primary">{formatCurrency(totalPayments)}</span>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Quick Stats Sidebar */}
-            <div className="space-y-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">Resumen</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <div className="text-xs text-gray-600 mb-1">Total Ventas</div>
-                    <div className="text-2xl font-bold text-blue-600">{formatCurrency(totalPayments)}</div>
-                  </div>
-                  <div className="border-t pt-4">
-                    <div className="text-xs text-gray-600 mb-2">Movimientos</div>
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-600">Entradas</span>
-                        <span className="font-semibold text-green-600">{formatCurrency(totalIn)}</span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-600">Salidas</span>
-                        <span className="font-semibold text-red-600">{formatCurrency(totalOut)}</span>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="border-t pt-4">
-                    <div className="text-xs text-gray-600 mb-1">Pagos Registrados</div>
-                    <div className="text-xl font-bold">{payments.length}</div>
-                  </div>
-                </CardContent>
-              </Card>
+              </div>
             </div>
+          </Card>
+
+          {/* Stats Grid – 6 metrics */}
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            {[
+              { label: 'Efectivo Inicial', value: formatCurrency(activeShift.startingCash || 0), icon: DollarSign, color: 'blue' },
+              { label: 'Total Ventas', value: formatCurrency(totalPayments), icon: TrendingUp, color: 'emerald' },
+              { label: 'Movimiento Neto', value: formatCurrency(netMovement), icon: netMovement >= 0 ? TrendingUp : TrendingDown, color: netMovement >= 0 ? 'green' : 'red' },
+              { label: 'Efectivo en Caja', value: formatCurrency(cashInDrawer), icon: Receipt, color: 'purple' },
+              { label: 'Facturas', value: String(invoiceCount), icon: FileText, color: 'amber' },
+              { label: 'Ticket Promedio', value: formatCurrency(avgTicket), icon: CreditCard, color: 'cyan' },
+            ].map((stat) => {
+              const StatIcon = stat.icon
+              const cm: Record<string, string> = {
+                blue: 'from-blue-500/10 to-blue-500/5 border-blue-500/20 text-blue-600 dark:text-blue-400',
+                emerald: 'from-emerald-500/10 to-emerald-500/5 border-emerald-500/20 text-emerald-600 dark:text-emerald-400',
+                green: 'from-green-500/10 to-green-500/5 border-green-500/20 text-green-600 dark:text-green-400',
+                red: 'from-red-500/10 to-red-500/5 border-red-500/20 text-red-600 dark:text-red-400',
+                purple: 'from-purple-500/10 to-purple-500/5 border-purple-500/20 text-purple-600 dark:text-purple-400',
+                amber: 'from-amber-500/10 to-amber-500/5 border-amber-500/20 text-amber-600 dark:text-amber-400',
+                cyan: 'from-cyan-500/10 to-cyan-500/5 border-cyan-500/20 text-cyan-600 dark:text-cyan-400',
+              }
+              return (
+                <div key={stat.label} className={`bg-gradient-to-br ${cm[stat.color] || cm.blue} rounded-xl p-4 border transition-all duration-200 hover:shadow-md hover:scale-[1.02]`}>
+                  <div className="flex items-center gap-2 mb-2">
+                    <StatIcon className="h-4 w-4 opacity-70" />
+                    <span className="text-xs font-medium opacity-80">{stat.label}</span>
+                  </div>
+                  <div className="text-xl font-bold">{stat.value}</div>
+                </div>
+              )
+            })}
           </div>
 
-          {/* Movements and Payments - Side by Side */}
+          {/* Movements + Payment Methods – side by side */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Movements List */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Movimientos de Efectivo</CardTitle>
+            {/* Movements */}
+            <Card className="transition-shadow duration-200 hover:shadow-md">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <ArrowLeftRight className="h-4 w-4 text-muted-foreground" />
+                  Movimientos de Efectivo
+                </CardTitle>
               </CardHeader>
               <CardContent>
+                <div className="grid grid-cols-2 gap-3 mb-4">
+                  <div className="flex items-center justify-between p-3 bg-green-500/10 rounded-lg border border-green-500/20 transition-colors hover:bg-green-500/15">
+                    <div className="flex items-center gap-2">
+                      <TrendingUp className="h-4 w-4 text-green-600 dark:text-green-400" />
+                      <span className="text-sm font-medium text-foreground">Entradas</span>
+                    </div>
+                    <span className="text-sm font-bold text-green-600 dark:text-green-400">{formatCurrency(totalIn)}</span>
+                  </div>
+                  <div className="flex items-center justify-between p-3 bg-red-500/10 rounded-lg border border-red-500/20 transition-colors hover:bg-red-500/15">
+                    <div className="flex items-center gap-2">
+                      <TrendingDown className="h-4 w-4 text-red-600 dark:text-red-400" />
+                      <span className="text-sm font-medium text-foreground">Salidas</span>
+                    </div>
+                    <span className="text-sm font-bold text-red-600 dark:text-red-400">{formatCurrency(totalOut)}</span>
+                  </div>
+                </div>
                 {movements.length === 0 ? (
-                  <div className="text-center text-gray-500 py-12">
-                    <ArrowLeftRight className="h-8 w-8 mx-auto mb-2 text-gray-400" />
-                    <p className="text-sm">No hay movimientos registrados</p>
+                  <div className="text-center text-muted-foreground py-6">
+                    <ArrowLeftRight className="h-6 w-6 mx-auto mb-2 opacity-40" />
+                    <p className="text-xs">No hay movimientos registrados</p>
                   </div>
                 ) : (
-                  <div className="space-y-2">
+                  <div className="space-y-1.5 max-h-64 overflow-y-auto pr-1">
                     {movements.map((movement: any) => (
-                      <div
-                        key={movement.id}
-                        className="flex items-center justify-between p-3 bg-muted rounded-lg border hover:bg-muted/80 transition-colors"
-                      >
-                        <div className="flex items-center gap-3">
-                          <div
-                            className={`p-2 rounded ${movement.type === 'IN'
-                              ? 'bg-green-100 text-green-700'
-                              : 'bg-red-100 text-red-700'
-                              }`}
-                          >
-                            {movement.type === 'IN' ? (
-                              <TrendingUp className="h-4 w-4" />
-                            ) : (
-                              <TrendingDown className="h-4 w-4" />
-                            )}
+                      <div key={movement.id} className="flex items-center justify-between p-2.5 bg-muted/50 rounded-lg border hover:bg-muted transition-colors duration-150">
+                        <div className="flex items-center gap-2.5">
+                          <div className={`p-1.5 rounded-md ${movement.type === 'IN' ? 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-400' : 'bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-400'}`}>
+                            {movement.type === 'IN' ? <TrendingUp className="h-3.5 w-3.5" /> : <TrendingDown className="h-3.5 w-3.5" />}
                           </div>
                           <div>
-                            <div className="font-semibold text-sm">
-                              {formatCurrency(movement.amount)}
-                            </div>
-                            <div className="text-xs text-gray-600">
-                              {movement.reason || 'Sin razón'} • {formatDate(movement.createdAt)}
-                            </div>
+                            <div className="font-semibold text-xs">{formatCurrency(movement.amount)}</div>
+                            <div className="text-[10px] text-muted-foreground">{movement.reason || 'Sin razón'} • {movement.createdBy?.name || ''} • {formatDate(movement.createdAt)}</div>
                           </div>
                         </div>
                       </div>
@@ -605,47 +521,92 @@ export function CashShiftScreen() {
               </CardContent>
             </Card>
 
-            {/* Payments List */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Pagos del Turno</CardTitle>
+            {/* Payment Methods Summary */}
+            <Card className="transition-shadow duration-200 hover:shadow-md">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <CreditCard className="h-4 w-4 text-muted-foreground" />
+                  Ingresos por Método de Pago
+                </CardTitle>
               </CardHeader>
               <CardContent>
-                {payments.length === 0 ? (
-                  <div className="text-center text-gray-500 py-12">
-                    <DollarSign className="h-8 w-8 mx-auto mb-2 text-gray-400" />
-                    <p className="text-sm">No hay pagos registrados</p>
-                  </div>
-                ) : (
+                {activeShift.summaryItems && activeShift.summaryItems.length > 0 ? (
                   <div className="space-y-2">
-                    {payments.map((payment: any) => {
-                      const Icon = getPaymentMethodIcon(payment.method)
+                    {activeShift.summaryItems.map((item: any) => {
+                      const Icon = getPaymentMethodIcon(item.paymentMethodName)
+                      const pct = totalPayments > 0 ? (item.expectedAmount / totalPayments) * 100 : 0
                       return (
-                        <div
-                          key={payment.id}
-                          className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border hover:bg-gray-100 transition-colors"
-                        >
-                          <div className="flex items-center gap-3">
-                            <div className="p-2 bg-white rounded border">
-                              <Icon className="h-4 w-4 text-gray-600" />
+                        <div key={item.paymentMethodId} className="group relative p-3 bg-muted/50 rounded-lg border hover:bg-muted transition-colors duration-150 overflow-hidden">
+                          <div className="absolute inset-0 bg-primary/5 rounded-lg" style={{ width: `${pct}%` }} />
+                          <div className="relative flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <Icon className="h-4 w-4 text-muted-foreground" />
+                              <span className="text-sm font-medium">{item.paymentMethodName}</span>
+                              <span className="text-[10px] text-muted-foreground font-mono">({pct.toFixed(0)}%)</span>
                             </div>
-                            <div>
-                              <div className="font-semibold text-sm">
-                                {formatCurrency(payment.amount)}
-                              </div>
-                              <div className="text-xs text-gray-600">
-                                {payment.method} • {payment.invoiceNumber || 'N/A'}
-                              </div>
-                            </div>
+                            <span className="text-sm font-bold">{formatCurrency(item.expectedAmount)}</span>
                           </div>
                         </div>
                       )
                     })}
+                    <div className="flex items-center justify-between p-3 bg-primary/10 rounded-lg border-2 border-primary/20 mt-3">
+                      <span className="text-sm font-bold text-foreground">Total Ventas</span>
+                      <span className="text-lg font-bold text-primary">{formatCurrency(totalPayments)}</span>
+                    </div>
+                    {discountsTotal > 0 && (
+                      <div className="flex items-center justify-between p-3 bg-orange-500/10 rounded-lg border border-orange-500/20">
+                        <span className="text-sm font-medium text-orange-700 dark:text-orange-400">Descuentos Otorgados</span>
+                        <span className="text-sm font-bold text-orange-700 dark:text-orange-400">-{formatCurrency(discountsTotal)}</span>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-center text-muted-foreground py-6">
+                    <CreditCard className="h-6 w-6 mx-auto mb-2 opacity-40" />
+                    <p className="text-xs">No hay pagos registrados aún</p>
                   </div>
                 )}
               </CardContent>
             </Card>
           </div>
+
+          {/* Payments List */}
+          <Card className="transition-shadow duration-200 hover:shadow-md">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Receipt className="h-4 w-4 text-muted-foreground" />
+                Pagos del Turno
+                <span className="ml-1 text-xs bg-muted px-2 py-0.5 rounded-full font-normal text-muted-foreground">{payments.length}</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {payments.length === 0 ? (
+                <div className="text-center text-muted-foreground py-8">
+                  <DollarSign className="h-6 w-6 mx-auto mb-2 opacity-40" />
+                  <p className="text-xs">No hay pagos registrados</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 max-h-80 overflow-y-auto pr-1">
+                  {payments.map((payment: any) => {
+                    const Icon = getPaymentMethodIcon(payment.method)
+                    return (
+                      <div key={payment.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg border hover:bg-muted transition-colors duration-150">
+                        <div className="flex items-center gap-2.5">
+                          <div className="p-1.5 bg-background rounded-md border">
+                            <Icon className="h-3.5 w-3.5 text-muted-foreground" />
+                          </div>
+                          <div>
+                            <div className="font-semibold text-sm">{formatCurrency(payment.amount)}</div>
+                            <div className="text-[10px] text-muted-foreground">{payment.method} • {payment.invoiceNumber || 'N/A'}</div>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
       )}
 
