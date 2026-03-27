@@ -264,6 +264,31 @@ async function initializePostgresTenant(databaseUrl: string, tenantId: string, t
     await pmClient.end()
   }
 
+  // Step 2.9: Sync TenantSettings onboarding columns (fiscal identity, business profile)
+  console.log(`[STEP 2.9/4] Sincronizando columnas de onboarding en TenantSettings "${schemaName}"...`)
+  const obClient = new Client({ connectionString: tenantSchemaUrl })
+  try {
+    await obClient.connect()
+    await obClient.query(`SET search_path TO "${schemaName}"`)
+    await obClient.query(`
+      ALTER TABLE "TenantSettings"
+        ADD COLUMN IF NOT EXISTS "personType" TEXT,
+        ADD COLUMN IF NOT EXISTS "commercialName" TEXT,
+        ADD COLUMN IF NOT EXISTS "verificationDigit" TEXT,
+        ADD COLUMN IF NOT EXISTS "taxRegime" TEXT,
+        ADD COLUMN IF NOT EXISTS "fiscalResponsibilities" TEXT,
+        ADD COLUMN IF NOT EXISTS "economicActivity" TEXT,
+        ADD COLUMN IF NOT EXISTS "businessType" TEXT,
+        ADD COLUMN IF NOT EXISTS "companyCity" TEXT,
+        ADD COLUMN IF NOT EXISTS "companyDepartment" TEXT;
+    `)
+    console.log('[STEP 2.9/4] ✓ Columnas de onboarding sincronizadas')
+  } catch (obErr: any) {
+    console.warn(`[TENANT INIT] Warning during onboarding columns sync: ${obErr.message}`)
+  } finally {
+    await obClient.end()
+  }
+
   // Step 3: Seed initial data (admin user, warehouse) via PrismaClient
   console.log('[STEP 3/4] Creando datos iniciales (admin, roles, almacén)...')
 

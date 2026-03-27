@@ -8,26 +8,30 @@ async function checkOnboarding() {
   try {
     const res = await fetch('/api/onboarding')
     if (!res.ok) {
-      // Si hay error, retornar un objeto por defecto en lugar de lanzar error
       return { needsOnboarding: false, settings: null, plan: null }
     }
     return res.json()
   } catch (error) {
     console.error('Error checking onboarding:', error)
-    // Retornar un objeto por defecto en lugar de lanzar error
     return { needsOnboarding: false, settings: null, plan: null }
   }
 }
 
-export function OnboardingProvider({ children }: { children: React.ReactNode }) {
+interface OnboardingProviderProps {
+  children: React.ReactNode
+  forceShow?: boolean
+  onForceClose?: () => void
+}
+
+export function OnboardingProvider({ children, forceShow, onForceClose }: OnboardingProviderProps) {
   const [showOnboarding, setShowOnboarding] = useState(false)
   const [isChecking, setIsChecking] = useState(true)
 
   const { data, isLoading } = useQuery({
     queryKey: ['onboarding-status'],
     queryFn: checkOnboarding,
-    staleTime: Infinity, // No refrescar automáticamente - solo cuando se complete el onboarding
-    gcTime: Infinity, // Mantener en caché indefinidamente
+    staleTime: Infinity,
+    gcTime: Infinity,
   })
 
   useEffect(() => {
@@ -39,7 +43,12 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
     }
   }, [data, isLoading])
 
-  if (isChecking) {
+  // Demo mode: force show when prop changes
+  useEffect(() => {
+    if (forceShow) setShowOnboarding(true)
+  }, [forceShow])
+
+  if (isChecking && !forceShow) {
     return <>{children}</>
   }
 
@@ -48,10 +57,14 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
       {showOnboarding && (
         <WelcomeOnboarding
           planName={data?.plan?.name}
+          isDemo={forceShow}
           onComplete={() => {
             setShowOnboarding(false)
-            // Invalidar query para refrescar
-            window.location.reload()
+            if (forceShow && onForceClose) {
+              onForceClose()
+            } else {
+              window.location.reload()
+            }
           }}
         />
       )}
@@ -59,4 +72,3 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
     </>
   )
 }
-

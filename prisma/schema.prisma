@@ -1190,6 +1190,16 @@ model TenantSettings {
   onboardingCompleted         Boolean?  @default(false)
   onboardingUserName          String? // Nombre del usuario recopilado en onboarding
   onboardingCompanyName       String? // Nombre de la empresa recopilado en onboarding
+  // Fiscal Identity (Onboarding — datos según RUT)
+  personType                  String?   // 'NATURAL' | 'JURIDICA'
+  commercialName              String?   // Nombre comercial (diferente a razón social)
+  verificationDigit           String?   // DV del NIT (1 carácter)
+  taxRegime                   String?   // 'RESPONSABLE_IVA' | 'NO_RESPONSABLE_IVA' | 'REGIMEN_SIMPLE'
+  fiscalResponsibilities      String?   // JSON array: ["GRAN_CONTRIBUYENTE","AUTORRETENEDOR"]
+  economicActivity            String?   // Código CIIU (ej. "4752")
+  businessType                String?   // 'RETAIL' | 'RESTAURANT' | 'SERVICES' | 'OTHER'
+  companyCity                 String?
+  companyDepartment           String?
   // Restaurant Mode
   enableRestaurantMode        Boolean?  @default(false)
 

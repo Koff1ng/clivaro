@@ -1,0 +1,74 @@
+{
+  "prueba (prueba)": {
+    "urlSchema": "tenant_prueba",
+    "schemaId": "tenant_cmn10cbgi0000htxl5gw0d9y0",
+    "urlSchemaExists": true,
+    "idSchemaExists": true,
+    "products": [
+      {
+        "sku": "TABLA-001",
+        "name": "Tabla roble",
+        "price": 2000,
+        "cost": 1000
+      }
+    ]
+  },
+  "Variedades (variedadesorito)": {
+    "urlSchema": "tenant_variedadesorito",
+    "schemaId": "tenant_cmn0ijh1f0000uncjbsqn8jtc",
+    "urlSchemaExists": false,
+    "idSchemaExists": true,
+    "products": [
+      {
+        "sku": "Nevera ",
+        "name": "NEVECON 4 PUERTAS KALLEY ",
+        "price": 3000000,
+        "cost": 3000000
+      }
+    ]
+  },
+  "Heladeria Orito (heladeria)": {
+    "urlSchema": "tenant_heladeria",
+    "schemaId": "tenant_cmn2ngd9h00008ygrjcr08qqi",
+    "urlSchemaExists": false,
+    "idSchemaExists": true,
+    "products": [
+      {
+        "sku": "Bebida 02 ",
+        "name": "Coca cola 1.5 litros ",
+        "price": 8000,
+        "cost": 5500
+      },
+      {
+        "sku": "Bebida 03",
+        "name": "Botella agua",
+        "price": 2500,
+        "cost": 1375
+      },
+      {
+        "sku": "BEBIDA 04",
+        "name": "Gaseosa Postobon 400 mililitros",
+        "price": 3500,
+        "cost": 28000
+      },
+      {
+        "sku": "BEBIDA 05",
+        "name": "Jugos Nitos botella",
+        "price": 3500,
+        "cost": 30000
+      },
+      {
+        "sku": "BEBIDA 06",
+        "name": "Soda",
+        "price": 4000,
+        "cost": 2166
+      },
+      {
+        "sku": "BEBIDA-01",
+        "name": "Coca cola  400ml ",
+        "price": 4000,
+        "cost": 2500
+      }
+    ]
+  }
+}

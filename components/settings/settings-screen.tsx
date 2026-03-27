@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { WelcomeOnboarding } from '@/components/onboarding/welcome-onboarding'
 import { 
   Users, 
   Receipt, 
@@ -27,7 +28,8 @@ import {
   Globe,
   ChevronRight,
   LayoutDashboard,
-  ArrowLeftRight
+  ArrowLeftRight,
+  Play
 } from 'lucide-react'
 import { useToast } from '@/components/ui/toast'
 import { useSession } from 'next-auth/react'
@@ -59,8 +61,8 @@ export function SettingsScreen() {
   const searchParams = useSearchParams()
   const router = useRouter()
   
-  // New state for unified navigation
   const [activeSection, setActiveSection] = useState('identity')
+  const [showDemoOnboarding, setShowDemoOnboarding] = useState(false)
 
   const isSuperAdmin = (session?.user as any)?.isSuperAdmin || false
 
@@ -266,6 +268,7 @@ export function SettingsScreen() {
   }
 
   return (
+    <>
     <div className="flex flex-col h-full overflow-hidden bg-[#F8FAFC]">
       {/* Header Premium con Glassmorphism */}
       <header className="h-20 border-b bg-white/80 backdrop-blur-md sticky top-0 z-50 flex items-center justify-between px-8">
@@ -279,6 +282,10 @@ export function SettingsScreen() {
           </div>
         </div>
         <div className="flex items-center gap-3">
+          <Button variant="outline" className="rounded-xl font-bold text-xs px-5 border-orange-200 text-orange-600 hover:bg-orange-50 transition-all" onClick={() => setShowDemoOnboarding(true)}>
+             <Play size={14} className="mr-1.5" />
+             Onboarding Demo
+          </Button>
           <Button variant="outline" className="rounded-xl font-bold text-xs px-6 border-slate-200 hover:bg-slate-50 transition-all" onClick={() => router.push('/dashboard')}>
              <LayoutDashboard size={14} className="mr-2" />
              Ir al Dashboard
@@ -359,5 +366,14 @@ export function SettingsScreen() {
          ))}
       </nav>
     </div>
+
+    {/* Demo Onboarding Overlay */}
+    {showDemoOnboarding && (
+      <WelcomeOnboarding
+        isDemo
+        onComplete={() => setShowDemoOnboarding(false)}
+      />
+    )}
+    </>
   )
 }

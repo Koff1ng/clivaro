@@ -42,10 +42,21 @@ async function executeWithRetry<T>(
 const onboardingSchema = z.object({
   userName: z.string().min(1, 'El nombre es requerido'),
   companyName: z.string().min(1, 'El nombre de la empresa es requerido'),
+  commercialName: z.string().optional(),
+  personType: z.string().optional(),
   companyNit: z.string().optional(),
+  verificationDigit: z.string().optional(),
+  taxRegime: z.string().optional(),
+  fiscalResponsibilities: z.string().optional(), // JSON array string
+  companyDepartment: z.string().optional(),
+  companyCity: z.string().optional(),
   companyAddress: z.string().optional(),
   companyPhone: z.string().optional(),
   companyEmail: z.string().optional(),
+  businessType: z.string().optional(),
+  economicActivity: z.string().optional(),
+  invoicePrefix: z.string().optional(),
+  currency: z.string().optional(),
   defaultTaxRate: z.number().optional(),
   newUsername: z.string().min(3, 'El usuario debe tener al menos 3 caracteres').optional(),
   newPassword: z.string().min(8, 'La contraseña debe tener al menos 8 caracteres').optional(),
@@ -136,29 +147,36 @@ export async function POST(request: Request) {
       ? JSON.stringify({ defaultTaxRate: validatedData.defaultTaxRate })
       : undefined
 
+    const isRestaurant = validatedData.businessType === 'RESTAURANT'
+
+    const onboardingData = {
+      onboardingCompleted: true,
+      onboardingUserName: validatedData.userName,
+      onboardingCompanyName: validatedData.companyName,
+      companyName: validatedData.companyName,
+      commercialName: validatedData.commercialName || undefined,
+      personType: validatedData.personType || undefined,
+      companyNit: validatedData.companyNit || undefined,
+      verificationDigit: validatedData.verificationDigit || undefined,
+      taxRegime: validatedData.taxRegime || undefined,
+      fiscalResponsibilities: validatedData.fiscalResponsibilities || undefined,
+      companyDepartment: validatedData.companyDepartment || undefined,
+      companyCity: validatedData.companyCity || undefined,
+      companyAddress: validatedData.companyAddress || undefined,
+      companyPhone: validatedData.companyPhone || undefined,
+      companyEmail: validatedData.companyEmail || undefined,
+      businessType: validatedData.businessType || undefined,
+      economicActivity: validatedData.economicActivity || undefined,
+      invoicePrefix: validatedData.invoicePrefix || undefined,
+      currency: validatedData.currency || undefined,
+      enableRestaurantMode: isRestaurant,
+      ...(customSettingsObj ? { customSettings: customSettingsObj } : {}),
+    }
+
     const settings = await prisma.tenantSettings.upsert({
       where: { tenantId: user.tenantId },
-      update: {
-        onboardingCompleted: true,
-        onboardingUserName: validatedData.userName,
-        onboardingCompanyName: validatedData.companyName,
-        companyNit: validatedData.companyNit || undefined,
-        companyAddress: validatedData.companyAddress || undefined,
-        companyPhone: validatedData.companyPhone || undefined,
-        companyEmail: validatedData.companyEmail || undefined,
-        ...(customSettingsObj ? { customSettings: customSettingsObj } : {}),
-      },
-      create: {
-        tenantId: user.tenantId,
-        onboardingCompleted: true,
-        onboardingUserName: validatedData.userName,
-        onboardingCompanyName: validatedData.companyName,
-        companyNit: validatedData.companyNit || undefined,
-        companyAddress: validatedData.companyAddress || undefined,
-        companyPhone: validatedData.companyPhone || undefined,
-        companyEmail: validatedData.companyEmail || undefined,
-        ...(customSettingsObj ? { customSettings: customSettingsObj } : {}),
-      }
+      update: onboardingData,
+      create: { tenantId: user.tenantId, ...onboardingData },
     })
 
     // También actualizar el nombre del tenant si no está configurado
