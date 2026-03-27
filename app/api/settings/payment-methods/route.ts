@@ -7,6 +7,7 @@ import { z } from 'zod'
 const paymentMethodSchema = z.object({
     name: z.string().min(1),
     type: z.enum(['CASH', 'ELECTRONIC', 'CARD', 'TRANSFER', 'CREDIT']).default('ELECTRONIC'),
+    dianCode: z.string().default('ZZZ'),
     active: z.boolean().default(true),
     color: z.string().nullable().optional(),
     icon: z.string().nullable().optional(),
@@ -46,6 +47,7 @@ export async function POST(request: Request) {
                 data: {
                     name: data.name,
                     type: data.type,
+                    dianCode: data.dianCode,
                     active: data.active,
                     color: data.color,
                     icon: data.icon,

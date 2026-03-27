@@ -998,6 +998,7 @@ model PaymentMethod {
   id        String   @id @default(cuid())
   name      String   @unique
   type      String   @default("ELECTRONIC") // CASH, ELECTRONIC, CARD, TRANSFER
+  dianCode  String   @default("ZZZ") // DIAN payment method code: 10=Efectivo, 47=Transferencia, 48=Tarjeta, etc.
   active    Boolean  @default(true)
   color     String?  // Hex color code (e.g. #3b82f6)
   icon      String?  // Lucide icon name (e.g. credit-card)

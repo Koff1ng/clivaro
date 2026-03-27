@@ -17,10 +17,25 @@ interface PaymentMethod {
     id: string
     name: string
     type: string
+    dianCode?: string
     active: boolean
     color?: string
     icon?: string
 }
+
+// DIAN Payment Method Codes (Resolución 000012 de 2021)
+const DIAN_PAYMENT_CODES = [
+    { code: '10', label: 'Efectivo', types: ['CASH'] },
+    { code: '42', label: 'Consignación Bancaria', types: ['TRANSFER'] },
+    { code: '47', label: 'Transferencia Débito Bancaria', types: ['TRANSFER', 'ELECTRONIC'] },
+    { code: '48', label: 'Tarjeta Crédito', types: ['CARD'] },
+    { code: '49', label: 'Tarjeta Débito', types: ['CARD'] },
+    { code: '20', label: 'Cheque', types: ['CHECK'] },
+    { code: '31', label: 'Transferencia Electrónica', types: ['ELECTRONIC'] },
+    { code: '71', label: 'Bonos / Voucher', types: ['ELECTRONIC'] },
+    { code: '72', label: 'Nota Crédito', types: ['CREDIT'] },
+    { code: 'ZZZ', label: 'Otro / No definido', types: ['ELECTRONIC', 'CASH', 'CARD', 'TRANSFER', 'CREDIT'] },
+]
 
 const PREDEFINED_COLORS = [
     { name: 'Azul', value: '#3b82f6' },
@@ -60,6 +75,7 @@ export function PaymentMethodsConfig() {
     // Form state
     const [name, setName] = useState('')
     const [type, setType] = useState('ELECTRONIC')
+    const [dianCode, setDianCode] = useState('ZZZ')
     const [color, setColor] = useState('#3b82f6')
     const [icon, setIcon] = useState('credit-card')
 
@@ -122,12 +138,14 @@ export function PaymentMethodsConfig() {
             setEditingMethod(method)
             setName(method.name)
             setType(method.type)
+            setDianCode(method.dianCode || 'ZZZ')
             setColor(method.color || '#3b82f6')
             setIcon(method.icon || 'credit-card')
         } else {
             setEditingMethod(null)
             setName('')
             setType('ELECTRONIC')
+            setDianCode('ZZZ')
             setColor('#3b82f6')
             setIcon('credit-card')
         }
@@ -144,7 +162,7 @@ export function PaymentMethodsConfig() {
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault()
         if (!name) return
-        saveMutation.mutate({ name, type, color, icon })
+        saveMutation.mutate({ name, type, dianCode, color, icon })
     }
 
     const toggleStatus = (method: PaymentMethod) => {
@@ -177,6 +195,7 @@ export function PaymentMethodsConfig() {
                             <TableHead>Visual</TableHead>
                             <TableHead>Nombre</TableHead>
                             <TableHead>Tipo</TableHead>
+                            <TableHead>Código DIAN</TableHead>
                             <TableHead>Estado</TableHead>
                             <TableHead className="text-right">Acciones</TableHead>
                         </TableRow>
@@ -195,6 +214,11 @@ export function PaymentMethodsConfig() {
                                 <TableCell className="font-medium">{method.name}</TableCell>
                                 <TableCell>
                                     <Badge variant="outline">{method.type}</Badge>
+                                </TableCell>
+                                <TableCell>
+                                    <Badge variant="secondary" className="font-mono text-xs">
+                                        {method.dianCode || 'ZZZ'} - {DIAN_PAYMENT_CODES.find(c => c.code === method.dianCode)?.label || 'Otro'}
+                                    </Badge>
                                 </TableCell>
                                 <TableCell>
                                     <div className="flex items-center gap-2">
@@ -222,7 +246,7 @@ export function PaymentMethodsConfig() {
                         ))}
                         {methods?.length === 0 && (
                             <TableRow>
-                                <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                                     No hay métodos de pago configurados.
                                 </TableCell>
                             </TableRow>
@@ -256,7 +280,11 @@ export function PaymentMethodsConfig() {
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                     <Label htmlFor="type">Tipo de Pago</Label>
-                                    <Select value={type} onValueChange={setType}>
+                                    <Select value={type} onValueChange={(v) => {
+                                        setType(v)
+                                        const suggested = DIAN_PAYMENT_CODES.find(c => c.types.includes(v) && c.code !== 'ZZZ')
+                                        if (suggested) setDianCode(suggested.code)
+                                    }}>
                                         <SelectTrigger>
                                             <SelectValue placeholder="Tipo" />
                                         </SelectTrigger>
@@ -270,14 +298,30 @@ export function PaymentMethodsConfig() {
                                     </Select>
                                 </div>
                                 <div className="space-y-2">
-                                    <Label>Vista Previa</Label>
-                                    <div
-                                        className="h-10 w-full rounded-md flex items-center justify-center text-white"
-                                        style={{ backgroundColor: color }}
-                                    >
-                                        <IconRenderer name={icon} className="h-5 w-5 mr-2" />
-                                        <span className="text-xs font-medium truncate px-1">{name || 'Nombre'}</span>
-                                    </div>
+                                    <Label>Código DIAN (Medio de Pago)</Label>
+                                    <Select value={dianCode} onValueChange={setDianCode}>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Código DIAN" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {DIAN_PAYMENT_CODES.map(c => (
+                                                <SelectItem key={c.code} value={c.code}>
+                                                    {c.code} - {c.label}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label>Vista Previa</Label>
+                                <div
+                                    className="h-10 w-full rounded-md flex items-center justify-center text-white"
+                                    style={{ backgroundColor: color }}
+                                >
+                                    <IconRenderer name={icon} className="h-5 w-5 mr-2" />
+                                    <span className="text-xs font-medium truncate px-1">{name || 'Nombre'}</span>
                                 </div>
                             </div>
 

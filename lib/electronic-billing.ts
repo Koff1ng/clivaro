@@ -261,7 +261,9 @@ async function sendToFactus(
     // H3 FIX: Detect credit sales for payment_form
     const isCredit = invoiceData.dueDate && new Date(invoiceData.dueDate) > new Date(invoiceData.issueDate)
     // Map PaymentMethod.type to DIAN payment_method_code
-    const paymentMethodCodeMap: Record<string, string> = {
+    // paymentMethodType can be either a direct DIAN code (e.g., '10', '47', '48') 
+    // from PaymentMethod.dianCode or a legacy type string (e.g., 'CASH', 'CARD')
+    const paymentMethodTypeMap: Record<string, string> = {
       'CASH': '10',        // Efectivo
       'CARD': '48',        // Tarjeta Crédito (generic card)
       'TRANSFER': '47',    // Transferencia Débito Bancaria
@@ -269,7 +271,10 @@ async function sendToFactus(
       'CHECK': '20',       // Cheque
       'CREDIT': '30',      // Crédito (deferred)
     }
-    const dianPaymentMethodCode = paymentMethodCodeMap[invoiceData.paymentMethodType || ''] || '10'
+    const rawPaymentType = invoiceData.paymentMethodType || ''
+    // If it's already a DIAN code (numeric or ZZZ), use directly; otherwise map from type
+    const isDianCode = /^\d{1,3}$/.test(rawPaymentType) || rawPaymentType === 'ZZZ'
+    const dianPaymentMethodCode = isDianCode ? rawPaymentType : (paymentMethodTypeMap[rawPaymentType] || '10')
 
     const factusRequest: FactusInvoiceRequest = {
       document: invoiceData.typeCode || '01', // 01 = Factura de Venta

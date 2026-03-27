@@ -655,14 +655,13 @@ export async function POST(request: Request) {
               discount: fullInvoice.discount || 0,
               tax: fullInvoice.tax || 0,
               total: fullInvoice.total || 0,
-              // Determine primary payment method type from the largest payment
+              // Determine primary payment method's DIAN code from the largest payment
               paymentMethodType: (() => {
                 const payments = normalizedPayments
                 if (!payments?.length) return 'CASH'
-                // Find the payment with the largest amount
                 const primary = payments.reduce((max, p) => p.amount > max.amount ? p : max, payments[0])
                 const pm = paymentMethodMap.get(primary.paymentMethodId) as any
-                return pm?.type || 'CASH'
+                return pm?.dianCode || pm?.type || 'CASH'
               })(),
             }
 
