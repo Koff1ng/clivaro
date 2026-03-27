@@ -405,6 +405,20 @@ export function InvoicePrintLetter({ invoice, settings }: InvoicePrintLetterProp
                     <div className="mt-2 p-2 bg-white rounded border text-xs font-mono break-all">
                         <span className="font-bold">CUFE:</span> {invoice.cufe}
                     </div>
+                    {/* QR Code - scannable */}
+                    <div className="flex items-start gap-4 mt-3 p-3 bg-white rounded border">
+                        <img
+                            src={`https://chart.googleapis.com/chart?cht=qr&chs=120x120&chl=${encodeURIComponent(`https://catalogo-vpfe.dian.gov.co/document/searchqr?documentkey=${invoice.cufe}`)}`}
+                            alt="QR Verificación DIAN"
+                            style={{ width: '120px', height: '120px' }}
+                        />
+                        <div className="flex-1 text-xs">
+                            <div className="font-bold text-blue-800 mb-1">Verificar documento</div>
+                            <div className="text-gray-500 break-all text-[9px] leading-tight">
+                                https://catalogo-vpfe.dian.gov.co/document/searchqr?documentkey={invoice.cufe}
+                            </div>
+                        </div>
+                    </div>
                 </div>
             )}
 

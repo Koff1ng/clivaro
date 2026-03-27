@@ -556,7 +556,7 @@ export async function generateInvoicePDF(invoice: InvoicePDFData): Promise<Buffe
     <html>
     <head>
       <meta charset="UTF-8">
-      <title>Factura ${invoice.prefix || ''}${invoice.number} - ${companyName}</title>
+      <title>Factura ${invoice.number} - ${companyName}</title>
       <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { 
@@ -859,7 +859,7 @@ export async function generateInvoicePDF(invoice: InvoicePDFData): Promise<Buffe
           </div>
           <div class="invoice-type">
             <div class="invoice-type-label">${isElectronic ? 'Factura Electrónica de Venta' : 'Factura de Venta'}</div>
-            <div class="invoice-number">${invoice.prefix || 'FV'}-${invoice.number}</div>
+            <div class="invoice-number">${invoice.number}</div>
             ${resolutionNumber ? `
             <div class="resolution-info">
               <div>Res. DIAN No. ${resolutionNumber}</div>
@@ -1022,11 +1022,13 @@ export async function generateInvoicePDF(invoice: InvoicePDFData): Promise<Buffe
           </div>
           <div style="margin-bottom: 10px; font-size: 9px; color: #1e3a8a;"><strong>CUFE:</strong></div>
           <div class="cufe-code">${invoice.cufe}</div>
-          ${invoice.qrCode ? `
           <div class="qr-section">
-            <span style="font-size: 9px; color: #1e3a8a;">Verificar en: </span>
-            <a href="${invoice.qrCode}" style="font-size: 9px; color: #2563eb; word-break: break-all;">${invoice.qrCode}</a>
-          </div>` : ''}
+            <img src="https://chart.googleapis.com/chart?cht=qr&chs=120x120&chl=${encodeURIComponent(invoice.cufe || invoice.qrCode || '')}" alt="QR" style="width: 120px; height: 120px;" />
+            <div style="flex: 1;">
+              <div style="font-size: 9px; color: #1e3a8a; margin-bottom: 4px;"><strong>Verificar en:</strong></div>
+              <div style="font-size: 8px; color: #2563eb; word-break: break-all;">https://catalogo-vpfe.dian.gov.co/document/searchqr?documentkey=${invoice.cufe}</div>
+            </div>
+          </div>
         </div>` : ''}
         
         <!-- Notes -->
