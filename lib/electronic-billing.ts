@@ -1,16 +1,9 @@
 import { createHash } from 'crypto'
-import { generateInvoiceXML } from './dian/xml-generator'
-import { signXML } from './dian/signer'
-import { sendBill } from './dian/client'
-import JSZip from 'jszip'
-import { AlegraClient } from './alegra/client'
 import { FactusClient } from './factus/client'
 import type { FactusInvoiceRequest, FactusCustomer, FactusItem } from './factus/types'
 
 export interface ElectronicBillingConfig {
-  provider: 'FEG' | 'CUSTOM' | 'DIAN_DIRECT' | 'ALEGRA' | 'FACTUS'
-  apiUrl?: string
-  apiKey?: string
+  provider: 'FACTUS'
   companyNit: string
   companyName: string
   companyAddress: string
@@ -26,8 +19,6 @@ export interface ElectronicBillingConfig {
   softwarePin?: string // Required for DIAN direct
   technicalKey?: string // Required for CUFE
   environment?: '1' | '2' // 1: Production, 2: Test
-  alegraEmail?: string
-  alegraToken?: string
   // Factus Fields
   factusClientId?: string
   factusClientSecret?: string
@@ -143,20 +134,8 @@ export async function sendToElectronicBilling(
   config: ElectronicBillingConfig
 ): Promise<ElectronicBillingResponse> {
   try {
-    switch (config.provider) {
-      case 'FEG':
-        return await sendToFEG(invoiceData, config)
-      case 'CUSTOM':
-        return await sendToCustomProvider(invoiceData, config)
-      case 'DIAN_DIRECT':
-        return await sendToDIANDirect(invoiceData, config)
-      case 'ALEGRA':
-        return await sendToAlegra(invoiceData, config)
-      case 'FACTUS':
-        return await sendToFactus(invoiceData, config)
-      default:
-        throw new Error('Proveedor de facturación electrónica no configurado')
-    }
+    // Factus is the sole provider
+    return await sendToFactus(invoiceData, config)
   } catch (error: any) {
     return {
       success: false,
@@ -166,268 +145,8 @@ export async function sendToElectronicBilling(
   }
 }
 
-/**
- * Integración con Facturación Electrónica Gratuita (FEG)
- */
-async function sendToFEG(
-  invoiceData: InvoiceData,
-  config: ElectronicBillingConfig
-): Promise<ElectronicBillingResponse> {
-  // TODO: Implementar integración con FEG
-  // Ejemplo de estructura:
-  /*
-  const response = await fetch(`${config.apiUrl}/api/invoices`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${config.apiKey}`,
-    },
-    body: JSON.stringify({
-      issuer: {
-        nit: config.companyNit,
-        name: config.companyName,
-        address: config.companyAddress,
-        phone: config.companyPhone,
-        email: config.companyEmail,
-      },
-      receiver: invoiceData.customer,
-      invoice: invoiceData,
-      resolution: {
-        number: config.resolutionNumber,
-        prefix: config.resolutionPrefix,
-        from: config.resolutionFrom,
-        to: config.resolutionTo,
-        validFrom: config.resolutionValidFrom,
-        validTo: config.resolutionValidTo,
-      },
-    }),
-  })
 
-  const result = await response.json()
-  
-  return {
-    success: result.success || false,
-    cufe: result.cufe,
-    qrCode: result.qrCode,
-    pdfUrl: result.pdfUrl,
-    xmlUrl: result.xmlUrl,
-    status: result.status,
-    message: result.message,
-    response: result,
-  }
-  */
 
-  // Por ahora retorna simulación
-  return {
-    success: true,
-    cufe: `CUFE-FEG-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`,
-    qrCode: `https://catalogo-vpfe-hab.dian.gov.co/document/consultar?trackId=CUFE-FEG-${Date.now()}`,
-    status: 'ACCEPTED',
-    message: 'Factura enviada exitosamente (simulación FEG)',
-  }
-}
-
-/**
- * Integración con proveedor personalizado
- */
-async function sendToCustomProvider(
-  invoiceData: InvoiceData,
-  config: ElectronicBillingConfig
-): Promise<ElectronicBillingResponse> {
-  if (!config.apiUrl || !config.apiKey) {
-    throw new Error('API URL y API Key requeridos para proveedor personalizado')
-  }
-
-  // TODO: Implementar integración con proveedor personalizado
-  // La estructura dependerá del proveedor específico
-
-  return {
-    success: false,
-    message: 'Proveedor personalizado no implementado',
-  }
-}
-
-/**
- * Integración con Alegra
- */
-async function sendToAlegra(
-  invoiceData: InvoiceData,
-  config: ElectronicBillingConfig
-): Promise<ElectronicBillingResponse> {
-  if (!config.alegraEmail || !config.alegraToken) {
-    throw new Error('Email y Token de Alegra requeridos')
-  }
-
-  const alegra = new AlegraClient({
-    email: config.alegraEmail,
-    token: config.alegraToken
-  })
-
-  try {
-    // 1. Sync Contact (Get or Create)
-    const contacts = await alegra.searchCustomer(invoiceData.customer.nit.split('-')[0])
-    let customerId: number
-
-    if (contacts.length > 0) {
-      customerId = contacts[0].id
-    } else {
-      const contactPayload = {
-        name: invoiceData.customer.name,
-        identification: invoiceData.customer.nit.split('-')[0],
-        identificationObject: {
-          type: invoiceData.customer.idType || (invoiceData.customer.isCompany ? 'NIT' : 'CC'),
-          number: invoiceData.customer.nit.split('-')[0]
-        },
-        email: invoiceData.customer.email,
-        phonePrimary: invoiceData.customer.phone,
-        address: {
-          address: invoiceData.customer.address
-        },
-        type: ['client'],
-        kindOfPerson: invoiceData.customer.isCompany ? 'LEGAL' : 'PERSON',
-        regime: invoiceData.customer.taxRegime === 'COMMON' ? 'COMMON' : 'SIMPLIFIED'
-      }
-      console.log('[Alegra] Creating customer with payload:', JSON.stringify(contactPayload, null, 2))
-      const newContact = await alegra.createCustomer(contactPayload)
-      customerId = newContact.id
-    }
-
-    // 2. Map Items (Alegra requires an 'id' for each item)
-    // We try to fetch active products from Alegra as a fallback
-    let alegraProducts = await alegra.getProducts({ limit: 10 })
-
-    // Find first active product
-    let activeProduct = alegraProducts.find((p: any) => p.status === 'active')
-    let fallbackProductId: string | number
-
-    if (activeProduct) {
-      fallbackProductId = activeProduct.id
-    } else if (alegraProducts.length > 0) {
-      fallbackProductId = alegraProducts[0].id
-    } else {
-      // Create a dummy product if none exist
-      const newProduct = await alegra.createItem({
-        name: "Item Genérico",
-        price: 100,
-        inventory: { unit: "unit" }
-      })
-      fallbackProductId = (newProduct as any).id
-    }
-
-    const items = invoiceData.items.map(item => {
-      return {
-        id: fallbackProductId, // Use fallback if we don't have a specific mapping yet
-        name: item.description,
-        price: item.unitPrice,
-        quantity: item.quantity,
-        discount: item.discount,
-        tax: item.taxes.map(t => ({
-          id: '1', // Default tax ID in Alegra (usually 19% or generic)
-          name: t.name,
-          percentage: t.rate
-        }))
-      }
-    })
-
-    // 3. Prepare Invoice Data
-    // 3.1 Fetch Numbering Templates to find the electronic one
-    const templates = await alegra.getNumberTemplates()
-    const electronicTemplate = templates.find((t: any) => t.isElectronic === true || t.isElectronic === 'true')
-
-    // If no electronic template found, we use the default but it might fail for electronic invoicing.
-    // However, if we found one, we MUST send it.
-    const numberTemplate = electronicTemplate ? { id: electronicTemplate.id } : undefined
-
-    if (!electronicTemplate) {
-      console.warn('[Alegra] No electronic numbering template found. Invoice might default to non-electronic.')
-    } else {
-      console.log('[Alegra] Using electronic template:', electronicTemplate.name)
-    }
-
-    // 3.2 Create Invoice Payload
-    const invoicePayload = {
-      date: invoiceData.issueDate.toISOString().split('T')[0],
-      dueDate: invoiceData.dueDate?.toISOString().split('T')[0] || invoiceData.issueDate.toISOString().split('T')[0],
-      client: customerId,
-      items: items,
-      numberTemplate: numberTemplate,
-      paymentMethod: 'CASH',
-      stamp: {
-        generateStamp: true
-      }
-    }
-    console.log('[Alegra] Creating invoice with payload:', JSON.stringify(invoicePayload, null, 2))
-    const alegraInvoice = await alegra.createInvoice(invoicePayload)
-
-    return {
-      success: true,
-      status: alegraInvoice.stamp?.status === 'signed' ? 'ACCEPTED' : 'PENDING',
-      message: 'Factura enviada a Alegra',
-      response: alegraInvoice,
-      cufe: alegraInvoice.stamp?.cufe,
-      xmlUrl: alegraInvoice.xml || alegraInvoice.stamp?.xml,
-      pdfUrl: alegraInvoice.pdfUrl || alegraInvoice.stamp?.pdf
-    }
-
-  } catch (error: any) {
-    console.error('Alegra Sync Error:', error)
-
-    let errorMessage = error.message
-
-    // Check for specific known Alegra errors
-    if (errorMessage.includes('"code":3051') || errorMessage.includes('La numeración no es válida para facturación electrónica')) {
-      errorMessage = 'Alegra rechazó la factura porque no tienes una "Numeración Electrónica" configurada. Ve a Alegra > Configuración > Numeraciones y crea una marcada como "Electrónica".'
-    } else if (errorMessage.includes('"code":2035') || errorMessage.includes('tipo de identificación es obligatorio')) {
-      errorMessage = 'Alegra requiere un tipo de identificación válido (CC, NIT). Edita el cliente y guárdalo de nuevo.'
-    }
-
-    return {
-      success: false,
-      message: errorMessage
-    }
-  }
-}
-
-/**
- * Integración directa con DIAN (Facturación Electrónica Gratuita)
- */
-async function sendToDIANDirect(
-  invoiceData: InvoiceData,
-  config: ElectronicBillingConfig
-): Promise<ElectronicBillingResponse> {
-  try {
-    // 1. Generate XML (UBL 2.1)
-    const xml = generateInvoiceXML(invoiceData, config)
-
-    // 2. Sign XML (XAdES-BES)
-    // For now we pass a dummy buffer if no tech key (simulation) or load real one
-    // In real app, certificate would come from config (e.g., base64 or path)
-    const certificate = Buffer.from('dummy-cert')
-    const signedXml = signXML(xml, certificate, config.softwarePin || '')
-
-    // 3. Compress to ZIP
-    const zip = new JSZip()
-    const xmlFilename = `${config.companyNit.split('-')[0]}${config.resolutionPrefix}${invoiceData.number}.xml`
-    zip.file(xmlFilename, signedXml)
-    const zipContent = await zip.generateAsync({ type: 'base64' })
-
-    // 4. Send to DIAN
-    const response = await sendBill(zipContent, `${xmlFilename}.zip`, config)
-
-    return response
-
-  } catch (error: any) {
-    console.error('DIAN Error:', error)
-    return {
-      success: false,
-      message: 'Error en proceso DIAN: ' + error.message
-    }
-  }
-}
-
-/**
- * Integración con Factus (Halltec) - Facturación Electrónica
- */
 async function sendToFactus(
   invoiceData: InvoiceData,
   config: ElectronicBillingConfig

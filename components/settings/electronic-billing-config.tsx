@@ -6,13 +6,11 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Receipt, Loader2 } from 'lucide-react'
+import { Receipt, Loader2, ExternalLink } from 'lucide-react'
 import { format } from 'date-fns'
 
 interface ElectronicBillingFormData {
   electronicBillingProvider: string
-  electronicBillingApiUrl?: string
-  electronicBillingApiKey?: string
   companyNit: string
   companyName: string
   companyAddress: string
@@ -24,11 +22,6 @@ interface ElectronicBillingFormData {
   billingResolutionTo: string
   billingResolutionValidFrom: string
   billingResolutionValidTo: string
-  softwareId?: string
-  softwarePin?: string
-  technicalKey?: string
-  alegraEmail?: string
-  alegraToken?: string
   factusClientId?: string
   factusClientSecret?: string
   factusUsername?: string
@@ -45,9 +38,8 @@ interface ElectronicBillingConfigProps {
 export function ElectronicBillingConfig({ settings, onSave, isLoading }: ElectronicBillingConfigProps) {
   const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm<ElectronicBillingFormData>({
     defaultValues: {
-      electronicBillingProvider: settings?.electronicBillingProvider || 'FEG',
-      electronicBillingApiUrl: settings?.electronicBillingApiUrl || '',
-      electronicBillingApiKey: settings?.electronicBillingApiKey || '',
+      electronicBillingProvider: 'FACTUS',
+
       companyNit: settings?.companyNit || '',
       companyName: settings?.companyName || '',
       companyAddress: settings?.companyAddress || '',
@@ -69,11 +61,7 @@ export function ElectronicBillingConfig({ settings, onSave, isLoading }: Electro
           return isNaN(d.getTime()) ? format(new Date(new Date().setFullYear(new Date().getFullYear() + 1)), 'yyyy-MM-dd') : format(d, 'yyyy-MM-dd')
         } catch { return format(new Date(new Date().setFullYear(new Date().getFullYear() + 1)), 'yyyy-MM-dd') }
       })(),
-      softwareId: settings?.softwareId || '',
-      softwarePin: settings?.softwarePin || '',
-      technicalKey: settings?.technicalKey || '',
-      alegraEmail: settings?.alegraEmail || '',
-      alegraToken: settings?.alegraToken || '',
+
       factusClientId: settings?.factusClientId || '',
       factusClientSecret: settings?.factusClientSecret || '',
       factusUsername: settings?.factusUsername || '',
@@ -82,7 +70,6 @@ export function ElectronicBillingConfig({ settings, onSave, isLoading }: Electro
     }
   })
 
-  const provider = watch('electronicBillingProvider')
 
   const onSubmit = (data: ElectronicBillingFormData) => {
     onSave({
@@ -100,65 +87,16 @@ export function ElectronicBillingConfig({ settings, onSave, isLoading }: Electro
           Facturación Electrónica
         </CardTitle>
         <CardDescription>
-          Configura las credenciales y parámetros para la facturación electrónica DIAN (Factus / Alegra / DIAN Directo)
+          Configura las credenciales de Factus para la facturación electrónica DIAN
         </CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-          {/* Proveedor */}
-          <div className="space-y-2">
-            <Label htmlFor="electronicBillingProvider">Proveedor de Facturación Electrónica</Label>
-            <Select
-              value={watch('electronicBillingProvider')}
-              onValueChange={(value) => setValue('electronicBillingProvider', value)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Selecciona un proveedor" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="FACTUS">Factus (Recomendado)</SelectItem>
-                <SelectItem value="ALEGRA">Alegra</SelectItem>
-                <SelectItem value="FEG">Facturación Electrónica Gratuita (FEG)</SelectItem>
-                <SelectItem value="CUSTOM">Proveedor Personalizado</SelectItem>
-                <SelectItem value="DIAN_DIRECT">Integración Directa con DIAN</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* ALEGRA Configuration */}
-          {provider === 'ALEGRA' && (
-            <>
-              <div className="space-y-4 pt-4 border-t">
-                <h3 className="font-semibold">Credenciales de Alegra</h3>
-                <p className="text-sm text-muted-foreground">
-                  Ingresa el correo viculado a tu cuenta de Alegra y tu Token de API.
-                </p>
-                <div className="space-y-2">
-                  <Label htmlFor="alegraEmail">Correo Electrónico (Alegra)</Label>
-                  <Input
-                    id="alegraEmail"
-                    type="email"
-                    {...register('alegraEmail')}
-                    placeholder="ejemplo@empresa.com"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="alegraToken">Token API</Label>
-                  <Input
-                    id="alegraToken"
-                    type="password"
-                    {...register('alegraToken')}
-                    placeholder="Token de acceso..."
-                  />
-                </div>
-              </div>
-            </>
-          )}
+          {/* Proveedor (fijo en Factus) */}
+          <input type="hidden" {...register('electronicBillingProvider')} value="FACTUS" />
 
           {/* FACTUS Configuration */}
-          {provider === 'FACTUS' && (
-            <>
-              <div className="space-y-4 pt-4 border-t">
+          <div className="space-y-4 pt-4 border-t">
                 <h3 className="font-semibold">Credenciales de Factus</h3>
                 <p className="text-sm text-muted-foreground">
                   Ingresa las credenciales de tu cuenta de Factus (Halltec). Facturación electrónica DIAN certificada.
@@ -212,81 +150,7 @@ export function ElectronicBillingConfig({ settings, onSave, isLoading }: Electro
                     Modo Sandbox (pruebas) — Desactiva para producción
                   </Label>
                 </div>
-              </div>
-            </>
-          )}
-
-          {/* API URL y Key (solo para CUSTOM) */}
-          {provider === 'CUSTOM' && (
-            <>
-              <div className="space-y-2">
-                <Label htmlFor="electronicBillingApiUrl">URL de la API</Label>
-                <Input
-                  id="electronicBillingApiUrl"
-                  {...register('electronicBillingApiUrl')}
-                  placeholder="https://api.tu-proveedor.com"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="electronicBillingApiKey">API Key</Label>
-                <Input
-                  id="electronicBillingApiKey"
-                  type="password"
-                  {...register('electronicBillingApiKey')}
-                  placeholder="Tu API Key"
-                />
-              </div>
-            </>
-          )}
-
-          {/* Configuration for DIAN Direct */}
-          {provider === 'DIAN_DIRECT' && (
-            <>
-              <div className="space-y-4 pt-4 border-t">
-                <h3 className="font-semibold">Credenciales Técnicas DIAN</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="softwareId">ID de Software</Label>
-                    <Input
-                      id="softwareId"
-                      {...register('softwareId')}
-                      placeholder="Identificador del software habilitado"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="softwarePin">PIN de Software</Label>
-                    <Input
-                      id="softwarePin"
-                      type="password"
-                      {...register('softwarePin')}
-                      placeholder="PIN de 5 dígitos"
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="technicalKey">Clave Técnica (Rango de Numeración)</Label>
-                  <Input
-                    id="technicalKey"
-                    type="password"
-                    {...register('technicalKey')}
-                    placeholder="Clave para cálculo de CUFE"
-                  />
-                </div>
-
-                <div className="space-y-2 mt-4">
-                  <Label>Certificado Digital (.p12)</Label>
-                  <div className="p-4 border rounded-md bg-muted/50 text-center">
-                    <p className="text-sm text-muted-foreground mb-2">
-                      Para habilitar la firma digital, carga tu certificado .p12 otorgado por una entidad autorizada (ej. Andes SCD, GSE).
-                    </p>
-                    <Button variant="outline" size="sm" type="button" onClick={() => alert('La carga de archivos estará disponible pronto')}>
-                      Seleccionar Archivo .p12
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </>
-          )}
+          </div>
 
           {/* Datos de la Empresa */}
           <div className="space-y-4 pt-4 border-t">
