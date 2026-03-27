@@ -1166,6 +1166,7 @@ model TenantSettings {
   factusUsername               String?
   factusPassword              String?
   factusSandbox               Boolean? @default(true)
+  autoSendElectronic          Boolean? @default(false) // Auto-send invoices to Factus after POS sale
   // Suscripciones
   subscriptionTrialDays       Int?      @default(14) // Días de prueba
   subscriptionGracePeriodDays Int?      @default(7) // Días de gracia después de expiración

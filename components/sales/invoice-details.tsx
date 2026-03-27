@@ -641,22 +641,6 @@ export function InvoiceDetails({ invoice }: { invoice: any }) {
                       <QrCode className="h-4 w-4 mr-2" />
                       Enviar a Facturación Electrónica (DIAN)
                     </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() => {
-                        if (!settingsData?.settings?.electronicBillingProvider) {
-                          toast('Configuración incompleta: Por favor configura el proveedor de facturación electrónica en Ajustes.', 'error')
-                          router.push('/settings?tab=billing')
-                          return
-                        }
-                        if (confirm('¿Enviar esta factura a Alegra?')) {
-                          sendToAlegraMutation.mutate()
-                        }
-                      }}
-                      disabled={sendToAlegraMutation.isPending}
-                    >
-                      <Receipt className="h-4 w-4 mr-2" />
-                      Enviar a Alegra (Beta)
-                    </DropdownMenuItem>
                   </>
                 )}
                 {invoice.qrCode && (

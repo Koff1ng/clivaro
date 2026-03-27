@@ -27,6 +27,7 @@ interface ElectronicBillingFormData {
   factusUsername?: string
   factusPassword?: string
   factusSandbox?: boolean
+  autoSendElectronic?: boolean
 }
 
 interface ElectronicBillingConfigProps {
@@ -67,6 +68,7 @@ export function ElectronicBillingConfig({ settings, onSave, isLoading }: Electro
       factusUsername: settings?.factusUsername || '',
       factusPassword: settings?.factusPassword || '',
       factusSandbox: settings?.factusSandbox ?? true,
+      autoSendElectronic: settings?.autoSendElectronic ?? false,
     }
   })
 
@@ -149,6 +151,22 @@ export function ElectronicBillingConfig({ settings, onSave, isLoading }: Electro
                   <Label htmlFor="factusSandbox" className="text-sm cursor-pointer">
                     Modo Sandbox (pruebas) — Desactiva para producción
                   </Label>
+                </div>
+                <div className="flex items-center gap-3 p-4 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
+                  <input
+                    type="checkbox"
+                    id="autoSendElectronic"
+                    {...register('autoSendElectronic')}
+                    className="h-4 w-4 rounded border-gray-300"
+                  />
+                  <div>
+                    <Label htmlFor="autoSendElectronic" className="text-sm cursor-pointer font-medium">
+                      Envío automático después de cada venta
+                    </Label>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Si se activa, cada factura generada en el POS se enviará automáticamente a la DIAN vía Factus. Si está desactivado, deberás enviarlas manualmente desde el módulo de facturas.
+                    </p>
+                  </div>
                 </div>
           </div>
 
