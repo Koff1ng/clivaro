@@ -236,6 +236,34 @@ async function initializePostgresTenant(databaseUrl: string, tenantId: string, t
     await restClient.end()
   }
 
+  // Step 2.8: Sync PaymentMethod.dianCode column (added after initial schema)
+  console.log(`[STEP 2.8/4] Sincronizando PaymentMethod.dianCode en "${schemaName}"...`)
+  const pmClient = new Client({ connectionString: tenantSchemaUrl })
+  try {
+    await pmClient.connect()
+    await pmClient.query(`SET search_path TO "${schemaName}"`)
+    await pmClient.query(`
+      ALTER TABLE "PaymentMethod" ADD COLUMN IF NOT EXISTS "dianCode" TEXT NOT NULL DEFAULT 'ZZZ';
+    `)
+    // Auto-map DIAN codes for existing records that still have default ZZZ
+    await pmClient.query(`
+      UPDATE "PaymentMethod" SET "dianCode" = CASE
+        WHEN "type" = 'CASH' THEN '10'
+        WHEN "type" = 'CARD' THEN '48'
+        WHEN "type" = 'TRANSFER' THEN '47'
+        WHEN "type" = 'ELECTRONIC' THEN '31'
+        WHEN "type" = 'CREDIT' THEN '72'
+        ELSE 'ZZZ'
+      END
+      WHERE "dianCode" = 'ZZZ';
+    `)
+    console.log('[STEP 2.8/4] ✓ PaymentMethod.dianCode sincronizado')
+  } catch (pmErr: any) {
+    console.warn(`[TENANT INIT] Warning during PaymentMethod sync: ${pmErr.message}`)
+  } finally {
+    await pmClient.end()
+  }
+
   // Step 3: Seed initial data (admin user, warehouse) via PrismaClient
   console.log('[STEP 3/4] Creando datos iniciales (admin, roles, almacén)...')
 
@@ -290,18 +318,18 @@ async function initializePostgresTenant(databaseUrl: string, tenantId: string, t
 
     await tenantPrisma.paymentMethod.upsert({
       where: { name: 'Efectivo' },
-      update: {},
-      create: { name: 'Efectivo', type: 'CASH', active: true, color: '#10b981', icon: 'banknote' }
+      update: { dianCode: '10' },
+      create: { name: 'Efectivo', type: 'CASH', dianCode: '10', active: true, color: '#10b981', icon: 'banknote' }
     })
     await tenantPrisma.paymentMethod.upsert({
       where: { name: 'Tarjeta' },
-      update: {},
-      create: { name: 'Tarjeta', type: 'CARD', active: true, color: '#f59e0b', icon: 'credit-card' }
+      update: { dianCode: '48' },
+      create: { name: 'Tarjeta', type: 'CARD', dianCode: '48', active: true, color: '#f59e0b', icon: 'credit-card' }
     })
     await tenantPrisma.paymentMethod.upsert({
       where: { name: 'Transferencia' },
-      update: {},
-      create: { name: 'Transferencia', type: 'TRANSFER', active: true, color: '#3b82f6', icon: 'smartphone' }
+      update: { dianCode: '47' },
+      create: { name: 'Transferencia', type: 'TRANSFER', dianCode: '47', active: true, color: '#3b82f6', icon: 'smartphone' }
     })
     // NOTE: ABONO/CREDIT type is NOT created as a default payment method.
     // The credit/abono flow is handled internally by the backend when the cashier
