@@ -4,9 +4,11 @@ import { signXML } from './dian/signer'
 import { sendBill } from './dian/client'
 import JSZip from 'jszip'
 import { AlegraClient } from './alegra/client'
+import { FactusClient } from './factus/client'
+import type { FactusInvoiceRequest, FactusCustomer, FactusItem } from './factus/types'
 
 export interface ElectronicBillingConfig {
-  provider: 'FEG' | 'CUSTOM' | 'DIAN_DIRECT' | 'ALEGRA'
+  provider: 'FEG' | 'CUSTOM' | 'DIAN_DIRECT' | 'ALEGRA' | 'FACTUS'
   apiUrl?: string
   apiKey?: string
   companyNit: string
@@ -26,6 +28,12 @@ export interface ElectronicBillingConfig {
   environment?: '1' | '2' // 1: Production, 2: Test
   alegraEmail?: string
   alegraToken?: string
+  // Factus Fields
+  factusClientId?: string
+  factusClientSecret?: string
+  factusUsername?: string
+  factusPassword?: string
+  factusSandbox?: boolean
 }
 
 export interface InvoiceTaxData {
@@ -144,6 +152,8 @@ export async function sendToElectronicBilling(
         return await sendToDIANDirect(invoiceData, config)
       case 'ALEGRA':
         return await sendToAlegra(invoiceData, config)
+      case 'FACTUS':
+        return await sendToFactus(invoiceData, config)
       default:
         throw new Error('Proveedor de facturación electrónica no configurado')
     }
@@ -411,6 +421,116 @@ async function sendToDIANDirect(
     return {
       success: false,
       message: 'Error en proceso DIAN: ' + error.message
+    }
+  }
+}
+
+/**
+ * Integración con Factus (Halltec) - Facturación Electrónica
+ */
+async function sendToFactus(
+  invoiceData: InvoiceData,
+  config: ElectronicBillingConfig
+): Promise<ElectronicBillingResponse> {
+  if (!config.factusClientId || !config.factusClientSecret || !config.factusUsername || !config.factusPassword) {
+    throw new Error('Credenciales de Factus requeridas (Client ID, Client Secret, Usuario, Contraseña)')
+  }
+
+  const client = new FactusClient({
+    clientId: config.factusClientId,
+    clientSecret: config.factusClientSecret,
+    username: config.factusUsername,
+    password: config.factusPassword,
+    sandbox: config.factusSandbox ?? true,
+  })
+
+  try {
+    // Map customer ID type to Factus identification_document_id
+    const idTypeMap: Record<string, number> = {
+      'CC': 1,
+      'NIT': 6,
+      'CE': 2,
+      'PA': 7,
+      'TI': 3,
+      'RC': 11,
+      'NUIP': 1,
+    }
+
+    const customerIdType = invoiceData.customer.idType || (invoiceData.customer.isCompany ? 'NIT' : 'CC')
+    const nitParts = invoiceData.customer.nit.split('-')
+    const identificationNumber = nitParts[0]
+    const dv = nitParts.length > 1 ? nitParts[1] : undefined
+
+    const factusCustomer: FactusCustomer = {
+      identification_document_id: idTypeMap[customerIdType] || 1,
+      identification: identificationNumber,
+      dv: dv,
+      names: invoiceData.customer.name,
+      address: invoiceData.customer.address,
+      email: invoiceData.customer.email,
+      phone: invoiceData.customer.phone,
+      legal_organization_id: invoiceData.customer.isCompany ? 1 : 2,
+      tribute_id: invoiceData.customer.taxRegime === 'COMMON' ? 1 : 21,
+    }
+
+    // Map items to Factus format
+    const factusItems: FactusItem[] = invoiceData.items.map(item => {
+      // Determine tax rate from item taxes
+      const ivaRate = item.taxes.find(t => t.name.toUpperCase().includes('IVA'))?.rate || 0
+      const isExcluded = ivaRate === 0 ? 1 : 0
+
+      return {
+        code_reference: item.code || 'PROD',
+        name: item.description,
+        quantity: item.quantity,
+        discount_rate: item.discount > 0 ? (item.discount / (item.unitPrice * item.quantity)) * 100 : 0,
+        price: item.unitPrice,
+        tax_rate: ivaRate,
+        unit_measure_id: 70, // "Unidad" by default
+        standard_code_id: 1, // UNSPSC
+        is_excluded: isExcluded,
+        tribute_id: isExcluded ? 21 : 1, // 1 = IVA, 21 = No aplica
+      }
+    })
+
+    const factusRequest: FactusInvoiceRequest = {
+      document: invoiceData.typeCode || '01', // 01 = Factura de Venta
+      reference_code: invoiceData.number || `CLV-${Date.now()}`,
+      observation: `Factura ${invoiceData.number}`,
+      payment_form: 1, // 1 = Contado
+      payment_method_code: '10', // 10 = Efectivo
+      customer: factusCustomer,
+      items: factusItems,
+      send_email: !!invoiceData.customer.email,
+    }
+
+    console.log('[Factus] Creating invoice with payload:', JSON.stringify(factusRequest, null, 2))
+    const factusResponse = await client.createInvoice(factusRequest)
+
+    if (factusResponse.data?.bill) {
+      const bill = factusResponse.data.bill
+      return {
+        success: true,
+        cufe: bill.cufe,
+        qrCode: bill.qr,
+        status: bill.status === 'Validado' ? 'ACCEPTED' : 'PENDING',
+        message: `Factura ${bill.number} creada exitosamente en Factus`,
+        response: factusResponse,
+      }
+    }
+
+    return {
+      success: true,
+      message: factusResponse.message || 'Factura enviada a Factus',
+      response: factusResponse,
+    }
+
+  } catch (error: any) {
+    console.error('[Factus] Error:', error)
+    return {
+      success: false,
+      message: error.message || 'Error al enviar factura a Factus',
+      errors: [error.message],
     }
   }
 }
