@@ -572,6 +572,35 @@ export function GeneralConfig({ settings, onSave, isLoading, initialTab = 'ident
                   onClose={() => setShowTicketEditor(false)}
                 />
               </div>
+              {/* Save Button Footer */}
+              <div className="sticky bottom-0 bg-white border-t p-4 flex items-center justify-between rounded-b-[2rem] shadow-[0_-4px_12px_rgba(0,0,0,0.05)]">
+                <p className="text-xs text-muted-foreground">
+                  Los cambios se aplican a la tirilla y al formato PDF.
+                </p>
+                <div className="flex gap-3">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="rounded-full px-6"
+                    onClick={() => setShowTicketEditor(false)}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button
+                    type="button"
+                    className="rounded-full bg-green-600 hover:bg-green-700 font-bold px-8"
+                    disabled={isLoading}
+                    onClick={() => {
+                      handleSubmit(onSubmit)()
+                      toast('Diseño de factura guardado correctamente', 'success')
+                      setShowTicketEditor(false)
+                    }}
+                  >
+                    {isLoading ? <Loader2 className="animate-spin h-4 w-4 mr-2" /> : <Save size={16} className="mr-2" />}
+                    Guardar Cambios
+                  </Button>
+                </div>
+              </div>
             </DialogContent>
           </Dialog>
         )}
