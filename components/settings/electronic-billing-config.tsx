@@ -1,12 +1,13 @@
 'use client'
 
+import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Receipt, Loader2, ExternalLink } from 'lucide-react'
+import { Receipt, Loader2, ExternalLink, Eye, EyeOff } from 'lucide-react'
 import { format } from 'date-fns'
 
 interface ElectronicBillingFormData {
@@ -37,6 +38,9 @@ interface ElectronicBillingConfigProps {
 }
 
 export function ElectronicBillingConfig({ settings, onSave, isLoading }: ElectronicBillingConfigProps) {
+  const [showSecret, setShowSecret] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
+
   const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm<ElectronicBillingFormData>({
     defaultValues: {
       electronicBillingProvider: 'FACTUS',
@@ -114,12 +118,23 @@ export function ElectronicBillingConfig({ settings, onSave, isLoading }: Electro
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="factusClientSecret">Client Secret</Label>
-                    <Input
-                      id="factusClientSecret"
-                      type="password"
-                      {...register('factusClientSecret')}
-                      placeholder="Client Secret de Factus"
-                    />
+                    <div className="relative">
+                      <Input
+                        id="factusClientSecret"
+                        type={showSecret ? 'text' : 'password'}
+                        {...register('factusClientSecret')}
+                        placeholder="Client Secret de Factus"
+                        className="pr-10"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowSecret(!showSecret)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                        tabIndex={-1}
+                      >
+                        {showSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
@@ -133,12 +148,23 @@ export function ElectronicBillingConfig({ settings, onSave, isLoading }: Electro
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="factusPassword">Contraseña</Label>
-                    <Input
-                      id="factusPassword"
-                      type="password"
-                      {...register('factusPassword')}
-                      placeholder="Contraseña de Factus"
-                    />
+                    <div className="relative">
+                      <Input
+                        id="factusPassword"
+                        type={showPassword ? 'text' : 'password'}
+                        {...register('factusPassword')}
+                        placeholder="Contraseña de Factus"
+                        className="pr-10"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                        tabIndex={-1}
+                      >
+                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
                   </div>
                 </div>
                 <div className="flex items-center gap-3 p-4 rounded-lg bg-muted/50">

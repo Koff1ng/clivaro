@@ -208,7 +208,7 @@ async function sendToFactus(
         unit_measure_id: 70, // "Unidad" by default
         standard_code_id: 1, // UNSPSC
         is_excluded: isExcluded,
-        tribute_id: isExcluded ? 21 : 1, // 1 = IVA, 21 = No aplica
+        tribute_id: 1, // Always IVA (1) — is_excluded flag handles exclusion
       }
     })
 
