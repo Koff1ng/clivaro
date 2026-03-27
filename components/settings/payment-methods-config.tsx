@@ -23,18 +23,20 @@ interface PaymentMethod {
     icon?: string
 }
 
-// DIAN Payment Method Codes (Resolución 000012 de 2021)
+// DIAN Medios de Pago (Resolución 000012/2021 – Anexo Técnico FE 1.9)
 const DIAN_PAYMENT_CODES = [
-    { code: '10', label: 'Efectivo', types: ['CASH'] },
-    { code: '42', label: 'Consignación Bancaria', types: ['TRANSFER'] },
-    { code: '47', label: 'Transferencia Débito Bancaria', types: ['TRANSFER', 'ELECTRONIC'] },
-    { code: '48', label: 'Tarjeta Crédito', types: ['CARD'] },
-    { code: '49', label: 'Tarjeta Débito', types: ['CARD'] },
-    { code: '20', label: 'Cheque', types: ['CHECK'] },
-    { code: '31', label: 'Transferencia Electrónica', types: ['ELECTRONIC'] },
-    { code: '71', label: 'Bonos / Voucher', types: ['ELECTRONIC'] },
-    { code: '72', label: 'Nota Crédito', types: ['CREDIT'] },
-    { code: 'ZZZ', label: 'Otro / No definido', types: ['ELECTRONIC', 'CASH', 'CARD', 'TRANSFER', 'CREDIT'] },
+    { code: '10', label: 'Efectivo', defaultType: 'CASH' },
+    { code: '20', label: 'Cheque', defaultType: 'TRANSFER' },
+    { code: '31', label: 'Transferencia Débito Bancaria', defaultType: 'TRANSFER' },
+    { code: '32', label: 'Débito ACH', defaultType: 'ELECTRONIC' },
+    { code: '42', label: 'Consignación Bancaria', defaultType: 'TRANSFER' },
+    { code: '47', label: 'Transferencia Bancaria ACH', defaultType: 'TRANSFER' },
+    { code: '48', label: 'Tarjeta Crédito', defaultType: 'CARD' },
+    { code: '49', label: 'Tarjeta Débito', defaultType: 'CARD' },
+    { code: '60', label: 'Nota Promisoria', defaultType: 'CREDIT' },
+    { code: '71', label: 'Bonos / Voucher', defaultType: 'ELECTRONIC' },
+    { code: '72', label: 'Vale / Nota Crédito', defaultType: 'CREDIT' },
+    { code: 'ZZZ', label: 'Medio no definido', defaultType: 'ELECTRONIC' },
 ]
 
 const PREDEFINED_COLORS = [
@@ -279,12 +281,28 @@ export function PaymentMethodsConfig() {
 
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <Label htmlFor="type">Tipo de Pago</Label>
-                                    <Select value={type} onValueChange={(v) => {
-                                        setType(v)
-                                        const suggested = DIAN_PAYMENT_CODES.find(c => c.types.includes(v) && c.code !== 'ZZZ')
-                                        if (suggested) setDianCode(suggested.code)
+                                    <Label>Medio de Pago DIAN</Label>
+                                    <Select value={dianCode} onValueChange={(v) => {
+                                        setDianCode(v)
+                                        const found = DIAN_PAYMENT_CODES.find(c => c.code === v)
+                                        if (found) setType(found.defaultType)
                                     }}>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Seleccionar medio DIAN" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {DIAN_PAYMENT_CODES.map(c => (
+                                                <SelectItem key={c.code} value={c.code}>
+                                                    {c.code} – {c.label}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    <p className="text-[10px] text-muted-foreground">Código enviado a la DIAN en facturación electrónica.</p>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="type">Tipo Interno</Label>
+                                    <Select value={type} onValueChange={setType}>
                                         <SelectTrigger>
                                             <SelectValue placeholder="Tipo" />
                                         </SelectTrigger>
@@ -296,21 +314,7 @@ export function PaymentMethodsConfig() {
                                             <SelectItem value="CREDIT">Crédito</SelectItem>
                                         </SelectContent>
                                     </Select>
-                                </div>
-                                <div className="space-y-2">
-                                    <Label>Código DIAN (Medio de Pago)</Label>
-                                    <Select value={dianCode} onValueChange={setDianCode}>
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="Código DIAN" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {DIAN_PAYMENT_CODES.map(c => (
-                                                <SelectItem key={c.code} value={c.code}>
-                                                    {c.code} - {c.label}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
+                                    <p className="text-[10px] text-muted-foreground">Se asigna automáticamente según el medio DIAN.</p>
                                 </div>
                             </div>
 
