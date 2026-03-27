@@ -2,7 +2,7 @@
 
 import { Logo } from '@/components/ui/logo'
 import { Button } from '@/components/ui/button'
-import { ArrowLeft, Download, ChevronRight, ShieldCheck, Scale, FileText, Lock, UserCheck, AlertTriangle, CreditCard, Ban, RefreshCw, Gavel, HandshakeIcon, Cloud, Receipt } from 'lucide-react'
+import { ArrowLeft, Download, ChevronRight, ShieldCheck, Scale, FileText, Lock, UserCheck, AlertTriangle, CreditCard, Ban, RefreshCw, Gavel, Cloud, Receipt } from 'lucide-react'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { Loader2 } from 'lucide-react'
@@ -25,7 +25,7 @@ export default function TermsPage() {
         { id: 'garantias', title: '11. Garantías', icon: ShieldCheck },
         { id: 'fuerza-mayor', title: '12. Fuerza Mayor', icon: AlertTriangle },
         { id: 'modificaciones', title: '13. Modificaciones al Contrato', icon: Scale },
-        { id: 'cesion', title: '14. Cesión y Subcontratación', icon: HandshakeIcon },
+        { id: 'cesion', title: '14. Cesión y Subcontratación', icon: UserCheck },
         { id: 'ley', title: '15. Ley Aplicable y Jurisdicción', icon: Gavel },
         { id: 'contacto', title: '16. Contacto y Notificaciones', icon: UserCheck },
     ]
