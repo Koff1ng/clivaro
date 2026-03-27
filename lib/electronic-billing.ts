@@ -201,7 +201,9 @@ async function sendToFactus(
       )
       const incTax = item.taxes.find(t =>
         t.name.toUpperCase().includes('INC') ||
-        (t as any).type === 'INC'
+        t.name.toUpperCase().includes('IMPOCONSUMO') ||
+        (t as any).type === 'INC' ||
+        (t as any).type === 'ICO'
       )
 
       // Determine IVA rate and exclusion status per Colombian DIAN rules:
@@ -234,7 +236,9 @@ async function sendToFactus(
           (t as any).type === 'RETENTION'
         )
         .map(t => ({
-          code: (t as any).type === 'RETE_ICA' ? '03' : (t as any).type === 'RETE_IVA' ? '05' : '06',
+          code: ((t as any).type === 'RETEICA' || (t as any).type === 'RETE_ICA') ? '03'
+            : ((t as any).type === 'RETEIVA' || (t as any).type === 'RETE_IVA') ? '05'
+            : '06',
           withholding_tax_rate: Math.abs(t.rate),
         }))
 

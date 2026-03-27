@@ -68,20 +68,32 @@ export async function POST(
                 const ivaTax = item.lineTaxes?.find((t: any) =>
                     t.name?.toUpperCase().includes('IVA')
                 )
+                const incTax = item.lineTaxes?.find((t: any) =>
+                    t.name?.toUpperCase().includes('INC') ||
+                    t.name?.toUpperCase().includes('IMPOCONSUMO')
+                )
                 const ivaRate = ivaTax?.rate || 0
                 const hasIvaTax = !!ivaTax
+
+                // Determine tribute: 1=IVA (default), 4=INC
+                let tributeId = 1
+                let taxRate = ivaRate
+                if (!hasIvaTax && incTax) {
+                    tributeId = 4
+                    taxRate = incTax.rate || 0
+                }
 
                 return {
                     code_reference: item.product?.sku || item.productId || 'PROD',
                     name: item.product?.name || 'Producto',
                     quantity: item.quantity,
-                    discount_rate: item.discount || 0, // H4 FIX: use original item discount
+                    discount_rate: item.discount || 0,
                     price: item.unitPrice,
-                    tax_rate: ivaRate,
+                    tax_rate: taxRate,
                     unit_measure_id: 70,
                     standard_code_id: 1,
                     is_excluded: hasIvaTax ? 0 : 1,
-                    tribute_id: 1, // IVA
+                    tribute_id: tributeId,
                 }
             })
 

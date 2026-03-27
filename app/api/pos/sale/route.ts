@@ -640,6 +640,7 @@ export async function POST(request: Request) {
                   taxRateId: lt.taxRateId,
                   name: lt.name || lt.taxRate?.name || 'IVA',
                   rate: lt.rate || lt.taxRate?.rate || 0,
+                  type: lt.taxRate?.type || 'IVA',
                   baseAmount: lt.baseAmount || 0,
                   taxAmount: lt.taxAmount || 0,
                 }))
