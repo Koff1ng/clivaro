@@ -1,5 +1,7 @@
 'use client'
 
+import { FOOTER_TEMPLATES, type FooterTemplate } from '@/components/settings/ticket-editor'
+
 import { formatCurrency, formatDate } from '@/lib/utils'
 
 interface InvoicePrintProps {
@@ -50,6 +52,8 @@ export function InvoicePrint({ invoice, settings }: InvoicePrintProps) {
   const showProductCount = td.showProductCount || false
   const showUnitOfMeasure = td.showUnitOfMeasure || false
   const customFooterText = td.customFooterText || ''
+  const footerTemplate: FooterTemplate = td.footerTemplate || 'general'
+  const footerText = td.footerText || '¡Gracias por su compra!'
   const logoUrl = (() => {
     try {
       if (settings?.customSettings) {
@@ -392,10 +396,12 @@ export function InvoicePrint({ invoice, settings }: InvoicePrintProps) {
 
         <div style={{ marginTop: '6px', fontSize: '10px' }}>
           <div>{companyRegime}</div>
-          <div>La presente factura se asimila en todos sus efectos</div>
-          <div>legales a la letra de cambio (Art. 774 C.C.).</div>
-          {customFooterText && <div style={{ marginTop: '4px', fontStyle: 'italic' }}>{customFooterText}</div>}
-          <div className="bold" style={{ marginTop: '4px' }}>¡GRACIAS POR SU COMPRA!</div>
+          <div style={{ fontSize: '8px', color: '#555', marginTop: '4px', lineHeight: '1.3' }}>
+            {footerTemplate === 'custom'
+              ? (customFooterText || 'Texto legal personalizado')
+              : FOOTER_TEMPLATES[footerTemplate]?.text || FOOTER_TEMPLATES.general.text}
+          </div>
+          <div className="bold" style={{ marginTop: '6px' }}>{footerText}</div>
           {(showLineCount || showProductCount) && (
             <div style={{ marginTop: '4px', fontSize: '9px' }}>
               {showLineCount && <div>Total líneas: {(invoice.items || []).length}</div>}
@@ -403,7 +409,7 @@ export function InvoicePrint({ invoice, settings }: InvoicePrintProps) {
             </div>
           )}
           <div style={{ marginTop: '4px' }}>Conserve esta factura</div>
-          <div style={{ fontSize: '8px', color: '#555', marginTop: '2px' }}>Documento generado electrónicamente</div>
+          <div style={{ fontSize: '8px', color: '#555', marginTop: '2px' }}>Representación impresa de la factura electrónica</div>
         </div>
 
         {isElectronic && showCufe && (

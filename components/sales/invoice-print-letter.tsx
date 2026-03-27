@@ -1,6 +1,7 @@
 'use client'
 
 import { formatCurrency, formatDate } from '@/lib/utils'
+import { FOOTER_TEMPLATES, type FooterTemplate } from '@/components/settings/ticket-editor'
 
 interface InvoicePrintLetterProps {
     invoice: any
@@ -150,6 +151,8 @@ export function InvoicePrintLetter({ invoice, settings }: InvoicePrintLetterProp
     const showCufe = td.showCufe !== false
     const showLogo = td.showLogo !== false
     const customFooterText = td.customFooterText || ''
+    const footerTemplate: FooterTemplate = td.footerTemplate || 'general'
+    const footerTextPhrase = td.footerText || '¡Gracias por su compra!'
 
     return (
         <div className="letter-print-content p-8 font-sans text-sm bg-white" style={{ maxWidth: '100%' }}>
@@ -408,8 +411,11 @@ export function InvoicePrintLetter({ invoice, settings }: InvoicePrintLetterProp
             {/* ======= NOTAS LEGALES ======= */}
             <div className="text-xs text-center text-gray-600 border-t pt-4 space-y-1">
                 <div className="font-medium">INFORMACIÓN LEGAL</div>
-                <div>La presente factura se asimila en todos sus efectos legales a la letra de cambio (Art. 774 C.C.).</div>
-                {customFooterText && <div className="italic mt-2">{customFooterText}</div>}
+                <div className="text-[10px] leading-tight max-w-xl mx-auto">
+                    {footerTemplate === 'custom'
+                        ? (customFooterText || 'Texto legal personalizado')
+                        : FOOTER_TEMPLATES[footerTemplate]?.text || FOOTER_TEMPLATES.general.text}
+                </div>
                 <div className="flex justify-center gap-4 mt-2">
                     <span>{process.env.NEXT_PUBLIC_GRAN_CONTRIBUYENTE === 'true' ? 'Grandes Contribuyentes' : 'No somos Grandes Contribuyentes'}</span>
                     <span>|</span>
@@ -419,8 +425,8 @@ export function InvoicePrintLetter({ invoice, settings }: InvoicePrintLetterProp
 
             {/* ======= FOOTER ======= */}
             <div className="text-center mt-6 pt-4 border-t">
-                <div className="text-lg font-bold text-gray-700">¡Gracias por su compra!</div>
-                <div className="text-xs text-gray-500 mt-1">Conserve esta factura como documento soporte de sus compras</div>
+                <div className="text-lg font-bold text-gray-700">{footerTextPhrase}</div>
+                <div className="text-xs text-gray-500 mt-1">Representación impresa de la factura electrónica</div>
             </div>
         </div>
     )

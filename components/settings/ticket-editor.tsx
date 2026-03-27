@@ -19,6 +19,41 @@ import {
 import { cn } from '@/lib/utils'
 import { Logo } from '@/components/ui/logo'
 
+export type FooterTemplate = 'general' | 'restaurant' | 'retail' | 'services' | 'pharmacy' | 'custom'
+
+export const FOOTER_TEMPLATES: Record<FooterTemplate, { label: string; description: string; text: string }> = {
+    general: {
+        label: 'General (Estándar)',
+        description: 'Texto legal básico para cualquier tipo de negocio',
+        text: 'Este documento se asimila en todos sus efectos a una letra de cambio de conformidad con el Art. 774 del código de comercio. Autorizo que en caso de incumplimiento de esta obligación sea reportado a las centrales de riesgo, se cobrarán intereses por mora.',
+    },
+    restaurant: {
+        label: 'Restaurante / Bar',
+        description: 'Incluye aviso de propina voluntaria y servicio',
+        text: 'La propina sugerida del 10% es completamente voluntaria (Ley 1935/2018). No se incluye propina en el total. Este documento se asimila en todos sus efectos a una letra de cambio (Art. 774 C.C.). Productos preparados para consumo inmediato. Aplican condiciones de higiene y manipulación de alimentos.',
+    },
+    retail: {
+        label: 'Retail / Ferretería',
+        description: 'Incluye política de devoluciones y garantías',
+        text: 'Cambios y devoluciones: 30 días con factura original y producto en su empaque. Garantía según fabricante. Este documento se asimila en todos sus efectos a una letra de cambio (Art. 774 C.C.). Los productos están sujetos a las condiciones de garantía del fabricante.',
+    },
+    services: {
+        label: 'Servicios Profesionales',
+        description: 'Para consultorías, asesorías y servicios técnicos',
+        text: 'Servicio prestado conforme a las condiciones pactadas. Este documento se asimila en todos sus efectos a una letra de cambio (Art. 774 C.C.). El incumplimiento de pago generará intereses moratorios conforme a la ley.',
+    },
+    pharmacy: {
+        label: 'Droguería / Farmacia',
+        description: 'Incluye aviso de medicamentos y devoluciones limitadas',
+        text: 'Medicamentos: no se aceptan devoluciones por bioseguridad (Decreto 677/1995). Productos de venta libre. Este documento se asimila en todos sus efectos a una letra de cambio (Art. 774 C.C.). Verifique el producto antes de retirarse del establecimiento.',
+    },
+    custom: {
+        label: 'Personalizado',
+        description: 'Escribe tu propio texto legal de pie de página',
+        text: '',
+    },
+}
+
 export interface TicketDesignSettings {
     templateStyle: 'classic' | 'modern' | 'minimal'
     headerAlignment: 'left' | 'center' | 'right'
@@ -38,6 +73,7 @@ export interface TicketDesignSettings {
     showQr: boolean
     showCufe: boolean
     footerText: string
+    footerTemplate: FooterTemplate
     separator: 'dashes' | 'dots' | 'lines'
     // Font settings for thermal print legibility
     fontSize: 'small' | 'medium' | 'large'
@@ -79,6 +115,7 @@ const defaultSettings: TicketDesignSettings = {
     showQr: true,
     showCufe: true,
     footerText: 'Gracias por su compra',
+    footerTemplate: 'general',
     separator: 'dashes',
     // Font defaults for better thermal print legibility
     fontSize: 'medium',
@@ -391,36 +428,84 @@ export function TicketEditor({ settings: initialSettings, companyInfo, onChange,
                     </p>
                 </div>
 
-                {/* Customization */}
+                {/* Footer Template */}
                 <div className="space-y-3 pt-4 border-t">
-                    <Label className="font-medium">Personalización de facturas</Label>
+                    <Label className="font-medium">Plantilla legal de pie de página</Label>
                     <p className="text-xs text-muted-foreground">
-                        Dale tu toque a la parte final de tus facturas con una frase, imagen o ambas.
+                        Selecciona el tipo de pie de página legal según tu tipo de negocio.
                     </p>
-
                     <div className="space-y-2">
-                        <Label className="text-xs">Frase Personalizada:</Label>
-                        <Textarea
-                            value={settings.customFooterText}
-                            onChange={(e) => updateSetting('customFooterText', e.target.value.slice(0, 200))}
-                            placeholder="Procura que quede en máximo 200 caracteres"
-                            className="resize-none h-20"
-                            maxLength={200}
-                        />
-                        <p className="text-xs text-muted-foreground text-right">
-                            {settings.customFooterText.length} de 200 caracteres
-                        </p>
+                        {(Object.entries(FOOTER_TEMPLATES) as [FooterTemplate, typeof FOOTER_TEMPLATES[FooterTemplate]][]).map(([key, tmpl]) => (
+                            <button
+                                key={key}
+                                type="button"
+                                onClick={() => {
+                                    updateSetting('footerTemplate', key)
+                                    if (key !== 'custom') {
+                                        updateSetting('customFooterText', '')
+                                    }
+                                }}
+                                className={cn(
+                                    "w-full text-left p-3 rounded-lg border-2 transition-all",
+                                    settings.footerTemplate === key
+                                        ? "border-blue-500 bg-blue-50"
+                                        : "border-gray-200 hover:border-gray-300"
+                                )}
+                            >
+                                <div className="flex items-center justify-between">
+                                    <div className="font-semibold text-sm">{tmpl.label}</div>
+                                    {settings.footerTemplate === key && <div className="text-blue-600 text-xs font-bold">✓ Activo</div>}
+                                </div>
+                                <div className="text-[10px] text-muted-foreground mt-1">{tmpl.description}</div>
+                            </button>
+                        ))}
                     </div>
 
-                    <div className="space-y-2">
-                        <Label className="text-xs">Mostrar código QR</Label>
-                        <div className="flex items-center gap-2">
-                            <Switch
-                                checked={settings.showQr}
-                                onCheckedChange={(checked) => updateSetting('showQr', checked)}
+                    {settings.footerTemplate === 'custom' && (
+                        <div className="space-y-2 mt-3">
+                            <Label className="text-xs">Tu texto legal personalizado:</Label>
+                            <Textarea
+                                value={settings.customFooterText}
+                                onChange={(e) => updateSetting('customFooterText', e.target.value.slice(0, 500))}
+                                placeholder="Escribe aquí tu texto legal o aviso personalizado (máx. 500 caracteres)"
+                                className="resize-none h-24"
+                                maxLength={500}
                             />
-                            <span className="text-sm">Mostrar QR en el ticket</span>
+                            <p className="text-xs text-muted-foreground text-right">
+                                {settings.customFooterText.length} de 500 caracteres
+                            </p>
                         </div>
+                    )}
+                </div>
+
+                {/* Customization */}
+                <div className="space-y-3 pt-4 border-t">
+                    <Label className="font-medium">Personalización adicional</Label>
+
+                    <div className="space-y-2">
+                        <Label className="text-xs">Frase de agradecimiento:</Label>
+                        <Input
+                            value={settings.footerText}
+                            onChange={(e) => updateSetting('footerText', e.target.value.slice(0, 100))}
+                            placeholder="Ej: ¡Gracias por su compra!"
+                            maxLength={100}
+                        />
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                        <Switch
+                            checked={settings.showQr}
+                            onCheckedChange={(checked) => updateSetting('showQr', checked)}
+                        />
+                        <span className="text-sm">Mostrar código QR</span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                        <Switch
+                            checked={settings.showCufe}
+                            onCheckedChange={(checked) => updateSetting('showCufe', checked)}
+                        />
+                        <span className="text-sm">Mostrar CUFE (factura electrónica)</span>
                     </div>
                 </div>
             </div>
@@ -434,15 +519,14 @@ export function TicketEditor({ settings: initialSettings, companyInfo, onChange,
                 <div className="flex-1 flex justify-center overflow-y-auto bg-gray-100 rounded-lg p-4">
                     <div
                         className={cn(
-                            "bg-white shadow-lg font-mono",
+                            "bg-white shadow-lg",
+                            settings.templateStyle === 'modern' ? "font-sans" : "font-mono",
+                            settings.templateStyle === 'modern' && "rounded-lg",
                             settings.paperSize === 80 ? "w-[300px]" : "w-[220px]",
-                            // Font size
                             settings.fontSize === 'small' && "text-[10px]",
                             settings.fontSize === 'medium' && "text-xs",
                             settings.fontSize === 'large' && "text-sm",
-                            // Font weight
                             settings.fontWeight === 'bold' && "font-semibold",
-                            // Line spacing
                             settings.lineSpacing === 'compact' && "leading-tight",
                             settings.lineSpacing === 'normal' && "leading-normal",
                             settings.lineSpacing === 'relaxed' && "leading-relaxed"
@@ -454,9 +538,10 @@ export function TicketEditor({ settings: initialSettings, companyInfo, onChange,
                             paddingBottom: '16px'
                         }}
                     >
-                        {/* Header */}
+                        {/* ═══ HEADER ═══ */}
                         <div className={cn(
-                            "space-y-1 pb-2",
+                            "pb-2",
+                            settings.templateStyle === 'modern' ? 'space-y-2 px-3' : 'space-y-1',
                             settings.headerAlignment === 'left' && 'text-left',
                             settings.headerAlignment === 'center' && 'text-center',
                             settings.headerAlignment === 'right' && 'text-right'
@@ -473,37 +558,65 @@ export function TicketEditor({ settings: initialSettings, companyInfo, onChange,
                                 settings.headerFontSize === 'xlarge' && "text-lg"
                             )}>{companyInfo.name || 'NOMBRE DE LA EMPRESA'}</div>
                             <div>NIT {companyInfo.nit || '900.000.000-1'}</div>
-                            <div>{companyInfo.address || 'Calle 123 #45-67'}, {companyInfo.city || 'Bogotá'}</div>
-                            <div>Teléfono: {companyInfo.phone || '+57 300 123 4567'}</div>
-                            {companyInfo.email && <div>{companyInfo.email}</div>}
-                            <div>Régimen: {companyInfo.regime || 'Responsable de IVA'}</div>
+                            {settings.templateStyle !== 'minimal' && (
+                                <>
+                                    <div>{companyInfo.address || 'Calle 123 #45-67'}, {companyInfo.city || 'Bogotá'}</div>
+                                    <div>Tel: {companyInfo.phone || '+57 300 123 4567'}</div>
+                                    {companyInfo.email && <div>{companyInfo.email}</div>}
+                                </>
+                            )}
+                            <div className="text-[9px]">{companyInfo.regime || 'Responsable de IVA'}</div>
                         </div>
 
-                        <div className="text-center font-bold py-2 border-y border-dashed my-2">
-                            Factura electrónica de venta<br />
-                            N° {sampleInvoice.number}
+                        {/* ═══ TITLE ═══ */}
+                        {settings.templateStyle === 'modern' ? (
+                            <div className="text-center font-bold py-2 border-y-2 border-black my-2 bg-black text-white">
+                                FACTURA ELECTRÓNICA<br />
+                                N° {sampleInvoice.number}
+                            </div>
+                        ) : settings.templateStyle === 'minimal' ? (
+                            <div className="text-center font-bold py-2 border-y border-gray-300 my-2 text-[11px]">
+                                FE N° {sampleInvoice.number}
+                            </div>
+                        ) : (
+                            <div className="text-center font-bold py-2 border-y border-dashed my-2">
+                                Factura electrónica de venta<br />
+                                N° {sampleInvoice.number}
+                            </div>
+                        )}
+
+                        {/* ═══ INVOICE INFO ═══ */}
+                        <div className={cn(
+                            "py-2 text-[10px]",
+                            settings.templateStyle === 'modern' ? 'space-y-1 px-2 bg-gray-50 rounded-md my-1' : 'space-y-1'
+                        )}>
+                            <div>Fecha: {sampleInvoice.date}</div>
+                            <div>Pago: {sampleInvoice.paymentMethod}</div>
+                            {settings.templateStyle !== 'minimal' && <div>Vendedor: {sampleInvoice.seller}</div>}
+                            <div>Venc.: {sampleInvoice.dueDate}</div>
                         </div>
 
-                        {/* Invoice Info */}
-                        <div className="space-y-1 py-2 text-[10px]">
-                            <div>Fecha de emisión: {sampleInvoice.date}</div>
-                            <div>Forma de pago: {sampleInvoice.paymentMethod}</div>
-                            <div>Vendedor: {sampleInvoice.seller}</div>
-                            <div>Vencimiento: {sampleInvoice.dueDate}</div>
-                        </div>
-
-                        <div className="py-2 border-t border-dashed">
+                        {/* ═══ CUSTOMER ═══ */}
+                        <div className={cn(
+                            "py-2",
+                            settings.templateStyle === 'classic' && 'border-t border-dashed',
+                            settings.templateStyle === 'modern' && 'border-t-2 border-gray-200 px-2',
+                            settings.templateStyle === 'minimal' && 'border-t border-gray-200'
+                        )}>
                             <div className="font-bold">{sampleInvoice.customer.name}</div>
-                            <div className="text-[10px]">Teléfono: {sampleInvoice.customer.phone}</div>
-                            <div className="text-[10px]">{sampleInvoice.customer.id}</div>
+                            <div className="text-[10px]">Tel: {sampleInvoice.customer.phone}</div>
+                            {settings.templateStyle !== 'minimal' && <div className="text-[10px]">{sampleInvoice.customer.id}</div>}
                         </div>
 
                         <div className="text-[10px] py-1">{getSeparator()}</div>
 
-                        {/* Items */}
+                        {/* ═══ ITEMS ═══ */}
                         <div className="space-y-2 py-2">
                             {sampleInvoice.items.map((item, idx) => (
-                                <div key={idx} className="text-[10px]">
+                                <div key={idx} className={cn(
+                                    "text-[10px]",
+                                    settings.templateStyle === 'modern' && 'px-1 py-1 rounded hover:bg-gray-50'
+                                )}>
                                     {settings.groupData ? (
                                         <div>
                                             <div>{idx + 1}. {item.name}</div>
@@ -515,14 +628,15 @@ export function TicketEditor({ settings: initialSettings, companyInfo, onChange,
                                     ) : (
                                         <div className="flex justify-between">
                                             <div className="flex-1">
-                                                <span>{idx + 1}. </span>
+                                                <span>{settings.templateStyle !== 'minimal' ? `${idx + 1}. ` : ''}</span>
                                                 <span>{item.name}</span>
                                                 {settings.showUnitOfMeasure && <span className="text-gray-500"> (UN)</span>}
-                                                <div className="pl-3 text-gray-600">{item.sku}</div>
+                                                {settings.showDescription && <div className="pl-3 text-gray-500 text-[9px]">Producto de alta calidad</div>}
+                                                {settings.templateStyle === 'classic' && <div className="pl-3 text-gray-600">{item.sku}</div>}
                                             </div>
                                             <div className="text-right whitespace-nowrap">
                                                 <div>{item.qty} {settings.showUnitPrice && <span>x {formatCurrency(item.price)}</span>}</div>
-                                                {item.discount && <div className="text-red-500">Descuento: -{formatCurrency(item.discount)}</div>}
+                                                {item.discount && <div className="text-red-500">{settings.templateStyle === 'minimal' ? `-${formatCurrency(item.discount)}` : `Desc: -${formatCurrency(item.discount)}`}</div>}
                                             </div>
                                         </div>
                                     )}
@@ -532,9 +646,12 @@ export function TicketEditor({ settings: initialSettings, companyInfo, onChange,
 
                         <div className="text-[10px] py-1">{getSeparator()}</div>
 
-                        {/* Totals */}
+                        {/* ═══ TOTALS ═══ */}
                         {settings.showTotals && (
-                            <div className="space-y-1 py-2 text-[11px]">
+                            <div className={cn(
+                                "space-y-1 py-2 text-[11px]",
+                                settings.templateStyle === 'modern' && 'bg-gray-50 px-2 rounded-md'
+                            )}>
                                 <div className="flex justify-between">
                                     <span>Subtotal:</span>
                                     <span>{formatCurrency(sampleInvoice.subtotal)}</span>
@@ -543,47 +660,54 @@ export function TicketEditor({ settings: initialSettings, companyInfo, onChange,
                                     <span>Descuento:</span>
                                     <span>-{formatCurrency(sampleInvoice.discount)}</span>
                                 </div>
-                                <div className="flex justify-between">
-                                    <span>Subtotal:</span>
-                                    <span>{formatCurrency(sampleInvoice.subtotal - sampleInvoice.discount)}</span>
-                                </div>
+                                {settings.templateStyle !== 'minimal' && (
+                                    <div className="flex justify-between">
+                                        <span>Base:</span>
+                                        <span>{formatCurrency(sampleInvoice.subtotal - sampleInvoice.discount)}</span>
+                                    </div>
+                                )}
                                 {sampleInvoice.taxes.map((tax, idx) => (
                                     <div key={idx} className="flex justify-between text-gray-600">
-                                        <span>Total {tax.name}:</span>
+                                        <span>{tax.name}:</span>
                                         <span>{formatCurrency(tax.amount)}</span>
                                     </div>
                                 ))}
-                                <div className="flex justify-between font-bold text-sm pt-1 border-t">
-                                    <span>Total:</span>
+                                <div className={cn(
+                                    "flex justify-between font-bold pt-1",
+                                    settings.templateStyle === 'modern' ? 'text-base border-t-2 border-black' : 'text-sm border-t'
+                                )}>
+                                    <span>TOTAL:</span>
                                     <span>{formatCurrency(sampleInvoice.total)}</span>
                                 </div>
                             </div>
                         )}
 
-                        {/* Tax Summary */}
-                        <div className="text-[10px] py-2 border-t">
-                            <div className="font-bold text-center mb-1">Resumen de impuestos</div>
-                            <table className="w-full">
-                                <thead>
-                                    <tr className="border-b">
-                                        <td>Tarifa</td>
-                                        <td className="text-right">Base</td>
-                                        <td className="text-right">Impuesto</td>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {sampleInvoice.taxes.map((tax, idx) => (
-                                        <tr key={idx}>
-                                            <td>{String.fromCharCode(65 + idx)} - {tax.name}</td>
-                                            <td className="text-right">{formatCurrency(tax.base)}</td>
-                                            <td className="text-right">{formatCurrency(tax.amount)}</td>
+                        {/* ═══ TAX SUMMARY ═══ */}
+                        {settings.templateStyle !== 'minimal' && (
+                            <div className="text-[10px] py-2 border-t">
+                                <div className="font-bold text-center mb-1">Resumen de impuestos</div>
+                                <table className="w-full">
+                                    <thead>
+                                        <tr className="border-b">
+                                            <td>Tarifa</td>
+                                            <td className="text-right">Base</td>
+                                            <td className="text-right">Impuesto</td>
                                         </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
+                                    </thead>
+                                    <tbody>
+                                        {sampleInvoice.taxes.map((tax, idx) => (
+                                            <tr key={idx}>
+                                                <td>{String.fromCharCode(65 + idx)} - {tax.name}</td>
+                                                <td className="text-right">{formatCurrency(tax.base)}</td>
+                                                <td className="text-right">{formatCurrency(tax.amount)}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
 
-                        {/* Line/Product Count */}
+                        {/* ═══ COUNTS ═══ */}
                         {(settings.showLineCount || settings.showProductCount) && (
                             <div className="text-[10px] py-2 border-t space-y-1">
                                 <div>Total recibido: {formatCurrency(sampleInvoice.total)}</div>
@@ -592,26 +716,52 @@ export function TicketEditor({ settings: initialSettings, companyInfo, onChange,
                             </div>
                         )}
 
-                        {/* QR Code */}
+                        {/* ═══ QR ═══ */}
                         {settings.showQr && (
                             <div className="flex justify-center py-4">
-                                <div className="w-24 h-24 bg-gray-200 flex items-center justify-center text-[8px] text-gray-500">
+                                <div className={cn(
+                                    "w-24 h-24 flex items-center justify-center text-[8px] text-gray-500",
+                                    settings.templateStyle === 'modern' ? 'bg-gray-100 rounded-lg' : 'bg-gray-200'
+                                )}>
                                     [Código QR]
                                 </div>
                             </div>
                         )}
 
-                        {/* Footer */}
-                        <div className="text-[9px] text-center py-2 space-y-2 border-t">
-                            {settings.customFooterText && (
-                                <p className="italic">{settings.customFooterText}</p>
+                        {/* ═══ CUFE ═══ */}
+                        {settings.showCufe && (
+                            <div className={cn(
+                                "text-[8px] py-2 break-all",
+                                settings.templateStyle === 'modern' ? 'bg-blue-50 px-2 py-2 rounded-md' : 'border-t'
+                            )}>
+                                <div className="font-bold">CUFE:</div>
+                                <div className="text-gray-500">e8c0dba445b1b7be98cde0cee7473a...</div>
+                                <div className="font-bold text-green-700 mt-1">✓ VALIDADA POR LA DIAN</div>
+                            </div>
+                        )}
+
+                        {/* ═══ FOOTER ═══ */}
+                        <div className={cn(
+                            "text-[9px] text-center py-2 space-y-2",
+                            settings.templateStyle === 'modern' ? 'border-t-2 border-black mt-2' : 'border-t'
+                        )}>
+                            {settings.footerText && (
+                                <div className={cn(
+                                    "font-bold pt-1",
+                                    settings.templateStyle === 'modern' ? 'text-sm' : ''
+                                )}>
+                                    {settings.footerText}
+                                </div>
                             )}
-                            <p>
-                                Este documento se asimila en todos sus efectos a una letra de cambio de conformidad con el Art. 774
-                                del código de comercio. Autorizo que en caso de incumplimiento de esta obligación sea reportado a
-                                las centrales de riesgo, se cobrarán intereses por mora.
+                            <p className="text-[8px] text-gray-600 leading-tight">
+                                {settings.footerTemplate === 'custom'
+                                    ? (settings.customFooterText || 'Tu texto legal personalizado aparecerá aquí')
+                                    : FOOTER_TEMPLATES[settings.footerTemplate || 'general'].text}
                             </p>
-                            <div className="font-medium pt-2">
+                            <div className={cn(
+                                "font-medium pt-1",
+                                settings.templateStyle === 'minimal' ? 'text-[8px]' : ''
+                            )}>
                                 Representación impresa de la factura electrónica
                             </div>
                             <div className="text-gray-500">
