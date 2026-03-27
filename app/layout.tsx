@@ -4,6 +4,8 @@ import './globals.css'
 import { ToastContainer } from '@/components/ui/toast'
 import { ErrorBoundary } from '@/components/ui/error-boundary'
 import { Providers } from './providers'
+import { SpeedInsights } from '@vercel/speed-insights/next'
+import { Analytics } from '@vercel/analytics/react'
 
 const fontSans = Plus_Jakarta_Sans({
   subsets: ['latin'],
@@ -37,6 +39,8 @@ export default function RootLayout({
           </Providers>
           <ToastContainer />
         </ErrorBoundary>
+        <SpeedInsights />
+        <Analytics />
       </body>
     </html>
   )
