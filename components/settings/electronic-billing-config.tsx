@@ -29,6 +29,11 @@ interface ElectronicBillingFormData {
   technicalKey?: string
   alegraEmail?: string
   alegraToken?: string
+  factusClientId?: string
+  factusClientSecret?: string
+  factusUsername?: string
+  factusPassword?: string
+  factusSandbox?: boolean
 }
 
 interface ElectronicBillingConfigProps {
@@ -69,6 +74,11 @@ export function ElectronicBillingConfig({ settings, onSave, isLoading }: Electro
       technicalKey: settings?.technicalKey || '',
       alegraEmail: settings?.alegraEmail || '',
       alegraToken: settings?.alegraToken || '',
+      factusClientId: settings?.factusClientId || '',
+      factusClientSecret: settings?.factusClientSecret || '',
+      factusUsername: settings?.factusUsername || '',
+      factusPassword: settings?.factusPassword || '',
+      factusSandbox: settings?.factusSandbox ?? true,
     }
   })
 
@@ -90,7 +100,7 @@ export function ElectronicBillingConfig({ settings, onSave, isLoading }: Electro
           Facturación Electrónica
         </CardTitle>
         <CardDescription>
-          Configura las credenciales y parámetros para la facturación electrónica DIAN
+          Configura las credenciales y parámetros para la facturación electrónica DIAN (Factus / Alegra / DIAN Directo)
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -106,7 +116,8 @@ export function ElectronicBillingConfig({ settings, onSave, isLoading }: Electro
                 <SelectValue placeholder="Selecciona un proveedor" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="ALEGRA">Alegra (Recomendado)</SelectItem>
+                <SelectItem value="FACTUS">Factus (Recomendado)</SelectItem>
+                <SelectItem value="ALEGRA">Alegra</SelectItem>
                 <SelectItem value="FEG">Facturación Electrónica Gratuita (FEG)</SelectItem>
                 <SelectItem value="CUSTOM">Proveedor Personalizado</SelectItem>
                 <SelectItem value="DIAN_DIRECT">Integración Directa con DIAN</SelectItem>
@@ -139,6 +150,67 @@ export function ElectronicBillingConfig({ settings, onSave, isLoading }: Electro
                     {...register('alegraToken')}
                     placeholder="Token de acceso..."
                   />
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* FACTUS Configuration */}
+          {provider === 'FACTUS' && (
+            <>
+              <div className="space-y-4 pt-4 border-t">
+                <h3 className="font-semibold">Credenciales de Factus</h3>
+                <p className="text-sm text-muted-foreground">
+                  Ingresa las credenciales de tu cuenta de Factus (Halltec). Facturación electrónica DIAN certificada.
+                </p>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="factusClientId">Client ID</Label>
+                    <Input
+                      id="factusClientId"
+                      {...register('factusClientId')}
+                      placeholder="Client ID de Factus"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="factusClientSecret">Client Secret</Label>
+                    <Input
+                      id="factusClientSecret"
+                      type="password"
+                      {...register('factusClientSecret')}
+                      placeholder="Client Secret de Factus"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="factusUsername">Usuario / Correo</Label>
+                    <Input
+                      id="factusUsername"
+                      {...register('factusUsername')}
+                      placeholder="usuario@empresa.com"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="factusPassword">Contraseña</Label>
+                    <Input
+                      id="factusPassword"
+                      type="password"
+                      {...register('factusPassword')}
+                      placeholder="Contraseña de Factus"
+                    />
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 p-4 rounded-lg bg-muted/50">
+                  <input
+                    type="checkbox"
+                    id="factusSandbox"
+                    {...register('factusSandbox')}
+                    className="h-4 w-4 rounded border-gray-300"
+                  />
+                  <Label htmlFor="factusSandbox" className="text-sm cursor-pointer">
+                    Modo Sandbox (pruebas) — Desactiva para producción
+                  </Label>
                 </div>
               </div>
             </>

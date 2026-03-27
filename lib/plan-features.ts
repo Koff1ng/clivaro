@@ -9,12 +9,14 @@ export interface PlanFeatures {
   manageProducts: boolean
   manageInventory: boolean
   multiWarehouse: boolean
+  maxWarehouses: number
 
   // Ventas
   manageSales: boolean
   pos: boolean
   quotations: boolean
   invoices: boolean
+  invoiceLimitPerMonth: number // 0 = ilimitado
 
   // CRM
   manageCRM: boolean
@@ -30,6 +32,9 @@ export interface PlanFeatures {
   // Finanzas y RRHH
   manageAccounting: boolean
   managePayroll: boolean
+
+  // Restaurante
+  manageRestaurant: boolean
 
   // Reportes
   viewReports: boolean
@@ -53,10 +58,12 @@ export const PLAN_FEATURES: Record<PlanName, PlanFeatures> = {
     manageProducts: true,
     manageInventory: true,
     multiWarehouse: false,
+    maxWarehouses: 1,
     manageSales: true,
     pos: true,
     quotations: true,
     invoices: true,
+    invoiceLimitPerMonth: 50,
     manageCRM: false,
     leads: false,
     marketing: false,
@@ -64,10 +71,11 @@ export const PLAN_FEATURES: Record<PlanName, PlanFeatures> = {
     manageCash: true,
     manageAccounting: false,
     managePayroll: false,
+    manageRestaurant: false,
     viewReports: true,
     advancedReports: false,
     manageUsers: true,
-    maxUsers: 2,
+    maxUsers: 3,
     apiAccess: false,
     customReports: false,
     dedicatedSupport: false,
@@ -76,10 +84,12 @@ export const PLAN_FEATURES: Record<PlanName, PlanFeatures> = {
     manageProducts: true,
     manageInventory: true,
     multiWarehouse: true,
+    maxWarehouses: 3,
     manageSales: true,
     pos: true,
     quotations: true,
     invoices: true,
+    invoiceLimitPerMonth: 0, // Ilimitado
     manageCRM: true,
     leads: true,
     marketing: true,
@@ -87,10 +97,11 @@ export const PLAN_FEATURES: Record<PlanName, PlanFeatures> = {
     manageCash: true,
     manageAccounting: false,
     managePayroll: false,
+    manageRestaurant: false,
     viewReports: true,
     advancedReports: true,
     manageUsers: true,
-    maxUsers: 5,
+    maxUsers: 8,
     apiAccess: false,
     customReports: false,
     dedicatedSupport: false,
@@ -99,10 +110,12 @@ export const PLAN_FEATURES: Record<PlanName, PlanFeatures> = {
     manageProducts: true,
     manageInventory: true,
     multiWarehouse: true,
+    maxWarehouses: 999, // Ilimitado
     manageSales: true,
     pos: true,
     quotations: true,
     invoices: true,
+    invoiceLimitPerMonth: 0, // Ilimitado
     manageCRM: true,
     leads: true,
     marketing: true,
@@ -110,11 +123,12 @@ export const PLAN_FEATURES: Record<PlanName, PlanFeatures> = {
     manageCash: true,
     manageAccounting: true,
     managePayroll: true,
+    manageRestaurant: true,
     viewReports: true,
     advancedReports: true,
     manageUsers: true,
-    maxUsers: 999, // Unlimited
-    apiAccess: true,
+    maxUsers: 999, // Ilimitado
+    apiAccess: false, // No implementada aún
     customReports: true,
     dedicatedSupport: true,
   },
@@ -147,6 +161,10 @@ export const ROUTE_FEATURES: Record<string, keyof PlanFeatures> = {
   '/accounting/fiscal-conciliator': 'manageAccounting',
   '/accounting/addons': 'manageAccounting',
   '/payroll': 'managePayroll',
+  '/restaurant': 'manageRestaurant',
+  '/restaurant/tables': 'manageRestaurant',
+  '/restaurant/orders': 'manageRestaurant',
+  '/restaurant/menu': 'manageRestaurant',
 }
 
 /**
@@ -165,4 +183,3 @@ export function getPlanFeatures(planName: PlanName | null): PlanFeatures | null 
   if (!planName) return null
   return PLAN_FEATURES[planName] || null
 }
-

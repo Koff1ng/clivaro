@@ -1160,6 +1160,12 @@ model TenantSettings {
   // Alegra Fields
   alegraEmail                 String?
   alegraToken                 String?
+  // Factus Fields
+  factusClientId              String?
+  factusClientSecret          String?
+  factusUsername               String?
+  factusPassword              String?
+  factusSandbox               Boolean? @default(true)
   // Suscripciones
   subscriptionTrialDays       Int?      @default(14) // Días de prueba
   subscriptionGracePeriodDays Int?      @default(7) // Días de gracia después de expiración

@@ -32,12 +32,53 @@ import {
   Globe,
   HelpCircle,
 } from 'iconoir-react'
-import { ChevronsUpDown, Sparkles } from 'lucide-react'
+import { ChevronsUpDown, Sparkles, LayoutDashboard, Building2, Users, ShieldCheck as LuShieldCheck, ScrollText, CreditCard, Activity, ArrowLeft, ServerCog } from 'lucide-react'
 import { Logo } from '@/components/ui/logo'
 import { AppIcon } from '@/components/ui/app-icon'
 import { useSidebar } from '@/lib/sidebar-context'
 import { useTenantPlan } from '@/lib/hooks/use-plan-features'
 import { menuGroups, type MenuGroup, type MenuItem } from '@/lib/navigation-data'
+
+// Admin-specific navigation for Super Admin panel
+const adminMenuGroups = [
+  {
+    title: 'Panel Admin',
+    key: 'admin-general',
+    items: [
+      { href: '/admin/tenants', label: 'Dashboard Admin', icon: LayoutDashboard },
+    ]
+  },
+  {
+    title: 'Gestión de Plataforma',
+    key: 'admin-platform',
+    items: [
+      { href: '/admin/tenants', label: 'Tenants', icon: Building2 },
+      { href: '/admin/users', label: 'Usuarios', icon: Users },
+      { href: '/admin/roles', label: 'Roles y Permisos', icon: LuShieldCheck },
+    ]
+  },
+  {
+    title: 'Compliance',
+    key: 'admin-compliance',
+    items: [
+      { href: '/admin/legal-logs', label: 'Auditoría Legal', icon: ScrollText },
+    ]
+  },
+  {
+    title: 'Facturación',
+    key: 'admin-billing',
+    items: [
+      { href: '/admin/(dashboard)/sales', label: 'Ventas Plataforma', icon: CreditCard },
+    ]
+  },
+  {
+    title: 'Sistema',
+    key: 'admin-system',
+    items: [
+      { href: '/settings', label: 'Configuración', icon: ServerCog },
+    ]
+  },
+]
 import {
   Avatar,
   AvatarFallback,
@@ -63,6 +104,7 @@ export function Sidebar() {
   const { isOpen, toggle, toggleChat } = useSidebar()
   const userPermissions = (session?.user as any)?.permissions || []
   const isSuperAdmin = (session?.user as any)?.isSuperAdmin || false
+  const isOnAdminRoute = pathname?.startsWith('/admin') || false
   const { hasFeature: hasPlanFeature, isNewFeature, newFeatures, isLoading, planName } = useTenantPlan()
   
   // Custom queries for module visibility
@@ -250,128 +292,222 @@ export function Sidebar() {
           )}>
           <div className={cn('flex flex-col gap-1', isOpen ? 'p-3' : 'p-1')}>
 
-            {menuGroups.map((group, groupIndex) => {
-              const visibleItems = filterGroupItems(group.items)
-              if (visibleItems.length === 0) return null
-
-              const isGroupOpen = openGroups[group.key]
-
-              return (
-                <div key={group.key} className={cn("mb-2", { 'border-t border-slate-800 pt-2 mt-2': groupIndex > 0 && !isOpen })}>
-                  {/* Group Header - Only visible when Open */}
-                  {isOpen && (
-                    <div
-                      className="flex items-center justify-between px-3 py-2 text-xs font-semibold text-slate-400 uppercase tracking-wider cursor-pointer hover:text-white transition-colors select-none"
-                      onClick={() => toggleGroup(group.key)}
-                    >
-                      <span>{group.title}</span>
-                      <NavArrowDown className={cn("w-3 h-3 transition-transform duration-200", !isGroupOpen && "-rotate-90")} />
+            {/* SUPER ADMIN MODE: Show admin-specific navigation */}
+            {isSuperAdmin && isOnAdminRoute ? (
+              <>
+                {/* Admin Mode Badge */}
+                {isOpen && (
+                  <div className="mb-3 mx-1 p-3 rounded-xl bg-gradient-to-r from-amber-500/20 to-orange-500/20 border border-amber-500/30">
+                    <div className="flex items-center gap-2">
+                      <LuShieldCheck className="w-4 h-4 text-amber-400" />
+                      <span className="text-[11px] font-black text-amber-400 uppercase tracking-widest">Super Admin</span>
                     </div>
-                  )}
-
-                  {/* Render Items */}
-                  <div className={cn(
-                    "flex flex-col gap-0.5 transition-all duration-300 ease-in-out overflow-hidden",
-                    isOpen && !isGroupOpen ? "max-h-0 opacity-0" : "max-h-[500px] opacity-100"
-                  )}>
-                    {visibleItems.map(item => {
-                      const Icon = item.icon
-                      const isActive = pathname === item.href || pathname?.startsWith(item.href + '/')
-
-                      return (
-                        <Link
-                          key={item.href}
-                          href={item.href}
-                          prefetch
-                          scroll={false}
-                          onClick={() => {
-                            if (item.planFeature && shouldShowNewBadge(item.planFeature)) {
-                              handleFeatureClick(item.planFeature)
-                            }
-                          }}
-                          className={cn(
-                            'flex rounded-lg font-medium transition-all duration-200 relative group',
-                            isOpen ? 'flex-row items-center gap-3 text-[13px] px-2.5 py-1.5 ml-1' : 'flex-col items-center justify-center gap-1 px-1 py-1.5',
-                            isActive
-                              ? 'bg-slate-800/80 text-white font-semibold'
-                              : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200',
-                          )}
-                          title={!isOpen ? item.label : undefined}
-                        >
-                          <AppIcon icon={Icon} className={cn("flex-shrink-0 transition-all", isOpen ? "w-[18px] h-[18px]" : "w-5 h-5 mb-0.5")} />
-                          <span className={cn(
-                            'transition-all duration-200',
-                            isOpen ? 'flex items-center gap-1.5 whitespace-nowrap' : 'text-[10px] font-medium tracking-tight w-full truncate text-center px-0.5 opacity-90 block'
-                          )}>
-                            {item.label}
-                            {item.planFeature && shouldShowNewBadge(item.planFeature) && isOpen && (
-                              <span className="font-bold text-white bg-green-500 rounded-full animate-pulse px-1 py-0.5 text-[9px]">
-                                NUEVO
-                              </span>
-                            )}
-                          </span>
-                          {item.planFeature && shouldShowNewBadge(item.planFeature) && !isOpen && (
-                            <span className="absolute top-1.5 right-1.5 w-2 h-2 font-bold text-white bg-green-500 rounded-full animate-pulse" />
-                          )}
-                          {!isOpen && (
-                            <span className="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50 hidden md:block">
-                              {item.label}
-                            </span>
-                          )}
-                        </Link>
-                      )
-                    })}
                   </div>
-                </div>
-              )
-            })}
-
-            <div className="pt-2 mt-2 border-t border-slate-800">
-              {isOpen && <p className="px-3 py-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">Soporte</p>}
-              <button
-                onClick={handleHelp}
-                className={cn(
-                  'flex w-full rounded-lg font-medium transition-colors relative group text-left',
-                  isOpen ? 'flex-row items-center gap-3 text-sm px-3 py-2 ml-1' : 'flex-col items-center justify-center gap-1 px-1 py-2',
-                  'text-slate-500 hover:bg-slate-800 hover:text-slate-300'
                 )}
-                title={!isOpen ? 'Ayuda' : undefined}
-              >
-                <HelpCircle className={cn("flex-shrink-0 transition-all", isOpen ? "w-5 h-5" : "w-[22px] h-[22px] mb-0.5")} />
-                <span className={cn(
-                  'transition-all duration-300',
-                  isOpen ? 'text-sm whitespace-nowrap' : 'text-[10px] font-medium tracking-tight w-full truncate text-center px-0.5 opacity-90 block'
-                )}>
-                  Ayuda
-                </span>
-              </button>
-            </div>
 
-            {isSuperAdmin && (
-              <div className="pt-2 mt-2 border-t border-slate-800">
-                {isOpen && <p className="px-3 py-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">Super Admin</p>}
+                {/* Back to ERP */}
                 <Link
-                  href="/admin/tenants"
-                  prefetch
-                  scroll={false}
+                  href="/dashboard"
                   className={cn(
-                    'flex rounded-lg font-medium transition-colors relative group',
-                    isOpen ? 'flex-row items-center gap-3 text-sm px-3 py-2 ml-1' : 'flex-col items-center justify-center gap-1 px-1 py-2',
-                    pathname?.startsWith('/admin/tenants')
-                      ? 'bg-[#0EA5E9]/20 text-[#0EA5E9]'
-                      : 'text-slate-500 hover:bg-slate-800 hover:text-slate-300'
+                    'flex rounded-lg font-medium transition-all duration-200 relative group mb-2',
+                    isOpen ? 'flex-row items-center gap-3 text-[13px] px-2.5 py-2 mx-1 bg-slate-800/40 border border-slate-700/50' : 'flex-col items-center justify-center gap-1 px-1 py-1.5',
+                    'text-slate-400 hover:bg-slate-700/50 hover:text-white'
                   )}
-                  title={!isOpen ? 'Tenants' : undefined}
+                  title={!isOpen ? 'Volver al ERP' : undefined}
                 >
-                  <ShieldCheck className={cn("flex-shrink-0 transition-all", isOpen ? "w-5 h-5" : "w-[22px] h-[22px] mb-0.5")} />
+                  <ArrowLeft className={cn("flex-shrink-0", isOpen ? "w-4 h-4" : "w-5 h-5 mb-0.5")} />
                   <span className={cn(
-                    'transition-all duration-300',
-                    isOpen ? 'text-sm whitespace-nowrap' : 'text-[10px] font-medium tracking-tight w-full truncate text-center px-0.5 opacity-90 block'
+                    isOpen ? 'text-[12px] whitespace-nowrap' : 'text-[9px] font-medium w-full truncate text-center block'
                   )}>
-                    Tenants
+                    {isOpen ? 'Volver al ERP' : 'ERP'}
                   </span>
                 </Link>
-              </div>
+
+                {/* Admin Navigation Groups */}
+                {adminMenuGroups.map((group, groupIndex) => {
+                  const isGroupOpen = openGroups[group.key] !== false
+
+                  return (
+                    <div key={group.key} className={cn("mb-1", { 'border-t border-slate-800 pt-2 mt-2': groupIndex > 0 && !isOpen })}>
+                      {isOpen && (
+                        <div
+                          className="flex items-center justify-between px-3 py-2 text-xs font-semibold text-slate-400 uppercase tracking-wider cursor-pointer hover:text-white transition-colors select-none"
+                          onClick={() => toggleGroup(group.key)}
+                        >
+                          <span>{group.title}</span>
+                          <NavArrowDown className={cn("w-3 h-3 transition-transform duration-200", !isGroupOpen && "-rotate-90")} />
+                        </div>
+                      )}
+                      <div className={cn(
+                        "flex flex-col gap-0.5 transition-all duration-300 ease-in-out overflow-hidden",
+                        isOpen && !isGroupOpen ? "max-h-0 opacity-0" : "max-h-[500px] opacity-100"
+                      )}>
+                        {group.items.map(item => {
+                          const Icon = item.icon
+                          const isActive = pathname === item.href || pathname?.startsWith(item.href + '/')
+
+                          return (
+                            <Link
+                              key={item.href + item.label}
+                              href={item.href}
+                              prefetch
+                              scroll={false}
+                              className={cn(
+                                'flex rounded-lg font-medium transition-all duration-200 relative group',
+                                isOpen ? 'flex-row items-center gap-3 text-[13px] px-2.5 py-1.5 ml-1' : 'flex-col items-center justify-center gap-1 px-1 py-1.5',
+                                isActive
+                                  ? 'bg-amber-500/20 text-amber-300 font-semibold border-l-2 border-amber-400'
+                                  : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200',
+                              )}
+                              title={!isOpen ? item.label : undefined}
+                            >
+                              <Icon className={cn("flex-shrink-0 transition-all", isOpen ? "w-[18px] h-[18px]" : "w-5 h-5 mb-0.5")} />
+                              <span className={cn(
+                                'transition-all duration-200',
+                                isOpen ? 'whitespace-nowrap' : 'text-[10px] font-medium tracking-tight w-full truncate text-center px-0.5 opacity-90 block'
+                              )}>
+                                {item.label}
+                              </span>
+                              {!isOpen && (
+                                <span className="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50 hidden md:block">
+                                  {item.label}
+                                </span>
+                              )}
+                            </Link>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )
+                })}
+              </>
+            ) : (
+              /* REGULAR ERP NAVIGATION */
+              <>
+                {menuGroups.map((group, groupIndex) => {
+                  const visibleItems = filterGroupItems(group.items)
+                  if (visibleItems.length === 0) return null
+
+                  const isGroupOpen = openGroups[group.key]
+
+                  return (
+                    <div key={group.key} className={cn("mb-2", { 'border-t border-slate-800 pt-2 mt-2': groupIndex > 0 && !isOpen })}>
+                      {/* Group Header - Only visible when Open */}
+                      {isOpen && (
+                        <div
+                          className="flex items-center justify-between px-3 py-2 text-xs font-semibold text-slate-400 uppercase tracking-wider cursor-pointer hover:text-white transition-colors select-none"
+                          onClick={() => toggleGroup(group.key)}
+                        >
+                          <span>{group.title}</span>
+                          <NavArrowDown className={cn("w-3 h-3 transition-transform duration-200", !isGroupOpen && "-rotate-90")} />
+                        </div>
+                      )}
+
+                      {/* Render Items */}
+                      <div className={cn(
+                        "flex flex-col gap-0.5 transition-all duration-300 ease-in-out overflow-hidden",
+                        isOpen && !isGroupOpen ? "max-h-0 opacity-0" : "max-h-[500px] opacity-100"
+                      )}>
+                        {visibleItems.map(item => {
+                          const Icon = item.icon
+                          const isActive = pathname === item.href || pathname?.startsWith(item.href + '/')
+
+                          return (
+                            <Link
+                              key={item.href}
+                              href={item.href}
+                              prefetch
+                              scroll={false}
+                              onClick={() => {
+                                if (item.planFeature && shouldShowNewBadge(item.planFeature)) {
+                                  handleFeatureClick(item.planFeature)
+                                }
+                              }}
+                              className={cn(
+                                'flex rounded-lg font-medium transition-all duration-200 relative group',
+                                isOpen ? 'flex-row items-center gap-3 text-[13px] px-2.5 py-1.5 ml-1' : 'flex-col items-center justify-center gap-1 px-1 py-1.5',
+                                isActive
+                                  ? 'bg-slate-800/80 text-white font-semibold'
+                                  : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200',
+                              )}
+                              title={!isOpen ? item.label : undefined}
+                            >
+                              <AppIcon icon={Icon} className={cn("flex-shrink-0 transition-all", isOpen ? "w-[18px] h-[18px]" : "w-5 h-5 mb-0.5")} />
+                              <span className={cn(
+                                'transition-all duration-200',
+                                isOpen ? 'flex items-center gap-1.5 whitespace-nowrap' : 'text-[10px] font-medium tracking-tight w-full truncate text-center px-0.5 opacity-90 block'
+                              )}>
+                                {item.label}
+                                {item.planFeature && shouldShowNewBadge(item.planFeature) && isOpen && (
+                                  <span className="font-bold text-white bg-green-500 rounded-full animate-pulse px-1 py-0.5 text-[9px]">
+                                    NUEVO
+                                  </span>
+                                )}
+                              </span>
+                              {item.planFeature && shouldShowNewBadge(item.planFeature) && !isOpen && (
+                                <span className="absolute top-1.5 right-1.5 w-2 h-2 font-bold text-white bg-green-500 rounded-full animate-pulse" />
+                              )}
+                              {!isOpen && (
+                                <span className="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50 hidden md:block">
+                                  {item.label}
+                                </span>
+                              )}
+                            </Link>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )
+                })}
+
+                <div className="pt-2 mt-2 border-t border-slate-800">
+                  {isOpen && <p className="px-3 py-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">Soporte</p>}
+                  <button
+                    onClick={handleHelp}
+                    className={cn(
+                      'flex w-full rounded-lg font-medium transition-colors relative group text-left',
+                      isOpen ? 'flex-row items-center gap-3 text-sm px-3 py-2 ml-1' : 'flex-col items-center justify-center gap-1 px-1 py-2',
+                      'text-slate-500 hover:bg-slate-800 hover:text-slate-300'
+                    )}
+                    title={!isOpen ? 'Ayuda' : undefined}
+                  >
+                    <HelpCircle className={cn("flex-shrink-0 transition-all", isOpen ? "w-5 h-5" : "w-[22px] h-[22px] mb-0.5")} />
+                    <span className={cn(
+                      'transition-all duration-300',
+                      isOpen ? 'text-sm whitespace-nowrap' : 'text-[10px] font-medium tracking-tight w-full truncate text-center px-0.5 opacity-90 block'
+                    )}>
+                      Ayuda
+                    </span>
+                  </button>
+                </div>
+
+                {isSuperAdmin && (
+                  <div className="pt-2 mt-2 border-t border-slate-800">
+                    {isOpen && <p className="px-3 py-2 text-xs font-semibold text-amber-400/80 uppercase tracking-wider">Super Admin</p>}
+                    <Link
+                      href="/admin/tenants"
+                      prefetch
+                      scroll={false}
+                      className={cn(
+                        'flex rounded-lg font-medium transition-colors relative group',
+                        isOpen ? 'flex-row items-center gap-3 text-sm px-3 py-2 ml-1' : 'flex-col items-center justify-center gap-1 px-1 py-2',
+                        pathname?.startsWith('/admin')
+                          ? 'bg-amber-500/20 text-amber-400'
+                          : 'text-slate-500 hover:bg-slate-800 hover:text-slate-300'
+                      )}
+                      title={!isOpen ? 'Panel Admin' : undefined}
+                    >
+                      <LuShieldCheck className={cn("flex-shrink-0 transition-all", isOpen ? "w-5 h-5" : "w-[22px] h-[22px] mb-0.5")} />
+                      <span className={cn(
+                        'transition-all duration-300',
+                        isOpen ? 'text-sm whitespace-nowrap' : 'text-[10px] font-medium tracking-tight w-full truncate text-center px-0.5 opacity-90 block'
+                      )}>
+                        Panel Admin
+                      </span>
+                    </Link>
+                  </div>
+                )}
+              </>
             )}
 
           </div>
@@ -409,7 +545,9 @@ export function Sidebar() {
                         {session?.user?.name?.split(' ')[0]}
                       </span>
                       <span className="text-[10px] sm:text-xs font-medium text-slate-400 truncate w-full uppercase tracking-widest opacity-80">
-                        {planName || 'Plan Gratuito'}
+                        {isSuperAdmin && isOnAdminRoute ? (
+                          <span className="text-amber-400">Super Admin</span>
+                        ) : (planName || 'Plan Gratuito')}
                       </span>
                     </div>
                     <ChevronsUpDown className="w-4 h-4 text-slate-500 shrink-0" />
