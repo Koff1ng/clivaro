@@ -93,10 +93,14 @@ export function SubscriptionCheckout() {
     retry: false,
   })
 
-  // Auto-show plans if no active subscription
+  // Show billing dashboard when active, show plans grid when no subscription
   useEffect(() => {
-    if (currentPlan && (!currentPlan.plan || currentPlan.subscription?.status !== 'active')) {
-      setShowPlans(true)
+    if (currentPlan) {
+      if (currentPlan.plan && currentPlan.subscription?.status === 'active') {
+        setShowPlans(false) // Show billing dashboard
+      } else {
+        setShowPlans(true)  // Show plans grid
+      }
     }
   }, [currentPlan])
 
