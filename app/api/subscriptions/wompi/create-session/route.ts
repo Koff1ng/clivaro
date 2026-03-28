@@ -49,15 +49,17 @@ export async function POST(request: Request) {
     // Create payment session data
     const paymentSession = createPaymentSession(reference, amountInCents, redirectUrl, plan.currency || 'COP')
 
-    // Upsert subscription as pending_payment
-    // Cancel any existing active subscriptions first
-    await prisma.subscription.updateMany({
-      where: { tenantId, status: { in: ['active', 'trial', 'pending_payment'] } },
-      data: { status: 'cancelled' },
-    })
-
-    const newSub = await prisma.subscription.create({
-      data: {
+    // Upsert subscription — tenantId is @unique so we update if exists
+    const sub = await prisma.subscription.upsert({
+      where: { tenantId },
+      update: {
+        planId: plan.id,
+        status: 'pending_payment',
+        startDate: new Date(),
+        endDate: null,
+        autoRenew: true,
+      },
+      create: {
         tenantId,
         planId: plan.id,
         status: 'pending_payment',
@@ -66,15 +68,15 @@ export async function POST(request: Request) {
       },
     })
 
-    // Try to set wompiReference (column may not exist yet in DB)
+    // Set wompiReference via raw SQL (field not in Prisma schema)
     try {
       await prisma.$executeRawUnsafe(
         `UPDATE "Subscription" SET "wompiReference" = $1 WHERE "id" = $2`,
         reference,
-        newSub.id
+        sub.id
       )
     } catch (e) {
-      console.warn('[Wompi] wompiReference column not available yet:', (e as any)?.message)
+      console.warn('[Wompi] wompiReference update failed:', (e as any)?.message)
     }
 
     return NextResponse.json({
