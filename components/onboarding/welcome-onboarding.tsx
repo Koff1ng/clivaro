@@ -8,8 +8,7 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import {
   ArrowRight, ArrowLeft, Check, Building2, User, Lock, MapPin,
-  Loader2, Store, UtensilsCrossed, Briefcase, LayoutGrid,
-  FileText, Coins, ShieldCheck, Receipt
+  Loader2, FileText, Coins
 } from 'lucide-react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useToast } from '@/components/ui/toast'
@@ -49,6 +48,74 @@ function useTypingAnimation(text: string, speed = 35, delay = 300) {
   return { displayed, isDone }
 }
 
+/* ─── Custom Gradient SVG Icons ─── */
+const IconShieldGradient = ({ className = 'w-6 h-6' }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <defs><linearGradient id="shieldG" x1="4" y1="3" x2="20" y2="21"><stop stopColor="#14b8a6"/><stop offset="1" stopColor="#059669"/></linearGradient></defs>
+    <path d="M12 2L4 6v5c0 5.25 3.4 10.15 8 11.25 4.6-1.1 8-6 8-11.25V6l-8-4z" fill="url(#shieldG)" opacity=".15"/>
+    <path d="M12 2L4 6v5c0 5.25 3.4 10.15 8 11.25 4.6-1.1 8-6 8-11.25V6l-8-4z" stroke="url(#shieldG)" strokeWidth="1.5" strokeLinejoin="round" fill="none"/>
+    <path d="M9 12l2 2 4-4" stroke="url(#shieldG)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+)
+
+const IconReceiptGradient = ({ className = 'w-6 h-6' }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <defs><linearGradient id="receiptG" x1="5" y1="2" x2="19" y2="22"><stop stopColor="#f97316"/><stop offset="1" stopColor="#f59e0b"/></linearGradient></defs>
+    <rect x="5" y="2" width="14" height="20" rx="2" fill="url(#receiptG)" opacity=".12"/>
+    <rect x="5" y="2" width="14" height="20" rx="2" stroke="url(#receiptG)" strokeWidth="1.5" fill="none"/>
+    <path d="M9 7h6M9 11h4M9 15h5" stroke="url(#receiptG)" strokeWidth="1.5" strokeLinecap="round"/>
+  </svg>
+)
+
+const IconLockGradient = ({ className = 'w-6 h-6' }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <defs><linearGradient id="lockG" x1="6" y1="4" x2="18" y2="20"><stop stopColor="#8b5cf6"/><stop offset="1" stopColor="#a855f7"/></linearGradient></defs>
+    <rect x="5" y="10" width="14" height="11" rx="2.5" fill="url(#lockG)" opacity=".12"/>
+    <rect x="5" y="10" width="14" height="11" rx="2.5" stroke="url(#lockG)" strokeWidth="1.5" fill="none"/>
+    <path d="M8 10V7a4 4 0 118 0v3" stroke="url(#lockG)" strokeWidth="1.5" strokeLinecap="round"/>
+    <circle cx="12" cy="15" r="1.5" fill="url(#lockG)"/>
+  </svg>
+)
+
+const IconStoreGradient = ({ className = 'w-7 h-7' }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <defs><linearGradient id="storeG" x1="2" y1="3" x2="22" y2="21"><stop stopColor="#3b82f6"/><stop offset="1" stopColor="#06b6d4"/></linearGradient></defs>
+    <path d="M3 9l1.5-5.5A1 1 0 015.46 3h13.08a1 1 0 01.96.7L21 9" stroke="url(#storeG)" strokeWidth="1.5" fill="none"/>
+    <path d="M3 9h18v2a3 3 0 01-3 3H6a3 3 0 01-3-3V9z" fill="url(#storeG)" opacity=".12"/>
+    <path d="M5 14v6a1 1 0 001 1h12a1 1 0 001-1v-6" stroke="url(#storeG)" strokeWidth="1.5" fill="none"/>
+    <rect x="9" y="16" width="6" height="5" rx=".5" stroke="url(#storeG)" strokeWidth="1.2" fill="url(#storeG)" fillOpacity=".1"/>
+  </svg>
+)
+
+const IconForkKnifeGradient = ({ className = 'w-7 h-7' }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <defs><linearGradient id="forkG" x1="4" y1="2" x2="20" y2="22"><stop stopColor="#f43f5e"/><stop offset="1" stopColor="#ec4899"/></linearGradient></defs>
+    <path d="M7 2v7a3 3 0 003 3v0a3 3 0 003-3V2" stroke="url(#forkG)" strokeWidth="1.5" strokeLinecap="round"/>
+    <line x1="10" y1="2" x2="10" y2="22" stroke="url(#forkG)" strokeWidth="1.5" strokeLinecap="round"/>
+    <path d="M17 2c0 0-2 2.5-2 5s2 3 2 5v10" stroke="url(#forkG)" strokeWidth="1.5" strokeLinecap="round" fill="none"/>
+  </svg>
+)
+
+const IconBriefcaseGradient = ({ className = 'w-7 h-7' }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <defs><linearGradient id="briefG" x1="2" y1="6" x2="22" y2="20"><stop stopColor="#6366f1"/><stop offset="1" stopColor="#0ea5e9"/></linearGradient></defs>
+    <rect x="2" y="7" width="20" height="13" rx="2.5" fill="url(#briefG)" opacity=".1"/>
+    <rect x="2" y="7" width="20" height="13" rx="2.5" stroke="url(#briefG)" strokeWidth="1.5" fill="none"/>
+    <path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2" stroke="url(#briefG)" strokeWidth="1.5"/>
+    <path d="M2 13h20" stroke="url(#briefG)" strokeWidth="1.2" opacity=".4"/>
+  </svg>
+)
+
+const IconGridGradient = ({ className = 'w-7 h-7' }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <defs><linearGradient id="gridG" x1="3" y1="3" x2="21" y2="21"><stop stopColor="#a78bfa"/><stop offset="1" stopColor="#c084fc"/></linearGradient></defs>
+    <rect x="3" y="3" width="8" height="8" rx="2" fill="url(#gridG)" opacity=".15" stroke="url(#gridG)" strokeWidth="1.3"/>
+    <rect x="13" y="3" width="8" height="8" rx="2" fill="url(#gridG)" opacity=".15" stroke="url(#gridG)" strokeWidth="1.3"/>
+    <rect x="3" y="13" width="8" height="8" rx="2" fill="url(#gridG)" opacity=".15" stroke="url(#gridG)" strokeWidth="1.3"/>
+    <rect x="13" y="13" width="8" height="8" rx="2" fill="url(#gridG)" opacity=".15" stroke="url(#gridG)" strokeWidth="1.3"/>
+  </svg>
+)
+
 /* ─── Constants ─── */
 const STEP_IDS = ['welcome', 'identity', 'fiscal', 'location', 'industry', 'credentials', 'ready'] as const
 
@@ -63,10 +130,44 @@ const GREETINGS = [
 ]
 
 const BUSINESS_TYPES = [
-  { value: 'RETAIL', label: 'Comercio / Ferretería', icon: Store, description: 'Punto de venta, inventario' },
-  { value: 'RESTAURANT', label: 'Restaurante / Bar', icon: UtensilsCrossed, description: 'Mesas, cocina, meseros' },
-  { value: 'SERVICES', label: 'Servicios', icon: Briefcase, description: 'Profesionales, consultoría' },
-  { value: 'OTHER', label: 'Otro', icon: LayoutGrid, description: 'Otro tipo de negocio' },
+  { value: 'RETAIL', label: 'Comercio / Ferretería', IconComponent: IconStoreGradient, description: 'Punto de venta, inventario' },
+  { value: 'RESTAURANT', label: 'Restaurante / Bar', IconComponent: IconForkKnifeGradient, description: 'Mesas, cocina, meseros' },
+  { value: 'SERVICES', label: 'Servicios', IconComponent: IconBriefcaseGradient, description: 'Profesionales, consultoría' },
+  { value: 'OTHER', label: 'Otro', IconComponent: IconGridGradient, description: 'Otro tipo de negocio' },
+]
+
+const CIIU_CODES = [
+  { value: '4752', label: '4752 — Comercio al por menor de ferretería y vidrios' },
+  { value: '4711', label: '4711 — Comercio al por menor en supermercados' },
+  { value: '4719', label: '4719 — Comercio al por menor en establecimientos no especializados' },
+  { value: '4721', label: '4721 — Comercio de alimentos en establecimientos especializados' },
+  { value: '4741', label: '4741 — Comercio de computadores y equipo periférico' },
+  { value: '4751', label: '4751 — Comercio de telas y productos textiles' },
+  { value: '4753', label: '4753 — Comercio de tapices, alfombras y revestimientos' },
+  { value: '4754', label: '4754 — Comercio de electrodomésticos' },
+  { value: '4755', label: '4755 — Comercio de artículos y utensilios de uso doméstico' },
+  { value: '4759', label: '4759 — Comercio de muebles para el hogar' },
+  { value: '4761', label: '4761 — Comercio de libros, periódicos y artículos de papelería' },
+  { value: '4762', label: '4762 — Comercio de artículos deportivos' },
+  { value: '4771', label: '4771 — Comercio de prendas de vestir' },
+  { value: '4772', label: '4772 — Comercio de calzado, artículos de cuero' },
+  { value: '4773', label: '4773 — Comercio de productos farmacéuticos (droguerías)' },
+  { value: '4774', label: '4774 — Comercio de artículos de óptica' },
+  { value: '5611', label: '5611 — Expendio de comidas preparadas (restaurantes)' },
+  { value: '5613', label: '5613 — Expendio de comidas preparadas en cafeterías' },
+  { value: '5619', label: '5619 — Otros tipos de expendio de comidas' },
+  { value: '5621', label: '5621 — Catering para eventos' },
+  { value: '5630', label: '5630 — Expendio de bebidas alcohólicas (bares)' },
+  { value: '6201', label: '6201 — Desarrollo de sistemas informáticos' },
+  { value: '6202', label: '6202 — Consultoría informática' },
+  { value: '6910', label: '6910 — Actividades jurídicas' },
+  { value: '6920', label: '6920 — Contabilidad, teneduría de libros y auditoría' },
+  { value: '7010', label: '7010 — Actividades de administración empresarial' },
+  { value: '7110', label: '7110 — Actividades de arquitectura e ingeniería' },
+  { value: '7490', label: '7490 — Otras actividades profesionales y técnicas' },
+  { value: '8621', label: '8621 — Actividades de la práctica médica' },
+  { value: '8622', label: '8622 — Actividades de la práctica odontológica' },
+  { value: '9602', label: '9602 — Peluquería y otros tratamientos de belleza' },
 ]
 
 const TAX_REGIMES = [
@@ -333,21 +434,21 @@ export function WelcomeOnboarding({ onComplete, planName, isDemo }: WelcomeOnboa
                   </motion.p>
                   <div className="grid grid-cols-3 gap-3">
                     {[
-                      { icon: ShieldCheck, label: 'Datos fiscales' },
-                      { icon: Receipt, label: 'Facturación' },
-                      { icon: Lock, label: 'Credenciales' },
+                      { IconC: IconShieldGradient, label: 'Datos fiscales' },
+                      { IconC: IconReceiptGradient, label: 'Facturación' },
+                      { IconC: IconLockGradient, label: 'Credenciales' },
                     ].map((item, i) => (
                       <motion.div key={i} custom={i} variants={fieldVariants} initial="hidden" animate="visible"
                         whileHover={cardHover}
                         className="flex flex-col items-center gap-2.5 py-5 px-3 bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 cursor-default"
                       >
                         <motion.div
-                          className="w-11 h-11 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 flex items-center justify-center"
+                          className="w-12 h-12 rounded-xl bg-slate-50 dark:bg-slate-800 flex items-center justify-center"
                           initial={{ rotate: -8 }}
                           animate={{ rotate: 0 }}
                           transition={{ delay: 0.3 + i * 0.1, type: 'spring', stiffness: 300, damping: 15 }}
                         >
-                          <item.icon className="w-5 h-5" strokeWidth={1.5} />
+                          <item.IconC className="w-6 h-6" />
                         </motion.div>
                         <span className="text-[12px] font-medium text-slate-600 dark:text-slate-400">{item.label}</span>
                       </motion.div>
@@ -478,7 +579,6 @@ export function WelcomeOnboarding({ onComplete, planName, isDemo }: WelcomeOnboa
 
                   <div className="grid grid-cols-2 gap-3">
                     {BUSINESS_TYPES.map((bt, i) => {
-                      const Icon = bt.icon
                       const isSelected = businessType === bt.value
                       return (
                         <motion.button key={bt.value} custom={i} variants={fieldVariants} initial="hidden" animate="visible" type="button"
@@ -497,13 +597,11 @@ export function WelcomeOnboarding({ onComplete, planName, isDemo }: WelcomeOnboa
                           }`}
                         >
                           <motion.div
-                            className={`w-12 h-12 rounded-xl flex items-center justify-center transition-colors ${
-                              isSelected ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900' : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
-                            }`}
-                            animate={isSelected ? { scale: [1, 1.15, 1] } : {}}
+                            className="w-14 h-14 rounded-xl bg-slate-50 dark:bg-slate-800 flex items-center justify-center"
+                            animate={isSelected ? { scale: [1, 1.12, 1] } : {}}
                             transition={{ duration: 0.4 }}
                           >
-                            <Icon className="w-6 h-6" strokeWidth={1.5} />
+                            <bt.IconComponent />
                           </motion.div>
                           <span className={`text-[13px] font-semibold ${isSelected ? 'text-slate-900 dark:text-white' : 'text-slate-600 dark:text-slate-400'}`}>
                             {bt.label}
@@ -516,7 +614,12 @@ export function WelcomeOnboarding({ onComplete, planName, isDemo }: WelcomeOnboa
 
                   <motion.div custom={4} variants={fieldVariants} initial="hidden" animate="visible" className="space-y-1.5">
                     <Label className="text-[13px] font-medium text-slate-700 dark:text-slate-300">Actividad Económica (CIIU)</Label>
-                    <Input placeholder="Ej. 4752 — Comercio al por menor de ferreterías" value={economicActivity} onChange={e => setEconomicActivity(e.target.value)} className={inputClasses} />
+                    <Select value={economicActivity} onValueChange={setEconomicActivity}>
+                      <SelectTrigger className={inputClasses}><SelectValue placeholder="Seleccionar actividad económica" /></SelectTrigger>
+                      <SelectContent className="max-h-[280px]">
+                        {CIIU_CODES.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
                   </motion.div>
 
                   <div className="grid grid-cols-2 gap-4">
