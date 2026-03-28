@@ -48,6 +48,14 @@ export async function POST(request: Request) {
     const redirectUrl = `${baseUrl}/settings?tab=subscription&wompiRef=${reference}`
 
     // Create payment session data
+    console.log('[Wompi] Creating session:', {
+      reference,
+      amountInCents,
+      currency: plan.currency || 'COP',
+      hasIntegritySecret: !!process.env.WOMPI_INTEGRITY_SECRET,
+      hasPublicKey: !!process.env.WOMPI_PUBLIC_KEY || !!process.env.NEXT_PUBLIC_WOMPI_PUBLIC_KEY,
+      planPrice: plan.price,
+    })
     const paymentSession = createPaymentSession(reference, amountInCents, redirectUrl, plan.currency || 'COP')
 
     // Upsert subscription — only change status, NOT planId
