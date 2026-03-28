@@ -105,16 +105,18 @@ export function SubscriptionCheckout() {
     const params = new URLSearchParams(window.location.search)
     const wompiRef = params.get('wompiRef')
     const txId = params.get('id')
+    const urlPlanId = params.get('planId')
 
     if (wompiRef) {
       setVerifying(true)
-      verifyPayment(wompiRef, txId)
+      verifyPayment(wompiRef, txId, urlPlanId)
     }
   }, [])
 
-  const verifyPayment = async (reference: string, transactionId?: string | null) => {
+  const verifyPayment = async (reference: string, transactionId?: string | null, planId?: string | null) => {
     try {
-      const url = `/api/subscriptions/wompi/verify?ref=${reference}${transactionId ? `&id=${transactionId}` : ''}`
+      let url = `/api/subscriptions/wompi/verify?ref=${reference}${transactionId ? `&id=${transactionId}` : ''}`
+      if (planId) url += `&planId=${planId}`
       
       // Poll up to 5 times with 3s delay
       for (let attempt = 0; attempt < 5; attempt++) {

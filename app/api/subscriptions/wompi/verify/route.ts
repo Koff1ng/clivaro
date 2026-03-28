@@ -69,23 +69,34 @@ export async function GET(request: Request) {
 
       const newStatus = mapWompiStatusToSubscription(transaction.status)
 
-      // Read pending plan info from wompiResponse via raw SQL (column may or may not exist)
+      // Get pending plan ID: from URL query param (most reliable) > wompiResponse column > current plan
+      const queryPlanId = searchParams.get('planId')
       let pendingPlanId = subscription.planId
       let pendingPlanName = subscription.plan.name
-      try {
-        const rows: any[] = await prisma.$queryRawUnsafe(
-          `SELECT "wompiResponse" FROM "Subscription" WHERE "id" = $1`,
-          subscription.id
-        )
-        if (rows[0]?.wompiResponse) {
-          const resp = JSON.parse(rows[0].wompiResponse)
-          if (resp.pendingPlanId) {
-            pendingPlanId = resp.pendingPlanId
-            pendingPlanName = resp.pendingPlanName || pendingPlanName
+
+      if (queryPlanId) {
+        // planId from redirect URL — most reliable source
+        pendingPlanId = queryPlanId
+        const targetPlan = await prisma.plan.findUnique({ where: { id: queryPlanId } })
+        if (targetPlan) pendingPlanName = targetPlan.name
+        console.log('[Wompi Verify] Using planId from URL:', { pendingPlanId, pendingPlanName })
+      } else {
+        // Fallback: try wompiResponse column (may not exist)
+        try {
+          const rows: any[] = await prisma.$queryRawUnsafe(
+            `SELECT "wompiResponse" FROM "Subscription" WHERE "id" = $1`,
+            subscription.id
+          )
+          if (rows[0]?.wompiResponse) {
+            const resp = JSON.parse(rows[0].wompiResponse)
+            if (resp.pendingPlanId) {
+              pendingPlanId = resp.pendingPlanId
+              pendingPlanName = resp.pendingPlanName || pendingPlanName
+            }
           }
+        } catch (e) {
+          console.warn('[Wompi Verify] Could not read wompiResponse:', (e as any)?.message)
         }
-      } catch (e) {
-        console.warn('[Wompi Verify] Could not read wompiResponse:', (e as any)?.message)
       }
 
       // Calculate end date

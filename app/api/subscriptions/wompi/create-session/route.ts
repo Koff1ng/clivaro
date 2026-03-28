@@ -45,7 +45,7 @@ export async function POST(request: Request) {
     const baseUrl = process.env.NODE_ENV === 'production'
       ? 'https://www.clientumstudio.com'
       : (process.env.NEXTAUTH_URL || 'http://localhost:3000')
-    const redirectUrl = `${baseUrl}/settings?tab=subscription&wompiRef=${reference}`
+    const redirectUrl = `${baseUrl}/settings?tab=subscription&wompiRef=${reference}&planId=${plan.id}`
 
     // Create payment session data
     console.log('[Wompi] Creating session:', {
