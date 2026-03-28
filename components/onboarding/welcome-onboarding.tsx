@@ -48,22 +48,22 @@ function useTypingAnimation(text: string, speed = 35, delay = 300) {
   return { displayed, isDone }
 }
 
-/* ─── Colorful Icons via @iconify/react (Fluent Emoji Flat) ─── */
+/* ─── Colorful Lineal Icons via @iconify/react (Icon Park TwoTone) ─── */
 import { Icon } from '@iconify/react'
 
-// Welcome step cards
+// Welcome step cards — lineal color style
 const WELCOME_ICONS = [
-  { icon: 'fluent-emoji-flat:shield', label: 'Datos fiscales' },
-  { icon: 'fluent-emoji-flat:receipt', label: 'Facturación' },
-  { icon: 'fluent-emoji-flat:locked', label: 'Credenciales' },
+  { icon: 'icon-park-twotone:protect', label: 'Datos fiscales' },
+  { icon: 'icon-park-twotone:transaction-order', label: 'Facturación' },
+  { icon: 'icon-park-twotone:lock-one', label: 'Credenciales' },
 ]
 
-// Business type icons
+// Business type icons — lineal color style
 const BUSINESS_ICONS: Record<string, string> = {
-  RETAIL: 'fluent-emoji-flat:convenience-store',
-  RESTAURANT: 'fluent-emoji-flat:fork-and-knife-with-plate',
-  SERVICES: 'fluent-emoji-flat:briefcase',
-  OTHER: 'fluent-emoji-flat:puzzle-piece',
+  RETAIL: 'icon-park-twotone:shop',
+  RESTAURANT: 'icon-park-twotone:cooking',
+  SERVICES: 'icon-park-twotone:suitcase',
+  OTHER: 'icon-park-twotone:all-application',
 }
 
 /* ─── Constants ─── */
