@@ -185,6 +185,20 @@ export function InvoicePrint({ invoice, settings }: InvoicePrintProps) {
   // Determinar si es factura electrónica validada
   const isElectronic = !!invoice.cufe
 
+  // Font size mapping from settings
+  const fontSizeMap: Record<string, { base: number; small: number; items: number; itemsHeader: number }> = {
+    small:  { base: 10, small: 8,  items: 9,  itemsHeader: 8 },
+    medium: { base: 12, small: 10, items: 11, itemsHeader: 10 },
+    large:  { base: 14, small: 11, items: 13, itemsHeader: 11 },
+  }
+  const headerFontSizeMap: Record<string, number> = {
+    medium: 12, large: 14, xlarge: 16,
+  }
+  
+  const fs = fontSizeMap[td.fontSize as string] || fontSizeMap.medium
+  const hfs = headerFontSizeMap[td.headerFontSize as string] || headerFontSizeMap.large
+  const totalFs = fs.base + 2 // TOTAL A PAGAR slightly larger
+
   return (
     <div className="ticket">
       <style>{`
@@ -192,7 +206,7 @@ export function InvoicePrint({ invoice, settings }: InvoicePrintProps) {
           width: 80mm;
           max-width: 80mm;
           font-family: 'Courier New', 'Lucida Console', monospace;
-          font-size: 11px;
+          font-size: ${fs.base}px;
           color: #000;
           background: #fff;
           padding: 8px 4px;
@@ -200,21 +214,25 @@ export function InvoicePrint({ invoice, settings }: InvoicePrintProps) {
         }
         .ticket .center { text-align: center; }
         .ticket .bold { font-weight: bold; }
-        .ticket .small { font-size: 9px; }
+        .ticket .small { font-size: ${fs.small}px; }
         .ticket .separator {
           border-top: 1px dashed #000;
           margin: 6px 0;
         }
+        .ticket .company-name {
+          font-size: ${hfs}px;
+          font-weight: bold;
+        }
         .ticket table.items {
           width: 100%;
           border-collapse: collapse;
-          font-size: 10px;
+          font-size: ${fs.items}px;
         }
         .ticket table.items th {
           text-align: left;
           border-bottom: 1px solid #000;
           padding: 2px 0;
-          font-size: 9px;
+          font-size: ${fs.itemsHeader}px;
           font-weight: bold;
         }
         .ticket table.items th.qty,
@@ -239,7 +257,7 @@ export function InvoicePrint({ invoice, settings }: InvoicePrintProps) {
         .ticket table.totals {
           width: 100%;
           border-collapse: collapse;
-          font-size: 11px;
+          font-size: ${fs.base}px;
         }
         .ticket table.totals td {
           padding: 2px 0;
@@ -251,7 +269,7 @@ export function InvoicePrint({ invoice, settings }: InvoicePrintProps) {
           text-align: right;
         }
         .ticket .footer {
-          font-size: 10px;
+          font-size: ${fs.items}px;
         }
       `}</style>
       {/* ======= ENCABEZADO EMPRESA (VENDEDOR) ======= */}
@@ -261,7 +279,7 @@ export function InvoicePrint({ invoice, settings }: InvoicePrintProps) {
             <img src={logoUrl} alt="Logo" style={{ maxHeight: '60px', maxWidth: '100%', objectFit: 'contain' }} />
           </div>
         )}
-        <div className="bold">{companyName}</div>
+        <div className="company-name">{companyName}</div>
         <div className="small">
           <div>NIT: {companyTaxId}</div>
           {companyRegime && <div>{companyRegime}</div>}
@@ -283,7 +301,7 @@ export function InvoicePrint({ invoice, settings }: InvoicePrintProps) {
 
         {/* Resolución DIAN */}
         {invoice.resolutionNumber && (
-          <div className="small" style={{ fontSize: '9px', marginTop: '4px' }}>
+          <div className="small" style={{ marginTop: '4px' }}>
             Resolución DIAN No. {invoice.resolutionNumber}
             {invoice.resolutionPrefix && ` Prefijo: ${invoice.resolutionPrefix}`}
             {invoice.resolutionRangeFrom && invoice.resolutionRangeTo && (
@@ -348,16 +366,16 @@ export function InvoicePrint({ invoice, settings }: InvoicePrintProps) {
                 <tr key={item.id || index}>
                   <td className="desc">
                     <div className="bold">{item.product?.name || 'Producto'}</div>
-                    {item.product?.sku && <div style={{ fontSize: '9px', color: '#333' }}>{item.product.sku}</div>}
-                    {showDescription && item.product?.description && <div style={{ fontSize: '8px', color: '#555' }}>{item.product.description}</div>}
-                    {showUnitOfMeasure && <div style={{ fontSize: '8px', color: '#999' }}>UN</div>}
+                    {item.product?.sku && <div style={{ fontSize: `${fs.small}px`, color: '#333' }}>{item.product.sku}</div>}
+                    {showDescription && item.product?.description && <div style={{ fontSize: `${fs.small - 1}px`, color: '#555' }}>{item.product.description}</div>}
+                    {showUnitOfMeasure && <div style={{ fontSize: `${fs.small - 1}px`, color: '#999' }}>UN</div>}
                     {item.discount > 0 && showUnitPrice && (
-                      <div style={{ fontSize: '8px', color: '#555' }}>
+                      <div style={{ fontSize: `${fs.small - 1}px`, color: '#555' }}>
                         Desc: {item.discount}% de ${formatCurrency(item.unitPrice)}
                       </div>
                     )}
                   </td>
-                  <td className="qty">{item.quantity || 0}{showUnitPrice && <div style={{ fontSize: '8px' }}>x {formatCurrency(item.unitPrice)}</div>}</td>
+                  <td className="qty">{item.quantity || 0}{showUnitPrice && <div style={{ fontSize: `${fs.small - 1}px` }}>x {formatCurrency(item.unitPrice)}</div>}</td>
                   <td className="price">{formatCurrency(item.subtotal || 0)}</td>
                 </tr>
               )
@@ -407,8 +425,8 @@ export function InvoicePrint({ invoice, settings }: InvoicePrintProps) {
           )}
 
           <tr>
-            <td className="label bold" style={{ fontSize: '13px', paddingTop: '4px' }}>TOTAL A PAGAR</td>
-            <td className="value bold" style={{ fontSize: '13px', paddingTop: '4px' }}>{formatCurrency(total)}</td>
+            <td className="label bold" style={{ fontSize: `${totalFs}px`, paddingTop: '4px' }}>TOTAL A PAGAR</td>
+            <td className="value bold" style={{ fontSize: `${totalFs}px`, paddingTop: '4px' }}>{formatCurrency(total)}</td>
           </tr>
         </tbody>
       </table>
@@ -461,28 +479,28 @@ export function InvoicePrint({ invoice, settings }: InvoicePrintProps) {
 
         <div className="separator" />
 
-        <div style={{ marginTop: '6px', fontSize: '10px' }}>
-          <div>{companyRegime}</div>
-          <div style={{ fontSize: '8px', color: '#555', marginTop: '4px', lineHeight: '1.3' }}>
+          <div style={{ marginTop: '6px', fontSize: `${fs.items}px` }}>
+            <div>{companyRegime}</div>
+            <div style={{ fontSize: `${fs.small - 1}px`, color: '#555', marginTop: '4px', lineHeight: '1.3' }}>
             {footerTemplate === 'custom'
               ? (customFooterText || 'Texto legal personalizado')
               : FOOTER_TEMPLATES[footerTemplate]?.text || FOOTER_TEMPLATES.general.text}
           </div>
           <div className="bold" style={{ marginTop: '6px' }}>{footerText}</div>
           {(showLineCount || showProductCount) && (
-            <div style={{ marginTop: '4px', fontSize: '9px' }}>
+            <div style={{ marginTop: '4px', fontSize: `${fs.small}px` }}>
               {showLineCount && <div>Total líneas: {(invoice.items || []).length}</div>}
               {showProductCount && <div>Total productos: {(invoice.items || []).reduce((sum: number, i: any) => sum + (i.quantity || 0), 0)}</div>}
             </div>
           )}
           <div style={{ marginTop: '4px' }}>Conserve esta factura</div>
-          <div style={{ fontSize: '8px', color: '#555', marginTop: '2px' }}>Representación impresa de la factura electrónica</div>
+            <div style={{ fontSize: `${fs.small - 1}px`, color: '#555', marginTop: '2px' }}>Representación impresa de la factura electrónica</div>
         </div>
 
         {isElectronic && showCufe && (
           <div style={{ marginTop: '8px' }}>
             <div className="bold">CUFE:</div>
-            <div style={{ wordBreak: 'break-all', fontSize: '8px', marginTop: '2px' }}>{invoice.cufe}</div>
+            <div style={{ wordBreak: 'break-all', fontSize: `${fs.small - 1}px`, marginTop: '2px' }}>{invoice.cufe}</div>
             {invoice.electronicStatus === 'ACCEPTED' && (
               <div className="bold" style={{ color: '#000', marginTop: '4px' }}>✓ VALIDADA POR LA DIAN</div>
             )}
