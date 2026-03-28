@@ -168,11 +168,28 @@ export function SubscriptionCheckout() {
     },
   })
 
+  // Aggressively clean all Wompi state to prevent stale acceptance tokens
+  const cleanupWompiWidget = useCallback(() => {
+    // Remove ALL Wompi scripts
+    document.querySelectorAll('script[src*="checkout.wompi.co"]').forEach(el => el.remove())
+    document.querySelectorAll('script[src*="wompi"]').forEach(el => el.remove())
+    // Remove ALL Wompi iframes (the checkout modal)
+    document.querySelectorAll('iframe[src*="wompi"]').forEach(el => el.remove())
+    document.querySelectorAll('iframe[name*="wompi"]').forEach(el => el.remove())
+    // Remove our container
+    document.getElementById('wompi-checkout-container')?.remove()
+    // Remove any Wompi overlay/backdrop
+    document.querySelectorAll('[class*="wompi"]').forEach(el => {
+      if (el.id !== 'wompi-checkout-container') el.remove()
+    })
+    // Clean Wompi global state
+    if ((window as any).WidgetCheckout) delete (window as any).WidgetCheckout
+    if ((window as any).$wompiWidget) delete (window as any).$wompiWidget
+  }, [])
+
   const openWompiWidget = useCallback((session: PaymentSession) => {
-    const existingScript = document.querySelector('script[src*="checkout.wompi.co"]')
-    if (existingScript) existingScript.remove()
-    const existingContainer = document.getElementById('wompi-checkout-container')
-    if (existingContainer) existingContainer.remove()
+    // Full cleanup first
+    cleanupWompiWidget()
 
     const formContainer = document.createElement('div')
     formContainer.id = 'wompi-checkout-container'
@@ -265,7 +282,7 @@ export function SubscriptionCheckout() {
 
     const form = document.createElement('form')
     const script = document.createElement('script')
-    script.src = 'https://checkout.wompi.co/widget.js'
+    script.src = `https://checkout.wompi.co/widget.js?t=${Date.now()}`
     script.setAttribute('data-render', 'button')
     script.setAttribute('data-public-key', session.publicKey)
     script.setAttribute('data-currency', session.currency)
@@ -280,7 +297,7 @@ export function SubscriptionCheckout() {
     if (formWrap) formWrap.appendChild(form)
 
     document.getElementById('wompi-close-btn')?.addEventListener('click', () => {
-      formContainer.remove()
+      cleanupWompiWidget()
       setPaymentSession(null)
     })
 
@@ -290,7 +307,7 @@ export function SubscriptionCheckout() {
         if (wompiButton) (wompiButton as HTMLButtonElement).click()
       }, 500)
     }
-  }, [])
+  }, [cleanupWompiWidget])
 
   const handleSelectPlan = (plan: Plan) => {
     const currentPlanName = currentPlan?.plan?.name || ''
