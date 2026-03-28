@@ -50,34 +50,33 @@ export async function POST(request: Request) {
     // Create payment session data
     const paymentSession = createPaymentSession(reference, amountInCents, redirectUrl, plan.currency || 'COP')
 
-    // Upsert subscription — tenantId is @unique so we update if exists
+    // Upsert subscription — only change status, NOT planId
+    // The planId is only updated when payment is APPROVED (verify/webhook)
     const sub = await prisma.subscription.upsert({
       where: { tenantId },
       update: {
-        planId: plan.id,
         status: 'pending_payment',
-        startDate: new Date(),
-        endDate: null,
         autoRenew: true,
       },
       create: {
         tenantId,
-        planId: plan.id,
+        planId: plan.id, // Only set planId for brand new subscriptions
         status: 'pending_payment',
         startDate: new Date(),
         autoRenew: true,
       },
     })
 
-    // Set wompiReference via raw SQL (field not in Prisma schema)
+    // Store reference + pending plan info via raw SQL (fields not in Prisma schema)
     try {
       await prisma.$executeRawUnsafe(
-        `UPDATE "Subscription" SET "wompiReference" = $1 WHERE "id" = $2`,
+        `UPDATE "Subscription" SET "wompiReference" = $1, "wompiResponse" = $2 WHERE "id" = $3`,
         reference,
+        JSON.stringify({ pendingPlanId: plan.id, pendingPlanName: plan.name }),
         sub.id
       )
     } catch (e) {
-      console.warn('[Wompi] wompiReference update failed:', (e as any)?.message)
+      console.warn('[Wompi] wompi fields update failed:', (e as any)?.message)
     }
 
     return NextResponse.json({

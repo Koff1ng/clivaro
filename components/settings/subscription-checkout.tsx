@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Check, Loader2, CreditCard, Smartphone, Building2, ArrowRight, Shield, Zap, Crown, Sparkles } from 'lucide-react'
+import { Check, Loader2, CreditCard, ArrowRight, Shield, Zap, Crown, Sparkles, AlertTriangle, Calendar, RefreshCw, ArrowDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/components/ui/toast'
 
@@ -29,27 +29,34 @@ interface PaymentSession {
 }
 
 // Plan tier config — visual styling
-const PLAN_TIERS: Record<string, { icon: React.ReactNode; gradient: string; badge?: string; popular?: boolean }> = {
+const PLAN_TIERS: Record<string, { icon: React.ReactNode; gradient: string; badge?: string; popular?: boolean; order: number }> = {
   STARTER: {
     icon: <Zap className="w-4 h-4" />,
     gradient: 'from-slate-600 to-slate-800',
+    order: 1,
   },
   BUSINESS: {
     icon: <Crown className="w-4 h-4" />,
     gradient: 'from-indigo-500 to-blue-600',
     badge: 'Más Popular',
     popular: true,
+    order: 2,
   },
   ENTERPRISE: {
     icon: <Sparkles className="w-4 h-4" />,
     gradient: 'from-violet-500 to-purple-700',
     badge: 'Premium',
+    order: 3,
   },
 }
 
 function getPlanTier(planName: string) {
   const key = planName.toUpperCase()
-  return PLAN_TIERS[key] || PLAN_TIERS.STARTER
+  return PLAN_TIERS[key] || { ...PLAN_TIERS.STARTER, order: 0 }
+}
+
+function getPlanOrder(planName: string): number {
+  return getPlanTier(planName).order
 }
 
 export function SubscriptionCheckout() {
@@ -60,6 +67,8 @@ export function SubscriptionCheckout() {
   const [verifying, setVerifying] = useState(false)
   const [activatedPlan, setActivatedPlan] = useState<string | null>(null)
   const [paymentComplete, setPaymentComplete] = useState(false)
+  const [showPlans, setShowPlans] = useState(false)
+  const [downgradeTarget, setDowngradeTarget] = useState<Plan | null>(null)
 
   // Fetch available plans
   const { data: plans = [], isLoading: loadingPlans } = useQuery({
@@ -84,6 +93,13 @@ export function SubscriptionCheckout() {
     retry: false,
   })
 
+  // Auto-show plans if no active subscription
+  useEffect(() => {
+    if (currentPlan && (!currentPlan.plan || currentPlan.subscription?.status !== 'active')) {
+      setShowPlans(true)
+    }
+  }, [currentPlan])
+
   // Check for redirect from Wompi
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -100,7 +116,6 @@ export function SubscriptionCheckout() {
     try {
       const url = `/api/subscriptions/wompi/verify?ref=${reference}${transactionId ? `&id=${transactionId}` : ''}`
       
-      // Poll up to 3 times with delay (Wompi might not be instant)
       for (let attempt = 0; attempt < 3; attempt++) {
         const res = await fetch(url)
         const data = await res.json()
@@ -112,19 +127,15 @@ export function SubscriptionCheckout() {
           window.history.replaceState({}, '', '/settings?tab=subscription')
           return
         } else if (data.status === 'DECLINED' || data.status === 'VOIDED' || data.status === 'ERROR') {
-          toast('El pago no fue aprobado. Intenta nuevamente.', 'error')
+          toast('El pago no fue aprobado. Tu plan actual se mantiene sin cambios.', 'error')
           window.history.replaceState({}, '', '/settings?tab=subscription')
           setVerifying(false)
           return
         }
 
-        // Wait 2s before next attempt
-        if (attempt < 2) {
-          await new Promise(r => setTimeout(r, 2000))
-        }
+        if (attempt < 2) await new Promise(r => setTimeout(r, 2000))
       }
 
-      // After 3 attempts still pending
       toast('Tu pago está siendo procesado. Te notificaremos cuando se complete.', 'info')
       window.history.replaceState({}, '', '/settings?tab=subscription')
     } catch {
@@ -160,12 +171,9 @@ export function SubscriptionCheckout() {
   const openWompiWidget = useCallback((session: PaymentSession) => {
     const existingScript = document.querySelector('script[src*="checkout.wompi.co"]')
     if (existingScript) existingScript.remove()
-
-    // Remove any existing container
     const existingContainer = document.getElementById('wompi-checkout-container')
     if (existingContainer) existingContainer.remove()
 
-    // Create branded full-screen overlay that hides the entire app
     const formContainer = document.createElement('div')
     formContainer.id = 'wompi-checkout-container'
     formContainer.innerHTML = `
@@ -267,12 +275,10 @@ export function SubscriptionCheckout() {
     script.setAttribute('data-redirect-url', session.redirectUrl)
 
     form.appendChild(script)
-    
     document.body.appendChild(formContainer)
     const formWrap = document.getElementById('wompi-form-wrap')
     if (formWrap) formWrap.appendChild(form)
 
-    // Close button
     document.getElementById('wompi-close-btn')?.addEventListener('click', () => {
       formContainer.remove()
       setPaymentSession(null)
@@ -286,8 +292,24 @@ export function SubscriptionCheckout() {
     }
   }, [])
 
-  const handleSelectPlan = (planId: string) => {
+  const handleSelectPlan = (plan: Plan) => {
+    const currentPlanName = currentPlan?.plan?.name || ''
+    const currentOrder = getPlanOrder(currentPlanName)
+    const targetOrder = getPlanOrder(plan.name)
+
+    // Downgrade — show confirmation dialog
+    if (currentOrder > 0 && targetOrder < currentOrder) {
+      setDowngradeTarget(plan)
+      return
+    }
+
+    // Upgrade or same tier — proceed directly
+    proceedToPayment(plan.id)
+  }
+
+  const proceedToPayment = (planId: string) => {
     setSelectedPlan(planId)
+    setDowngradeTarget(null)
     createSessionMutation.mutate(planId)
   }
 
@@ -303,7 +325,11 @@ export function SubscriptionCheckout() {
     }
   }
 
-  // ── Verifying state ──
+  const getLosingFeatures = (currentFeatures: string[], targetFeatures: string[]): string[] => {
+    return currentFeatures.filter(f => !targetFeatures.includes(f))
+  }
+
+  // ── Verifying ──
   if (verifying) {
     return (
       <div className="flex flex-col items-center justify-center py-16 gap-4">
@@ -319,7 +345,7 @@ export function SubscriptionCheckout() {
     )
   }
 
-  // ── Payment complete — Premium welcome ──
+  // ── Payment complete ──
   if (paymentComplete) {
     return (
       <motion.div
@@ -327,7 +353,6 @@ export function SubscriptionCheckout() {
         animate={{ opacity: 1 }}
         className="flex flex-col items-center justify-center py-12 gap-5 relative overflow-hidden"
       >
-        {/* Celebration particles */}
         {[...Array(12)].map((_, i) => (
           <motion.div
             key={i}
@@ -338,16 +363,10 @@ export function SubscriptionCheckout() {
               left: `${Math.random() * 100}%`,
             }}
             initial={{ opacity: 0, scale: 0 }}
-            animate={{ 
-              opacity: [0, 1, 0],
-              scale: [0, 1.5, 0],
-              y: [0, -30],
-            }}
+            animate={{ opacity: [0, 1, 0], scale: [0, 1.5, 0], y: [0, -30] }}
             transition={{ delay: 0.3 + i * 0.1, duration: 1.5, repeat: Infinity, repeatDelay: 3 }}
           />
         ))}
-
-        {/* Animated checkmark */}
         <motion.div
           className="w-20 h-20 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-full flex items-center justify-center shadow-lg shadow-emerald-200"
           initial={{ scale: 0, rotate: -180 }}
@@ -356,22 +375,11 @@ export function SubscriptionCheckout() {
         >
           <Check className="w-10 h-10 text-white" strokeWidth={3} />
         </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="text-center space-y-2"
-        >
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="text-center space-y-2">
           <h2 className="text-2xl font-black text-slate-900 tracking-tight">¡Bienvenido a {activatedPlan}!</h2>
           <p className="text-sm text-slate-500">Tu suscripción ha sido activada exitosamente</p>
         </motion.div>
-
-        {/* Plan badge */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.5 }}
+        <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.5 }}
           className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-indigo-50 to-violet-50 border border-indigo-200 rounded-2xl"
         >
           <div className="w-6 h-6 bg-gradient-to-br from-indigo-500 to-violet-600 rounded-lg flex items-center justify-center">
@@ -380,24 +388,11 @@ export function SubscriptionCheckout() {
           <span className="text-sm font-bold text-indigo-700">{activatedPlan}</span>
           <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">ACTIVO</span>
         </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.7 }}
-          className="flex gap-3 mt-2"
-        >
-          <Button
-            onClick={() => { setPaymentComplete(false); queryClient.invalidateQueries({ queryKey: ['tenant-plan'] }) }}
-            variant="outline"
-            className="rounded-xl text-xs"
-          >
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.7 }} className="flex gap-3 mt-2">
+          <Button onClick={() => { setPaymentComplete(false); setShowPlans(false); queryClient.invalidateQueries({ queryKey: ['tenant-plan'] }) }} variant="outline" className="rounded-xl text-xs">
             Ver mi plan
           </Button>
-          <Button
-            onClick={() => window.location.href = '/dashboard'}
-            className="rounded-xl text-xs bg-indigo-600 hover:bg-indigo-700"
-          >
+          <Button onClick={() => window.location.href = '/dashboard'} className="rounded-xl text-xs bg-indigo-600 hover:bg-indigo-700">
             Ir al Dashboard
           </Button>
         </motion.div>
@@ -407,134 +402,281 @@ export function SubscriptionCheckout() {
 
   if (loadingPlans) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
       </div>
     )
   }
 
+  const subscription = currentPlan?.subscription
+  const plan = currentPlan?.plan
+  const currentFeatures = plan ? parseFeatures(plan.features || '[]') : []
+
   return (
-    <div className="space-y-5">
-      {/* Header */}
-      <div className="text-center space-y-1">
-        <h2 className="text-xl font-black tracking-tight text-slate-900">Elige tu Plan</h2>
-        <p className="text-slate-500 text-xs max-w-md mx-auto">
-          Selecciona el plan ideal para tu negocio. Todos incluyen soporte técnico.
-        </p>
-      </div>
-
-      {/* Current Plan Badge */}
-      {currentPlan?.plan && (
-        <div className="flex justify-center">
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-emerald-50 border border-emerald-200 rounded-full text-xs font-bold text-emerald-700">
-            <Check className="w-4 h-4" />
-            Plan actual: {currentPlan.plan.name}
+    <div className="space-y-6">
+      {/* ── Current Plan Section ── */}
+      {plan && subscription?.status === 'active' && !showPlans && (
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-black text-slate-900 tracking-tight">Tu Plan Actual</h2>
+            <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full uppercase tracking-wider">Activo</span>
           </div>
-        </div>
-      )}
 
-      {/* Plans Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-3xl mx-auto">
-        {(plans as Plan[]).map((plan, i) => {
-          const tier = getPlanTier(plan.name)
-          const features = parseFeatures(plan.features || '[]')
-          const isCurrentPlan = currentPlan?.plan?.id === plan.id
-          const isSelected = selectedPlan === plan.id
-          const isLoading = createSessionMutation.isPending && isSelected
+          <div className="bg-gradient-to-br from-slate-50 to-white border border-slate-200 rounded-2xl p-5 space-y-4">
+            {/* Plan info row */}
+            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-3">
+                <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${getPlanTier(plan.name).gradient} text-white flex items-center justify-center`}>
+                  {getPlanTier(plan.name).icon}
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-slate-900">{plan.name}</h3>
+                  {plan.description && <p className="text-[11px] text-slate-400">{plan.description}</p>}
+                </div>
+              </div>
+              <div className="text-right">
+                <span className="text-xl font-black text-slate-900">{formatPrice(plan.price)}</span>
+                <span className="text-xs text-slate-400 ml-1">/{plan.interval === 'annual' ? 'año' : 'mes'}</span>
+              </div>
+            </div>
 
-          return (
-            <motion.div
-              key={plan.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.1 }}
-              className={`relative rounded-3xl overflow-hidden border-2 transition-all duration-300 ${
-                tier.popular
-                  ? 'border-indigo-400 shadow-xl shadow-indigo-100 scale-[1.02]'
-                  : isSelected
-                    ? 'border-slate-400 shadow-lg'
-                    : 'border-slate-200 hover:border-slate-300 hover:shadow-md'
-              }`}
-            >
-              {/* Popular Badge */}
-              {tier.badge && (
-                <div className={`absolute top-0 right-0 bg-gradient-to-r ${tier.gradient} text-white text-[9px] font-black uppercase tracking-wider px-3 py-1 rounded-bl-xl`}>
-                  {tier.badge}
+            {/* Subscription details */}
+            <div className="grid grid-cols-2 gap-3">
+              {subscription.startDate && (
+                <div className="flex items-center gap-2 bg-slate-50 rounded-xl p-2.5">
+                  <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                  <div>
+                    <p className="text-[10px] text-slate-400 uppercase font-bold">Inicio</p>
+                    <p className="text-xs font-bold text-slate-700">{new Date(subscription.startDate).toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+                  </div>
                 </div>
               )}
-
-              <div className="p-4 space-y-4">
-                {/* Plan Header */}
-                <div className="space-y-2">
-                  <div className={`w-9 h-9 rounded-xl bg-gradient-to-br ${tier.gradient} text-white flex items-center justify-center`}>
-                    {tier.icon}
-                  </div>
+              {subscription.endDate && (
+                <div className="flex items-center gap-2 bg-slate-50 rounded-xl p-2.5">
+                  <RefreshCw className="w-3.5 h-3.5 text-slate-400" />
                   <div>
-                    <h3 className="text-base font-black text-slate-900 tracking-tight">{plan.name}</h3>
-                    {plan.description && (
-                      <p className="text-[11px] text-slate-400 mt-0.5">{plan.description}</p>
-                    )}
+                    <p className="text-[10px] text-slate-400 uppercase font-bold">Renovación</p>
+                    <p className="text-xs font-bold text-slate-700">{new Date(subscription.endDate).toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
                   </div>
                 </div>
+              )}
+            </div>
 
-                {/* Price */}
-                <div>
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-2xl font-black text-slate-900">{formatPrice(plan.price)}</span>
-                    <span className="text-sm text-slate-400 font-medium">
-                      /{plan.interval === 'annual' ? 'año' : 'mes'}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Features */}
-                <ul className="space-y-1.5">
-                  {features.map((feature, fi) => (
-                    <li key={fi} className="flex items-start gap-2 text-[11px] text-slate-600">
-                      <Check className="w-4 h-4 text-emerald-500 mt-0.5 flex-shrink-0" />
-                      <span>{feature}</span>
-                    </li>
+            {/* Features */}
+            {currentFeatures.length > 0 && (
+              <div>
+                <p className="text-[10px] text-slate-400 uppercase font-bold mb-2">Incluido en tu plan</p>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {currentFeatures.map((f, i) => (
+                    <div key={i} className="flex items-center gap-2 text-[11px] text-slate-600">
+                      <Check className="w-3 h-3 text-emerald-500 flex-shrink-0" />
+                      <span>{f}</span>
+                    </div>
                   ))}
-                </ul>
+                </div>
+              </div>
+            )}
 
-                {/* CTA Button */}
-                <Button
-                  onClick={() => !isCurrentPlan && handleSelectPlan(plan.id)}
-                  disabled={isCurrentPlan || isLoading}
-                  className={`w-full rounded-xl h-10 font-bold text-[11px] uppercase tracking-wider transition-all ${
-                    isCurrentPlan
-                      ? 'bg-emerald-50 text-emerald-600 border border-emerald-200 cursor-default'
-                      : tier.popular
-                        ? `bg-gradient-to-r ${tier.gradient} text-white hover:opacity-90`
-                        : 'bg-slate-900 text-white hover:bg-slate-800'
+            {/* Change plan button */}
+            <Button onClick={() => setShowPlans(true)} variant="outline" className="w-full rounded-xl h-9 text-xs font-bold">
+              Cambiar Plan
+            </Button>
+          </div>
+
+          {/* Security footer */}
+          <div className="flex items-center justify-center gap-2 text-slate-300 text-[10px]">
+            <Shield className="w-3 h-3" />
+            Pagos procesados de forma segura con Wompi
+          </div>
+        </motion.div>
+      )}
+
+      {/* ── Plans Grid (when changing or no plan) ── */}
+      {(showPlans || !plan || subscription?.status !== 'active') && (
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-black tracking-tight text-slate-900">
+                {plan ? 'Cambiar Plan' : 'Elige tu Plan'}
+              </h2>
+              <p className="text-slate-400 text-[11px] mt-0.5">
+                {plan ? 'Selecciona un nuevo plan. El cambio solo se aplica al confirmar el pago.' : 'Selecciona el plan ideal para tu negocio.'}
+              </p>
+            </div>
+            {plan && subscription?.status === 'active' && (
+              <Button onClick={() => setShowPlans(false)} variant="ghost" className="text-xs text-slate-400">
+                ← Volver
+              </Button>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-3xl">
+            {(plans as Plan[]).map((p, i) => {
+              const tier = getPlanTier(p.name)
+              const features = parseFeatures(p.features || '[]')
+              const isCurrentPlan = plan?.id === p.id
+              const isSelected = selectedPlan === p.id
+              const isLoading = createSessionMutation.isPending && isSelected
+              const isDowngrade = plan && getPlanOrder(plan.name) > getPlanOrder(p.name)
+
+              return (
+                <motion.div
+                  key={p.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.1 }}
+                  className={`relative rounded-2xl overflow-hidden border-2 transition-all duration-300 ${
+                    tier.popular
+                      ? 'border-indigo-400 shadow-lg shadow-indigo-50 scale-[1.02]'
+                      : isSelected
+                        ? 'border-slate-400 shadow-md'
+                        : 'border-slate-200 hover:border-slate-300 hover:shadow-sm'
                   }`}
                 >
-                  {isLoading ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : isCurrentPlan ? (
-                    'Plan Actual'
-                  ) : (
-                    <>Suscribirse <ArrowRight className="w-4 h-4 ml-2" /></>
+                  {tier.badge && (
+                    <div className={`absolute top-0 right-0 bg-gradient-to-r ${tier.gradient} text-white text-[9px] font-black uppercase tracking-wider px-3 py-1 rounded-bl-xl`}>
+                      {tier.badge}
+                    </div>
                   )}
+
+                  <div className="p-4 space-y-4">
+                    <div className="space-y-2">
+                      <div className={`w-9 h-9 rounded-xl bg-gradient-to-br ${tier.gradient} text-white flex items-center justify-center`}>
+                        {tier.icon}
+                      </div>
+                      <div>
+                        <h3 className="text-base font-black text-slate-900 tracking-tight">{p.name}</h3>
+                        {p.description && <p className="text-[11px] text-slate-400 mt-0.5">{p.description}</p>}
+                      </div>
+                    </div>
+
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-2xl font-black text-slate-900">{formatPrice(p.price)}</span>
+                      <span className="text-xs text-slate-400 font-medium">/{p.interval === 'annual' ? 'año' : 'mes'}</span>
+                    </div>
+
+                    <ul className="space-y-1.5">
+                      {features.map((feature, fi) => (
+                        <li key={fi} className="flex items-start gap-2 text-[11px] text-slate-600">
+                          <Check className="w-3.5 h-3.5 text-emerald-500 mt-0.5 flex-shrink-0" />
+                          <span>{feature}</span>
+                        </li>
+                      ))}
+                    </ul>
+
+                    <Button
+                      onClick={() => !isCurrentPlan && handleSelectPlan(p)}
+                      disabled={isCurrentPlan || isLoading}
+                      className={`w-full rounded-xl h-9 font-bold text-[11px] uppercase tracking-wider transition-all ${
+                        isCurrentPlan
+                          ? 'bg-emerald-50 text-emerald-600 border border-emerald-200 cursor-default'
+                          : isDowngrade
+                            ? 'bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100'
+                            : tier.popular
+                              ? `bg-gradient-to-r ${tier.gradient} text-white hover:opacity-90`
+                              : 'bg-slate-900 text-white hover:bg-slate-800'
+                      }`}
+                    >
+                      {isLoading ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : isCurrentPlan ? (
+                        'Plan Actual'
+                      ) : isDowngrade ? (
+                        <><ArrowDown className="w-3 h-3 mr-1.5" /> Cambiar</>
+                      ) : (
+                        <>Suscribirse <ArrowRight className="w-3 h-3 ml-1.5" /></>
+                      )}
+                    </Button>
+                  </div>
+                </motion.div>
+              )
+            })}
+          </div>
+
+          <div className="flex items-center justify-center gap-4 py-2">
+            <div className="flex items-center gap-2 text-slate-400 text-[10px] font-medium">
+              <Shield className="w-3.5 h-3.5" />
+              Pago seguro con Wompi
+            </div>
+          </div>
+        </motion.div>
+      )}
+
+      {/* ── Downgrade Confirmation Dialog ── */}
+      <AnimatePresence>
+        {downgradeTarget && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 10 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 10 }}
+              className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-5"
+            >
+              {/* Header */}
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 bg-amber-50 rounded-xl flex items-center justify-center flex-shrink-0">
+                  <AlertTriangle className="w-5 h-5 text-amber-500" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-slate-900">¿Cambiar a {downgradeTarget.name}?</h3>
+                  <p className="text-xs text-slate-400 mt-1">Estás cambiando a un plan con menos beneficios</p>
+                </div>
+              </div>
+
+              {/* Features you'll lose */}
+              {(() => {
+                const targetFeatures = parseFeatures(downgradeTarget.features || '[]')
+                const losingFeatures = getLosingFeatures(currentFeatures, targetFeatures)
+
+                return losingFeatures.length > 0 ? (
+                  <div className="bg-red-50 border border-red-100 rounded-xl p-4 space-y-2">
+                    <p className="text-xs font-bold text-red-700 uppercase tracking-wider">Perderás acceso a:</p>
+                    <ul className="space-y-1.5">
+                      {losingFeatures.map((f, i) => (
+                        <li key={i} className="flex items-center gap-2 text-[12px] text-red-600">
+                          <span className="w-1.5 h-1.5 rounded-full bg-red-400" />
+                          {f}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null
+              })()}
+
+              {/* Price comparison */}
+              <div className="flex items-center justify-between bg-slate-50 rounded-xl p-3">
+                <div>
+                  <p className="text-[10px] text-slate-400 uppercase font-bold">Plan actual</p>
+                  <p className="text-sm font-bold text-slate-700">{plan?.name} — {formatPrice(plan?.price || 0)}/mes</p>
+                </div>
+                <ArrowRight className="w-4 h-4 text-slate-300" />
+                <div className="text-right">
+                  <p className="text-[10px] text-slate-400 uppercase font-bold">Nuevo plan</p>
+                  <p className="text-sm font-bold text-amber-700">{downgradeTarget.name} — {formatPrice(downgradeTarget.price)}/mes</p>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-3">
+                <Button onClick={() => setDowngradeTarget(null)} variant="outline" className="flex-1 rounded-xl text-xs font-bold">
+                  Cancelar
+                </Button>
+                <Button
+                  onClick={() => proceedToPayment(downgradeTarget.id)}
+                  className="flex-1 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-600 text-white"
+                >
+                  Confirmar cambio
                 </Button>
               </div>
             </motion.div>
-          )
-        })}
-      </div>
-
-      {/* Payment Methods */}
-      <div className="flex items-center justify-center gap-6 py-4">
-        <div className="flex items-center gap-2 text-slate-400 text-[11px] font-medium">
-          <Shield className="w-4 h-4" />
-          Pago seguro con Wompi
-        </div>
-        <div className="flex items-center gap-3 text-slate-300">
-          <CreditCard className="w-5 h-5" />
-          <Smartphone className="w-5 h-5" />
-          <Building2 className="w-5 h-5" />
-        </div>
-      </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

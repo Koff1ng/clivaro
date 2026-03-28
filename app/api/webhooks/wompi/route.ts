@@ -51,6 +51,13 @@ export async function POST(request: Request) {
 
     const newStatus = mapWompiStatusToSubscription(status)
 
+    // Parse pending plan info from wompiResponse
+    let pendingPlanId = subscription.planId
+    try {
+      const resp = subscription.wompiResponse ? JSON.parse(subscription.wompiResponse) : {}
+      if (resp.pendingPlanId) pendingPlanId = resp.pendingPlanId
+    } catch {}
+
     const endDate = new Date()
     if (subscription.planInterval === 'annual') {
       endDate.setDate(endDate.getDate() + 365)
@@ -60,23 +67,26 @@ export async function POST(request: Request) {
 
     // Update with raw SQL
     if (newStatus === 'active') {
+      // APPROVED: update planId + activate
       await prisma.$executeRawUnsafe(
         `UPDATE "Subscription" SET
-          "status" = $1, "wompiTransactionId" = $2, "wompiStatus" = $3,
-          "wompiPaymentMethod" = $4, "wompiResponse" = $5,
-          "startDate" = $6, "endDate" = $7, "updatedAt" = NOW()
-         WHERE "id" = $8`,
-        newStatus, transactionId, status,
+          "status" = $1, "planId" = $2, "wompiTransactionId" = $3, "wompiStatus" = $4,
+          "wompiPaymentMethod" = $5, "wompiResponse" = $6,
+          "startDate" = $7, "endDate" = $8, "updatedAt" = NOW()
+         WHERE "id" = $9`,
+        newStatus, pendingPlanId, transactionId, status,
         payment_method_type, JSON.stringify(event.data.transaction),
         new Date(), endDate, subscription.id
       )
     } else {
+      // DECLINED/ERROR: restore previous status, keep original planId
       await prisma.$executeRawUnsafe(
         `UPDATE "Subscription" SET
           "status" = $1, "wompiTransactionId" = $2, "wompiStatus" = $3,
           "wompiPaymentMethod" = $4, "wompiResponse" = $5, "updatedAt" = NOW()
          WHERE "id" = $6`,
-        newStatus, transactionId, status,
+        subscription.status === 'pending_payment' ? 'active' : newStatus,
+        transactionId, status,
         payment_method_type, JSON.stringify(event.data.transaction),
         subscription.id
       )
