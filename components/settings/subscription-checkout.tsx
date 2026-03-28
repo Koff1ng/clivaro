@@ -93,13 +93,13 @@ export function SubscriptionCheckout() {
     retry: false,
   })
 
-  // Show billing dashboard when active, show plans grid when no subscription
+  // Show billing dashboard when a plan exists, plans grid when none
   useEffect(() => {
     if (currentPlan) {
-      if (currentPlan.plan && currentPlan.subscription?.status === 'active') {
+      if (currentPlan.plan) {
         setShowPlans(false) // Show billing dashboard
       } else {
-        setShowPlans(true)  // Show plans grid
+        setShowPlans(true)  // Show plans grid — no plan
       }
     }
   }, [currentPlan])
@@ -448,11 +448,16 @@ export function SubscriptionCheckout() {
   return (
     <div className="space-y-6">
       {/* ── Current Plan Section ── */}
-      {plan && subscription?.status === 'active' && !showPlans && (
+      {plan && !showPlans && (
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-black text-slate-900 tracking-tight">Tu Plan Actual</h2>
-            <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full uppercase tracking-wider">Activo</span>
+            <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider border ${
+              subscription?.status === 'active' ? 'text-emerald-600 bg-emerald-50 border-emerald-200'
+              : subscription?.status === 'pending_payment' ? 'text-amber-600 bg-amber-50 border-amber-200'
+              : subscription?.status === 'trial' ? 'text-blue-600 bg-blue-50 border-blue-200'
+              : 'text-slate-600 bg-slate-50 border-slate-200'
+            }`}>{subscription?.status === 'active' ? 'Activo' : subscription?.status === 'pending_payment' ? 'Pendiente' : subscription?.status === 'trial' ? 'Prueba' : subscription?.status || 'Activo'}</span>
           </div>
 
           <div className="bg-gradient-to-br from-slate-50 to-white border border-slate-200 rounded-2xl p-5 space-y-4">
@@ -683,7 +688,7 @@ export function SubscriptionCheckout() {
       )}
 
       {/* ── Plans Grid (when changing or no plan) ── */}
-      {(showPlans || !plan || subscription?.status !== 'active') && (
+      {(showPlans || !plan) && (
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
