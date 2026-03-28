@@ -116,18 +116,28 @@ export function SubscriptionCheckout() {
     try {
       const url = `/api/subscriptions/wompi/verify?ref=${reference}${transactionId ? `&id=${transactionId}` : ''}`
       
-      for (let attempt = 0; attempt < 3; attempt++) {
+      // Poll up to 5 times with 3s delay
+      for (let attempt = 0; attempt < 5; attempt++) {
+        console.log(`[Wompi] Verify attempt ${attempt + 1}/5`)
         const res = await fetch(url)
         const data = await res.json()
+        const status = (data.status || '').toUpperCase()
 
-        if (data.status === 'APPROVED') {
+        console.log('[Wompi] Verify response:', data)
+
+        if (status === 'APPROVED') {
           setActivatedPlan(data.subscription?.planName || 'Tu nuevo plan')
           setPaymentComplete(true)
           queryClient.invalidateQueries({ queryKey: ['tenant-plan'] })
           window.history.replaceState({}, '', '/settings?tab=subscription')
           return
-        } else if (data.status === 'DECLINED' || data.status === 'VOIDED' || data.status === 'ERROR') {
+        } else if (status === 'DECLINED' || status === 'VOIDED' || status === 'ERROR') {
           toast('El pago no fue aprobado. Tu plan actual se mantiene sin cambios.', 'error')
+          window.history.replaceState({}, '', '/settings?tab=subscription')
+          setVerifying(false)
+          return
+        } else if (status === 'CONFIGURATION_ERROR') {
+          toast('Error de configuración del servidor. Contacta soporte.', 'error')
           window.history.replaceState({}, '', '/settings?tab=subscription')
           setVerifying(false)
           return

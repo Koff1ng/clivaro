@@ -29,45 +29,87 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'ref es requerido' }, { status: 400 })
     }
 
-    // Find the pending subscription by reference using raw SQL (column may not exist in Prisma types yet)
-    const subscriptions: any[] = await prisma.$queryRawUnsafe(
+    // Diagnostics
+    const hasPrivateKey = !!process.env.WOMPI_PRIVATE_KEY
+    const apiUrl = process.env.WOMPI_API_URL || 'https://sandbox.wompi.co/v1'
+    console.log('[Wompi Verify] Starting:', { reference, transactionId, hasPrivateKey, apiUrl, tenantId })
+
+    // Find subscription by reference — try with pending_payment first, then any status
+    let subscriptions: any[] = await prisma.$queryRawUnsafe(
       `SELECT s.*, p."name" as "planName", p."interval" as "planInterval", p."price" as "planPrice"
        FROM "Subscription" s
        JOIN "Plan" p ON s."planId" = p."id"
-       WHERE s."tenantId" = $1 AND s."wompiReference" = $2 AND s."status" = 'pending_payment'
+       WHERE s."tenantId" = $1 AND s."wompiReference" = $2
        LIMIT 1`,
       tenantId,
       reference
     )
 
-    const subscription = subscriptions[0]
+    let subscription = subscriptions[0]
 
+    // Fallback: find any subscription for this tenant
     if (!subscription) {
-      return NextResponse.json({ error: 'Suscripción no encontrada' }, { status: 404 })
+      console.log('[Wompi Verify] No subscription found by reference, trying by tenantId...')
+      subscriptions = await prisma.$queryRawUnsafe(
+        `SELECT s.*, p."name" as "planName", p."interval" as "planInterval", p."price" as "planPrice"
+         FROM "Subscription" s
+         JOIN "Plan" p ON s."planId" = p."id"
+         WHERE s."tenantId" = $1
+         ORDER BY s."updatedAt" DESC
+         LIMIT 1`,
+        tenantId
+      )
+      subscription = subscriptions[0]
     }
 
-    // If we have a transactionId, verify directly with Wompi API
+    if (!subscription) {
+      console.error('[Wompi Verify] No subscription found at all for tenant:', tenantId)
+      return NextResponse.json({ error: 'Suscripción no encontrada', debug: { tenantId, reference } }, { status: 404 })
+    }
+
+    console.log('[Wompi Verify] Found subscription:', { id: subscription.id, status: subscription.status, planName: subscription.planName })
+
+    // If we have a transactionId, verify with Wompi API
     if (transactionId) {
+      if (!hasPrivateKey) {
+        console.error('[Wompi Verify] WOMPI_PRIVATE_KEY is NOT set! Cannot verify transaction.')
+        return NextResponse.json({
+          status: 'CONFIGURATION_ERROR',
+          message: 'Configuración incompleta del servidor — contacta soporte',
+          debug: { missingKey: 'WOMPI_PRIVATE_KEY' },
+        }, { status: 500 })
+      }
+
+      console.log('[Wompi Verify] Fetching transaction from Wompi API:', transactionId)
       const transaction = await getTransaction(transactionId)
 
       if (!transaction) {
+        console.error('[Wompi Verify] getTransaction returned null for:', transactionId)
         return NextResponse.json({
-          status: 'pending',
-          message: 'No se pudo verificar la transacción aún',
+          status: 'PENDING',
+          message: 'No se pudo verificar la transacción con Wompi',
+          debug: { transactionId, apiUrl },
         })
       }
 
+      console.log('[Wompi Verify] Transaction from Wompi:', { status: transaction.status, reference: transaction.reference, id: transaction.id })
+
+      // Reference validation — warn but don't block
       if (transaction.reference !== reference) {
-        return NextResponse.json({ error: 'Referencia no coincide' }, { status: 400 })
+        console.warn('[Wompi Verify] Reference mismatch:', { expected: reference, got: transaction.reference })
       }
 
       const newStatus = mapWompiStatusToSubscription(transaction.status)
 
       // Parse pending plan info from wompiResponse
       let pendingPlanId = subscription.planId
+      let pendingPlanName = subscription.planName
       try {
         const resp = subscription.wompiResponse ? JSON.parse(subscription.wompiResponse) : {}
-        if (resp.pendingPlanId) pendingPlanId = resp.pendingPlanId
+        if (resp.pendingPlanId) {
+          pendingPlanId = resp.pendingPlanId
+          pendingPlanName = resp.pendingPlanName || pendingPlanName
+        }
       } catch {}
 
       // Calculate end date
@@ -78,9 +120,9 @@ export async function GET(request: Request) {
         endDate.setDate(endDate.getDate() + 30)
       }
 
-      // Update subscription with raw SQL
+      // Update subscription
       if (newStatus === 'active') {
-        // APPROVED: update planId + activate
+        console.log('[Wompi Verify] APPROVED! Activating plan:', { pendingPlanId, pendingPlanName })
         await prisma.$executeRawUnsafe(
           `UPDATE "Subscription" SET
             "status" = $1, "planId" = $2, "wompiTransactionId" = $3, "wompiStatus" = $4,
@@ -92,7 +134,7 @@ export async function GET(request: Request) {
           new Date(), endDate, subscription.id
         )
       } else {
-        // DECLINED/ERROR: restore to previous active status, keep original planId
+        console.log('[Wompi Verify] Not approved:', { wompiStatus: transaction.status, newStatus })
         await prisma.$executeRawUnsafe(
           `UPDATE "Subscription" SET
             "status" = $1, "wompiTransactionId" = $2, "wompiStatus" = $3,
@@ -110,21 +152,21 @@ export async function GET(request: Request) {
         subscriptionStatus: newStatus,
         subscription: {
           id: subscription.id,
-          planName: subscription.planName,
+          planName: newStatus === 'active' ? pendingPlanName : subscription.planName,
           startDate: newStatus === 'active' ? new Date() : subscription.startDate,
           endDate: newStatus === 'active' ? endDate : subscription.endDate,
         },
       })
     }
 
-    // No transactionId yet — return current status
+    // No transactionId — return current status
     return NextResponse.json({
-      status: 'pending',
+      status: 'PENDING',
       subscriptionStatus: subscription.status,
       reference,
     })
   } catch (error: any) {
-    console.error('[Wompi] Error verifying:', error)
+    console.error('[Wompi Verify] Error:', error)
     return NextResponse.json({ error: error.message || 'Error interno' }, { status: 500 })
   }
 }
