@@ -310,9 +310,17 @@ export function WelcomeOnboarding({ onComplete, planName, isDemo }: WelcomeOnboa
   ].filter(r => r.value)
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#fafafa] dark:bg-slate-950 flex flex-col">
+    <div className="fixed inset-0 z-50 flex flex-col overflow-hidden" style={{ background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 25%, #e8eef6 50%, #f0f4fa 75%, #f8fafc 100%)' }}>
+      {/* Branded subtle background pattern */}
+      <div className="absolute inset-0 pointer-events-none" style={{
+        backgroundImage: 'radial-gradient(circle at 1px 1px, rgba(15,23,42,0.03) 1px, transparent 0)',
+        backgroundSize: '24px 24px',
+      }} />
+      {/* Decorative gradient orbs */}
+      <div className="absolute top-[-15%] right-[-10%] w-[500px] h-[500px] rounded-full pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(59,130,246,0.06) 0%, transparent 70%)' }} />
+      <div className="absolute bottom-[-20%] left-[-10%] w-[600px] h-[600px] rounded-full pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(99,102,241,0.05) 0%, transparent 70%)' }} />
       {/* Top Bar */}
-      <div className="flex items-center justify-between px-8 py-5 border-b border-slate-100 dark:border-slate-800">
+      <div className="flex items-center justify-between px-8 py-5 border-b border-slate-200/60 dark:border-slate-800 relative z-10 backdrop-blur-sm bg-white/70">
         <Logo size="sm" />
         <div className="flex items-center gap-3">
           {isDemo && (
@@ -353,22 +361,22 @@ export function WelcomeOnboarding({ onComplete, planName, isDemo }: WelcomeOnboa
               {/* ──── STEP 0: Welcome ──── */}
               {step === 0 && (
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}>
-                  {/* Centered Logo with Animated Glow Ring */}
+                  {/* Centered Logo — width-based sizing for wide SVG */}
                   <motion.div
-                    className="flex justify-center mb-8"
-                    initial={{ opacity: 0, scale: 0.8, filter: 'blur(8px)' }}
+                    className="flex justify-center mb-10"
+                    initial={{ opacity: 0, scale: 0.85, filter: 'blur(10px)' }}
                     animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
-                    transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+                    transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
                   >
                     <div className="relative">
-                      {/* Glow ring */}
+                      {/* Animated glow behind logo */}
                       <motion.div
-                        className="absolute -inset-4 rounded-3xl opacity-20 dark:opacity-30"
-                        style={{ background: 'radial-gradient(circle, rgba(15,23,42,0.15) 0%, transparent 70%)' }}
-                        animate={{ scale: [1, 1.08, 1], opacity: [0.15, 0.25, 0.15] }}
-                        transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+                        className="absolute -inset-6 rounded-3xl"
+                        style={{ background: 'radial-gradient(ellipse, rgba(59,130,246,0.08) 0%, transparent 70%)' }}
+                        animate={{ scale: [1, 1.1, 1], opacity: [0.6, 1, 0.6] }}
+                        transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
                       />
-                      <Logo size="lg" className="h-32" />
+                      <Logo size="lg" className="w-72 h-auto" />
                     </div>
                   </motion.div>
 
