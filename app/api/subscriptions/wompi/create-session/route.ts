@@ -40,11 +40,10 @@ export async function POST(request: Request) {
     const reference = generateReference(tenantId)
     const amountInCents = Math.round(plan.price * 100) // Convert COP to centavos
 
-    // Build redirect URL
-    const baseUrl = process.env.NEXTAUTH_URL || process.env.VERCEL_URL
-      ? `https://${process.env.VERCEL_URL}`
-      : 'http://localhost:3000'
-    const redirectUrl = `${baseUrl}/settings/billing?wompiRef=${reference}`
+    // Build redirect URL — NEXTAUTH_URL has the real domain (e.g. https://www.clientumstudio.com)
+    const baseUrl = process.env.NEXTAUTH_URL
+      || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000')
+    const redirectUrl = `${baseUrl}/settings?tab=subscription&wompiRef=${reference}`
 
     // Create payment session data
     const paymentSession = createPaymentSession(reference, amountInCents, redirectUrl, plan.currency || 'COP')
