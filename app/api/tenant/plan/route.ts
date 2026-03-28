@@ -84,8 +84,9 @@ export async function GET(request: Request) {
         endDate: true,
         trialEndDate: true,
         createdAt: true,
-        mercadoPagoPaymentMethod: true,
-        mercadoPagoStatus: true,
+        wompiTransactionId: true,
+        wompiStatus: true,
+        wompiPaymentMethod: true,
         plan: {
           select: {
             id: true,
@@ -206,8 +207,9 @@ export async function GET(request: Request) {
         endDate: subscription.endDate,
         trialEndDate: subscription.trialEndDate,
         createdAt: subscription.createdAt,
-        mercadoPagoPaymentMethod: subscription.mercadoPagoPaymentMethod,
-        mercadoPagoStatus: subscription.mercadoPagoStatus,
+        wompiTransactionId: subscription.wompiTransactionId,
+        wompiStatus: subscription.wompiStatus,
+        wompiPaymentMethod: subscription.wompiPaymentMethod,
         nextPaymentDate: nextPaymentDate?.toISOString() || null,
       },
       features: subscription.plan.features ? JSON.parse(subscription.plan.features) : [],
