@@ -317,7 +317,7 @@ export function WelcomeOnboarding({ onComplete, planName, isDemo }: WelcomeOnboa
                         animate={{ scale: [1, 1.08, 1], opacity: [0.15, 0.25, 0.15] }}
                         transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
                       />
-                      <Logo size="md" className="h-20" />
+                      <Logo size="lg" className="h-32" />
                     </div>
                   </motion.div>
 
