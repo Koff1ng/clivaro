@@ -40,9 +40,11 @@ export async function POST(request: Request) {
     const reference = generateReference(tenantId)
     const amountInCents = Math.round(plan.price * 100) // Convert COP to centavos
 
-    // Build redirect URL — NEXTAUTH_URL has the real domain (e.g. https://www.clientumstudio.com)
-    const baseUrl = process.env.NEXTAUTH_URL
-      || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000')
+    // Build redirect URL — must use the actual production domain
+    // NOT VERCEL_URL (which gives clivaro.vercel.app — wrong domain, breaks auth)
+    const baseUrl = process.env.NODE_ENV === 'production'
+      ? 'https://www.clientumstudio.com'
+      : (process.env.NEXTAUTH_URL || 'http://localhost:3000')
     const redirectUrl = `${baseUrl}/settings?tab=subscription&wompiRef=${reference}`
 
     // Create payment session data
