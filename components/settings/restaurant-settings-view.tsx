@@ -43,20 +43,22 @@ export function RestaurantSettingsView() {
     queryKey: ['restaurant-config'],
     queryFn: async () => {
       const res = await fetch('/api/restaurant/config')
-      if (!res.ok) throw new Error('Error al cargar configuración')
+      if (!res.ok) return null
       return res.json()
     },
     retry: false,
+    refetchOnWindowFocus: false,
   })
 
   const { data: zones = [], isLoading: isLoadingZones } = useQuery({
     queryKey: ['restaurant-zones'],
     queryFn: async () => {
       const res = await fetch('/api/restaurant/zones')
-      if (!res.ok) throw new Error('Error al cargar zonas')
+      if (!res.ok) return []
       return res.json()
     },
     retry: false,
+    refetchOnWindowFocus: false,
   })
 
   const updateConfigMutation = useMutation({
