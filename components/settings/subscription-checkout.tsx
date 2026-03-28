@@ -93,23 +93,11 @@ export function SubscriptionCheckout() {
     retry: false,
   })
 
-  // Show billing dashboard when a plan exists, plans grid when none
-  useEffect(() => {
-    if (currentPlan) {
-      console.log('[Billing] currentPlan data:', JSON.stringify({
-        hasPlan: !!currentPlan.plan,
-        planName: currentPlan.plan?.name,
-        status: currentPlan.subscription?.status,
-        expired: currentPlan.expired,
-        isSuperAdmin: currentPlan.isSuperAdmin,
-      }))
-      if (currentPlan.plan) {
-        setShowPlans(false) // Show billing dashboard
-      } else {
-        setShowPlans(true)  // Show plans grid — no plan
-      }
-    }
-  }, [currentPlan])
+  // Derive billing visibility from data — no useEffect needed
+  // showPlans is only for user-triggered "Change Plan" action
+  const hasBillingData = !!currentPlan?.plan
+  const shouldShowBilling = hasBillingData && !showPlans
+  const shouldShowPlans = showPlans || !hasBillingData
 
   // Check for redirect from Wompi
   useEffect(() => {
@@ -455,7 +443,7 @@ export function SubscriptionCheckout() {
   return (
     <div className="space-y-6">
       {/* ── Current Plan Section ── */}
-      {plan && !showPlans && (
+      {shouldShowBilling && (
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-black text-slate-900 tracking-tight">Tu Plan Actual</h2>
@@ -695,7 +683,7 @@ export function SubscriptionCheckout() {
       )}
 
       {/* ── Plans Grid (when changing or no plan) ── */}
-      {(showPlans || !plan) && (
+      {shouldShowPlans && (
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
