@@ -35,7 +35,8 @@ export function RestaurantSettingsView() {
       const res = await fetch('/api/tenant/plan')
       if (!res.ok) return null
       return res.json()
-    }
+    },
+    retry: false,
   })
 
   const { data: config, isLoading: isLoadingConfig } = useQuery({
@@ -44,7 +45,8 @@ export function RestaurantSettingsView() {
       const res = await fetch('/api/restaurant/config')
       if (!res.ok) throw new Error('Error al cargar configuración')
       return res.json()
-    }
+    },
+    retry: false,
   })
 
   const { data: zones = [], isLoading: isLoadingZones } = useQuery({
@@ -53,7 +55,8 @@ export function RestaurantSettingsView() {
       const res = await fetch('/api/restaurant/zones')
       if (!res.ok) throw new Error('Error al cargar zonas')
       return res.json()
-    }
+    },
+    retry: false,
   })
 
   const updateConfigMutation = useMutation({
