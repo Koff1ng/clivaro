@@ -96,6 +96,13 @@ export function SubscriptionCheckout() {
   // Show billing dashboard when a plan exists, plans grid when none
   useEffect(() => {
     if (currentPlan) {
+      console.log('[Billing] currentPlan data:', JSON.stringify({
+        hasPlan: !!currentPlan.plan,
+        planName: currentPlan.plan?.name,
+        status: currentPlan.subscription?.status,
+        expired: currentPlan.expired,
+        isSuperAdmin: currentPlan.isSuperAdmin,
+      }))
       if (currentPlan.plan) {
         setShowPlans(false) // Show billing dashboard
       } else {
