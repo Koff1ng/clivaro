@@ -58,6 +58,7 @@ export function SubscriptionCheckout() {
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null)
   const [paymentSession, setPaymentSession] = useState<PaymentSession | null>(null)
   const [verifying, setVerifying] = useState(false)
+  const [activatedPlan, setActivatedPlan] = useState<string | null>(null)
   const [paymentComplete, setPaymentComplete] = useState(false)
 
   // Fetch available plans
@@ -98,20 +99,34 @@ export function SubscriptionCheckout() {
   const verifyPayment = async (reference: string, transactionId?: string | null) => {
     try {
       const url = `/api/subscriptions/wompi/verify?ref=${reference}${transactionId ? `&id=${transactionId}` : ''}`
-      const res = await fetch(url)
-      const data = await res.json()
+      
+      // Poll up to 3 times with delay (Wompi might not be instant)
+      for (let attempt = 0; attempt < 3; attempt++) {
+        const res = await fetch(url)
+        const data = await res.json()
 
-      if (data.status === 'APPROVED') {
-        setPaymentComplete(true)
-        toast('¡Pago aprobado! Tu suscripción está activa', 'success')
-        queryClient.invalidateQueries({ queryKey: ['tenant-plan'] })
-        // Clean URL
-        window.history.replaceState({}, '', '/settings?tab=subscription')
-      } else if (data.status === 'PENDING') {
-        toast('Pago pendiente — verificaremos en unos momentos', 'info')
-      } else {
-        toast(`Pago ${data.status || 'no completado'}`, 'error')
+        if (data.status === 'APPROVED') {
+          setActivatedPlan(data.subscription?.planName || 'Tu nuevo plan')
+          setPaymentComplete(true)
+          queryClient.invalidateQueries({ queryKey: ['tenant-plan'] })
+          window.history.replaceState({}, '', '/settings?tab=subscription')
+          return
+        } else if (data.status === 'DECLINED' || data.status === 'VOIDED' || data.status === 'ERROR') {
+          toast('El pago no fue aprobado. Intenta nuevamente.', 'error')
+          window.history.replaceState({}, '', '/settings?tab=subscription')
+          setVerifying(false)
+          return
+        }
+
+        // Wait 2s before next attempt
+        if (attempt < 2) {
+          await new Promise(r => setTimeout(r, 2000))
+        }
       }
+
+      // After 3 attempts still pending
+      toast('Tu pago está siendo procesado. Te notificaremos cuando se complete.', 'info')
+      window.history.replaceState({}, '', '/settings?tab=subscription')
     } catch {
       toast('Error verificando el pago', 'error')
     } finally {
@@ -135,7 +150,6 @@ export function SubscriptionCheckout() {
     },
     onSuccess: (session) => {
       setPaymentSession(session)
-      // Load and open Wompi Widget
       openWompiWidget(session)
     },
     onError: (err: Error) => {
@@ -144,11 +158,9 @@ export function SubscriptionCheckout() {
   })
 
   const openWompiWidget = useCallback((session: PaymentSession) => {
-    // Dynamically load the Wompi Widget script
     const existingScript = document.querySelector('script[src*="checkout.wompi.co"]')
     if (existingScript) existingScript.remove()
 
-    // Create a form container
     const formContainer = document.createElement('div')
     formContainer.id = 'wompi-checkout-container'
     formContainer.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.5)'
@@ -168,17 +180,13 @@ export function SubscriptionCheckout() {
     formContainer.appendChild(form)
     document.body.appendChild(formContainer)
 
-    // Auto-click the button after load
     script.onload = () => {
       setTimeout(() => {
         const wompiButton = formContainer.querySelector('button')
-        if (wompiButton) {
-          wompiButton.click()
-        }
+        if (wompiButton) wompiButton.click()
       }, 500)
     }
 
-    // Click outside to close
     formContainer.addEventListener('click', (e) => {
       if (e.target === formContainer) {
         formContainer.remove()
@@ -204,38 +212,104 @@ export function SubscriptionCheckout() {
     }
   }
 
-  // Verifying state
+  // ── Verifying state ──
   if (verifying) {
     return (
-      <div className="flex flex-col items-center justify-center py-12 gap-3">
-        <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
-        <p className="text-base font-bold text-slate-700">Verificando tu pago...</p>
-        <p className="text-xs text-slate-400">Esto puede tomar unos segundos</p>
+      <div className="flex flex-col items-center justify-center py-16 gap-4">
+        <div className="relative">
+          <div className="w-16 h-16 rounded-full border-4 border-indigo-100 border-t-indigo-500 animate-spin" />
+          <CreditCard className="w-6 h-6 text-indigo-500 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
+        </div>
+        <div className="text-center">
+          <p className="text-base font-bold text-slate-800">Verificando tu pago...</p>
+          <p className="text-xs text-slate-400 mt-1">Consultando el estado de la transacción</p>
+        </div>
       </div>
     )
   }
 
-  // Payment complete
+  // ── Payment complete — Premium welcome ──
   if (paymentComplete) {
     return (
       <motion.div
-        initial={{ opacity: 0, scale: 0.9 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="flex flex-col items-center justify-center py-12 gap-4"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="flex flex-col items-center justify-center py-12 gap-5 relative overflow-hidden"
       >
+        {/* Celebration particles */}
+        {[...Array(12)].map((_, i) => (
+          <motion.div
+            key={i}
+            className="absolute w-2 h-2 rounded-full"
+            style={{
+              background: ['#6366f1', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#3b82f6'][i % 6],
+              top: `${Math.random() * 100}%`,
+              left: `${Math.random() * 100}%`,
+            }}
+            initial={{ opacity: 0, scale: 0 }}
+            animate={{ 
+              opacity: [0, 1, 0],
+              scale: [0, 1.5, 0],
+              y: [0, -30],
+            }}
+            transition={{ delay: 0.3 + i * 0.1, duration: 1.5, repeat: Infinity, repeatDelay: 3 }}
+          />
+        ))}
+
+        {/* Animated checkmark */}
         <motion.div
-          className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center"
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
+          className="w-20 h-20 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-full flex items-center justify-center shadow-lg shadow-emerald-200"
+          initial={{ scale: 0, rotate: -180 }}
+          animate={{ scale: 1, rotate: 0 }}
           transition={{ type: 'spring', stiffness: 200, damping: 15 }}
         >
-          <Check className="w-10 h-10 text-emerald-600" />
+          <Check className="w-10 h-10 text-white" strokeWidth={3} />
         </motion.div>
-        <h2 className="text-2xl font-black text-slate-800 tracking-tight">¡Pago Exitoso!</h2>
-        <p className="text-slate-500">Tu suscripción ha sido activada correctamente</p>
-        <Button onClick={() => window.location.reload()} className="rounded-full px-8">
-          Continuar
-        </Button>
+
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          className="text-center space-y-2"
+        >
+          <h2 className="text-2xl font-black text-slate-900 tracking-tight">¡Bienvenido a {activatedPlan}!</h2>
+          <p className="text-sm text-slate-500">Tu suscripción ha sido activada exitosamente</p>
+        </motion.div>
+
+        {/* Plan badge */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.5 }}
+          className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-indigo-50 to-violet-50 border border-indigo-200 rounded-2xl"
+        >
+          <div className="w-6 h-6 bg-gradient-to-br from-indigo-500 to-violet-600 rounded-lg flex items-center justify-center">
+            <Crown className="w-3 h-3 text-white" />
+          </div>
+          <span className="text-sm font-bold text-indigo-700">{activatedPlan}</span>
+          <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">ACTIVO</span>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.7 }}
+          className="flex gap-3 mt-2"
+        >
+          <Button
+            onClick={() => { setPaymentComplete(false); queryClient.invalidateQueries({ queryKey: ['tenant-plan'] }) }}
+            variant="outline"
+            className="rounded-xl text-xs"
+          >
+            Ver mi plan
+          </Button>
+          <Button
+            onClick={() => window.location.href = '/dashboard'}
+            className="rounded-xl text-xs bg-indigo-600 hover:bg-indigo-700"
+          >
+            Ir al Dashboard
+          </Button>
+        </motion.div>
       </motion.div>
     )
   }
