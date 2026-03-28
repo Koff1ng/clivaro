@@ -161,9 +161,99 @@ export function SubscriptionCheckout() {
     const existingScript = document.querySelector('script[src*="checkout.wompi.co"]')
     if (existingScript) existingScript.remove()
 
+    // Remove any existing container
+    const existingContainer = document.getElementById('wompi-checkout-container')
+    if (existingContainer) existingContainer.remove()
+
+    // Create branded full-screen overlay that hides the entire app
     const formContainer = document.createElement('div')
     formContainer.id = 'wompi-checkout-container'
-    formContainer.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.5)'
+    formContainer.innerHTML = `
+      <style>
+        #wompi-checkout-container {
+          position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 99999;
+          display: flex; align-items: center; justify-content: center; flex-direction: column;
+          background: linear-gradient(135deg, #0f172a 0%, #1e293b 40%, #0f172a 100%);
+          font-family: system-ui, -apple-system, sans-serif;
+        }
+        #wompi-checkout-container::before {
+          content: ''; position: absolute; inset: 0;
+          background-image: radial-gradient(circle at 1px 1px, rgba(255,255,255,0.03) 1px, transparent 0);
+          background-size: 32px 32px;
+        }
+        .wompi-brand-header {
+          position: absolute; top: 32px; left: 40px;
+          display: flex; align-items: center; gap: 10px;
+          color: rgba(255,255,255,0.7); font-size: 14px; font-weight: 700;
+          letter-spacing: 0.05em;
+        }
+        .wompi-brand-dot { width: 8px; height: 8px; border-radius: 50%; background: #6366f1; }
+        .wompi-status-text {
+          text-align: center; color: rgba(255,255,255,0.5); font-size: 13px;
+          margin-top: 24px; z-index: 1;
+        }
+        .wompi-status-text strong { color: rgba(255,255,255,0.8); }
+        .wompi-pulse-ring {
+          width: 80px; height: 80px; border-radius: 50%;
+          border: 2px solid rgba(99, 102, 241, 0.3);
+          display: flex; align-items: center; justify-content: center;
+          animation: wompiPulse 2s ease-in-out infinite; z-index: 1;
+        }
+        .wompi-inner-ring {
+          width: 56px; height: 56px; border-radius: 50%;
+          background: linear-gradient(135deg, #6366f1, #8b5cf6);
+          display: flex; align-items: center; justify-content: center;
+          box-shadow: 0 0 40px rgba(99, 102, 241, 0.3);
+        }
+        .wompi-inner-ring svg { width: 24px; height: 24px; color: white; }
+        @keyframes wompiPulse {
+          0%, 100% { transform: scale(1); border-color: rgba(99, 102, 241, 0.3); }
+          50% { transform: scale(1.1); border-color: rgba(99, 102, 241, 0.6); }
+        }
+        .wompi-close-btn {
+          position: absolute; top: 28px; right: 32px;
+          background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.1);
+          color: rgba(255,255,255,0.6); border-radius: 12px; padding: 8px 20px;
+          font-size: 12px; cursor: pointer; font-weight: 600;
+          transition: all 0.2s;
+        }
+        .wompi-close-btn:hover { background: rgba(255,255,255,0.15); color: white; }
+        .wompi-form-wrap { z-index: 2; margin-top: 20px; }
+        .wompi-amount {
+          color: white; font-size: 28px; font-weight: 900; margin-top: 16px;
+          letter-spacing: -0.02em; z-index: 1;
+        }
+        .wompi-plan-name {
+          color: rgba(255,255,255,0.4); font-size: 11px; text-transform: uppercase;
+          letter-spacing: 0.15em; font-weight: 700; margin-top: 6px; z-index: 1;
+        }
+        .wompi-secure {
+          position: absolute; bottom: 28px; left: 50%; transform: translateX(-50%);
+          color: rgba(255,255,255,0.25); font-size: 11px;
+          display: flex; align-items: center; gap: 6px;
+        }
+      </style>
+      <div class="wompi-brand-header">
+        <div class="wompi-brand-dot"></div>
+        Clivaro
+      </div>
+      <button class="wompi-close-btn" id="wompi-close-btn">✕ Cancelar</button>
+      <div class="wompi-pulse-ring">
+        <div class="wompi-inner-ring">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
+          </svg>
+        </div>
+      </div>
+      <div class="wompi-amount">${new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(session.amountInCents / 100)}</div>
+      <div class="wompi-plan-name">${session.planName}</div>
+      <div class="wompi-status-text"><strong>Procesando pago seguro</strong><br>serás redirigido al checkout de Wompi</div>
+      <div class="wompi-form-wrap" id="wompi-form-wrap"></div>
+      <div class="wompi-secure">
+        <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+        Pago cifrado y seguro con Wompi
+      </div>
+    `
 
     const form = document.createElement('form')
     const script = document.createElement('script')
@@ -177,22 +267,23 @@ export function SubscriptionCheckout() {
     script.setAttribute('data-redirect-url', session.redirectUrl)
 
     form.appendChild(script)
-    formContainer.appendChild(form)
+    
     document.body.appendChild(formContainer)
+    const formWrap = document.getElementById('wompi-form-wrap')
+    if (formWrap) formWrap.appendChild(form)
+
+    // Close button
+    document.getElementById('wompi-close-btn')?.addEventListener('click', () => {
+      formContainer.remove()
+      setPaymentSession(null)
+    })
 
     script.onload = () => {
       setTimeout(() => {
-        const wompiButton = formContainer.querySelector('button')
-        if (wompiButton) wompiButton.click()
+        const wompiButton = formContainer.querySelector('button:not(#wompi-close-btn)')
+        if (wompiButton) (wompiButton as HTMLButtonElement).click()
       }, 500)
     }
-
-    formContainer.addEventListener('click', (e) => {
-      if (e.target === formContainer) {
-        formContainer.remove()
-        setPaymentSession(null)
-      }
-    })
   }, [])
 
   const handleSelectPlan = (planId: string) => {
