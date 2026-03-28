@@ -9,7 +9,7 @@ const WOMPI_PUBLIC_KEY = process.env.WOMPI_PUBLIC_KEY || process.env.NEXT_PUBLIC
 const WOMPI_PRIVATE_KEY = process.env.WOMPI_PRIVATE_KEY || ''
 const WOMPI_EVENTS_SECRET = process.env.WOMPI_EVENTS_SECRET || ''
 const WOMPI_INTEGRITY_SECRET = process.env.WOMPI_INTEGRITY_SECRET || ''
-const WOMPI_API_URL = process.env.WOMPI_API_URL || 'https://api-sandbox.co.uat.wompi.dev/v1'
+const WOMPI_API_URL = process.env.WOMPI_API_URL || 'https://sandbox.wompi.co/v1'
 
 // ─── Types ───
 export interface WompiTransaction {
