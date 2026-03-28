@@ -8,81 +8,84 @@ export const dynamic = 'force-dynamic'
 /**
  * POST /api/webhooks/wompi
  * Wompi event webhook — receives transaction.updated events
- * Public endpoint (no auth required), protected by SHA256 signature verification
- * 
- * Must return 200 or Wompi retries up to 3 times over 24h
+ * Public endpoint protegido por verificación SHA256 de firma
  */
 export async function POST(request: Request) {
   try {
     const event: WompiEvent = await request.json()
 
-    // Only handle transaction.updated events
     if (event.event !== 'transaction.updated') {
       return NextResponse.json({ received: true })
     }
 
-    // Verify signature
     const isValid = verifyEventSignature(event)
     if (!isValid) {
-      console.error('[Wompi Webhook] Invalid signature for event:', event.event)
+      console.error('[Wompi Webhook] Invalid signature')
       return NextResponse.json({ error: 'Invalid signature' }, { status: 401 })
     }
 
-    const transaction = event.data.transaction
-    const { reference, status, id: transactionId, payment_method_type } = transaction
+    const { reference, status, id: transactionId, payment_method_type } = event.data.transaction
 
     console.log(`[Wompi Webhook] Transaction ${transactionId} — status: ${status}, ref: ${reference}`)
 
-    // Find the subscription by reference
-    const subscription = await prisma.subscription.findFirst({
-      where: { wompiReference: reference },
-      include: { plan: true },
-    })
+    // Find subscription by reference using raw SQL
+    const subscriptions: any[] = await prisma.$queryRawUnsafe(
+      `SELECT s.*, p."interval" as "planInterval"
+       FROM "Subscription" s
+       JOIN "Plan" p ON s."planId" = p."id"
+       WHERE s."wompiReference" = $1
+       LIMIT 1`,
+      reference
+    )
+
+    const subscription = subscriptions[0]
 
     if (!subscription) {
-      console.warn(`[Wompi Webhook] No subscription found for reference: ${reference}`)
+      console.warn(`[Wompi Webhook] No subscription for ref: ${reference}`)
       return NextResponse.json({ received: true, warning: 'No subscription found' })
     }
 
-    // Don't downgrade an already active subscription
     if (subscription.status === 'active' && status !== 'APPROVED') {
-      console.log(`[Wompi Webhook] Skipping — subscription already active, tx status: ${status}`)
       return NextResponse.json({ received: true })
     }
 
     const newStatus = mapWompiStatusToSubscription(status)
 
-    // Calculate end date
     const endDate = new Date()
-    if (subscription.plan.interval === 'annual') {
+    if (subscription.planInterval === 'annual') {
       endDate.setDate(endDate.getDate() + 365)
     } else {
       endDate.setDate(endDate.getDate() + 30)
     }
 
-    // Update subscription
-    await prisma.subscription.update({
-      where: { id: subscription.id },
-      data: {
-        status: newStatus,
-        wompiTransactionId: transactionId,
-        wompiStatus: status,
-        wompiPaymentMethod: payment_method_type,
-        wompiResponse: JSON.stringify(transaction),
-        ...(newStatus === 'active' ? {
-          startDate: new Date(),
-          endDate,
-        } : {}),
-      },
-    })
+    // Update with raw SQL
+    if (newStatus === 'active') {
+      await prisma.$executeRawUnsafe(
+        `UPDATE "Subscription" SET
+          "status" = $1, "wompiTransactionId" = $2, "wompiStatus" = $3,
+          "wompiPaymentMethod" = $4, "wompiResponse" = $5,
+          "startDate" = $6, "endDate" = $7, "updatedAt" = NOW()
+         WHERE "id" = $8`,
+        newStatus, transactionId, status,
+        payment_method_type, JSON.stringify(event.data.transaction),
+        new Date(), endDate, subscription.id
+      )
+    } else {
+      await prisma.$executeRawUnsafe(
+        `UPDATE "Subscription" SET
+          "status" = $1, "wompiTransactionId" = $2, "wompiStatus" = $3,
+          "wompiPaymentMethod" = $4, "wompiResponse" = $5, "updatedAt" = NOW()
+         WHERE "id" = $6`,
+        newStatus, transactionId, status,
+        payment_method_type, JSON.stringify(event.data.transaction),
+        subscription.id
+      )
+    }
 
-    console.log(`[Wompi Webhook] Subscription ${subscription.id} updated to: ${newStatus}`)
-
-    // Return 200 to acknowledge receipt
+    console.log(`[Wompi Webhook] Subscription ${subscription.id} → ${newStatus}`)
     return NextResponse.json({ received: true, status: newStatus })
   } catch (error: any) {
-    console.error('[Wompi Webhook] Error processing event:', error)
-    // Return 200 anyway to prevent Wompi from retrying on our errors
+    console.error('[Wompi Webhook] Error:', error)
     return NextResponse.json({ received: true, error: error.message })
   }
 }

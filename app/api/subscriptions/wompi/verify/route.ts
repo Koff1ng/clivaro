@@ -6,7 +6,7 @@ import { getTransaction, mapWompiStatusToSubscription } from '@/lib/wompi'
 export const dynamic = 'force-dynamic'
 
 /**
- * GET /api/subscriptions/wompi/verify?ref=REFERENCE
+ * GET /api/subscriptions/wompi/verify?ref=REFERENCE&id=TRANSACTION_ID
  * Verifies a Wompi transaction by reference and activates the subscription
  */
 export async function GET(request: Request) {
@@ -29,15 +29,18 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'ref es requerido' }, { status: 400 })
     }
 
-    // Find the pending subscription by reference
-    const subscription = await prisma.subscription.findFirst({
-      where: {
-        tenantId,
-        wompiReference: reference,
-        status: 'pending_payment',
-      },
-      include: { plan: true },
-    })
+    // Find the pending subscription by reference using raw SQL (column may not exist in Prisma types yet)
+    const subscriptions: any[] = await prisma.$queryRawUnsafe(
+      `SELECT s.*, p."name" as "planName", p."interval" as "planInterval", p."price" as "planPrice"
+       FROM "Subscription" s
+       JOIN "Plan" p ON s."planId" = p."id"
+       WHERE s."tenantId" = $1 AND s."wompiReference" = $2 AND s."status" = 'pending_payment'
+       LIMIT 1`,
+      tenantId,
+      reference
+    )
+
+    const subscription = subscriptions[0]
 
     if (!subscription) {
       return NextResponse.json({ error: 'Suscripción no encontrada' }, { status: 404 })
@@ -54,46 +57,52 @@ export async function GET(request: Request) {
         })
       }
 
-      // Verify that the reference matches
       if (transaction.reference !== reference) {
         return NextResponse.json({ error: 'Referencia no coincide' }, { status: 400 })
       }
 
       const newStatus = mapWompiStatusToSubscription(transaction.status)
 
-      // Calculate end date (30 days for monthly, 365 for annual)
+      // Calculate end date
       const endDate = new Date()
-      if (subscription.plan.interval === 'annual') {
+      if (subscription.planInterval === 'annual') {
         endDate.setDate(endDate.getDate() + 365)
       } else {
         endDate.setDate(endDate.getDate() + 30)
       }
 
-      // Update subscription
-      const updated = await prisma.subscription.update({
-        where: { id: subscription.id },
-        data: {
-          status: newStatus,
-          wompiTransactionId: transaction.id,
-          wompiStatus: transaction.status,
-          wompiPaymentMethod: transaction.payment_method_type,
-          wompiResponse: JSON.stringify(transaction),
-          ...(newStatus === 'active' ? {
-            startDate: new Date(),
-            endDate,
-          } : {}),
-        },
-        include: { plan: true },
-      })
+      // Update subscription with raw SQL
+      if (newStatus === 'active') {
+        await prisma.$executeRawUnsafe(
+          `UPDATE "Subscription" SET
+            "status" = $1, "wompiTransactionId" = $2, "wompiStatus" = $3,
+            "wompiPaymentMethod" = $4, "wompiResponse" = $5,
+            "startDate" = $6, "endDate" = $7, "updatedAt" = NOW()
+           WHERE "id" = $8`,
+          newStatus, transaction.id, transaction.status,
+          transaction.payment_method_type, JSON.stringify(transaction),
+          new Date(), endDate, subscription.id
+        )
+      } else {
+        await prisma.$executeRawUnsafe(
+          `UPDATE "Subscription" SET
+            "status" = $1, "wompiTransactionId" = $2, "wompiStatus" = $3,
+            "wompiPaymentMethod" = $4, "wompiResponse" = $5, "updatedAt" = NOW()
+           WHERE "id" = $6`,
+          newStatus, transaction.id, transaction.status,
+          transaction.payment_method_type, JSON.stringify(transaction),
+          subscription.id
+        )
+      }
 
       return NextResponse.json({
         status: transaction.status,
         subscriptionStatus: newStatus,
         subscription: {
-          id: updated.id,
-          planName: updated.plan.name,
-          startDate: updated.startDate,
-          endDate: updated.endDate,
+          id: subscription.id,
+          planName: subscription.planName,
+          startDate: newStatus === 'active' ? new Date() : subscription.startDate,
+          endDate: newStatus === 'active' ? endDate : subscription.endDate,
         },
       })
     }

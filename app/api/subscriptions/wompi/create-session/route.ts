@@ -56,16 +56,26 @@ export async function POST(request: Request) {
       data: { status: 'cancelled' },
     })
 
-    await prisma.subscription.create({
+    const newSub = await prisma.subscription.create({
       data: {
         tenantId,
         planId: plan.id,
         status: 'pending_payment',
         startDate: new Date(),
-        wompiReference: reference,
         autoRenew: true,
       },
     })
+
+    // Try to set wompiReference (column may not exist yet in DB)
+    try {
+      await prisma.$executeRawUnsafe(
+        `UPDATE "Subscription" SET "wompiReference" = $1 WHERE "id" = $2`,
+        reference,
+        newSub.id
+      )
+    } catch (e) {
+      console.warn('[Wompi] wompiReference column not available yet:', (e as any)?.message)
+    }
 
     return NextResponse.json({
       ...paymentSession,
