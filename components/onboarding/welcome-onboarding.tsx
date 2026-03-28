@@ -211,17 +211,33 @@ export function WelcomeOnboarding({ onComplete, planName, isDemo }: WelcomeOnboa
   const handleBack = () => { if (step > 0) setStep(prev => prev - 1) }
 
   const pageVariants = {
-    initial: { opacity: 0, y: 24 },
-    animate: { opacity: 1, y: 0, transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] as [number, number, number, number] } },
-    exit: { opacity: 0, y: -16, transition: { duration: 0.3, ease: [0.55, 0, 1, 0.45] as [number, number, number, number] } },
+    initial: { opacity: 0, y: 30, scale: 0.97, filter: 'blur(4px)' },
+    animate: {
+      opacity: 1, y: 0, scale: 1, filter: 'blur(0px)',
+      transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1] as [number, number, number, number] },
+    },
+    exit: {
+      opacity: 0, y: -20, scale: 0.98, filter: 'blur(3px)',
+      transition: { duration: 0.35, ease: [0.55, 0, 1, 0.45] as [number, number, number, number] },
+    },
   }
 
   const fieldVariants = {
-    hidden: { opacity: 0, y: 12 },
+    hidden: { opacity: 0, y: 16, scale: 0.96 },
     visible: (i: number) => ({
-      opacity: 1, y: 0,
-      transition: { delay: 0.1 + i * 0.06, duration: 0.4, ease: [0.22, 1, 0.36, 1] as [number, number, number, number] },
+      opacity: 1, y: 0, scale: 1,
+      transition: {
+        delay: 0.15 + i * 0.08,
+        type: 'spring' as const,
+        stiffness: 260,
+        damping: 24,
+      },
     }),
+  }
+
+  const cardHover = {
+    scale: 1.03,
+    transition: { type: 'spring' as const, stiffness: 400, damping: 17 },
   }
 
   const inputClasses = 'h-12 bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 focus-visible:ring-slate-900/10 focus-visible:border-slate-400 rounded-xl text-[15px] placeholder:text-slate-400'
@@ -258,12 +274,13 @@ export function WelcomeOnboarding({ onComplete, planName, isDemo }: WelcomeOnboa
       </div>
 
       {/* Progress Bar */}
-      <div className="h-[2px] bg-slate-100 dark:bg-slate-800 relative">
+      <div className="h-[3px] bg-slate-100 dark:bg-slate-800 relative overflow-hidden">
         <motion.div
-          className="absolute inset-y-0 left-0 bg-slate-900 dark:bg-white"
+          className="absolute inset-y-0 left-0 bg-gradient-to-r from-slate-700 via-slate-900 to-slate-700 dark:from-white/70 dark:via-white dark:to-white/70"
           initial={{ width: 0 }}
           animate={{ width: `${progress}%` }}
-          transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+          transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+          style={{ boxShadow: '0 0 12px rgba(15, 23, 42, 0.4)' }}
         />
       </div>
 
@@ -284,12 +301,36 @@ export function WelcomeOnboarding({ onComplete, planName, isDemo }: WelcomeOnboa
 
               {/* ──── STEP 0: Welcome ──── */}
               {step === 0 && (
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}>
-                  <p className="text-[15px] text-slate-500 leading-relaxed mb-8 max-w-md">
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}>
+                  {/* Centered Logo with Animated Glow Ring */}
+                  <motion.div
+                    className="flex justify-center mb-8"
+                    initial={{ opacity: 0, scale: 0.8, filter: 'blur(8px)' }}
+                    animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
+                    transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+                  >
+                    <div className="relative">
+                      {/* Glow ring */}
+                      <motion.div
+                        className="absolute -inset-4 rounded-3xl opacity-20 dark:opacity-30"
+                        style={{ background: 'radial-gradient(circle, rgba(15,23,42,0.15) 0%, transparent 70%)' }}
+                        animate={{ scale: [1, 1.08, 1], opacity: [0.15, 0.25, 0.15] }}
+                        transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+                      />
+                      <Logo size="md" className="h-20" />
+                    </div>
+                  </motion.div>
+
+                  <motion.p
+                    className="text-[15px] text-slate-500 leading-relaxed mb-8 max-w-md"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.5, duration: 0.5 }}
+                  >
                     En los próximos pasos configuraremos la identidad fiscal de tu empresa,
                     tu ubicación, el tipo de negocio y tus credenciales de acceso.
                     Toma menos de 3 minutos.
-                  </p>
+                  </motion.p>
                   <div className="grid grid-cols-3 gap-3">
                     {[
                       { icon: ShieldCheck, label: 'Datos fiscales' },
@@ -297,11 +338,17 @@ export function WelcomeOnboarding({ onComplete, planName, isDemo }: WelcomeOnboa
                       { icon: Lock, label: 'Credenciales' },
                     ].map((item, i) => (
                       <motion.div key={i} custom={i} variants={fieldVariants} initial="hidden" animate="visible"
-                        className="flex flex-col items-center gap-2 py-4 px-3 bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800"
+                        whileHover={cardHover}
+                        className="flex flex-col items-center gap-2.5 py-5 px-3 bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 cursor-default"
                       >
-                        <div className="w-10 h-10 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 flex items-center justify-center">
+                        <motion.div
+                          className="w-11 h-11 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 flex items-center justify-center"
+                          initial={{ rotate: -8 }}
+                          animate={{ rotate: 0 }}
+                          transition={{ delay: 0.3 + i * 0.1, type: 'spring', stiffness: 300, damping: 15 }}
+                        >
                           <item.icon className="w-5 h-5" strokeWidth={1.5} />
-                        </div>
+                        </motion.div>
                         <span className="text-[12px] font-medium text-slate-600 dark:text-slate-400">{item.label}</span>
                       </motion.div>
                     ))}
@@ -435,23 +482,29 @@ export function WelcomeOnboarding({ onComplete, planName, isDemo }: WelcomeOnboa
                       const isSelected = businessType === bt.value
                       return (
                         <motion.button key={bt.value} custom={i} variants={fieldVariants} initial="hidden" animate="visible" type="button"
+                          whileHover={cardHover}
+                          whileTap={{ scale: 0.97 }}
                           onClick={() => {
                             setBusinessType(bt.value)
                             if (bt.value === 'RESTAURANT') setInvoicePrefix('FVR')
                             else if (bt.value === 'RETAIL') setInvoicePrefix('FV')
                             else if (bt.value === 'SERVICES') setInvoicePrefix('FVS')
                           }}
-                          className={`flex flex-col items-center gap-2 p-5 rounded-2xl border-2 transition-all duration-200 text-center ${
+                          className={`flex flex-col items-center gap-2.5 p-5 rounded-2xl border-2 transition-all duration-200 text-center ${
                             isSelected
-                              ? 'border-slate-900 dark:border-white bg-slate-50 dark:bg-slate-800 shadow-sm'
+                              ? 'border-slate-900 dark:border-white bg-slate-50 dark:bg-slate-800 shadow-md'
                               : 'border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-slate-300 dark:hover:border-slate-600'
                           }`}
                         >
-                          <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-colors ${
-                            isSelected ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900' : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
-                          }`}>
+                          <motion.div
+                            className={`w-12 h-12 rounded-xl flex items-center justify-center transition-colors ${
+                              isSelected ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900' : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
+                            }`}
+                            animate={isSelected ? { scale: [1, 1.15, 1] } : {}}
+                            transition={{ duration: 0.4 }}
+                          >
                             <Icon className="w-6 h-6" strokeWidth={1.5} />
-                          </div>
+                          </motion.div>
                           <span className={`text-[13px] font-semibold ${isSelected ? 'text-slate-900 dark:text-white' : 'text-slate-600 dark:text-slate-400'}`}>
                             {bt.label}
                           </span>
@@ -549,17 +602,19 @@ export function WelcomeOnboarding({ onComplete, planName, isDemo }: WelcomeOnboa
                     </button>
                   )}
                 </div>
-                <Button onClick={handleNext} disabled={completeMutation.isPending}
-                  className="bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-200 text-white dark:text-slate-900 h-11 px-8 rounded-xl font-medium text-[14px] shadow-sm transition-all hover:shadow-md"
-                >
-                  {completeMutation.isPending ? (
-                    <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Configurando...</>
-                  ) : step === totalSteps - 1 ? (
-                    <><Check className="w-4 h-4 mr-2" /> {isDemo ? 'Finalizar Demo' : 'Comenzar'}</>
-                  ) : (
-                    <>Continuar <ArrowRight className="w-4 h-4 ml-2" /></>
-                  )}
-                </Button>
+                <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}>
+                  <Button onClick={handleNext} disabled={completeMutation.isPending}
+                    className="bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-200 text-white dark:text-slate-900 h-11 px-8 rounded-xl font-medium text-[14px] shadow-sm transition-all hover:shadow-lg"
+                  >
+                    {completeMutation.isPending ? (
+                      <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Configurando...</>
+                    ) : step === totalSteps - 1 ? (
+                      <><Check className="w-4 h-4 mr-2" /> {isDemo ? 'Finalizar Demo' : 'Comenzar'}</>
+                    ) : (
+                      <>Continuar <ArrowRight className="w-4 h-4 ml-2" /></>
+                    )}
+                  </Button>
+                </motion.div>
               </div>
             </motion.div>
           </AnimatePresence>
