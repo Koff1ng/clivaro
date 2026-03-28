@@ -35,7 +35,7 @@ import { useToast } from '@/components/ui/toast'
 import { useSession } from 'next-auth/react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { UsersConfig } from './users-config'
-import { SubscriptionConfig } from './subscription-config'
+import { SubscriptionCheckout } from './subscription-checkout'
 import { GeneralConfig } from './general-config'
 import { DataConfig } from './data-config'
 import { ElectronicBillingConfig } from './electronic-billing-config'
@@ -69,46 +69,16 @@ export function SettingsScreen() {
   const processedPaymentRef = useRef<string | null>(null)
 
   useEffect(() => {
-    const paymentStatus = searchParams.get('payment')
-    const externalReference = searchParams.get('external_reference')
-    const preferenceId = searchParams.get('preference_id')
-    const collectionId = searchParams.get('collection_id')
-    const collectionStatus = searchParams.get('collection_status')
-    const paymentId = searchParams.get('payment_id')
-    const status = searchParams.get('status')
+    const params = new URLSearchParams(window.location.search)
+    const wompiRef = params.get('wompiRef')
 
-    const isValidValue = (value: string | null) => value && value !== 'null' && value.trim() !== ''
-    const paymentKey = `${paymentStatus || ''}-${externalReference || ''}-${preferenceId || ''}-${collectionId || ''}`
-
-    if (processedPaymentRef.current === paymentKey) return
-
-    if (paymentStatus || (externalReference && isValidValue(externalReference))) {
-      processedPaymentRef.current = paymentKey
+    if (wompiRef) {
       setActiveSection('subscription')
-
       queryClient.invalidateQueries({ queryKey: ['tenant-plan'] })
-      queryClient.invalidateQueries({ queryKey: ['subscription-payments'] })
-
-      if (paymentStatus === 'success') {
-        toast('¡Pago procesado exitosamente! Tu suscripción ha sido activada.', 'success')
-      } else if (paymentStatus === 'failure') {
-        let errorMessage = 'El pago no pudo ser procesado.'
-        if (isValidValue(paymentId)) errorMessage = `El pago fue rechazado. ID de pago: ${paymentId}.`
-        else if (isValidValue(collectionStatus)) errorMessage = `El pago no pudo ser procesado. Estado: ${collectionStatus}.`
-        else if (isValidValue(status)) errorMessage = `El pago no pudo ser procesado. Estado: ${status}.`
-        toast(errorMessage + ' Puedes intentar nuevamente desde la sección de suscripción.', 'error')
-      } else if (paymentStatus === 'pending') {
-        toast('Tu pago está siendo procesado. Te notificaremos cuando se complete.', 'info')
-      }
-
-      const newUrl = new URL(window.location.href)
-      const paramsToDelete = ['payment', 'external_reference', 'preference_id', 'collection_id', 'collection_status', 'payment_id', 'status', 'payment_type', 'merchant_order_id', 'site_id', 'processing_mode', 'merchant_account_id']
-      paramsToDelete.forEach(p => newUrl.searchParams.delete(p))
-      router.replace(newUrl.pathname + newUrl.search, { scroll: false })
     } else if (searchParams.get('tab')) {
       setActiveSection(searchParams.get('tab') || 'identity')
     }
-  }, [searchParams, queryClient, router, toast])
+  }, [searchParams, queryClient])
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['settings'],
@@ -207,7 +177,7 @@ export function SettingsScreen() {
     navigationGroups.push({
       title: 'Administración Global',
       items: [
-        { id: 'payments', label: 'Mercado Pago', icon: CreditCard, desc: 'Pasarela del sistema' }
+        { id: 'payments', label: 'Pasarela de Pagos', icon: CreditCard, desc: 'Configuración Wompi' }
       ]
     })
   }
@@ -257,7 +227,7 @@ export function SettingsScreen() {
           </CardContent>
         </Card>
       )
-      case 'subscription': return <SubscriptionConfig settings={settings} onSave={(data) => updateSettingsMutation.mutate(data)} isLoading={updateSettingsMutation.isPending} />
+      case 'subscription': return <SubscriptionCheckout />
       case 'payments-methods': return <PaymentMethodsConfig />
       case 'taxes': return <TaxesPage />
       case 'unit-conversions': return <UnitConversionsConfig />
