@@ -1,0 +1,6 @@
+Tenants: variedadesorito, heladeria, prueba
+tenant_variedadesorito: OK
+tenant_heladeria: OK
+tenant_prueba: OK
+public: OK
+Done!

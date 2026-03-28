@@ -48,73 +48,23 @@ function useTypingAnimation(text: string, speed = 35, delay = 300) {
   return { displayed, isDone }
 }
 
-/* ─── Custom Gradient SVG Icons ─── */
-const IconShieldGradient = ({ className = 'w-6 h-6' }: { className?: string }) => (
-  <svg className={className} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <defs><linearGradient id="shieldG" x1="4" y1="3" x2="20" y2="21"><stop stopColor="#14b8a6"/><stop offset="1" stopColor="#059669"/></linearGradient></defs>
-    <path d="M12 2L4 6v5c0 5.25 3.4 10.15 8 11.25 4.6-1.1 8-6 8-11.25V6l-8-4z" fill="url(#shieldG)" opacity=".15"/>
-    <path d="M12 2L4 6v5c0 5.25 3.4 10.15 8 11.25 4.6-1.1 8-6 8-11.25V6l-8-4z" stroke="url(#shieldG)" strokeWidth="1.5" strokeLinejoin="round" fill="none"/>
-    <path d="M9 12l2 2 4-4" stroke="url(#shieldG)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-  </svg>
-)
+/* ─── Colorful Icons via @iconify/react (Fluent Emoji Flat) ─── */
+import { Icon } from '@iconify/react'
 
-const IconReceiptGradient = ({ className = 'w-6 h-6' }: { className?: string }) => (
-  <svg className={className} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <defs><linearGradient id="receiptG" x1="5" y1="2" x2="19" y2="22"><stop stopColor="#f97316"/><stop offset="1" stopColor="#f59e0b"/></linearGradient></defs>
-    <rect x="5" y="2" width="14" height="20" rx="2" fill="url(#receiptG)" opacity=".12"/>
-    <rect x="5" y="2" width="14" height="20" rx="2" stroke="url(#receiptG)" strokeWidth="1.5" fill="none"/>
-    <path d="M9 7h6M9 11h4M9 15h5" stroke="url(#receiptG)" strokeWidth="1.5" strokeLinecap="round"/>
-  </svg>
-)
+// Welcome step cards
+const WELCOME_ICONS = [
+  { icon: 'fluent-emoji-flat:shield', label: 'Datos fiscales' },
+  { icon: 'fluent-emoji-flat:receipt', label: 'Facturación' },
+  { icon: 'fluent-emoji-flat:locked', label: 'Credenciales' },
+]
 
-const IconLockGradient = ({ className = 'w-6 h-6' }: { className?: string }) => (
-  <svg className={className} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <defs><linearGradient id="lockG" x1="6" y1="4" x2="18" y2="20"><stop stopColor="#8b5cf6"/><stop offset="1" stopColor="#a855f7"/></linearGradient></defs>
-    <rect x="5" y="10" width="14" height="11" rx="2.5" fill="url(#lockG)" opacity=".12"/>
-    <rect x="5" y="10" width="14" height="11" rx="2.5" stroke="url(#lockG)" strokeWidth="1.5" fill="none"/>
-    <path d="M8 10V7a4 4 0 118 0v3" stroke="url(#lockG)" strokeWidth="1.5" strokeLinecap="round"/>
-    <circle cx="12" cy="15" r="1.5" fill="url(#lockG)"/>
-  </svg>
-)
-
-const IconStoreGradient = ({ className = 'w-7 h-7' }: { className?: string }) => (
-  <svg className={className} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <defs><linearGradient id="storeG" x1="2" y1="3" x2="22" y2="21"><stop stopColor="#3b82f6"/><stop offset="1" stopColor="#06b6d4"/></linearGradient></defs>
-    <path d="M3 9l1.5-5.5A1 1 0 015.46 3h13.08a1 1 0 01.96.7L21 9" stroke="url(#storeG)" strokeWidth="1.5" fill="none"/>
-    <path d="M3 9h18v2a3 3 0 01-3 3H6a3 3 0 01-3-3V9z" fill="url(#storeG)" opacity=".12"/>
-    <path d="M5 14v6a1 1 0 001 1h12a1 1 0 001-1v-6" stroke="url(#storeG)" strokeWidth="1.5" fill="none"/>
-    <rect x="9" y="16" width="6" height="5" rx=".5" stroke="url(#storeG)" strokeWidth="1.2" fill="url(#storeG)" fillOpacity=".1"/>
-  </svg>
-)
-
-const IconForkKnifeGradient = ({ className = 'w-7 h-7' }: { className?: string }) => (
-  <svg className={className} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <defs><linearGradient id="forkG" x1="4" y1="2" x2="20" y2="22"><stop stopColor="#f43f5e"/><stop offset="1" stopColor="#ec4899"/></linearGradient></defs>
-    <path d="M7 2v7a3 3 0 003 3v0a3 3 0 003-3V2" stroke="url(#forkG)" strokeWidth="1.5" strokeLinecap="round"/>
-    <line x1="10" y1="2" x2="10" y2="22" stroke="url(#forkG)" strokeWidth="1.5" strokeLinecap="round"/>
-    <path d="M17 2c0 0-2 2.5-2 5s2 3 2 5v10" stroke="url(#forkG)" strokeWidth="1.5" strokeLinecap="round" fill="none"/>
-  </svg>
-)
-
-const IconBriefcaseGradient = ({ className = 'w-7 h-7' }: { className?: string }) => (
-  <svg className={className} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <defs><linearGradient id="briefG" x1="2" y1="6" x2="22" y2="20"><stop stopColor="#6366f1"/><stop offset="1" stopColor="#0ea5e9"/></linearGradient></defs>
-    <rect x="2" y="7" width="20" height="13" rx="2.5" fill="url(#briefG)" opacity=".1"/>
-    <rect x="2" y="7" width="20" height="13" rx="2.5" stroke="url(#briefG)" strokeWidth="1.5" fill="none"/>
-    <path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2" stroke="url(#briefG)" strokeWidth="1.5"/>
-    <path d="M2 13h20" stroke="url(#briefG)" strokeWidth="1.2" opacity=".4"/>
-  </svg>
-)
-
-const IconGridGradient = ({ className = 'w-7 h-7' }: { className?: string }) => (
-  <svg className={className} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <defs><linearGradient id="gridG" x1="3" y1="3" x2="21" y2="21"><stop stopColor="#a78bfa"/><stop offset="1" stopColor="#c084fc"/></linearGradient></defs>
-    <rect x="3" y="3" width="8" height="8" rx="2" fill="url(#gridG)" opacity=".15" stroke="url(#gridG)" strokeWidth="1.3"/>
-    <rect x="13" y="3" width="8" height="8" rx="2" fill="url(#gridG)" opacity=".15" stroke="url(#gridG)" strokeWidth="1.3"/>
-    <rect x="3" y="13" width="8" height="8" rx="2" fill="url(#gridG)" opacity=".15" stroke="url(#gridG)" strokeWidth="1.3"/>
-    <rect x="13" y="13" width="8" height="8" rx="2" fill="url(#gridG)" opacity=".15" stroke="url(#gridG)" strokeWidth="1.3"/>
-  </svg>
-)
+// Business type icons
+const BUSINESS_ICONS: Record<string, string> = {
+  RETAIL: 'fluent-emoji-flat:convenience-store',
+  RESTAURANT: 'fluent-emoji-flat:fork-and-knife-with-plate',
+  SERVICES: 'fluent-emoji-flat:briefcase',
+  OTHER: 'fluent-emoji-flat:puzzle-piece',
+}
 
 /* ─── Constants ─── */
 const STEP_IDS = ['welcome', 'identity', 'fiscal', 'location', 'industry', 'credentials', 'ready'] as const
@@ -130,10 +80,10 @@ const GREETINGS = [
 ]
 
 const BUSINESS_TYPES = [
-  { value: 'RETAIL', label: 'Comercio / Ferretería', IconComponent: IconStoreGradient, description: 'Punto de venta, inventario' },
-  { value: 'RESTAURANT', label: 'Restaurante / Bar', IconComponent: IconForkKnifeGradient, description: 'Mesas, cocina, meseros' },
-  { value: 'SERVICES', label: 'Servicios', IconComponent: IconBriefcaseGradient, description: 'Profesionales, consultoría' },
-  { value: 'OTHER', label: 'Otro', IconComponent: IconGridGradient, description: 'Otro tipo de negocio' },
+  { value: 'RETAIL', label: 'Comercio / Ferretería', description: 'Punto de venta, inventario' },
+  { value: 'RESTAURANT', label: 'Restaurante / Bar', description: 'Mesas, cocina, meseros' },
+  { value: 'SERVICES', label: 'Servicios', description: 'Profesionales, consultoría' },
+  { value: 'OTHER', label: 'Otro', description: 'Otro tipo de negocio' },
 ]
 
 const CIIU_CODES = [
@@ -433,22 +383,18 @@ export function WelcomeOnboarding({ onComplete, planName, isDemo }: WelcomeOnboa
                     Toma menos de 3 minutos.
                   </motion.p>
                   <div className="grid grid-cols-3 gap-3">
-                    {[
-                      { IconC: IconShieldGradient, label: 'Datos fiscales' },
-                      { IconC: IconReceiptGradient, label: 'Facturación' },
-                      { IconC: IconLockGradient, label: 'Credenciales' },
-                    ].map((item, i) => (
+                    {WELCOME_ICONS.map((item, i) => (
                       <motion.div key={i} custom={i} variants={fieldVariants} initial="hidden" animate="visible"
                         whileHover={cardHover}
                         className="flex flex-col items-center gap-2.5 py-5 px-3 bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 cursor-default"
                       >
                         <motion.div
-                          className="w-12 h-12 rounded-xl bg-slate-50 dark:bg-slate-800 flex items-center justify-center"
+                          className="w-12 h-12 flex items-center justify-center"
                           initial={{ rotate: -8 }}
                           animate={{ rotate: 0 }}
                           transition={{ delay: 0.3 + i * 0.1, type: 'spring', stiffness: 300, damping: 15 }}
                         >
-                          <item.IconC className="w-6 h-6" />
+                          <Icon icon={item.icon} width={40} height={40} />
                         </motion.div>
                         <span className="text-[12px] font-medium text-slate-600 dark:text-slate-400">{item.label}</span>
                       </motion.div>
@@ -597,11 +543,11 @@ export function WelcomeOnboarding({ onComplete, planName, isDemo }: WelcomeOnboa
                           }`}
                         >
                           <motion.div
-                            className="w-14 h-14 rounded-xl bg-slate-50 dark:bg-slate-800 flex items-center justify-center"
+                            className="w-14 h-14 flex items-center justify-center"
                             animate={isSelected ? { scale: [1, 1.12, 1] } : {}}
                             transition={{ duration: 0.4 }}
                           >
-                            <bt.IconComponent />
+                            <Icon icon={BUSINESS_ICONS[bt.value]} width={48} height={48} />
                           </motion.div>
                           <span className={`text-[13px] font-semibold ${isSelected ? 'text-slate-900 dark:text-white' : 'text-slate-600 dark:text-slate-400'}`}>
                             {bt.label}
