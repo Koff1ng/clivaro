@@ -131,22 +131,41 @@ function getNestedValue(obj: any, path: string): any {
 
 /**
  * Get transaction details from Wompi API
- * GET https://api-sandbox.co.uat.wompi.dev/v1/transactions/{id}
+ * GET https://sandbox.wompi.co/v1/transactions/{id}
+ * Note: This endpoint is public — no auth required per Wompi docs
  */
 export async function getTransaction(transactionId: string): Promise<WompiTransaction | null> {
+  const url = `${WOMPI_API_URL}/transactions/${transactionId}`
+  console.log('[Wompi] getTransaction URL:', url)
+
   try {
-    const response = await fetch(`${WOMPI_API_URL}/transactions/${transactionId}`, {
-      headers: {
-        'Authorization': `Bearer ${WOMPI_PRIVATE_KEY}`,
-      },
+    // Try without auth first (Wompi docs show this is a public GET)
+    let response = await fetch(url, {
+      headers: { 'Accept': 'application/json' },
     })
 
+    console.log('[Wompi] getTransaction response (no auth):', response.status, response.statusText)
+
+    // If unauthorized, try with Bearer token
+    if (response.status === 401 || response.status === 403) {
+      console.log('[Wompi] Retrying with Bearer auth...')
+      response = await fetch(url, {
+        headers: {
+          'Accept': 'application/json',
+          'Authorization': `Bearer ${WOMPI_PRIVATE_KEY}`,
+        },
+      })
+      console.log('[Wompi] getTransaction response (with auth):', response.status, response.statusText)
+    }
+
     if (!response.ok) {
-      console.error(`[Wompi] Error fetching transaction ${transactionId}:`, response.status, response.statusText)
+      const errorText = await response.text()
+      console.error(`[Wompi] Error fetching transaction ${transactionId}:`, response.status, errorText)
       return null
     }
 
     const result = await response.json()
+    console.log('[Wompi] Transaction result:', JSON.stringify(result.data?.status), result.data?.reference)
     return result.data as WompiTransaction
   } catch (error) {
     console.error('[Wompi] Error fetching transaction:', error)
