@@ -5,14 +5,14 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Eye, Send, Save, Users, X, Check, FileText, Palette, Megaphone } from 'lucide-react'
+import { Eye, Send, Save, Users, X, Check, FileText, Palette, Megaphone, Monitor, Smartphone, MailOpen } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import CanvaEditor from '@/components/marketing/canva-editor'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import EmailBuilder from '@/components/marketing/email-builder'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { useToast } from '@/components/ui/toast'
 import AddRecipientsDialog from '@/components/marketing/add-recipients-dialog'
 import { useSession } from 'next-auth/react'
@@ -47,91 +47,6 @@ export default function CampaignForm({ campaignId, onClose, onSuccess }: Campaig
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null)
   const [editorKey, setEditorKey] = useState(0)
 
-  const templates = useMemo(
-    () => [
-      {
-        id: 'promo',
-        name: 'Promo (Producto + CTA)',
-        description: 'Ideal para ofertas rápidas con un botón de compra.',
-        html: `
-<div style="font-family: Arial, sans-serif; padding: 24px;">
-  <div style="max-width: 600px; margin: 0 auto; background: #ffffff; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden;">
-    <div style="background: linear-gradient(135deg, #2563eb 0%, #4f46e5 100%); padding: 28px; color: #fff;">
-      <div style="font-size: 12px; opacity: .9;">Oferta exclusiva</div>
-      <h1 style="margin: 6px 0 0 0; font-size: 28px;">Hola {{name}}, tenemos algo para ti</h1>
-      <p style="margin: 10px 0 0 0; opacity: .95;">Ahorra hoy en nuestros productos destacados.</p>
-    </div>
-    <div style="padding: 24px;">
-      <h2 style="margin: 0 0 8px 0; font-size: 18px; color: #111827;">Producto destacado</h2>
-      <div style="display: flex; gap: 16px; align-items: center; border: 1px solid #e5e7eb; border-radius: 10px; padding: 14px;">
-        <div style="width: 92px; height: 92px; background: #f3f4f6; border-radius: 10px; display:flex; align-items:center; justify-content:center; color:#6b7280; font-size: 12px;">
-          Imagen
-        </div>
-        <div style="flex: 1;">
-          <div style="font-weight: 700; color: #111827;">Nombre del producto</div>
-          <div style="color: #6b7280; font-size: 13px; margin-top: 4px;">Descripción breve del beneficio principal.</div>
-          <div style="margin-top: 10px; display:flex; gap: 10px; align-items: baseline;">
-            <span style="font-size: 20px; font-weight: 700; color:#111827;">$99.900</span>
-            <span style="font-size: 13px; color:#6b7280; text-decoration: line-through;">$129.900</span>
-          </div>
-        </div>
-      </div>
-
-      <div style="margin-top: 18px; text-align: center;">
-        <a href="https://tusitio.com" style="display:inline-block; background:#2563eb; color:#fff; text-decoration:none; padding: 12px 18px; border-radius: 10px; font-weight: 700;">
-          Ver oferta
-        </a>
-        <div style="margin-top: 10px; font-size: 12px; color:#6b7280;">
-          Si no quieres recibir estos correos, ignora este mensaje.
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-`.trim(),
-      },
-      {
-        id: 'newsletter',
-        name: 'Newsletter (Secciones)',
-        description: 'Para novedades semanales o contenido educativo.',
-        html: `
-<div style="font-family: Arial, sans-serif; padding: 24px;">
-  <div style="max-width: 600px; margin: 0 auto; background: #ffffff; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden;">
-    <div style="padding: 22px 24px; border-bottom: 1px solid #e5e7eb;">
-      <div style="font-size: 12px; color: #6b7280;">Newsletter</div>
-      <h1 style="margin: 6px 0 0 0; font-size: 24px; color: #111827;">Novedades de la semana</h1>
-      <p style="margin: 10px 0 0 0; color:#374151;">Hola {{name}}, aquí tienes lo más importante.</p>
-    </div>
-    <div style="padding: 24px; display: grid; gap: 14px;">
-      <div style="border: 1px solid #e5e7eb; border-radius: 12px; padding: 14px;">
-        <div style="font-weight: 700; color:#111827;">1) Nuevo producto</div>
-        <div style="margin-top: 6px; color:#6b7280; font-size: 14px;">Descripción breve y por qué importa.</div>
-      </div>
-      <div style="border: 1px solid #e5e7eb; border-radius: 12px; padding: 14px;">
-        <div style="font-weight: 700; color:#111827;">2) Tips de uso</div>
-        <div style="margin-top: 6px; color:#6b7280; font-size: 14px;">Un consejo práctico para tus clientes.</div>
-      </div>
-      <div style="border: 1px solid #e5e7eb; border-radius: 12px; padding: 14px;">
-        <div style="font-weight: 700; color:#111827;">3) Oferta de la semana</div>
-        <div style="margin-top: 6px; color:#6b7280; font-size: 14px;">Incluye el descuento y fecha de vigencia.</div>
-      </div>
-      <div style="text-align:center; padding-top: 6px;">
-        <a href="https://tusitio.com" style="display:inline-block; background:#111827; color:#fff; text-decoration:none; padding: 12px 18px; border-radius: 10px; font-weight: 700;">
-          Ver más
-        </a>
-      </div>
-    </div>
-    <div style="padding: 16px 24px; border-top: 1px solid #e5e7eb; font-size: 12px; color:#6b7280; text-align:center;">
-      Enviado por tu empresa • {{email}}
-    </div>
-  </div>
-</div>
-`.trim(),
-      },
-    ],
-    []
-  )
-
   const { register, handleSubmit, control, watch, setValue, formState: { errors } } = useForm<CampaignFormData>({
     resolver: zodResolver(campaignSchema),
     defaultValues: campaignId ? async () => {
@@ -157,14 +72,13 @@ export default function CampaignForm({ campaignId, onClose, onSuccess }: Campaig
   const scheduledAt = watch('scheduledAt')
 
   useEffect(() => {
-    // Mark as dirty on meaningful changes
     setIsDirtySinceSave(true)
   }, [htmlContent, name, subject, scheduledAt])
 
-  // Build a safe-ish preview document
+  // Build preview document
   const previewHtml = useMemo(() => {
-    const body = htmlContent || '<div style="font-family: Arial, sans-serif; padding: 24px; color: #111827;">Empieza creando tu email…</div>'
-    return `<!doctype html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><style>body{margin:0;background:#f3f4f6;} .wrap{max-width:600px;margin:0 auto;background:#fff}</style></head><body><div class="wrap">${body}</div></body></html>`
+    const body = htmlContent || '<div style="font-family:Arial,sans-serif;padding:48px 24px;color:#9ca3af;text-align:center;">Selecciona una plantilla para comenzar</div>'
+    return `<!doctype html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><style>body{margin:0;background:#f3f4f6;padding:16px;font-family:Arial,sans-serif;} *{box-sizing:border-box;}</style></head><body>${body}</body></html>`
   }, [htmlContent])
 
   const createMutation = useMutation({
@@ -262,7 +176,7 @@ export default function CampaignForm({ campaignId, onClose, onSuccess }: Campaig
     onError: (error: any) => toast(error.message || 'Error al enviar prueba', 'error'),
   })
 
-  // Compute stepper state
+  // Stepper
   const hasInfo = !!(name && subject)
   const hasDesign = !!(htmlContent && htmlContent.trim().length > 0)
   const hasSaved = !!(currentCampaignId || campaignId)
@@ -275,17 +189,19 @@ export default function CampaignForm({ campaignId, onClose, onSuccess }: Campaig
   ]
 
   return (
-    <div className="container mx-auto p-6">
-      <Card>
-        <CardHeader className="pb-4">
-          <div className="flex justify-between items-center">
-            <div>
-              <CardTitle className="text-xl">{(currentCampaignId || campaignId) ? 'Editar Campaña' : 'Nueva Campaña'}</CardTitle>
+    <div className="container mx-auto p-4 sm:p-6 max-w-7xl">
+      <Card className="border-0 shadow-xl shadow-slate-200/50 dark:shadow-none">
+        <CardHeader className="pb-4 border-b">
+          <div className="flex justify-between items-start">
+            <div className="space-y-1">
+              <CardTitle className="text-xl font-black tracking-tight">
+                {(currentCampaignId || campaignId) ? 'Editar Campaña' : 'Nueva Campaña'}
+              </CardTitle>
               <CardDescription>
-                Diseña emails profesionales con editor visual, vista previa y envío de prueba
+                Diseña emails profesionales con plantillas, vista previa y envío de prueba
               </CardDescription>
             </div>
-            <Button variant="ghost" size="sm" onClick={onClose}>
+            <Button variant="ghost" size="sm" onClick={onClose} className="rounded-full w-8 h-8 p-0">
               <X className="h-4 w-4" />
             </Button>
           </div>
@@ -316,155 +232,136 @@ export default function CampaignForm({ campaignId, onClose, onSuccess }: Campaig
             })}
           </div>
         </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-            {/* Top actions */}
-            <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border p-3 bg-muted/30">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <CardContent className="pt-4">
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+            {/* Top actions bar */}
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border p-3 bg-slate-50/50 dark:bg-slate-800/30">
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <span className={cn(
                   "w-2 h-2 rounded-full",
                   isDirtySinceSave ? "bg-amber-500 animate-pulse" : lastSavedAt ? "bg-emerald-500" : "bg-slate-300"
                 )} />
                 {isDirtySinceSave ? 'Cambios sin guardar' : lastSavedAt ? `Guardado ${lastSavedAt.toLocaleTimeString('es-CO')}` : 'Sin cambios'}
               </div>
-              <div className="flex flex-wrap gap-2">
-                <Button type="button" variant="outline" size="sm" onClick={() => setShowPreview(true)}>
-                  <Eye className="h-4 w-4 mr-2" />
-                  Vista previa
+              <div className="flex flex-wrap gap-1.5">
+                <Button type="button" variant="outline" size="sm" onClick={() => setShowPreview(true)} className="text-xs rounded-lg h-8">
+                  <Eye className="h-3.5 w-3.5 mr-1.5" /> Vista previa
                 </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={async () => {
-                    const id = await ensureSaved()
-                    if (id) setShowRecipients(true)
-                  }}
-                >
-                  <Users className="h-4 w-4 mr-2" />
-                  Destinatarios
+                <Button type="button" variant="outline" size="sm" onClick={async () => { const id = await ensureSaved(); if (id) setShowRecipients(true) }} className="text-xs rounded-lg h-8">
+                  <Users className="h-3.5 w-3.5 mr-1.5" /> Destinatarios
                 </Button>
-                <Button type="button" variant="outline" size="sm" onClick={() => setShowSendTest(true)}>
-                  <Send className="h-4 w-4 mr-2" />
-                  Enviar prueba
+                <Button type="button" variant="outline" size="sm" onClick={() => setShowSendTest(true)} className="text-xs rounded-lg h-8">
+                  <Send className="h-3.5 w-3.5 mr-1.5" /> Prueba
                 </Button>
-                <Button type="submit" size="sm" disabled={createMutation.isPending || updateMutation.isPending} className="bg-blue-600 hover:bg-blue-700">
-                  <Save className="h-4 w-4 mr-2" />
+                <Button type="submit" size="sm" disabled={createMutation.isPending || updateMutation.isPending} className="text-xs rounded-lg h-8 bg-blue-600 hover:bg-blue-700">
+                  <Save className="h-3.5 w-3.5 mr-1.5" />
                   {createMutation.isPending || updateMutation.isPending ? 'Guardando…' : 'Guardar'}
                 </Button>
               </div>
             </div>
 
-            <div className="grid gap-6 lg:grid-cols-2">
-              {/* Left: fields + editor */}
-              <div className="space-y-6">
-                <div>
-                  <Label htmlFor="name">Nombre de la Campaña</Label>
-                  <Input id="name" {...register('name')} placeholder="Ej: Promoción de Verano 2026" />
-                  {errors.name && <p className="text-sm text-red-500 mt-1">{errors.name.message}</p>}
+            <div className="grid gap-5 lg:grid-cols-2">
+              {/* Left — fields + builder */}
+              <div className="space-y-5">
+                {/* Campaign info */}
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <Label htmlFor="name" className="text-xs font-bold">Nombre de la Campaña</Label>
+                    <Input id="name" {...register('name')} placeholder="Ej: Promoción de Verano 2026" className="mt-1" />
+                    {errors.name && <p className="text-xs text-red-500 mt-1">{errors.name.message}</p>}
+                  </div>
+                  <div>
+                    <Label htmlFor="subject" className="text-xs font-bold">Asunto del Email</Label>
+                    <Input id="subject" {...register('subject')} placeholder="Ej: ¡Ofertas especiales!" className="mt-1" />
+                    {errors.subject && <p className="text-xs text-red-500 mt-1">{errors.subject.message}</p>}
+                  </div>
                 </div>
 
                 <div>
-                  <Label htmlFor="subject">Asunto del Email</Label>
-                  <Input id="subject" {...register('subject')} placeholder="Ej: ¡Ofertas especiales para ti!" />
-                  <p className="text-xs text-gray-500 mt-1">Tip: usa personalización como <code>{'{{name}}'}</code></p>
-                  {errors.subject && <p className="text-sm text-red-500 mt-1">{errors.subject.message}</p>}
-                </div>
-
-                <div>
-                  <Label htmlFor="scheduledAt">Programar Envío (Opcional)</Label>
+                  <Label htmlFor="scheduledAt" className="text-xs font-bold">Programar Envío (Opcional)</Label>
                   <Controller
                     name="scheduledAt"
                     control={control}
-                    render={({ field }) => <Input id="scheduledAt" type="datetime-local" {...field} />}
+                    render={({ field }) => <Input id="scheduledAt" type="datetime-local" {...field} className="mt-1 max-w-xs" />}
                   />
-                  <p className="text-xs text-gray-500 mt-1">Deja vacío para guardar como borrador</p>
+                  <p className="text-[10px] text-muted-foreground mt-1">Deja vacío para guardar como borrador. Usa <code className="text-blue-600">{'{{name}}'}</code> en el asunto para personalizar.</p>
                 </div>
 
-                <div>
-                  {/* Templates */}
-                  <Card className="mb-4 border-dashed">
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-sm flex items-center gap-2">
-                        <Palette className="w-4 h-4 text-blue-600" />
-                        Plantillas rápidas
-                      </CardTitle>
-                      <CardDescription>
-                        Elige una base profesional. Esto <strong>reemplaza</strong> el contenido actual.
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="grid gap-3 sm:grid-cols-2">
-                      {templates.map((t) => (
-                        <button
-                          key={t.id}
-                          type="button"
-                          onClick={() => {
-                            const hasContent = (htmlContent || '').trim().length > 0
-                            if (hasContent) {
-                              const ok = confirm('Esto reemplazará el contenido actual del email. ¿Continuar?')
-                              if (!ok) return
-                            }
-                            setValue('htmlContent', t.html, { shouldValidate: true })
-                            setEditorKey(Date.now())
-                            toast(`Plantilla aplicada: ${t.name}`, 'success')
-                          }}
-                          className="text-left rounded-xl border-2 border-transparent p-4 hover:border-blue-300 dark:hover:border-blue-700 bg-slate-50 dark:bg-slate-800/50 hover:bg-blue-50 dark:hover:bg-blue-900/10 transition-all group"
-                        >
-                          <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
-                            <Megaphone className="w-4 h-4 text-blue-600" />
-                          </div>
-                          <div className="font-semibold text-sm text-slate-900 dark:text-white">{t.name}</div>
-                          <div className="text-xs text-muted-foreground mt-1">{t.description}</div>
-                        </button>
-                      ))}
-                    </CardContent>
-                  </Card>
-
-                  <CanvaEditor
+                {/* Email Builder */}
+                <div className="border rounded-xl p-4 bg-white dark:bg-slate-900">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
+                      <MailOpen className="w-3.5 h-3.5 text-white" />
+                    </div>
+                    <span className="text-sm font-bold text-slate-900 dark:text-white">Editor de Email</span>
+                  </div>
+                  <EmailBuilder
                     key={editorKey}
                     value={htmlContent || ''}
                     onChange={(value) => {
                       setValue('htmlContent', value, { shouldValidate: true })
                     }}
                   />
-                  {errors.htmlContent && <p className="text-sm text-red-500 mt-1">{errors.htmlContent.message}</p>}
+                  {errors.htmlContent && <p className="text-xs text-red-500 mt-2">{errors.htmlContent.message}</p>}
                 </div>
               </div>
 
-              {/* Right: live preview */}
+              {/* Right — live preview */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <div className="font-medium">Vista previa</div>
-                  <div className="flex gap-2">
-                    <Button type="button" size="sm" variant={previewMode === 'desktop' ? 'default' : 'outline'} onClick={() => setPreviewMode('desktop')}>
-                      Desktop
+                  <div className="text-sm font-bold text-slate-900 dark:text-white">Vista previa</div>
+                  <div className="flex gap-1 bg-slate-100 dark:bg-slate-800 rounded-lg p-0.5">
+                    <Button type="button" size="sm" variant={previewMode === 'desktop' ? 'default' : 'ghost'} onClick={() => setPreviewMode('desktop')} className="text-xs h-7 rounded-md px-2.5">
+                      <Monitor className="w-3.5 h-3.5 mr-1" /> Desktop
                     </Button>
-                    <Button type="button" size="sm" variant={previewMode === 'mobile' ? 'default' : 'outline'} onClick={() => setPreviewMode('mobile')}>
-                      Móvil
+                    <Button type="button" size="sm" variant={previewMode === 'mobile' ? 'default' : 'ghost'} onClick={() => setPreviewMode('mobile')} className="text-xs h-7 rounded-md px-2.5">
+                      <Smartphone className="w-3.5 h-3.5 mr-1" /> Móvil
                     </Button>
                   </div>
                 </div>
-                <div className="rounded-lg border bg-white p-2 flex justify-center">
-                  <iframe
-                    title="Vista previa campaña"
-                    className="bg-white"
-                    style={{
-                      width: previewMode === 'mobile' ? 360 : 620,
-                      height: 720,
-                      border: '0',
-                    }}
-                    srcDoc={previewHtml}
-                  />
+
+                <div className={cn(
+                  "rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 p-3 flex justify-center transition-all",
+                  previewMode === 'mobile' ? 'max-w-[400px] mx-auto' : ''
+                )}>
+                  {/* Email client chrome */}
+                  <div className={cn("bg-white dark:bg-slate-900 rounded-lg shadow-sm overflow-hidden w-full", previewMode === 'mobile' ? 'max-w-[360px]' : '')}>
+                    {/* Fake email header */}
+                    <div className="px-3 py-2 border-b bg-slate-50 dark:bg-slate-800/50 space-y-1">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[9px] font-bold text-slate-400 uppercase w-10">De:</span>
+                        <span className="text-[10px] text-slate-600 dark:text-slate-400">Tu Empresa &lt;info@tuempresa.com&gt;</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[9px] font-bold text-slate-400 uppercase w-10">Asunto:</span>
+                        <span className="text-[10px] font-bold text-slate-800 dark:text-slate-200">{subject || 'Sin asunto'}</span>
+                      </div>
+                    </div>
+                    {/* Email body */}
+                    <iframe
+                      title="Vista previa campaña"
+                      className="w-full bg-white"
+                      style={{
+                        height: Math.min(800, 600),
+                        border: '0',
+                      }}
+                      srcDoc={previewHtml}
+                    />
+                  </div>
                 </div>
-                <p className="text-xs text-gray-500">
-                  Esto renderiza el HTML real. Las apps de correo pueden variar un poco (Gmail/Outlook).
+                <p className="text-[10px] text-slate-400 text-center">
+                  El renderizado puede variar levemente entre Gmail, Outlook y otros clientes.
                 </p>
               </div>
             </div>
 
-            <div className="flex justify-end gap-2">
-              <Button type="button" variant="outline" onClick={onClose}>
+            <div className="flex justify-end gap-2 pt-2 border-t">
+              <Button type="button" variant="outline" onClick={onClose} className="rounded-lg">
                 Volver
+              </Button>
+              <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending} className="rounded-lg bg-blue-600 hover:bg-blue-700">
+                <Save className="h-4 w-4 mr-2" />
+                {createMutation.isPending || updateMutation.isPending ? 'Guardando…' : 'Guardar campaña'}
               </Button>
             </div>
           </form>
@@ -473,16 +370,22 @@ export default function CampaignForm({ campaignId, onClose, onSuccess }: Campaig
 
       {/* Preview modal (full) */}
       <Dialog open={showPreview} onOpenChange={setShowPreview}>
-        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Vista previa del email</DialogTitle>
+            <DialogDescription>Así se verá tu email en la bandeja de entrada</DialogDescription>
           </DialogHeader>
-          <div className="flex justify-center bg-gray-50 p-4 rounded-lg border">
-            <iframe
-              title="Vista previa completa"
-              style={{ width: 700, height: 800, border: '0', background: '#fff' }}
-              srcDoc={previewHtml}
-            />
+          <div className="flex justify-center bg-slate-100 dark:bg-slate-800 p-6 rounded-xl border">
+            <div className="bg-white dark:bg-slate-900 rounded-lg shadow-lg overflow-hidden w-full max-w-[640px]">
+              <div className="px-4 py-2.5 border-b bg-slate-50 dark:bg-slate-800/50">
+                <div className="text-[10px] text-slate-500"><strong>Asunto:</strong> {subject || 'Sin asunto'}</div>
+              </div>
+              <iframe
+                title="Vista previa completa"
+                style={{ width: '100%', height: 700, border: '0', background: '#fff' }}
+                srcDoc={previewHtml}
+              />
+            </div>
           </div>
         </DialogContent>
       </Dialog>
@@ -492,23 +395,24 @@ export default function CampaignForm({ campaignId, onClose, onSuccess }: Campaig
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Enviar email de prueba</DialogTitle>
+            <DialogDescription>Envía una prueba para verificar cómo se ve tu campaña</DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             <div>
-              <Label>Email destino</Label>
-              <Input value={testEmail} onChange={(e) => setTestEmail(e.target.value)} placeholder="tu@email.com" />
+              <Label className="text-xs font-bold">Email destino</Label>
+              <Input value={testEmail} onChange={(e) => setTestEmail(e.target.value)} placeholder="tu@email.com" className="mt-1" />
             </div>
             <div>
-              <Label>
-                Nombre (para <code>{'{{name}}'}</code>)
+              <Label className="text-xs font-bold">
+                Nombre (para <code className="text-blue-600">{'{{name}}'}</code>)
               </Label>
-              <Input value={testName} onChange={(e) => setTestName(e.target.value)} placeholder="Ej: Carlos" />
+              <Input value={testName} onChange={(e) => setTestName(e.target.value)} placeholder="Ej: Carlos" className="mt-1" />
             </div>
             <div className="flex justify-end gap-2 pt-2">
-              <Button type="button" variant="outline" onClick={() => setShowSendTest(false)}>
+              <Button type="button" variant="outline" onClick={() => setShowSendTest(false)} className="rounded-lg">
                 Cancelar
               </Button>
-              <Button type="button" onClick={() => sendTestMutation.mutate()} disabled={sendTestMutation.isPending}>
+              <Button type="button" onClick={() => sendTestMutation.mutate()} disabled={sendTestMutation.isPending} className="rounded-lg bg-blue-600 hover:bg-blue-700">
                 {sendTestMutation.isPending ? 'Enviando…' : 'Enviar prueba'}
               </Button>
             </div>
@@ -527,4 +431,3 @@ export default function CampaignForm({ campaignId, onClose, onSuccess }: Campaig
     </div>
   )
 }
-
