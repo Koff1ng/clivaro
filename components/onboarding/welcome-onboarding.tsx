@@ -48,22 +48,29 @@ function useTypingAnimation(text: string, speed = 35, delay = 300) {
   return { displayed, isDone }
 }
 
-/* ─── Colorful Lineal Icons via @iconify/react (Icon Park TwoTone) ─── */
-import { Icon } from '@iconify/react'
-
-// Welcome step cards — lineal color style
+// Welcome step cards — 3D assets
 const WELCOME_ICONS = [
-  { icon: 'icon-park-twotone:protect', label: 'Datos fiscales' },
-  { icon: 'icon-park-twotone:transaction-order', label: 'Facturación' },
-  { icon: 'icon-park-twotone:lock-one', label: 'Credenciales' },
+  { src: '/assets/3d/onboarding-document.png', label: 'Datos fiscales' },
+  { src: '/assets/3d/landing-billing.png', label: 'Facturación' },
+  { src: '/assets/3d/onboarding-lock.png', label: 'Credenciales' },
 ]
 
-// Business type icons — lineal color style
+// Business type 3D icons
 const BUSINESS_ICONS: Record<string, string> = {
-  RETAIL: 'icon-park-twotone:shop',
-  RESTAURANT: 'icon-park-twotone:cooking',
-  SERVICES: 'icon-park-twotone:suitcase',
-  OTHER: 'icon-park-twotone:all-application',
+  RETAIL: '/assets/3d/onboarding-store.png',
+  RESTAURANT: '/assets/3d/landing-restaurant.png',
+  SERVICES: '/assets/3d/landing-crm.png',
+  OTHER: '/assets/3d/landing-analytics.png',
+}
+
+// Step header images
+const STEP_IMAGES: Record<string, string> = {
+  welcome: '/assets/3d/onboarding-rocket.png',
+  fiscal: '/assets/3d/onboarding-document.png',
+  location: '/assets/3d/onboarding-location.png',
+  industry: '/assets/3d/onboarding-store.png',
+  credentials: '/assets/3d/onboarding-lock.png',
+  ready: '/assets/3d/onboarding-success.png',
 }
 
 /* ─── Constants ─── */
@@ -348,14 +355,28 @@ export function WelcomeOnboarding({ onComplete, planName, isDemo }: WelcomeOnboa
         <div className="w-full max-w-lg">
           <AnimatePresence mode="wait">
             <motion.div key={step} variants={pageVariants} initial="initial" animate="animate" exit="exit">
-              {/* Title */}
+              {/* Title with 3D icon */}
               <div className="mb-8">
-                <p className="text-[11px] font-semibold tracking-[0.2em] uppercase text-slate-400 mb-3">
-                  Paso {step + 1} de {totalSteps}
-                </p>
-                <h1 className="text-[28px] sm:text-[32px] font-bold tracking-tight text-slate-900 dark:text-white leading-tight">
-                  {GREETINGS[step]}
-                </h1>
+                <div className="flex items-center gap-4 mb-4">
+                  {STEP_IMAGES[STEP_IDS[step]] && (
+                    <motion.img
+                      src={STEP_IMAGES[STEP_IDS[step]]}
+                      alt=""
+                      className="w-16 h-16 object-contain"
+                      initial={{ scale: 0, rotate: -20 }}
+                      animate={{ scale: 1, rotate: 0 }}
+                      transition={{ type: 'spring', stiffness: 300, damping: 15, delay: 0.1 }}
+                    />
+                  )}
+                  <div>
+                    <p className="text-[11px] font-semibold tracking-[0.2em] uppercase text-slate-400 mb-1">
+                      Paso {step + 1} de {totalSteps}
+                    </p>
+                    <h1 className="text-[26px] sm:text-[30px] font-bold tracking-tight text-slate-900 dark:text-white leading-tight">
+                      {GREETINGS[step]}
+                    </h1>
+                  </div>
+                </div>
               </div>
 
               {/* ──── STEP 0: Welcome ──── */}
@@ -396,14 +417,14 @@ export function WelcomeOnboarding({ onComplete, planName, isDemo }: WelcomeOnboa
                         whileHover={cardHover}
                         className="flex flex-col items-center gap-2.5 py-5 px-3 bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 cursor-default"
                       >
-                        <motion.div
-                          className="w-12 h-12 flex items-center justify-center"
-                          initial={{ rotate: -8 }}
-                          animate={{ rotate: 0 }}
+                        <motion.img
+                          src={item.src}
+                          alt={item.label}
+                          className="w-14 h-14 object-contain"
+                          initial={{ rotate: -8, scale: 0.8 }}
+                          animate={{ rotate: 0, scale: 1 }}
                           transition={{ delay: 0.3 + i * 0.1, type: 'spring', stiffness: 300, damping: 15 }}
-                        >
-                          <Icon icon={item.icon} width={40} height={40} />
-                        </motion.div>
+                        />
                         <span className="text-[12px] font-medium text-slate-600 dark:text-slate-400">{item.label}</span>
                       </motion.div>
                     ))}
@@ -550,13 +571,13 @@ export function WelcomeOnboarding({ onComplete, planName, isDemo }: WelcomeOnboa
                               : 'border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-slate-300 dark:hover:border-slate-600'
                           }`}
                         >
-                          <motion.div
-                            className="w-14 h-14 flex items-center justify-center"
+                          <motion.img
+                            src={BUSINESS_ICONS[bt.value]}
+                            alt={bt.label}
+                            className="w-16 h-16 object-contain"
                             animate={isSelected ? { scale: [1, 1.12, 1] } : {}}
                             transition={{ duration: 0.4 }}
-                          >
-                            <Icon icon={BUSINESS_ICONS[bt.value]} width={48} height={48} />
-                          </motion.div>
+                          />
                           <span className={`text-[13px] font-semibold ${isSelected ? 'text-slate-900 dark:text-white' : 'text-slate-600 dark:text-slate-400'}`}>
                             {bt.label}
                           </span>
