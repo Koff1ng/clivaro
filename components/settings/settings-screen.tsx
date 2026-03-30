@@ -29,7 +29,8 @@ import {
   ChevronRight,
   LayoutDashboard,
   ArrowLeftRight,
-  Play
+  Play,
+  MessageCircle,
 } from 'lucide-react'
 import { useToast } from '@/components/ui/toast'
 import { useSession } from 'next-auth/react'
@@ -45,6 +46,7 @@ import { PrivacyConfig } from './privacy-config'
 import { EmailConfigTab } from './email-config-tab'
 import { RestaurantSettingsView } from './restaurant-settings-view'
 import { UnitConversionsConfig } from './unit-conversions-config'
+import { WhatsAppSettings } from '../crm/whatsapp-settings'
 import { cn } from '@/lib/utils'
 import { motion } from 'framer-motion'
 
@@ -151,6 +153,7 @@ export function SettingsScreen() {
         { id: 'printing', label: 'Impresión POS', icon: Printer, desc: 'Tickets y estaciones' },
         { id: 'restaurant', label: 'Restaurante', icon: UtensilsCrossed, desc: 'Zonas, mesas y cocina' },
         { id: 'billing', label: 'Facturación Elect.', icon: Receipt, desc: 'Integración Factus' },
+        { id: 'whatsapp', label: 'WhatsApp', icon: MessageCircle, desc: 'Conexión y mensajería' },
       ]
     },
     {
@@ -231,6 +234,7 @@ export function SettingsScreen() {
       case 'payments-methods': return <PaymentMethodsConfig />
       case 'taxes': return <TaxesPage />
       case 'unit-conversions': return <UnitConversionsConfig />
+      case 'whatsapp': return <WhatsAppSettings />
       case 'data': return <DataConfig settings={settings} onSave={(data) => updateSettingsMutation.mutate(data)} isLoading={updateSettingsMutation.isPending} />
       case 'privacy': return <PrivacyConfig />
       default: return null

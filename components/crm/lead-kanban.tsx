@@ -48,7 +48,7 @@ function LeadCard({
       ref={dragRef as any}
       style={dragStyle}
       className={[
-        'bg-white rounded-lg p-3 border select-none',
+        'bg-card rounded-lg p-3 border select-none',
         overlay ? 'shadow-xl border-primary/30' : 'shadow-sm hover:shadow-md transition-shadow',
         dragging ? 'opacity-40' : '',
       ].join(' ')}

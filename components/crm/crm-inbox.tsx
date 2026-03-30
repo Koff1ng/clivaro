@@ -67,12 +67,30 @@ export function CrmInbox() {
 
     const sendMessageMutation = useMutation({
         mutationFn: async ({ leadId, content }: { leadId: string, content: string }) => {
-            const res = await fetch('/api/chat/send', {
+            // Find lead to get phone number
+            const lead = leads.find((l: any) => l.id === leadId)
+            const phone = lead?.phone?.replace(/[^0-9]/g, '')
+            
+            if (!phone) throw new Error('El lead no tiene teléfono')
+
+            // Send via WhatsApp bridge
+            const res = await fetch('/api/whatsapp/send', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ leadId, content })
+                body: JSON.stringify({ to: phone, message: content })
             })
-            if (!res.ok) throw new Error("Failed to send message")
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}))
+                throw new Error(err.error || 'No se pudo enviar el mensaje')
+            }
+            
+            // Also log as activity
+            await fetch(`/api/leads/${leadId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({})
+            }).catch(() => {}) // Just touch updatedAt
+
             return res.json()
         },
         onSuccess: () => {
