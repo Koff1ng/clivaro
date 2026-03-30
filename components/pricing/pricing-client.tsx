@@ -13,7 +13,7 @@ import { ScrollReveal } from './scroll-reveal'
 import { SoftwarePreview } from './software-preview'
 import { HeroPreview } from './hero-preview'
 import { SpotlightCard } from '@/components/ui/spotlight-card'
-import { InfiniteMovingCards } from '@/components/ui/infinite-moving-cards'
+
 import { BusinessTypes } from '@/components/marketing/business-types'
 import { Testimonials } from '@/components/marketing/testimonials'
 
@@ -89,23 +89,7 @@ const plans = [
   },
 ]
 
-const features = [
-  { name: 'Dashboard Corporativo', icon: LayoutDashboard },
-  { name: 'Gestión de Productos', icon: Package },
-  { name: 'Control de Inventario', icon: BarChart3 },
-  { name: 'CRM & Clientes', icon: Users },
-  { name: 'Oportunidades (Leads)', icon: TrendingUp },
-  { name: 'Campañas de Marketing', icon: Mail },
-  { name: 'Cotizaciones', icon: FileText },
-  { name: 'Facturación Electrónica', icon: Printer },
-  { name: 'Gestión de Proveedores', icon: Truck },
-  { name: 'Órdenes de Compra', icon: ShoppingCart },
-  { name: 'Recepción de Mercancía', icon: Check },
-  { name: 'Punto de Venta (POS)', icon: ShoppingCart },
-  { name: 'Control de Caja', icon: Wallet },
-  { name: 'Gestión de Usuarios', icon: Users },
-  { name: 'Configuración del Sistema', icon: Settings },
-]
+
 
 const useCases = [
   { name: 'Tienda de ropa', description: 'Clasifica prendas por talla y color', icon: Shirt, color: 'text-pink-500', bg: 'bg-pink-100 dark:bg-pink-900/20' },

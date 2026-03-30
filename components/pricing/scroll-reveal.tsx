@@ -1,31 +1,56 @@
 'use client'
 
-import { ReactNode } from 'react'
-import { useScrollReveal } from '@/hooks/use-scroll-reveal'
+import { ReactNode, useRef } from 'react'
+import { motion, useInView } from 'framer-motion'
 
 interface ScrollRevealProps {
   children: ReactNode
   delay?: number
   className?: string
+  direction?: 'up' | 'down' | 'left' | 'right'
 }
 
-export function ScrollReveal({ children, delay = 0, className = '' }: ScrollRevealProps) {
-  const { ref, isVisible, mounted } = useScrollReveal({ threshold: 0.1, triggerOnce: true })
+export function ScrollReveal({ children, delay = 0, className = '', direction = 'up' }: ScrollRevealProps) {
+  const ref = useRef<HTMLDivElement>(null)
+  const isInView = useInView(ref, { once: true, margin: '-60px 0px' })
+
+  const directionMap = {
+    up: { y: 40, x: 0 },
+    down: { y: -40, x: 0 },
+    left: { y: 0, x: 40 },
+    right: { y: 0, x: -40 },
+  }
+
+  const offset = directionMap[direction]
 
   return (
-    <div
+    <motion.div
       ref={ref}
-      className={`transition-all duration-700 ease-out ${
-        mounted && isVisible
-          ? 'opacity-100 translate-y-0'
-          : mounted
-          ? 'opacity-0 translate-y-8'
-          : 'opacity-100 translate-y-0'
-      } ${className}`}
-      style={{ transitionDelay: mounted ? `${delay}ms` : '0ms' }}
+      initial={{
+        opacity: 0,
+        y: offset.y,
+        x: offset.x,
+        filter: 'blur(6px)',
+      }}
+      animate={isInView ? {
+        opacity: 1,
+        y: 0,
+        x: 0,
+        filter: 'blur(0px)',
+      } : {
+        opacity: 0,
+        y: offset.y,
+        x: offset.x,
+        filter: 'blur(6px)',
+      }}
+      transition={{
+        duration: 0.65,
+        ease: [0.25, 0.46, 0.45, 0.94],
+        delay: delay / 1000,
+      }}
+      className={className}
     >
       {children}
-    </div>
+    </motion.div>
   )
 }
-
