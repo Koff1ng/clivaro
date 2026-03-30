@@ -174,6 +174,56 @@ export async function getTransaction(transactionId: string): Promise<WompiTransa
 }
 
 /**
+ * Search for a transaction by its reference using Wompi API
+ * GET https://sandbox.wompi.co/v1/transactions?reference=REF
+ * This is critical because Wompi's Widget does NOT append the transaction ID
+ * to the redirect URL — only the reference is available client-side.
+ */
+export async function getTransactionByReference(reference: string): Promise<WompiTransaction | null> {
+  const url = `${WOMPI_API_URL}/transactions?reference=${encodeURIComponent(reference)}`
+  console.log('[Wompi] getTransactionByReference URL:', url)
+
+  try {
+    let response = await fetch(url, {
+      headers: { 'Accept': 'application/json' },
+    })
+
+    if (response.status === 401 || response.status === 403) {
+      response = await fetch(url, {
+        headers: {
+          'Accept': 'application/json',
+          'Authorization': `Bearer ${WOMPI_PRIVATE_KEY}`,
+        },
+      })
+    }
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error(`[Wompi] Error searching transaction by ref ${reference}:`, response.status, errorText)
+      return null
+    }
+
+    const result = await response.json()
+    const transactions = result.data || []
+    console.log(`[Wompi] Found ${transactions.length} transactions for ref ${reference}`)
+
+    if (transactions.length === 0) return null
+
+    // Return the most recent transaction for this reference
+    // Sort by created_at descending to get the latest
+    const sorted = transactions.sort((a: any, b: any) => 
+      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    )
+    const tx = sorted[0]
+    console.log('[Wompi] Best match:', tx.id, tx.status, tx.reference)
+    return tx as WompiTransaction
+  } catch (error) {
+    console.error('[Wompi] Error searching transaction by reference:', error)
+    return null
+  }
+}
+
+/**
  * Get an acceptance token (required for some payment methods)
  * GET /merchants/{public_key}
  */
