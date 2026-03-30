@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useRef } from 'react'
+import { useState, useMemo, useRef, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Plus, Send, Edit, Trash2, Eye, Users, Loader2,
@@ -36,6 +36,20 @@ export default function CampaignsClient() {
 
   const queryClient = useQueryClient()
   const { toast } = useToast()
+
+  // Listen for Clivi AI campaign creation events
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail
+      if (detail?.name && detail?.subject && detail?.htmlContent) {
+        setAiCampaignData(detail)
+        setShowForm(true)
+        toast('🐙 Clivi generó tu campaña — ¡revísala!', 'success')
+      }
+    }
+    window.addEventListener('clivi:create-campaign', handler)
+    return () => window.removeEventListener('clivi:create-campaign', handler)
+  }, [toast])
 
   const { data: campaigns, isLoading } = useQuery({
     queryKey: ['marketing-campaigns', statusFilter],

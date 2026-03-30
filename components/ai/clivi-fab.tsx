@@ -1,18 +1,18 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { X, Send, Loader2, Minimize2, Maximize2, Trash2 } from 'lucide-react'
+import { X, Send, Loader2, Minimize2, Maximize2, Trash2, ExternalLink } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 
 interface Message {
   id: string
   role: 'user' | 'assistant'
   content: string
   timestamp: Date
+  action?: { type: string; data: any }
 }
 
-// Page context mapping
 const PAGE_CONTEXTS: Record<string, string> = {
   '/dashboard': 'el Dashboard principal — métricas de ventas, stock, clientes',
   '/inventory': 'Inventario — gestión de productos, stock, categorías',
@@ -34,7 +34,6 @@ function getPageContext(pathname: string): string {
   return 'una página del sistema'
 }
 
-// Simple markdown → html (bold, italic, lists, code)
 function renderMarkdown(text: string): string {
   return text
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
@@ -54,14 +53,14 @@ export default function CliviFab() {
   const chatEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const pathname = usePathname()
+  const router = useRouter()
 
-  // Welcome message
   useEffect(() => {
     if (messages.length === 0) {
       setMessages([{
         id: 'welcome',
         role: 'assistant',
-        content: '¡Hola! 🐙 Soy **Clivi**, tu asistente inteligente. Puedo ayudarte con cualquier cosa del sistema: campañas, inventario, ventas, reportes... ¡Pregúntame lo que necesites!',
+        content: '¡Hola! 🐙 Soy **Clivi**, tu asistente inteligente. Puedo **crear campañas**, **navegar a módulos** y ayudarte con cualquier cosa. ¡Dime qué necesitas!',
         timestamp: new Date(),
       }])
     }
@@ -78,13 +77,30 @@ export default function CliviFab() {
     }
   }, [isOpen])
 
-  const sendMessage = useCallback(async () => {
-    if (!input.trim() || isLoading) return
+  // Handle action from Clivi API response
+  const handleAction = useCallback((action: { type: string; data: any }) => {
+    if (action.type === 'navigate') {
+      setTimeout(() => router.push(action.data.path), 800)
+    }
+    if (action.type === 'create-campaign') {
+      // Dispatch custom event with campaign data — campaigns-client listens for this
+      const event = new CustomEvent('clivi:create-campaign', {
+        detail: action.data, // { name, subject, htmlContent }
+      })
+      window.dispatchEvent(event)
+      // Navigate to marketing if not there
+      if (!pathname.startsWith('/marketing')) {
+        setTimeout(() => router.push('/marketing/campaigns'), 500)
+      }
+    }
+  }, [router, pathname])
 
+  // Core send function
+  const doSend = useCallback(async (messageText: string, chatHistory: { role: string; content: string }[]) => {
     const userMsg: Message = {
       id: `user-${Date.now()}`,
       role: 'user',
-      content: input.trim(),
+      content: messageText,
       timestamp: new Date(),
     }
 
@@ -93,43 +109,56 @@ export default function CliviFab() {
     setIsLoading(true)
 
     try {
-      const history = messages
-        .filter(m => m.id !== 'welcome')
-        .map(m => ({ role: m.role, content: m.content }))
-
       const res = await fetch('/api/ai/clivi', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          message: userMsg.content,
-          history,
+          message: messageText,
+          history: chatHistory,
           pageContext: getPageContext(pathname),
         }),
       })
 
-      if (!res.ok) {
-        throw new Error('Error al comunicarme con el servidor')
-      }
-
+      if (!res.ok) throw new Error('Error')
       const data = await res.json()
 
-      setMessages(prev => [...prev, {
+      const botMsg: Message = {
         id: `bot-${Date.now()}`,
         role: 'assistant',
-        content: data.reply || 'Lo siento, no pude procesar tu mensaje. 🐙',
+        content: data.reply || '🐙',
         timestamp: new Date(),
-      }])
-    } catch (err) {
+        action: data.action || undefined,
+      }
+
+      setMessages(prev => [...prev, botMsg])
+
+      // Execute action if present
+      if (data.action) {
+        handleAction(data.action)
+      }
+    } catch {
       setMessages(prev => [...prev, {
         id: `err-${Date.now()}`,
         role: 'assistant',
-        content: '¡Ups! Tuve un problemita procesando tu mensaje. ¿Puedes intentar de nuevo? 🐙💦',
+        content: '¡Ups! Tuve un problemita. ¿Puedes intentar de nuevo? 🐙💦',
         timestamp: new Date(),
       }])
     } finally {
       setIsLoading(false)
     }
-  }, [input, isLoading, messages, pathname])
+  }, [pathname, handleAction])
+
+  const sendMessage = useCallback(async () => {
+    if (!input.trim() || isLoading) return
+    const history = messages
+      .filter(m => m.id !== 'welcome')
+      .map(m => ({ role: m.role, content: m.content }))
+    doSend(input.trim(), history)
+  }, [input, isLoading, messages, doSend])
+
+  const sendQuick = useCallback((q: string) => {
+    doSend(q, [])
+  }, [doSend])
 
   const clearChat = () => {
     setMessages([{
@@ -142,13 +171,13 @@ export default function CliviFab() {
 
   return (
     <>
-      {/* Floating Action Button */}
+      {/* FAB */}
       <button
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
-          "fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full shadow-2xl flex items-center justify-center transition-all duration-300 hover:scale-110 active:scale-95 group",
+          "fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full shadow-2xl flex items-center justify-center transition-all duration-300 hover:scale-110 active:scale-95",
           isOpen
-            ? "bg-slate-700 hover:bg-slate-600 rotate-0"
+            ? "bg-slate-700 hover:bg-slate-600"
             : "bg-gradient-to-br from-purple-500 via-indigo-500 to-blue-500 hover:from-purple-600 hover:via-indigo-600 hover:to-blue-600"
         )}
         title={isOpen ? 'Cerrar Clivi' : 'Abrir Clivi 🐙'}
@@ -183,22 +212,14 @@ export default function CliviFab() {
             <div className="flex-1 min-w-0">
               <h3 className="text-sm font-black text-slate-900 dark:text-white">Clivi</h3>
               <p className="text-[10px] text-slate-400 truncate">
-                Asistente IA • {getPageContext(pathname)}
+                Asistente IA • Puede ejecutar acciones ⚡
               </p>
             </div>
             <div className="flex items-center gap-1">
-              <button
-                onClick={clearChat}
-                className="w-7 h-7 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center justify-center transition-colors"
-                title="Limpiar chat"
-              >
+              <button onClick={clearChat} className="w-7 h-7 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center justify-center" title="Limpiar chat">
                 <Trash2 className="w-3.5 h-3.5 text-slate-400" />
               </button>
-              <button
-                onClick={() => setIsExpanded(!isExpanded)}
-                className="w-7 h-7 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center justify-center transition-colors"
-                title={isExpanded ? 'Minimizar' : 'Expandir'}
-              >
+              <button onClick={() => setIsExpanded(!isExpanded)} className="w-7 h-7 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center justify-center" title={isExpanded ? 'Minimizar' : 'Expandir'}>
                 {isExpanded ? <Minimize2 className="w-3.5 h-3.5 text-slate-400" /> : <Maximize2 className="w-3.5 h-3.5 text-slate-400" />}
               </button>
             </div>
@@ -207,10 +228,7 @@ export default function CliviFab() {
           {/* Messages */}
           <div className="flex-1 overflow-y-auto px-3 py-3 space-y-3">
             {messages.map((msg) => (
-              <div
-                key={msg.id}
-                className={cn("flex", msg.role === 'user' ? "justify-end" : "justify-start")}
-              >
+              <div key={msg.id} className={cn("flex", msg.role === 'user' ? "justify-end" : "justify-start")}>
                 <div className={cn(
                   "max-w-[85%] px-3 py-2 rounded-2xl text-xs leading-relaxed",
                   msg.role === 'user'
@@ -219,8 +237,27 @@ export default function CliviFab() {
                 )}>
                   {msg.role === 'assistant' ? (
                     <div dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.content) }} />
-                  ) : (
-                    msg.content
+                  ) : msg.content}
+
+                  {/* Action badge */}
+                  {msg.action && (
+                    <div className="mt-2 pt-2 border-t border-slate-200 dark:border-slate-700">
+                      {msg.action.type === 'create-campaign' && (
+                        <div className="flex items-center gap-1.5 text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">
+                          <span className="w-4 h-4 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center text-[8px]">✓</span>
+                          Campaña creada — abriendo editor...
+                        </div>
+                      )}
+                      {msg.action.type === 'navigate' && (
+                        <button
+                          onClick={() => router.push(msg.action!.data.path)}
+                          className="flex items-center gap-1 text-[10px] text-indigo-600 dark:text-indigo-400 font-bold hover:underline"
+                        >
+                          <ExternalLink className="w-3 h-3" />
+                          Ir a {msg.action.data.path}
+                        </button>
+                      )}
+                    </div>
                   )}
                 </div>
               </div>
@@ -243,32 +280,16 @@ export default function CliviFab() {
           {messages.length <= 1 && (
             <div className="px-3 pb-2 flex flex-wrap gap-1.5 shrink-0">
               {[
-                '¿Cómo creo una campaña?',
-                '¿Cómo agrego un producto?',
+                'Crea una campaña de ofertas',
+                'Llévame a Marketing',
+                'Llévame al Dashboard',
                 '¿Cómo cierro turno de caja?',
-                'Resumen de ventas de hoy',
               ].map((q) => (
                 <button
                   key={q}
-                  onClick={() => {
-                    setInput('')
-                    const msg: Message = { id: `user-${Date.now()}`, role: 'user', content: q, timestamp: new Date() }
-                    setMessages(prev => [...prev, msg])
-                    setIsLoading(true)
-                    fetch('/api/ai/clivi', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({
-                        message: q,
-                        history: [],
-                        pageContext: getPageContext(pathname),
-                      }),
-                    }).then(r => r.json())
-                      .then(data => setMessages(prev => [...prev, { id: `bot-${Date.now()}`, role: 'assistant', content: data.reply || '🐙', timestamp: new Date() }]))
-                      .catch(() => setMessages(prev => [...prev, { id: `err-${Date.now()}`, role: 'assistant', content: '¡Ups! Intenta de nuevo 🐙', timestamp: new Date() }]))
-                      .finally(() => setIsLoading(false))
-                  }}
-                  className="px-2.5 py-1 rounded-full text-[10px] font-medium bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 border border-purple-200 dark:border-purple-800 hover:bg-purple-100 dark:hover:bg-purple-900/40 transition-colors"
+                  onClick={() => sendQuick(q)}
+                  disabled={isLoading}
+                  className="px-2.5 py-1 rounded-full text-[10px] font-medium bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 border border-purple-200 dark:border-purple-800 hover:bg-purple-100 dark:hover:bg-purple-900/40 transition-colors disabled:opacity-50"
                 >
                   {q}
                 </button>
@@ -284,7 +305,7 @@ export default function CliviFab() {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage() } }}
-                placeholder="Escribe tu pregunta a Clivi..."
+                placeholder="Ej: Crea una campaña de pinturas al 30%..."
                 className="flex-1 bg-slate-100 dark:bg-slate-800 border-0 rounded-xl px-3 py-2 text-xs text-slate-700 dark:text-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
                 disabled={isLoading}
               />
@@ -301,7 +322,7 @@ export default function CliviFab() {
                 {isLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
               </button>
             </div>
-            <p className="text-[9px] text-center text-slate-300 mt-1.5">Clivi 🐙 · Powered by Gemini</p>
+            <p className="text-[9px] text-center text-slate-300 mt-1.5">Clivi 🐙 puede ejecutar acciones · Powered by Gemini</p>
           </div>
         </div>
       )}
