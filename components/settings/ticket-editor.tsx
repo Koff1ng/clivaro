@@ -77,6 +77,7 @@ export interface TicketDesignSettings {
     separator: 'dashes' | 'dots' | 'lines'
     // Font settings for thermal print legibility
     fontSize: 'small' | 'medium' | 'large'
+    customFontSize?: number  // Custom numeric font size (overrides preset)
     fontWeight: 'normal' | 'bold'
     headerFontSize: 'medium' | 'large' | 'xlarge'
     lineSpacing: 'compact' | 'normal' | 'relaxed'
@@ -442,6 +443,27 @@ export function TicketEditor({ settings: initialSettings, companyInfo, onChange,
                     <p className="text-xs text-muted-foreground italic">
                         * Se recomienda usar letra Negrita y tamaño Mediano o Grande para impresoras térmicas.
                     </p>
+
+                    {/* Custom Font Size */}
+                    <div className="space-y-1 pt-2">
+                        <Label className="text-xs">Tamaño personalizado (px)</Label>
+                        <p className="text-xs text-muted-foreground">Ingresa un valor numérico para controlar el tamaño exacto de la letra. Deja en 0 para usar el preset de arriba.</p>
+                        <div className="flex items-center gap-3">
+                            <Input
+                                type="number"
+                                value={(settings as any).customFontSize || 0}
+                                onChange={(e) => {
+                                    const val = Math.max(0, Math.min(24, Number(e.target.value)))
+                                    updateSetting('customFontSize' as any, val || undefined)
+                                }}
+                                min={0}
+                                max={24}
+                                placeholder="0"
+                                className="h-9 w-24"
+                            />
+                            <span className="text-xs text-muted-foreground">{(settings as any).customFontSize ? `${(settings as any).customFontSize}px activo` : 'Usando preset'}</span>
+                        </div>
+                    </div>
                 </div>
 
                 {/* Footer Template */}

@@ -195,7 +195,11 @@ export function InvoicePrint({ invoice, settings }: InvoicePrintProps) {
     medium: 12, large: 14, xlarge: 16,
   }
   
-  const fs = fontSizeMap[td.fontSize as string] || fontSizeMap.medium
+  // Font size: custom numeric value takes priority over presets
+  const customFontSize = td.customFontSize ? Number(td.customFontSize) : null
+  const fs = customFontSize
+    ? { base: customFontSize, small: Math.max(6, customFontSize - 2), items: Math.max(7, customFontSize - 1), itemsHeader: Math.max(6, customFontSize - 2) }
+    : (fontSizeMap[td.fontSize as string] || fontSizeMap.medium)
   const hfs = headerFontSizeMap[td.headerFontSize as string] || headerFontSizeMap.large
   const totalFs = fs.base + 2 // TOTAL A PAGAR slightly larger
 
@@ -504,6 +508,18 @@ export function InvoicePrint({ invoice, settings }: InvoicePrintProps) {
             {invoice.electronicStatus === 'ACCEPTED' && (
               <div className="bold" style={{ color: '#000', marginTop: '4px' }}>✓ VALIDADA POR LA DIAN</div>
             )}
+          </div>
+        )}
+
+        {/* ======= QR CODE ======= */}
+        {isElectronic && showQr && invoice.cufe && (
+          <div style={{ marginTop: '8px', textAlign: 'center' }}>
+            <img
+              src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(`https://catalogo-vpfe.dian.gov.co/document/searchqr?documentkey=${invoice.cufe}`)}`}
+              alt="QR Verificación DIAN"
+              style={{ width: '120px', height: '120px', margin: '0 auto', display: 'block' }}
+            />
+            <div style={{ fontSize: `${fs.small - 1}px`, color: '#555', marginTop: '4px' }}>Escanear para verificar en DIAN</div>
           </div>
         )}
       </div>
