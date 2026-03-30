@@ -5,8 +5,9 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Eye, Send, Save, Users, X } from 'lucide-react'
+import { Eye, Send, Save, Users, X, Check, FileText, Palette, Megaphone } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -261,13 +262,25 @@ export default function CampaignForm({ campaignId, onClose, onSuccess }: Campaig
     onError: (error: any) => toast(error.message || 'Error al enviar prueba', 'error'),
   })
 
+  // Compute stepper state
+  const hasInfo = !!(name && subject)
+  const hasDesign = !!(htmlContent && htmlContent.trim().length > 0)
+  const hasSaved = !!(currentCampaignId || campaignId)
+
+  const steps = [
+    { label: 'Info', icon: FileText, done: hasInfo },
+    { label: 'Diseño', icon: Palette, done: hasDesign },
+    { label: 'Destinatarios', icon: Users, done: false },
+    { label: 'Enviar', icon: Megaphone, done: false },
+  ]
+
   return (
     <div className="container mx-auto p-6">
       <Card>
-        <CardHeader>
+        <CardHeader className="pb-4">
           <div className="flex justify-between items-center">
             <div>
-              <CardTitle>{(currentCampaignId || campaignId) ? 'Editar Campaña' : 'Nueva Campaña'}</CardTitle>
+              <CardTitle className="text-xl">{(currentCampaignId || campaignId) ? 'Editar Campaña' : 'Nueva Campaña'}</CardTitle>
               <CardDescription>
                 Diseña emails profesionales con editor visual, vista previa y envío de prueba
               </CardDescription>
@@ -276,22 +289,53 @@ export default function CampaignForm({ campaignId, onClose, onSuccess }: Campaig
               <X className="h-4 w-4" />
             </Button>
           </div>
+
+          {/* Step Indicator */}
+          <div className="flex items-center justify-center gap-1 mt-4 overflow-x-auto">
+            {steps.map((step, i) => {
+              const Icon = step.icon
+              return (
+                <div key={i} className="flex items-center">
+                  <div className={cn(
+                    "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all",
+                    step.done
+                      ? "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400"
+                      : "bg-slate-100 dark:bg-slate-800 text-slate-500"
+                  )}>
+                    {step.done
+                      ? <Check className="w-3.5 h-3.5" />
+                      : <Icon className="w-3.5 h-3.5" />
+                    }
+                    <span className="hidden sm:inline">{step.label}</span>
+                  </div>
+                  {i < steps.length - 1 && (
+                    <div className={cn("w-6 h-px mx-1", step.done ? "bg-emerald-300" : "bg-slate-200 dark:bg-slate-700")} />
+                  )}
+                </div>
+              )
+            })}
+          </div>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             {/* Top actions */}
             <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border p-3 bg-muted/30">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                {isDirtySinceSave ? 'Cambios sin guardar' : lastSavedAt ? `Guardado ${lastSavedAt.toLocaleTimeString('es-CO')}` : '—'}
+                <span className={cn(
+                  "w-2 h-2 rounded-full",
+                  isDirtySinceSave ? "bg-amber-500 animate-pulse" : lastSavedAt ? "bg-emerald-500" : "bg-slate-300"
+                )} />
+                {isDirtySinceSave ? 'Cambios sin guardar' : lastSavedAt ? `Guardado ${lastSavedAt.toLocaleTimeString('es-CO')}` : 'Sin cambios'}
               </div>
               <div className="flex flex-wrap gap-2">
-                <Button type="button" variant="outline" onClick={() => setShowPreview(true)}>
+                <Button type="button" variant="outline" size="sm" onClick={() => setShowPreview(true)}>
                   <Eye className="h-4 w-4 mr-2" />
                   Vista previa
                 </Button>
                 <Button
                   type="button"
                   variant="outline"
+                  size="sm"
                   onClick={async () => {
                     const id = await ensureSaved()
                     if (id) setShowRecipients(true)
@@ -300,11 +344,11 @@ export default function CampaignForm({ campaignId, onClose, onSuccess }: Campaig
                   <Users className="h-4 w-4 mr-2" />
                   Destinatarios
                 </Button>
-                <Button type="button" variant="outline" onClick={() => setShowSendTest(true)}>
+                <Button type="button" variant="outline" size="sm" onClick={() => setShowSendTest(true)}>
                   <Send className="h-4 w-4 mr-2" />
                   Enviar prueba
                 </Button>
-                <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending}>
+                <Button type="submit" size="sm" disabled={createMutation.isPending || updateMutation.isPending} className="bg-blue-600 hover:bg-blue-700">
                   <Save className="h-4 w-4 mr-2" />
                   {createMutation.isPending || updateMutation.isPending ? 'Guardando…' : 'Guardar'}
                 </Button>
@@ -338,15 +382,18 @@ export default function CampaignForm({ campaignId, onClose, onSuccess }: Campaig
                 </div>
 
                 <div>
-                  {/* Templates (media priority) */}
-                  <Card className="mb-4">
-                    <CardHeader>
-                      <CardTitle className="text-sm">Plantillas rápidas</CardTitle>
+                  {/* Templates */}
+                  <Card className="mb-4 border-dashed">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm flex items-center gap-2">
+                        <Palette className="w-4 h-4 text-blue-600" />
+                        Plantillas rápidas
+                      </CardTitle>
                       <CardDescription>
                         Elige una base profesional. Esto <strong>reemplaza</strong> el contenido actual.
                       </CardDescription>
                     </CardHeader>
-                    <CardContent className="grid gap-2 sm:grid-cols-2">
+                    <CardContent className="grid gap-3 sm:grid-cols-2">
                       {templates.map((t) => (
                         <button
                           key={t.id}
@@ -361,9 +408,12 @@ export default function CampaignForm({ campaignId, onClose, onSuccess }: Campaig
                             setEditorKey(Date.now())
                             toast(`Plantilla aplicada: ${t.name}`, 'success')
                           }}
-                          className="text-left rounded-lg border p-3 hover:bg-accent/40 transition-colors"
+                          className="text-left rounded-xl border-2 border-transparent p-4 hover:border-blue-300 dark:hover:border-blue-700 bg-slate-50 dark:bg-slate-800/50 hover:bg-blue-50 dark:hover:bg-blue-900/10 transition-all group"
                         >
-                          <div className="font-medium text-sm">{t.name}</div>
+                          <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
+                            <Megaphone className="w-4 h-4 text-blue-600" />
+                          </div>
+                          <div className="font-semibold text-sm text-slate-900 dark:text-white">{t.name}</div>
                           <div className="text-xs text-muted-foreground mt-1">{t.description}</div>
                         </button>
                       ))}
