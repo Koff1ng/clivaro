@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic'
 export const maxDuration = 30
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '')
-const MODEL = 'gemini-2.5-flash-preview-04-17'
+const MODEL = 'gemini-2.5-flash'
 
 export async function POST(request: Request) {
   const session = await requirePermission(request as any, PERMISSIONS.VIEW_REPORTS)
