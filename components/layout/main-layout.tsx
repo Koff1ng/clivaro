@@ -8,6 +8,7 @@ import { Header } from './header'
 import { SidebarProvider } from '@/lib/sidebar-context'
 import { OnboardingProvider } from '@/components/onboarding/onboarding-provider'
 import { ChatAssistant } from '@/components/ai/chat-assistant'
+import CliviFab from '@/components/ai/clivi-fab'
 
 function LayoutContent({ children }: { children: React.ReactNode }) {
   return (
@@ -22,6 +23,7 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
         </main>
       </div>
       <ChatAssistant />
+      <CliviFab />
     </div>
   )
 }
