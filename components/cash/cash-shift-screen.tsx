@@ -531,7 +531,7 @@ export function CashShiftScreen() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                {activeShift.summaryItems && activeShift.summaryItems.length > 0 ? (
+                {Array.isArray(activeShift.summaryItems) && activeShift.summaryItems.length > 0 ? (
                   <div className="space-y-2">
                     {activeShift.summaryItems.map((item: any) => {
                       const Icon = getPaymentMethodIcon(item.paymentMethodName)
@@ -1100,7 +1100,7 @@ export function CashShiftScreen() {
               </div>
             </div>
 
-            {activeShift?.summaryItems && activeShift.summaryItems.length > 0 && (
+            {Array.isArray(activeShift?.summaryItems) && activeShift.summaryItems.length > 0 && (
               <div className="border rounded-lg p-3 bg-muted/50 text-xs space-y-1">
                 <div className="font-semibold mb-1 text-foreground">Resumen de ingresos (Ventas):</div>
                 {activeShift.summaryItems.map((item: any) => (
@@ -1209,19 +1209,24 @@ export function CashShiftScreen() {
 }
 
 function RestaurantAccountsSection() {
-  const { data: accounts, isLoading } = useQuery({
+  const { data: accountsData, isLoading } = useQuery({
     queryKey: ['restaurant-open-accounts'],
     queryFn: async () => {
       const res = await fetch('/api/pos/cashier/open-accounts', {
         headers: { 'x-tenant-id': (window as any).__TENANT_ID__ || '' }
       })
       if (!res.ok) return []
-      return res.json()
+      const data = await res.json()
+      // API returns { sessions: [...], totalPending } — extract the array
+      if (Array.isArray(data)) return data
+      if (data?.sessions && Array.isArray(data.sessions)) return data.sessions
+      return []
     },
     refetchInterval: 15000 
   })
 
-  if (!accounts || accounts.length === 0) return null
+  const accounts = Array.isArray(accountsData) ? accountsData : []
+  if (accounts.length === 0) return null
 
   return (
     <div className="space-y-4 mb-8 bg-white p-6 rounded-2xl border-2 border-orange-100 shadow-sm relative overflow-hidden">

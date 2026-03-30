@@ -1,10 +1,13 @@
 import { NextResponse } from 'next/server'
 import { requirePermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
-import { writeFile, mkdir } from 'fs/promises'
-import { join } from 'path'
-import { existsSync } from 'fs'
-import sharp from 'sharp'
+import { createClient } from '@supabase/supabase-js'
+
+export const dynamic = 'force-dynamic'
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || ''
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+const BUCKET = 'campaign-images'
 
 export async function POST(request: Request) {
   const session = await requirePermission(request as any, PERMISSIONS.MANAGE_CRM)
@@ -12,6 +15,8 @@ export async function POST(request: Request) {
   if (session instanceof NextResponse) {
     return session
   }
+
+  const tenantId = (session.user as any).tenantId
 
   try {
     const formData = await request.formData()
@@ -40,46 +45,60 @@ export async function POST(request: Request) {
       )
     }
 
-    // Create uploads directory if it doesn't exist
-    const uploadsDir = join(process.cwd(), 'public', 'uploads', 'campaigns')
-    if (!existsSync(uploadsDir)) {
-      await mkdir(uploadsDir, { recursive: true })
+    if (!supabaseUrl || !supabaseKey) {
+      return NextResponse.json(
+        { error: 'Storage not configured. Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.' },
+        { status: 500 }
+      )
     }
 
-    // Generate unique filename
+    const supabase = createClient(supabaseUrl, supabaseKey)
+
+    // Generate unique path
     const timestamp = Date.now()
-    const randomString = Math.random().toString(36).substring(2, 15)
-    const extension = file.name.split('.').pop() || 'jpg'
-    const safeExt = extension.toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg'
-    const originalFilename = `campaign-${timestamp}-${randomString}.${safeExt}`
-    const originalFilepath = join(uploadsDir, originalFilename)
-    const webpFilename = `campaign-${timestamp}-${randomString}.webp`
-    const webpFilepath = join(uploadsDir, webpFilename)
+    const randomStr = Math.random().toString(36).substring(2, 10)
+    const ext = (file.name.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '')
+    const path = `${tenantId}/${timestamp}-${randomStr}.${ext}`
 
-    // Convert file to buffer and save
-    const bytes = await file.arrayBuffer()
-    const buffer = Buffer.from(bytes)
-    await writeFile(originalFilepath, buffer)
+    const buffer = Buffer.from(await file.arrayBuffer())
 
-    // Always generate a WebP sibling for optimization (keep original for compatibility)
-    try {
-      await sharp(buffer).webp({ quality: 82, effort: 5 }).toFile(webpFilepath)
-    } catch {
-      // If conversion fails, fall back to original
+    // Upload to Supabase Storage
+    const { data, error } = await supabase.storage
+      .from(BUCKET)
+      .upload(path, buffer, {
+        contentType: file.type,
+        upsert: false,
+      })
+
+    if (error) {
+      // If bucket doesn't exist, try to create it (public for email images)
+      if (error.message?.includes('not found') || error.message?.includes('Bucket')) {
+        console.log(`[Upload] Creating bucket "${BUCKET}"...`)
+        await supabase.storage.createBucket(BUCKET, { public: true })
+        
+        const { data: retryData, error: retryError } = await supabase.storage
+          .from(BUCKET)
+          .upload(path, buffer, { contentType: file.type, upsert: false })
+
+        if (retryError) {
+          console.error('[Upload] Retry failed:', retryError)
+          throw retryError
+        }
+      } else {
+        console.error('[Upload] Upload failed:', error)
+        throw error
+      }
     }
 
-    // Return public URL
-    const publicUrl = existsSync(webpFilepath)
-      ? `/uploads/campaigns/${webpFilename}`
-      : `/uploads/campaigns/${originalFilename}`
+    // Get public URL
+    const { data: urlData } = supabase.storage.from(BUCKET).getPublicUrl(path)
 
-    return NextResponse.json({ url: publicUrl })
-  } catch (error) {
-    console.error('Error uploading image:', error)
+    return NextResponse.json({ url: urlData.publicUrl })
+  } catch (error: any) {
+    console.error('Error uploading campaign image:', error)
     return NextResponse.json(
-      { error: 'Failed to upload image' },
+      { error: error.message || 'Failed to upload image' },
       { status: 500 }
     )
   }
 }
-
