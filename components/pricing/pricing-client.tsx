@@ -173,12 +173,12 @@ export function PricingClient() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 via-blue-50/30 to-white dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+    <div className="min-h-screen bg-gradient-to-b from-blue-50 via-blue-50/30 to-white dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
       {/* Scroll Navbar */}
       <ScrollNavbar onContactClick={handleContactClick} />
 
       {/* Hero Section */}
-      <div className="pt-32">
+      <div className="pt-20">
         <HeroPreview
           onContactClick={() => {
             setSelectedPlan(undefined)
