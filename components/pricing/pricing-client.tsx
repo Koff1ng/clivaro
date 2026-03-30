@@ -531,10 +531,11 @@ export function PricingClient() {
         </div>
       </ScrollReveal>
 
-      {/* Features Carousel */}
+      {/* Features Section with 3D Assets */}
       <ScrollReveal delay={100}>
-        <div id="features" className="mx-auto max-w-full px-6 py-20 lg:px-8 overflow-hidden bg-slate-50/50 dark:bg-slate-900/50">
+        <div id="features" className="mx-auto max-w-7xl px-6 py-24 lg:px-8">
           <div className="text-center mb-16 mx-auto max-w-3xl">
+            <Badge className="mb-4 bg-blue-100 text-blue-700 dark:bg-blue-900/30">Módulos</Badge>
             <h2 className="text-3xl lg:text-4xl font-bold mb-6">Todo lo que necesitas en un solo lugar</h2>
             <p className="text-lg text-gray-600 dark:text-gray-400">
               Hemos integrado las herramientas más potentes del mercado en una sola plataforma intuitiva,
@@ -542,12 +543,31 @@ export function PricingClient() {
             </p>
           </div>
 
-          <div className="relative">
-            {/* Gradient Overlays for smooth fade */}
-            <div className="absolute left-0 top-0 bottom-0 w-20 bg-gradient-to-r from-gray-50/50 dark:from-gray-900/50 to-transparent z-10 pointer-events-none"></div>
-            <div className="absolute right-0 top-0 bottom-0 w-20 bg-gradient-to-l from-gray-50/50 dark:from-gray-900/50 to-transparent z-10 pointer-events-none"></div>
-
-            <InfiniteMovingCards items={features} direction="left" speed="normal" className="mx-auto" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+            {[
+              { name: 'Punto de Venta', desc: 'POS ágil con control de caja, turnos y tickets personalizados.', img: '/assets/3d/landing-pos.png', icon: ShoppingCart },
+              { name: 'Inventario', desc: 'Multi-bodega, scanner de barcode, alertas de stock mínimo.', img: '/assets/3d/landing-inventory.png', icon: Package },
+              { name: 'Facturación DIAN', desc: 'Facturación electrónica certificada, notas crédito y documentos soporte.', img: '/assets/3d/landing-billing.png', icon: FileText },
+              { name: 'CRM & Marketing', desc: 'Pipeline de leads, campañas visuales y seguimiento de oportunidades.', img: '/assets/3d/landing-crm.png', icon: TrendingUpIcon },
+              { name: 'Restaurante', desc: 'Gestión de mesas, pedidos a cocina y meseros en tiempo real.', img: '/assets/3d/landing-restaurant.png', icon: Store },
+              { name: 'Reportes & Analytics', desc: 'Dashboards en vivo, KPIs, análisis de ventas y rentabilidad.', img: '/assets/3d/landing-analytics.png', icon: BarChart3 },
+            ].map((feat, idx) => (
+              <ScrollReveal key={idx} delay={idx * 80}>
+                <div className="group relative bg-white dark:bg-slate-950 rounded-2xl border border-slate-100 dark:border-slate-800 p-6 hover:shadow-xl hover:border-blue-200 dark:hover:border-blue-800 transition-all duration-300 hover:-translate-y-1 h-full">
+                  <div className="flex items-center gap-4 mb-4">
+                    <img
+                      src={feat.img}
+                      alt={feat.name}
+                      className="w-16 h-16 object-contain group-hover:scale-110 transition-transform duration-300"
+                    />
+                    <div>
+                      <h3 className="text-lg font-bold text-slate-900 dark:text-white">{feat.name}</h3>
+                    </div>
+                  </div>
+                  <p className="text-sm text-slate-500 leading-relaxed">{feat.desc}</p>
+                </div>
+              </ScrollReveal>
+            ))}
           </div>
         </div>
       </ScrollReveal>

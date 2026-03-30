@@ -120,42 +120,17 @@ export function HeroPreview({ onContactClick, onViewPreview }: HeroPreviewProps)
             </div>
           </div>
 
-          {/* Right Side - Generated AI Hero Image */}
+          {/* Right Side - 3D Mascot Hero */}
           <div className="relative flex justify-center items-center mt-12 lg:mt-0">
-            {/* Abstract Backgrounds */}
-            <div className="absolute -z-10 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[140%] h-[140%] bg-gradient-radial from-blue-100/40 to-transparent dark:from-blue-900/20 blur-3xl pointer-events-none"></div>
+            {/* Abstract glow behind mascot */}
+            <div className="absolute -z-10 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[130%] h-[130%] bg-gradient-radial from-blue-200/50 to-transparent dark:from-blue-900/30 blur-3xl pointer-events-none"></div>
 
-            <div className="relative w-full max-w-2xl transform transition-transform hover:scale-[1.02] duration-700">
+            <div className="relative w-full max-w-lg transform transition-transform hover:scale-[1.03] duration-700">
                <img 
-                 src="/images/hero-dashboard.png" 
-                 alt="Clivaro Hero Dashboard" 
-                 className="w-full h-auto rounded-2xl shadow-2xl ring-1 ring-black/5"
+                 src="/assets/3d/hero-mascot.png" 
+                 alt="Clivaro - Tu ERP Inteligente" 
+                 className="w-full h-auto drop-shadow-2xl"
                />
-               
-               {/* Floating elements for "premium" feel */}
-               <div className="absolute -top-6 -right-6 bg-white p-4 rounded-xl shadow-xl hidden xl:block animate-bounce-slow">
-                 <div className="flex items-center gap-3">
-                   <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                     <Check className="w-5 h-5 text-green-600" />
-                   </div>
-                   <div>
-                     <p className="text-xs font-bold text-gray-500 uppercase">Facturación</p>
-                     <p className="text-sm font-bold text-gray-900">Validada por DIAN</p>
-                   </div>
-                 </div>
-               </div>
-
-               <div className="absolute -bottom-6 -left-6 bg-white p-4 rounded-xl shadow-xl hidden xl:block animate-float">
-                 <div className="flex items-center gap-3">
-                   <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                     <Sparkles className="w-5 h-5 text-blue-600" />
-                   </div>
-                   <div>
-                     <p className="text-xs font-bold text-gray-500 uppercase">IA Integrada</p>
-                     <p className="text-sm font-bold text-gray-900">Análisis Predictivo</p>
-                   </div>
-                 </div>
-               </div>
             </div>
           </div>
         </div>
