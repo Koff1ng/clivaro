@@ -5,7 +5,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Eye, Send, Save, Users, X, Check, FileText, Palette, Megaphone, Monitor, Smartphone, MailOpen } from 'lucide-react'
+import { Eye, Send, Save, Users, X, Check, FileText, Palette, Megaphone, Monitor, Smartphone, MailOpen, Sparkles, Loader2, Wand2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -28,11 +28,12 @@ type CampaignFormData = z.infer<typeof campaignSchema>
 
 interface CampaignFormProps {
   campaignId?: string
+  aiDefaults?: { name: string; subject: string; htmlContent: string }
   onClose: () => void
   onSuccess: (createdCampaignId?: string) => void
 }
 
-export default function CampaignForm({ campaignId, onClose, onSuccess }: CampaignFormProps) {
+export default function CampaignForm({ campaignId, aiDefaults, onClose, onSuccess }: CampaignFormProps) {
   const queryClient = useQueryClient()
   const { toast } = useToast()
   const { data: session } = useSession()
@@ -46,6 +47,8 @@ export default function CampaignForm({ campaignId, onClose, onSuccess }: Campaig
   const [isDirtySinceSave, setIsDirtySinceSave] = useState(false)
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null)
   const [editorKey, setEditorKey] = useState(0)
+  const [aiGeneratePrompt, setAiGeneratePrompt] = useState('')
+  const [isAiGenerating, setIsAiGenerating] = useState(false)
 
   const { register, handleSubmit, control, watch, setValue, formState: { errors } } = useForm<CampaignFormData>({
     resolver: zodResolver(campaignSchema),
@@ -74,6 +77,39 @@ export default function CampaignForm({ campaignId, onClose, onSuccess }: Campaig
   useEffect(() => {
     setIsDirtySinceSave(true)
   }, [htmlContent, name, subject, scheduledAt])
+
+  // Apply AI defaults when provided
+  useEffect(() => {
+    if (aiDefaults) {
+      setValue('name', aiDefaults.name, { shouldValidate: true })
+      setValue('subject', aiDefaults.subject, { shouldValidate: true })
+      setValue('htmlContent', aiDefaults.htmlContent, { shouldValidate: true })
+      setEditorKey(prev => prev + 1) // Force re-render editor with new content
+    }
+  }, [aiDefaults, setValue])
+
+  // AI inline generate
+  const handleAiGenerate = async () => {
+    if (!aiGeneratePrompt.trim()) return
+    setIsAiGenerating(true)
+    try {
+      const res = await fetch('/api/ai/marketing', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'generate-html', type: 'promo', details: aiGeneratePrompt }),
+      })
+      if (!res.ok) throw new Error('Error de IA')
+      const data = await res.json()
+      setValue('htmlContent', data.html, { shouldValidate: true })
+      setEditorKey(prev => prev + 1)
+      setAiGeneratePrompt('')
+      toast('HTML generado con IA ✨', 'success')
+    } catch {
+      toast('Error al generar con IA', 'error')
+    } finally {
+      setIsAiGenerating(false)
+    }
+  }
 
   // Build preview document
   const previewHtml = useMemo(() => {
@@ -294,6 +330,25 @@ export default function CampaignForm({ campaignId, onClose, onSuccess }: Campaig
                       <MailOpen className="w-3.5 h-3.5 text-white" />
                     </div>
                     <span className="text-sm font-bold text-slate-900 dark:text-white">Editor de Email</span>
+                  </div>
+                  {/* AI inline generate */}
+                  <div className="flex gap-1.5 mb-3 p-2 rounded-lg bg-purple-50/80 dark:bg-purple-900/10 border border-purple-200 dark:border-purple-800">
+                    <input
+                      value={aiGeneratePrompt}
+                      onChange={(e) => setAiGeneratePrompt(e.target.value)}
+                      placeholder='Ej: "Email de bienvenida con descuento del 20%"'
+                      className="flex-1 bg-transparent border-0 text-xs text-slate-700 dark:text-slate-300 placeholder:text-purple-400/60 focus:outline-none"
+                      onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAiGenerate() } }}
+                    />
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={handleAiGenerate}
+                      disabled={isAiGenerating || !aiGeneratePrompt.trim()}
+                      className="h-6 px-2.5 text-[10px] rounded-md bg-purple-600 hover:bg-purple-700 text-white"
+                    >
+                      {isAiGenerating ? <Loader2 className="w-3 h-3 animate-spin" /> : <><Sparkles className="w-3 h-3 mr-1" /> Generar</>}
+                    </Button>
                   </div>
                   <EmailBuilder
                     key={editorKey}

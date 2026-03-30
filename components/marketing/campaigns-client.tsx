@@ -1,10 +1,10 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Plus, Send, Edit, Trash2, Eye, Users, Loader2,
-  BarChart3, Mail, Clock, Search, Megaphone, ArrowRight, Sparkles
+  BarChart3, Mail, Clock, Search, Megaphone, ArrowRight, Sparkles, Wand2
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -30,6 +30,9 @@ export default function CampaignsClient() {
   const [editingCampaignId, setEditingCampaignId] = useState<string | null>(null)
   const [statusFilter, setStatusFilter] = useState<string>('')
   const [searchQuery, setSearchQuery] = useState('')
+  const [aiPrompt, setAiPrompt] = useState('')
+  const [isAiCreating, setIsAiCreating] = useState(false)
+  const [aiCampaignData, setAiCampaignData] = useState<{ name: string; subject: string; htmlContent: string } | null>(null)
 
   const queryClient = useQueryClient()
   const { toast } = useToast()
@@ -102,6 +105,29 @@ export default function CampaignsClient() {
     }
   }, [campaigns])
 
+  // AI: create campaign from prompt
+  const handleAiCreate = async () => {
+    if (!aiPrompt.trim()) return
+    setIsAiCreating(true)
+    try {
+      const res = await fetch('/api/ai/marketing', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'create-campaign', prompt: aiPrompt }),
+      })
+      if (!res.ok) throw new Error((await res.json()).error || 'Error de IA')
+      const data = await res.json()
+      setAiCampaignData(data)
+      setShowForm(true)
+      setAiPrompt('')
+      toast('¡Campaña generada con IA! 🎉', 'success')
+    } catch (err: any) {
+      toast(err.message || 'Error al generar campaña', 'error')
+    } finally {
+      setIsAiCreating(false)
+    }
+  }
+
   if (selectedCampaign) {
     return (
       <CampaignDetails
@@ -120,9 +146,11 @@ export default function CampaignsClient() {
     return (
       <CampaignForm
         campaignId={editingCampaignId || undefined}
+        aiDefaults={aiCampaignData || undefined}
         onClose={() => {
           setShowForm(false)
           setEditingCampaignId(null)
+          setAiCampaignData(null)
         }}
         onSuccess={() => {
           queryClient.invalidateQueries({ queryKey: ['marketing-campaigns'] })
@@ -132,17 +160,41 @@ export default function CampaignsClient() {
   }
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Campañas de Marketing"
-        description="Crea, diseña y envía campañas de email a tus clientes"
-        actions={
-          <Button onClick={() => setShowForm(true)} className="bg-blue-600 hover:bg-blue-700">
-            <Plus className="h-4 w-4 mr-2" />
-            Nueva Campaña
+    <div className="space-y-5">
+      {/* AI Command Bar */}
+      <div className="relative">
+        <div className="flex gap-2 p-1 rounded-2xl border-2 border-purple-200 dark:border-purple-800 bg-gradient-to-r from-purple-50/50 to-indigo-50/50 dark:from-purple-900/10 dark:to-indigo-900/10 shadow-sm">
+          <div className="flex items-center gap-2 pl-3 shrink-0">
+            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center">
+              <Wand2 className="w-3.5 h-3.5 text-white" />
+            </div>
+          </div>
+          <input
+            value={aiPrompt}
+            onChange={(e) => setAiPrompt(e.target.value)}
+            placeholder='Escribe qué campaña quieres... Ej: "Ofertas de pinturas con 30% descuento"'
+            className="flex-1 bg-transparent border-0 py-2.5 text-sm text-slate-800 dark:text-white placeholder:text-purple-400/60 focus:outline-none"
+            onKeyDown={(e) => { if (e.key === 'Enter') handleAiCreate() }}
+          />
+          <Button
+            onClick={handleAiCreate}
+            disabled={isAiCreating || !aiPrompt.trim()}
+            className="rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white px-5 text-xs font-bold shadow-md"
+          >
+            {isAiCreating ? <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> Generando...</> : <><Sparkles className="w-3.5 h-3.5 mr-1.5" /> Crear con IA</>}
           </Button>
-        }
-      />
+        </div>
+        <p className="text-[10px] text-purple-400 mt-1.5 pl-2">Powered by Gemini 2.0 Flash · Crea campañas completas con un solo prompt</p>
+      </div>
+
+      {/* Header + New Button */}
+      <div className="flex items-center justify-between">
+        <div />
+        <Button onClick={() => setShowForm(true)} className="bg-blue-600 hover:bg-blue-700 rounded-lg">
+          <Plus className="h-4 w-4 mr-2" />
+          Nueva Campaña
+        </Button>
+      </div>
 
       {/* KPI Stats Bar */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
