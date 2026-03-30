@@ -56,7 +56,9 @@ export const menuGroups: MenuGroup[] = [
         title: 'Marketing',
         key: 'marketing',
         items: [
-            { href: '/crm/leads', label: 'Oportunidades', icon: Target, permission: 'manage_crm', planFeature: 'leads' },
+            { href: '/marketing/opportunities', label: 'Pipeline', icon: Target, permission: 'manage_crm', planFeature: 'leads' },
+            { href: '/marketing/analytics', label: 'Análisis', icon: BarChart3, permission: 'manage_crm', planFeature: 'leads' },
+            { href: '/crm/leads', label: 'Leads', icon: Users, permission: 'manage_crm', planFeature: 'leads' },
             { href: '/marketing/campaigns', label: 'Campañas', icon: Megaphone, permission: 'manage_crm', planFeature: 'marketing' },
         ]
     },
