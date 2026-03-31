@@ -215,24 +215,117 @@ export async function DELETE(
   }
 
   const tenantId = getTenantIdFromSession(session)
+  const userId = (session.user as any).id as string
 
   try {
     await withTenantTx(tenantId, async (tx: Prisma.TransactionClient) => {
-      // Verificar que la factura existe
       const invoice = await tx.invoice.findUnique({
         where: { id: invoiceId },
+        include: {
+          items: true,
+          payments: true,
+        },
       })
 
       if (!invoice) {
         throw new Error('Invoice not found')
       }
 
-      // Validar que la factura no esté enviada a facturación electrónica
+      // Block deletion of electronic invoices
       if (invoice.electronicStatus === 'ACCEPTED' || invoice.electronicStatus === 'SENT') {
         throw new Error('No se puede eliminar una factura que ya fue enviada a facturación electrónica')
       }
 
-      // Eliminar factura (los items y payments se eliminan en cascada)
+      // ── 1. Reverse stock movements ──
+      const outMovements = await tx.stockMovement.findMany({
+        where: { reference: invoice.number, type: 'OUT' },
+      })
+
+      for (const m of outMovements) {
+        // Create reverse IN movement
+        await tx.stockMovement.create({
+          data: {
+            warehouseId: m.warehouseId,
+            productId: m.productId,
+            variantId: m.variantId,
+            zoneId: m.zoneId,
+            type: 'IN',
+            quantity: m.quantity,
+            reason: `Eliminación factura ${invoice.number}`,
+            createdById: userId,
+            reference: invoice.number,
+          },
+        })
+
+        // Restock
+        const existing = await tx.stockLevel.findFirst({
+          where: {
+            warehouseId: m.warehouseId,
+            productId: m.productId,
+            variantId: m.variantId,
+            zoneId: m.zoneId ?? null,
+          },
+        })
+
+        if (existing) {
+          await tx.stockLevel.update({
+            where: { id: existing.id },
+            data: { quantity: existing.quantity + m.quantity },
+          })
+        }
+      }
+
+      // ── 2. Reverse cash & shift summaries ──
+      const cashPaid = invoice.payments
+        .filter(p => (p.method || '').toUpperCase() === 'CASH')
+        .reduce((s, p) => s + p.amount, 0)
+
+      if (cashPaid > 0) {
+        const openShift = await tx.cashShift.findFirst({ where: { userId, status: 'OPEN' } })
+
+        if (openShift) {
+          // Record cash OUT movement
+          await tx.cashMovement.create({
+            data: {
+              cashShiftId: openShift.id,
+              type: 'OUT',
+              amount: cashPaid,
+              reason: `Eliminación factura ${invoice.number}`,
+              createdById: userId,
+            },
+          })
+
+          await tx.cashShift.update({
+            where: { id: openShift.id },
+            data: { expectedCash: openShift.expectedCash - cashPaid },
+          })
+        }
+      }
+
+      // Reverse shift summaries for all payment methods
+      for (const payment of invoice.payments) {
+        const pmId = (payment as any).paymentMethodId
+        if (!pmId) continue
+        try {
+          const openShift = await tx.cashShift.findFirst({ where: { userId, status: 'OPEN' } })
+          if (openShift) {
+            await tx.shiftSummary.updateMany({
+              where: { shiftId: openShift.id, paymentMethodId: pmId },
+              data: { expectedAmount: { decrement: payment.amount } },
+            })
+          }
+        } catch { /* ShiftSummary may not exist */ }
+      }
+
+      // ── 3. Reverse customer balance (if invoice had unpaid balance) ──
+      if (invoice.balance > 0 && invoice.customerId) {
+        await tx.customer.update({
+          where: { id: invoice.customerId },
+          data: { currentBalance: { decrement: invoice.balance } },
+        })
+      }
+
+      // ── 4. Delete invoice (items, payments cascade) ──
       await tx.invoice.delete({
         where: { id: invoiceId },
       })
@@ -247,4 +340,5 @@ export async function DELETE(
     )
   }
 }
+
 
