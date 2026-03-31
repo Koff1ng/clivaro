@@ -158,10 +158,159 @@ function blocksToFullHtml(blocks: EmailBlock[]): string {
 // ── Parse HTML back to blocks (best effort) ──
 function htmlToBlocks(html: string): EmailBlock[] | null {
   if (!html || !html.includes('<')) return null
-  // Only parse if it looks like our generated HTML
-  if (!html.includes('cellpadding') && !html.includes('<table')) return null
-  // For now, return null to force fresh start — templates are applied as blocks directly
-  return null
+  
+  // Must look like email HTML
+  if (!html.includes('<t') && !html.includes('<div')) return null
+  
+  try {
+    // Use a temporary DOM parser
+    const parser = typeof DOMParser !== 'undefined' ? new DOMParser() : null
+    if (!parser) return null
+    
+    const doc = parser.parseFromString(html, 'text/html')
+    const blocks: EmailBlock[] = []
+    
+    // Find all table rows or top-level elements
+    const rows = doc.querySelectorAll('tr')
+    const processedElements = new Set<Element>()
+    
+    if (rows.length > 0) {
+      rows.forEach(row => {
+        const td = row.querySelector('td') as HTMLElement | null
+        if (!td || processedElements.has(row)) return
+        processedElements.add(row)
+        
+        const innerHtml = td.innerHTML.trim()
+        const textContent = td.textContent?.trim() || ''
+        
+        // Skip empty or footer rows
+        if (!textContent && !td.querySelector('img')) return
+        if (innerHtml.includes('Clivaro') && textContent.length < 200) return
+        
+        // Detect H1/H2 → header block
+        const heading = td.querySelector('h1, h2') as HTMLElement | null
+        if (heading) {
+          const bgColor = td.style.backgroundColor || '#ffffff'
+          blocks.push({
+            id: uid(), type: 'header',
+            content: heading.textContent || 'Título',
+            style: {
+              fontSize: heading.tagName === 'H1' ? '28px' : '22px',
+              fontWeight: '700',
+              color: heading.style.color || '#111827',
+              textAlign: (heading.style.textAlign as any) || 'center',
+              padding: td.style.padding || '24px 20px',
+              backgroundColor: bgColor,
+            }
+          })
+          return
+        }
+        
+        // Detect IMG → image block
+        const img = td.querySelector('img')
+        if (img && (!textContent || textContent.length < 20)) {
+          blocks.push({
+            id: uid(), type: 'image', content: '',
+            src: img.getAttribute('src') || '',
+            alt: img.getAttribute('alt') || 'Imagen',
+            style: { padding: td.style.padding || '12px 20px', textAlign: 'center' }
+          })
+          return
+        }
+        
+        // Detect A with button-like style → button block
+        const link = td.querySelector('a[style*="background"]')
+        if (link && link.textContent && !link.closest('table table')) {
+          const linkStyle = (link as HTMLElement).style
+          blocks.push({
+            id: uid(), type: 'button',
+            content: link.textContent.trim(),
+            href: link.getAttribute('href') || '#',
+            style: {
+              backgroundColor: linkStyle.backgroundColor || '#2563eb',
+              color: linkStyle.color || '#ffffff',
+              fontSize: linkStyle.fontSize || '15px',
+              fontWeight: '700',
+              textAlign: 'center',
+              padding: '12px 20px',
+              borderRadius: linkStyle.borderRadius || '8px',
+            }
+          })
+          return
+        }
+        
+        // Detect HR → divider block
+        if (td.querySelector('hr')) {
+          blocks.push({
+            id: uid(), type: 'divider', content: '',
+            style: { padding: td.style.padding || '8px 20px' }
+          })
+          return
+        }
+        
+        // Detect social links (multiple <a> with short text)
+        const links = td.querySelectorAll('a')
+        if (links.length >= 2 && textContent.length < 50) {
+          const networks = Array.from(links).map(a => {
+            const t = a.textContent?.toLowerCase().trim() || ''
+            if (t.startsWith('f')) return 'facebook'
+            if (t.startsWith('i')) return 'instagram'
+            if (t.startsWith('w')) return 'whatsapp'
+            if (t.startsWith('t')) return 'twitter'
+            if (t.startsWith('l')) return 'linkedin'
+            return t
+          }).filter(Boolean)
+          if (networks.length >= 2) {
+            blocks.push({
+              id: uid(), type: 'social',
+              content: networks.join(','),
+              style: { textAlign: 'center', padding: '16px 20px' }
+            })
+            return
+          }
+        }
+        
+        // Detect nested table → two-column
+        const innerTable = td.querySelector('table')
+        if (innerTable) {
+          const cols = innerTable.querySelectorAll('td')
+          if (cols.length >= 2) {
+            blocks.push({
+              id: uid(), type: 'two-column', content: '',
+              style: {
+                padding: td.style.padding || '12px 20px',
+                leftContent: cols[0].innerHTML.trim(),
+                rightContent: cols[cols.length > 2 ? 2 : 1].innerHTML.trim(),
+              }
+            })
+            return
+          }
+        }
+        
+        // Default → text block (with P tag or raw text)
+        const p = td.querySelector('p') as HTMLElement | null
+        const content = p ? p.innerHTML.trim() : innerHtml
+        if (content && content.length > 0) {
+          const bgColor = td.style.backgroundColor || ''
+          blocks.push({
+            id: uid(), type: 'text',
+            content: content,
+            style: {
+              fontSize: p?.style.fontSize || '15px',
+              color: p?.style.color || '#374151',
+              textAlign: (p?.style.textAlign as any) || 'left',
+              padding: td.style.padding || '12px 20px',
+              ...(bgColor ? { backgroundColor: bgColor } : {}),
+            }
+          })
+        }
+      })
+    }
+    
+    return blocks.length > 0 ? blocks : null
+  } catch {
+    return null
+  }
 }
 
 // ── BLOCK TYPES CONFIG ──

@@ -9,6 +9,22 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
 const BUCKET = 'campaign-images'
 
+async function ensureBucket(supabase: any) {
+  const { data: buckets } = await supabase.storage.listBuckets()
+  const exists = buckets?.some((b: any) => b.name === BUCKET)
+  if (!exists) {
+    console.log(`[Upload] Creating bucket "${BUCKET}"...`)
+    const { error } = await supabase.storage.createBucket(BUCKET, {
+      public: true,
+      fileSizeLimit: 5 * 1024 * 1024,
+    })
+    if (error && !error.message?.includes('already exists')) {
+      console.error('[Upload] Failed to create bucket:', error)
+      throw new Error(`No se pudo crear el bucket de almacenamiento: ${error.message}`)
+    }
+  }
+}
+
 export async function POST(request: Request) {
   const session = await requirePermission(request as any, PERMISSIONS.MANAGE_CRM)
   
@@ -23,26 +39,15 @@ export async function POST(request: Request) {
     const file = formData.get('image') as File
 
     if (!file) {
-      return NextResponse.json(
-        { error: 'No image file provided' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'No image file provided' }, { status: 400 })
     }
 
-    // Validate file type
     if (!file.type.startsWith('image/')) {
-      return NextResponse.json(
-        { error: 'File must be an image' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'File must be an image' }, { status: 400 })
     }
 
-    // Validate file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
-      return NextResponse.json(
-        { error: 'Image size must be less than 5MB' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'Image size must be less than 5MB' }, { status: 400 })
     }
 
     if (!supabaseUrl || !supabaseKey) {
@@ -54,6 +59,9 @@ export async function POST(request: Request) {
 
     const supabase = createClient(supabaseUrl, supabaseKey)
 
+    // Ensure bucket exists before uploading
+    await ensureBucket(supabase)
+
     // Generate unique path
     const timestamp = Date.now()
     const randomStr = Math.random().toString(36).substring(2, 10)
@@ -63,7 +71,7 @@ export async function POST(request: Request) {
     const buffer = Buffer.from(await file.arrayBuffer())
 
     // Upload to Supabase Storage
-    const { data, error } = await supabase.storage
+    const { error } = await supabase.storage
       .from(BUCKET)
       .upload(path, buffer, {
         contentType: file.type,
@@ -71,23 +79,8 @@ export async function POST(request: Request) {
       })
 
     if (error) {
-      // If bucket doesn't exist, try to create it (public for email images)
-      if (error.message?.includes('not found') || error.message?.includes('Bucket')) {
-        console.log(`[Upload] Creating bucket "${BUCKET}"...`)
-        await supabase.storage.createBucket(BUCKET, { public: true })
-        
-        const { data: retryData, error: retryError } = await supabase.storage
-          .from(BUCKET)
-          .upload(path, buffer, { contentType: file.type, upsert: false })
-
-        if (retryError) {
-          console.error('[Upload] Retry failed:', retryError)
-          throw retryError
-        }
-      } else {
-        console.error('[Upload] Upload failed:', error)
-        throw error
-      }
+      console.error('[Upload] Upload failed:', error)
+      throw error
     }
 
     // Get public URL
