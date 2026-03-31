@@ -48,11 +48,17 @@ export async function generateCampaignContent(prompt: string): Promise<{
   const result = await model.generateContent(`
 Genera una campaña de email marketing con base en esta petición: "${prompt}"
 
+REGLAS IMPORTANTES:
+- NUNCA incluyas "Clivi", "Clivaro" ni nombres de la plataforma en el contenido.
+- La campaña debe verse como si viniera del negocio del usuario, no de un software.
+- En el footer pon "Enviado con ❤️" o algo genérico, NO "Enviado con Clivaro".
+- Usa {{name}} para personalizar el nombre del destinatario.
+
 Responde ÚNICAMENTE con un JSON válido (sin markdown, sin backticks) con esta estructura exacta:
 {
   "name": "nombre interno de la campaña (corto)",
   "subject": "asunto del email (atractivo, max 60 chars)",
-  "htmlContent": "HTML completo del email usando tablas para layout, max-width 600px, fuente Arial, colores profesionales. Incluye header con título, body con contenido, CTA button, y footer con 'Enviado con Clivaro'. Usa {{name}} donde corresponda."
+  "htmlContent": "HTML completo del email usando tablas para layout, max-width 600px, fuente Arial, colores profesionales. Incluye header con título, body con contenido, CTA button, y footer genérico. Usa {{name}} donde corresponda."
 }`)
 
   const text = result.response.text().trim()
