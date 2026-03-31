@@ -1,28 +1,30 @@
 'use client'
 
 import { useState } from 'react'
-import { Inbox, Megaphone, Sparkles,  } from 'lucide-react'
+import { Inbox, Megaphone, Sparkles, Target } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import CampaignsClient from '@/components/marketing/campaigns-client'
 import MarketingInbox from '@/components/marketing/marketing-inbox'
+import { LeadList } from '@/components/crm/lead-list'
 import { PageHeader } from '@/components/ui/page-header'
 
 const TABS = [
-  { id: 'inbox', label: 'Inbox', icon: Inbox, desc: 'Contactos y conversaciones' },
+  { id: 'leads', label: 'Oportunidades', icon: Target, desc: 'Pipeline de ventas' },
   { id: 'campaigns', label: 'Campañas', icon: Megaphone, desc: 'Email marketing' },
+  { id: 'inbox', label: 'Inbox', icon: Inbox, desc: 'Contactos y correo' },
 ] as const
 
 type TabId = typeof TABS[number]['id']
 
 export default function MarketingHub() {
-  const [activeTab, setActiveTab] = useState<TabId>('campaigns')
+  const [activeTab, setActiveTab] = useState<TabId>('leads')
 
   return (
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <PageHeader
           title="Marketing"
-          description="Gestiona campañas, contactos e inteligencia artificial."
+          description="Oportunidades, campañas e inbox en un solo lugar."
           icon={<Sparkles className="h-5 w-5" />}
         />
       </div>
@@ -51,8 +53,9 @@ export default function MarketingHub() {
       </div>
 
       {/* Tab content */}
-      {activeTab === 'inbox' && <MarketingInbox />}
+      {activeTab === 'leads' && <LeadList />}
       {activeTab === 'campaigns' && <CampaignsClient />}
+      {activeTab === 'inbox' && <MarketingInbox />}
     </div>
   )
 }
