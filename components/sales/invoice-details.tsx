@@ -599,9 +599,17 @@ export function InvoiceDetails({ invoice }: { invoice: any }) {
                   )}
                   <DropdownMenuSeparator />
                   <DropdownMenuLabel>Acciones</DropdownMenuLabel>
+                  {blockedByDian && !isVoided && (
+                    <DropdownMenuItem
+                      onClick={() => router.push(`/credit-notes?invoiceId=${invoice.id}`)}
+                    >
+                      <FileText className="h-4 w-4 mr-2" />
+                      Crear Nota Crédito
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuItem
                     onClick={() => setShowPartialReturn(true)}
-                    disabled={isVoided || blockedByDian || !hasItems}
+                    disabled={isVoided || blockedByDian}
                   >
                     <PackageX className="h-4 w-4 mr-2" />
                     Devolución parcial
