@@ -3,7 +3,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai'
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '')
 
 // Gemini 2.5 Flash — fast and affordable
-const MODEL = 'gemini-2.5-flash'
+const MODEL = 'gemini-2.0-flash-lite'
 
 const SYSTEM_PROMPT = `Eres Clivi 🐙, un asistente de IA amigable y experto para negocios tipo ferretería, tiendas de construcción y retail en Colombia.
 Tu nombre es Clivi y eres un pulpito simpático. Tu personalidad es amigable, proactiva y profesional.
