@@ -12,6 +12,7 @@ import { Loader2, Plus, Search, Edit2, Check, X } from 'lucide-react'
 import {
     Dialog,
     DialogContent,
+    DialogDescription,
     DialogHeader,
     DialogTitle,
     DialogFooter,
@@ -207,11 +208,11 @@ export default function AccountsPage() {
                                 <TableBody>
                                     {loading ? (
                                         <TableRow>
-                                            <TableCell colSpan={4} className="text-center py-8">Cargando...</TableCell>
+                                            <TableCell colSpan={9} className="text-center py-8">Cargando...</TableCell>
                                         </TableRow>
                                     ) : filteredAccounts.length === 0 ? (
                                         <TableRow>
-                                            <TableCell colSpan={4} className="text-center py-8">No se encontraron cuentas</TableCell>
+                                            <TableCell colSpan={9} className="text-center py-8">No se encontraron cuentas</TableCell>
                                         </TableRow>
                                     ) : (
                                         filteredAccounts.map(acc => (
@@ -247,6 +248,7 @@ export default function AccountsPage() {
                     <DialogContent>
                         <DialogHeader>
                             <DialogTitle>Editar Cuenta: {currentAccount?.code}</DialogTitle>
+                            <DialogDescription>Modifica los campos de esta cuenta contable.</DialogDescription>
                         </DialogHeader>
                         {currentAccount && (
                             <div className="space-y-4 py-4">
@@ -331,6 +333,7 @@ export default function AccountsPage() {
                     <DialogContent>
                         <DialogHeader>
                             <DialogTitle>Nueva Cuenta Manual</DialogTitle>
+                            <DialogDescription>Agrega una cuenta contable al plan de cuentas.</DialogDescription>
                         </DialogHeader>
                         <div className="space-y-4 py-4">
                             <div className="space-y-2">

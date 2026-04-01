@@ -249,14 +249,14 @@ export async function getJournalEntries(tenantId: string, filters?: { status?: s
     return await prisma.journalEntry.findMany({
         where,
         orderBy: { date: 'desc' },
-        include: { createdBy: { select: { name: true } }, lines: false } // Lines heavy
+        include: { createdBy: { select: { name: true } } }
     })
 }
 
 
 export async function getJournalEntry(tenantId: string, id: string) {
-    return await prisma.journalEntry.findUnique({
-        where: { id },
+    return await prisma.journalEntry.findFirst({
+        where: { id, tenantId },
         include: { lines: { include: { account: true } }, createdBy: true }
     })
 }

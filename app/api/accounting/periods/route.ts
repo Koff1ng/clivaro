@@ -1,5 +1,7 @@
 
 import { NextResponse } from 'next/server'
+
+export const dynamic = 'force-dynamic'
 import { requirePermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
 import { getTenantIdFromSession } from '@/lib/tenancy'
@@ -21,7 +23,7 @@ export async function POST(request: Request) {
     if (session instanceof NextResponse) return session
 
     const tenantId = getTenantIdFromSession(session)
-    const userId = session.user.id
+    const userId = (session.user as any).id as string
     const body = await request.json()
 
     const { year, month, action } = body

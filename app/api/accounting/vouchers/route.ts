@@ -4,6 +4,8 @@ import { getTenantIdFromSession } from '@/lib/tenancy'
 import { createJournalEntry, getJournalEntries } from '@/lib/accounting/journal-service'
 import { PERMISSIONS } from '@/lib/permissions'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET(request: Request) {
     const session = await requirePermission(request as any, PERMISSIONS.MANAGE_ACCOUNTING)
     if (session instanceof NextResponse) return session

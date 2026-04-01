@@ -4,6 +4,8 @@ import { PERMISSIONS } from '@/lib/permissions'
 import { withTenantRead, withTenantTx } from '@/lib/tenancy'
 import { getAccountTree, initializePUC } from '@/lib/accounting/service'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET(request: Request) {
     const session = await requirePermission(request as any, PERMISSIONS.MANAGE_ACCOUNTING)
     if (session instanceof NextResponse) return session

@@ -1,10 +1,13 @@
 import { NextResponse } from 'next/server'
 import { requirePermission } from '@/lib/api-middleware'
+import { PERMISSIONS } from '@/lib/permissions'
 import { getTenantIdFromSession, withTenantTx } from '@/lib/tenancy'
 import { createJournalEntry } from '@/lib/accounting/journal-service'
 
+export const dynamic = 'force-dynamic'
+
 export async function POST(request: Request) {
-    const session = await requirePermission(request as any, 'manage_accounting' as any)
+    const session = await requirePermission(request as any, PERMISSIONS.MANAGE_ACCOUNTING)
     if (session instanceof NextResponse) return session
 
     const tenantId = getTenantIdFromSession(session)

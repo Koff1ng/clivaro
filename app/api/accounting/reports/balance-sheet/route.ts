@@ -1,5 +1,7 @@
 
 import { NextResponse } from 'next/server'
+
+export const dynamic = 'force-dynamic'
 import { requirePermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
 import { getTenantIdFromSession } from '@/lib/tenancy'
