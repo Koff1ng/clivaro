@@ -46,7 +46,7 @@ export async function generateCampaignContent(prompt: string, products?: { name:
   })
 
   const productContext = products && products.length > 0
-    ? `\n\nPRODUCTOS REALES DEL NEGOCIO (usa estos en la campaña):\n${products.slice(0, 20).map(p => `- ${p.name} — $${p.price.toLocaleString('es-CO')}${p.category ? ` (${p.category})` : ''}`).join('\n')}\n\nIMPORTANTE: Usa los nombres y precios reales de estos productos en el contenido de la campaña. Destaca los más relevantes según el contexto de la petición.`
+    ? `\n\nCONTEXTO: El negocio tiene estos productos disponibles (solo como referencia, NO es obligatorio mencionarlos en la campaña a menos que el usuario lo pida explícitamente):\n${products.slice(0, 20).map(p => `- ${p.name} — $${p.price.toLocaleString('es-CO')}${p.category ? ` (${p.category})` : ''}`).join('\n')}\n\nSolo incluye productos si la petición del usuario los menciona o pide explícitamente. Si la campaña es genérica (ej: bienvenida, fidelización), NO listes productos.`
     : ''
 
   const result = await model.generateContent(`
