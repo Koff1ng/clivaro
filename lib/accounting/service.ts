@@ -1,9 +1,12 @@
 
-import { prisma } from '@/lib/db'
 import { PUC_TEMPLATE } from './puc-data'
 
 export async function initializePUC(tenantId: string, prismaTx?: any) {
-    const client = prismaTx || prisma
+    if (!prismaTx) {
+        throw new Error('initializePUC requires a prisma transaction client (prismaTx)')
+    }
+    const client = prismaTx
+
     // Check if accounts exist
     const count = await client.accountingAccount.count({
         where: { tenantId }
@@ -11,35 +14,22 @@ export async function initializePUC(tenantId: string, prismaTx?: any) {
 
     if (count > 0) return { initialized: false, message: 'PUC already initialized' }
 
-    // Create accounts in order (to ensure hierarchy if strictly enforced, though here we use code matching)
-    // We'll create them all, then fix parents? Or just relies on code structure?
-    // Our schema has `parentId`. We need to resolve it.
-
-    // Strategy: Sort by code length. 
-    // 1-digit parent is null.
-    // 2-digit parent is 1-digit.
-    // 4-digit parent is 2-digit.
-    // 6-digit parent is 4-digit.
-
     const sorted = [...PUC_TEMPLATE].sort((a, b) => a.code.length - b.code.length)
     const codeToIdMap = new Map<string, string>()
 
     for (const acc of sorted) {
         let parentId: string | null = null
         if (acc.code.length > 1) {
-            // Determine parent code
             let parentCode = ''
             if (acc.code.length === 2) parentCode = acc.code.substring(0, 1)
             else if (acc.code.length === 4) parentCode = acc.code.substring(0, 2)
             else if (acc.code.length === 6) parentCode = acc.code.substring(0, 4)
-            else if (acc.code.length > 6) parentCode = acc.code.substring(0, 6) // generic rule
+            else if (acc.code.length > 6) parentCode = acc.code.substring(0, 6)
 
             if (parentCode) {
-                // Find parent in the memory map first
                 if (codeToIdMap.has(parentCode)) {
                     parentId = codeToIdMap.get(parentCode)!
                 } else {
-                    // Fallback to DB (should rarely happen if sorted correctly)
                     const parent = await client.accountingAccount.findFirst({
                         where: { tenantId, code: parentCode }
                     })
@@ -70,8 +60,11 @@ export async function initializePUC(tenantId: string, prismaTx?: any) {
     return { initialized: true, count: sorted.length }
 }
 
-export async function updateAccount(tenantId: string, accountId: string, data: any) {
-    return await prisma.accountingAccount.update({
+export async function updateAccount(tenantId: string, accountId: string, data: any, prismaTx?: any) {
+    if (!prismaTx) {
+        throw new Error('updateAccount requires a prisma client')
+    }
+    return await prismaTx.accountingAccount.update({
         where: { id: accountId, tenantId },
         data: {
             name: data.name,
@@ -83,8 +76,11 @@ export async function updateAccount(tenantId: string, accountId: string, data: a
     })
 }
 
-export async function getAccountTree(tenantId: string) {
-    const accounts = await prisma.accountingAccount.findMany({
+export async function getAccountTree(tenantId: string, prismaTx?: any) {
+    if (!prismaTx) {
+        throw new Error('getAccountTree requires a prisma client')
+    }
+    const accounts = await prismaTx.accountingAccount.findMany({
         where: { tenantId },
         orderBy: { code: 'asc' }
     })

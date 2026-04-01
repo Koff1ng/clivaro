@@ -14,7 +14,7 @@ export async function GET(request: Request) {
 
     try {
         const result = await withTenantRead(tenantId, async (prisma) => {
-            return await getAccountTree(tenantId)
+            return await getAccountTree(tenantId, prisma)
         })
         return NextResponse.json(result)
     } catch (e: any) {
