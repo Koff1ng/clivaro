@@ -24,6 +24,7 @@ const plans = [
     originalPrice: 159900,
     description: 'Esencial para pequeños negocios y emprendedores',
     icon: Zap,
+    image: '/assets/3d/starter.png',
     color: 'from-blue-500 to-cyan-500',
     badge: 'Más Popular',
     features: [
@@ -49,6 +50,7 @@ const plans = [
     originalPrice: 299900,
     description: 'La solución completa para empresas en crecimiento',
     icon: Building2,
+    image: '/assets/3d/Business.png',
     color: 'from-indigo-500 to-purple-500',
     badge: 'Mejor Valor',
     features: [
@@ -73,6 +75,7 @@ const plans = [
     originalPrice: 499900,
     description: 'Escalabilidad total para grandes operaciones',
     icon: Rocket,
+    image: '/assets/3d/Enterprise.png',
     color: 'from-orange-500 to-red-500',
     badge: 'Máxima Potencia',
     features: [
@@ -484,8 +487,8 @@ export function PricingClient() {
                       )}
 
                       <CardHeader className="pb-8 pt-10 flex flex-col items-center text-center">
-                        <div className={`inline-flex items-center justify-center w-14 h-14 rounded-xl bg-gradient-to-br ${plan.color} mb-6 shadow-sm`}>
-                          <Icon className="h-6 w-6 text-white" />
+                        <div className="relative w-28 h-28 mb-4 group-hover:-translate-y-2 transition-transform duration-500">
+                          <img src={plan.image} alt={`Plan ${plan.name}`} className="w-full h-full object-contain drop-shadow-xl" />
                         </div>
                         <CardTitle className="text-2xl font-bold text-slate-900 dark:text-white">
                           {plan.name}
