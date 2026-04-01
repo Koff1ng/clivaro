@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Check, X, Zap, Building2, Rocket, TrendingUp as TrendingUpIcon, Users, Package, ShoppingCart, BarChart3, Mail, Sparkles, Database, Smartphone, Cloud, Lock, Globe, Headphones, Settings, Printer, Wallet, Truck, FileText, LayoutDashboard, MessageSquare, Calendar, Bell, Search, Shirt, Store, Wine, Hammer, Croissant, Car, BookOpen, Pill, Quote, ShieldCheck, UserSquare, TrendingUp, HelpCircle, MessageCircle, ArrowRight, UserSquare as UserSquareIcon } from 'lucide-react'
+import { Check, X, Zap, Building2, Rocket, TrendingUp as TrendingUpIcon, Users, Package, ShoppingCart, BarChart3, Mail, Sparkles, Database, Smartphone, Cloud, Lock, Globe, Headphones, Settings, Printer, Wallet, Truck, FileText, LayoutDashboard, MessageSquare, Calendar, Bell, Search, Shirt, Store, Wine, Hammer, Croissant, Car, BookOpen, Pill, Quote, ShieldCheck, TrendingUp, HelpCircle, MessageCircle, ArrowRight, Fingerprint, Upload, BrainCircuit, Receipt, UtensilsCrossed, Building, Gauge, Bot } from 'lucide-react'
 import Link from 'next/link'
 import { Logo } from '@/components/ui/logo'
 import { ContactForm } from './contact-form'
@@ -37,6 +37,7 @@ const plans = [
       'Control de caja y turnos',
       'Dashboard con KPIs',
       'Reportes básicos de ventas',
+      '🐙 Clivi IA — asistente inteligente',
       'Soporte por Email',
     ],
     cta: 'Comenzar Ahora',
@@ -57,6 +58,7 @@ const plans = [
       'Multi-bodega (hasta 3 bodegas)',
       'CRM completo (Leads y Actividades)',
       'Campañas de Marketing (editor visual)',
+      '🐙 Clivi IA — campañas y CRM con IA',
       'Gestión de Compras y Recepciones',
       'Cotizaciones avanzadas',
       'Reportes avanzados y analytics',
@@ -80,6 +82,7 @@ const plans = [
       'Contabilidad completa (PUC, Asientos, Balance)',
       'Nómina y Recursos Humanos',
       'Módulo de Restaurante (Mesas, Pedidos)',
+      '🐙 Clivi IA — acceso prioritario + reportes IA',
       'Reportes personalizados',
       'Migración de datos asistida',
       'Soporte Dedicado 24/7',
@@ -104,40 +107,53 @@ const useCases = [
 
 const comparison = [
   {
-    feature: 'Precio por usuario',
+    feature: 'Asistente de IA integrado',
+    competencia: 'No incluido',
+    clivaro: 'Clivi IA (campañas, CRM, análisis)',
+    winner: 'clivaro',
+    icon: Bot,
+  },
+  {
+    feature: 'Facturación electrónica DIAN',
+    competencia: 'Complemento pago aparte',
+    clivaro: 'Incluida en todos los planes',
+    winner: 'clivaro',
+    icon: Receipt,
+  },
+  {
+    feature: 'Módulo de restaurante',
+    competencia: 'No disponible',
+    clivaro: 'Mesas, cocina y meseros en tiempo real',
+    winner: 'clivaro',
+    icon: UtensilsCrossed,
+  },
+  {
+    feature: 'Recursos Humanos y nómina',
+    competencia: 'Software adicional requerido',
+    clivaro: 'Integrado (plan Enterprise)',
+    winner: 'clivaro',
+    icon: Users,
+  },
+  {
+    feature: 'Precio promedio/usuario',
     competencia: '$100,000+ COP',
     clivaro: 'Desde $26,633 COP',
     winner: 'clivaro',
+    icon: Wallet,
   },
   {
-    feature: 'Editor visual de campañas',
-    competencia: 'No disponible',
-    clivaro: 'Sí (tipo Canva)',
+    feature: 'Multi-sucursal y bodegas',
+    competencia: 'Limitado o pago extra',
+    clivaro: 'Hasta ilimitadas (Enterprise)',
     winner: 'clivaro',
+    icon: Building,
   },
   {
-    feature: 'Adaptable a tu industria',
-    competencia: 'Genérico',
-    clivaro: 'Personalizable',
+    feature: 'Reportes en tiempo real',
+    competencia: 'Básicos, sin IA',
+    clivaro: 'Dashboards live con KPIs y analytics',
     winner: 'clivaro',
-  },
-  {
-    feature: 'Soporte en español',
-    competencia: 'Limitado',
-    clivaro: 'Completo',
-    winner: 'clivaro',
-  },
-  {
-    feature: 'Interfaz moderna',
-    competencia: 'Básica',
-    clivaro: 'Avanzada',
-    winner: 'clivaro',
-  },
-  {
-    feature: 'Multi-almacén',
-    competencia: 'Sí',
-    clivaro: 'Sí',
-    winner: 'tie',
+    icon: Gauge,
   },
 ]
 
@@ -283,9 +299,9 @@ export function PricingClient() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-12">
             {[
-              { step: '01', title: 'Registro Rápido', desc: 'Crea tu cuenta en segundos y accede a tu panel personalizado.', icon: UserSquare },
-              { step: '02', title: 'Carga de Datos', desc: 'Importa tus productos y clientes. Nosotros te ayudamos en el proceso.', icon: Database },
-              { step: '03', title: 'Vende y Crece', desc: 'Empieza a facturar legalmente y a gestionar tu CRM con IA.', icon: TrendingUp },
+              { step: '01', title: 'Registro Rápido', desc: 'Crea tu cuenta en segundos y accede a tu panel personalizado.', icon: Fingerprint },
+              { step: '02', title: 'Carga de Datos', desc: 'Importa tus productos y clientes. Nosotros te ayudamos en el proceso.', icon: Upload },
+              { step: '03', title: 'Vende y Crece', desc: 'Empieza a facturar legalmente y a gestionar tu CRM con IA.', icon: BrainCircuit },
             ].map((s, idx) => (
               <div key={idx} className="relative group text-center">
                 <div className="mb-6 mx-auto w-20 h-20 rounded-3xl bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center text-blue-600 border border-blue-100 dark:border-blue-800 transition-all duration-300 group-hover:bg-blue-600 group-hover:text-white group-hover:rotate-6">
@@ -334,7 +350,10 @@ export function PricingClient() {
                       {comparison.map((item, index) => (
                         <tr key={index} className="border-b border-gray-100 dark:border-gray-800 last:border-b-0 hover:bg-blue-50/50 dark:hover:bg-blue-950/20 transition-all duration-300 group">
                           <td className="p-6 font-semibold text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                            {item.feature}
+                            <div className="flex items-center gap-3">
+                              {item.icon && <item.icon className="w-5 h-5 text-blue-500 shrink-0" />}
+                              {item.feature}
+                            </div>
                           </td>
                           <td className="p-6 text-center text-gray-600 dark:text-gray-400">
                             {item.competencia}
@@ -577,41 +596,73 @@ export function PricingClient() {
       <ScrollReveal delay={100}>
         <div className="mx-auto max-w-7xl px-6 py-16 lg:px-8">
           <div className="relative">
-            <div className="absolute -inset-1 bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 rounded-3xl opacity-75 blur-2xl animate-pulse"></div>
+            <div className="absolute -inset-1 bg-gradient-to-r from-blue-700 via-blue-600 to-indigo-700 rounded-3xl opacity-50 blur-2xl"></div>
 
-            <Card className="relative bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-700 text-white border-0 overflow-hidden">
-              <div className="absolute inset-0 bg-white/10 backdrop-blur-sm"></div>
-              <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -mr-32 -mt-32"></div>
-              <div className="absolute bottom-0 left-0 w-64 h-64 bg-purple-500/20 rounded-full blur-3xl -ml-32 -mb-32"></div>
+            <Card className="relative bg-gradient-to-br from-slate-900 via-blue-950 to-indigo-950 text-white border border-blue-800/30 overflow-hidden">
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(59,130,246,0.15),transparent_50%)]" />
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_80%,rgba(99,102,241,0.1),transparent_50%)]" />
+              <div className="absolute top-0 right-0 w-96 h-96 bg-blue-500/5 rounded-full blur-3xl -mr-48 -mt-48" />
 
-              <CardContent className="relative p-12 lg:p-16 text-center">
-                <div className="max-w-3xl mx-auto">
-                  <Rocket className="w-16 h-16 mx-auto mb-6 text-white/90" />
-                  <h2 className="text-4xl lg:text-5xl font-black mb-6 text-white drop-shadow-lg">
-                    ¿Listo para transformar tu negocio?
-                  </h2>
-                  <p className="text-blue-100 mb-10 text-xl leading-relaxed font-medium">
-                    Únete a miles de negocios que ya están creciendo con Clivaro y descubre todo lo que podemos hacer por ti
-                  </p>
-                  <div className="flex items-center justify-center gap-6 flex-wrap">
-                    <Button
-                      size="lg"
-                      className="bg-white text-blue-600 hover:bg-blue-50 text-xl px-12 py-8 font-bold shadow-2xl shadow-blue-900/50 hover:shadow-blue-900/70 transition-all duration-300 hover:scale-110 rounded-2xl group/cta relative overflow-hidden"
-                      onClick={() => {
-                        setSelectedPlan(undefined)
-                        setShowContactForm(true)
-                      }}
-                    >
-                      <span className="relative z-10 flex items-center gap-3">
-                        Comenzar Ahora
-                        <Sparkles className="h-6 w-6 group-hover/cta:rotate-12 transition-transform" />
-                      </span>
-                      <div className="absolute inset-0 bg-gradient-to-r from-blue-50 to-indigo-50 translate-y-full group-hover/cta:translate-y-0 transition-transform duration-300"></div>
-                    </Button>
+              <CardContent className="relative p-12 lg:p-16">
+                <div className="max-w-4xl mx-auto">
+                  <div className="flex flex-col lg:flex-row items-center gap-12">
+                    {/* Left: Text */}
+                    <div className="flex-1 text-center lg:text-left">
+                      <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/20 mb-6">
+                        <div className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
+                        <span className="text-xs font-bold text-blue-300 uppercase tracking-widest">Empieza hoy</span>
+                      </div>
+                      <h2 className="text-3xl lg:text-4xl font-black mb-4 text-white leading-tight">
+                        Lleva tu negocio al<br/>
+                        <span className="bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">siguiente nivel</span>
+                      </h2>
+                      <p className="text-blue-200/80 mb-8 text-base leading-relaxed max-w-lg">
+                        Centraliza ventas, inventario, facturación DIAN y CRM en una sola plataforma.
+                        Configuración en minutos, soporte en español.
+                      </p>
+                      <div className="flex items-center gap-4 flex-wrap justify-center lg:justify-start">
+                        <Button
+                          size="lg"
+                          className="bg-blue-600 hover:bg-blue-500 text-white text-base px-8 py-6 font-bold shadow-xl shadow-blue-600/30 hover:shadow-blue-500/40 transition-all duration-300 hover:scale-105 rounded-xl group/cta"
+                          onClick={() => {
+                            setSelectedPlan(undefined)
+                            setShowContactForm(true)
+                          }}
+                        >
+                          <span className="flex items-center gap-2">
+                            Comenzar Ahora
+                            <ArrowRight className="h-5 w-5 group-hover/cta:translate-x-1 transition-transform" />
+                          </span>
+                        </Button>
+                        <Button
+                          size="lg"
+                          variant="outline"
+                          className="border-blue-700 text-blue-300 hover:bg-blue-900/50 text-base px-8 py-6 rounded-xl"
+                          onClick={() => {
+                            const p = document.getElementById('pricing')
+                            if (p) p.scrollIntoView({ behavior: 'smooth' })
+                          }}
+                        >
+                          Ver Planes
+                        </Button>
+                      </div>
+                    </div>
+                    {/* Right: Stats */}
+                    <div className="grid grid-cols-2 gap-4 shrink-0">
+                      {[
+                        { value: '99.9%', label: 'Uptime', sub: 'garantizado' },
+                        { value: '<24h', label: 'Implementación', sub: 'promedio' },
+                        { value: '100%', label: 'Cumplimiento', sub: 'DIAN' },
+                        { value: '24/7', label: 'Soporte', sub: 'en español' },
+                      ].map((s, i) => (
+                        <div key={i} className="text-center p-5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors">
+                          <p className="text-2xl font-black text-white">{s.value}</p>
+                          <p className="text-xs font-bold text-blue-300 uppercase tracking-wider">{s.label}</p>
+                          <p className="text-[10px] text-blue-400/60">{s.sub}</p>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                  <p className="mt-8 text-sm text-blue-200 font-medium">
-                    ✓ Sin compromiso · ✓ Configuración rápida · ✓ Soporte en español
-                  </p>
                 </div>
               </CardContent>
             </Card>
