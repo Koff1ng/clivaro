@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
+import localFont from 'next/font/local'
 import './globals.css'
 import { ToastContainer } from '@/components/ui/toast'
 import { ErrorBoundary } from '@/components/ui/error-boundary'
@@ -7,11 +7,31 @@ import { Providers } from './providers'
 import { SpeedInsights } from '@vercel/speed-insights/next'
 import { Analytics } from '@vercel/analytics/react'
 
-// Inter as fallback for non-Apple devices; Apple devices use SF Pro via system stack
-const fontSans = Inter({
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700'],
-  variable: '--font-sans',
+const sfPro = localFont({
+  src: [
+    {
+      path: '../fonts/San-Francisco-Pro-Fonts-master/San-Francisco-Pro-Fonts-master/SF-Pro-Display-Regular.otf',
+      weight: '400',
+      style: 'normal',
+    },
+    {
+      path: '../fonts/San-Francisco-Pro-Fonts-master/San-Francisco-Pro-Fonts-master/SF-Pro-Display-Medium.otf',
+      weight: '500',
+      style: 'normal',
+    },
+    {
+      path: '../fonts/San-Francisco-Pro-Fonts-master/San-Francisco-Pro-Fonts-master/SF-Pro-Display-Semibold.otf',
+      weight: '600',
+      style: 'normal',
+    },
+    {
+      path: '../fonts/San-Francisco-Pro-Fonts-master/San-Francisco-Pro-Fonts-master/SF-Pro-Display-Bold.otf',
+      weight: '700',
+      style: 'normal',
+    },
+  ],
+  variable: '--font-sf-pro',
+  display: 'swap',
 })
 
 export const metadata: Metadata = {
@@ -32,7 +52,7 @@ export default function RootLayout({
   return (
     <html lang="es" suppressHydrationWarning>
       <body
-        className={`${fontSans.variable} font-sans antialiased bg-background text-foreground selection:bg-primary/10 selection:text-primary`}
+        className={`${sfPro.variable} font-sans antialiased bg-background text-foreground selection:bg-primary/10 selection:text-primary`}
       >
         <ErrorBoundary>
           <Providers>

@@ -20,11 +20,9 @@ const config = {
     extend: {
       fontFamily: {
         sans: [
+          "var(--font-sf-pro)",
           "-apple-system",
           "BlinkMacSystemFont",
-          "SF Pro Display",
-          "SF Pro Text",
-          "var(--font-sans)",
           "Segoe UI",
           "Roboto",
           "Helvetica Neue",
@@ -32,10 +30,9 @@ const config = {
           "sans-serif",
         ],
         heading: [
+          "var(--font-sf-pro)",
           "-apple-system",
           "BlinkMacSystemFont",
-          "SF Pro Display",
-          "var(--font-sans)",
           "sans-serif",
         ],
       },
