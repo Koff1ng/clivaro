@@ -1,9 +1,28 @@
 import { NextResponse } from 'next/server'
 import { requirePermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
-import { connectMetaAccount } from '@/lib/marketing/meta-ads-service'
+import { connectMetaAccount, getMetaConfig } from '@/lib/marketing/meta-ads-service'
 
 export const dynamic = 'force-dynamic'
+
+// GET: Check if Meta Ads is connected for this tenant
+export async function GET(request: Request) {
+  const session = await requirePermission(request as any, PERMISSIONS.MANAGE_CRM)
+  if (session instanceof NextResponse) return session
+
+  const tenantId = (session.user as any).tenantId
+
+  try {
+    const config = await getMetaConfig(tenantId)
+    return NextResponse.json({
+      connected: true,
+      adAccountId: config.adAccountId,
+      hasPageId: !!config.pageId,
+    })
+  } catch {
+    return NextResponse.json({ connected: false })
+  }
+}
 
 // POST: Connect Meta Ads account (store token + ad account)
 export async function POST(request: Request) {
