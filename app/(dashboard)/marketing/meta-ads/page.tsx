@@ -364,7 +364,7 @@ function MetaConnectCard({ onConnected }: { onConnected: () => void }) {
         body: JSON.stringify({
           accessToken: token.trim(),
           adAccountId: adAccount.trim().startsWith('act_') ? adAccount.trim() : `act_${adAccount.trim()}`,
-          pageId: pageId.trim() || undefined,
+          pageId: pageId.trim(),
         }),
       })
       const data = await res.json()
@@ -439,16 +439,64 @@ function MetaConnectCard({ onConnected }: { onConnected: () => void }) {
             </div>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="pageId" className="flex items-center gap-1"><Globe className="w-3.5 h-3.5" />ID de Página <span className="text-xs text-muted-foreground font-normal">(opcional)</span></Label>
-            <Input id="pageId" value={pageId} onChange={e => setPageId(e.target.value)} placeholder="ID numérico" className="font-mono text-sm" />
+            <Label htmlFor="pageId" className="flex items-center gap-1"><Globe className="w-3.5 h-3.5" />ID de Página de Facebook <span className="text-red-500">*</span></Label>
+            <Input id="pageId" value={pageId} onChange={e => setPageId(e.target.value)} placeholder="Ej: 123456789012345" className="font-mono text-sm" />
+            <p className="text-xs text-muted-foreground">Encuéntralo en <a href="https://www.facebook.com/settings/?tab=linked_pages" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Configuración de Facebook → Páginas</a> o en la URL de tu página.</p>
           </div>
           {error && <div className="flex items-start gap-2 p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800"><AlertCircle className="w-4 h-4 text-red-500 mt-0.5" /><p className="text-sm text-red-700 dark:text-red-400">{error}</p></div>}
-          <Button onClick={() => connectMutation.mutate()} disabled={!token.trim() || !adAccount.trim() || connectMutation.isPending}
+          <Button onClick={() => connectMutation.mutate()} disabled={!token.trim() || !adAccount.trim() || !pageId.trim() || connectMutation.isPending}
             className="w-full py-5 font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700">
             {connectMutation.isPending ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Verificando...</> : <><ShieldCheck className="w-4 h-4 mr-2" />Conectar y verificar</>}
           </Button>
         </CardContent>
       </Card>
+    </div>
+  )
+}
+
+// ── Page ID Missing Alert ──
+
+function PageIdAlert({ onSaved }: { onSaved: () => void }) {
+  const [pageId, setPageId] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+
+  const handleSave = async () => {
+    if (!pageId.trim()) return
+    setSaving(true)
+    setError('')
+    try {
+      const res = await fetch('/api/marketing/meta-ads/connect', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pageId: pageId.trim() }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Error')
+      onSaved()
+    } catch (e: any) {
+      setError(e.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="p-4 rounded-xl border-2 border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/10 space-y-3">
+      <div className="flex items-start gap-3">
+        <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+        <div className="flex-1 space-y-2">
+          <h4 className="font-semibold text-sm text-amber-800 dark:text-amber-400">Falta el ID de Página de Facebook</h4>
+          <p className="text-xs text-amber-700 dark:text-amber-500">Para crear anuncios necesitas asociar una Página de Facebook. Búscalo en <a href="https://www.facebook.com/settings/?tab=linked_pages" target="_blank" rel="noopener noreferrer" className="underline font-medium">Configuración → Páginas</a> o copia el número de la URL de tu página.</p>
+          <div className="flex gap-2">
+            <Input value={pageId} onChange={e => setPageId(e.target.value)} placeholder="Ej: 123456789012345" className="font-mono text-sm max-w-xs" />
+            <Button size="sm" onClick={handleSave} disabled={!pageId.trim() || saving} className="bg-amber-600 hover:bg-amber-700 text-white">
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Guardar'}
+            </Button>
+          </div>
+          {error && <p className="text-xs text-red-600">{error}</p>}
+        </div>
+      </div>
     </div>
   )
 }
@@ -517,6 +565,9 @@ export default function MetaAdsPage() {
   return (
     <div className="space-y-6 p-6">
       {showWizard && <CampaignWizard onClose={() => setShowWizard(false)} onCreated={() => queryClient.invalidateQueries({ queryKey: ['meta-ads-campaigns'] })} />}
+
+      {/* Page ID Missing Alert */}
+      {connectionStatus?.connected && !connectionStatus?.hasPageId && <PageIdAlert onSaved={() => queryClient.invalidateQueries({ queryKey: ['meta-ads-connection'] })} />}
 
       {/* Header */}
       <div className="flex items-center justify-between">

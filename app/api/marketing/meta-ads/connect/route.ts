@@ -48,3 +48,27 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: e.message }, { status: 400 })
   }
 }
+
+// PATCH: Update Page ID on existing config
+export async function PATCH(request: Request) {
+  const session = await requirePermission(request as any, PERMISSIONS.MANAGE_CRM)
+  if (session instanceof NextResponse) return session
+
+  const tenantId = (session.user as any).tenantId
+  const body = await request.json()
+
+  if (!body.pageId) {
+    return NextResponse.json({ error: 'pageId es requerido' }, { status: 400 })
+  }
+
+  try {
+    const { prisma } = require('@/lib/db')
+    await prisma.metaAdsConfig.update({
+      where: { tenantId },
+      data: { pageId: body.pageId },
+    })
+    return NextResponse.json({ success: true })
+  } catch (e: any) {
+    return NextResponse.json({ error: e.message }, { status: 400 })
+  }
+}
