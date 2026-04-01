@@ -329,14 +329,20 @@ async function processMetaCampaign(
     const sentryPayload = buildSentryPayload(tenantId, 'publishFullCampaign', formatted)
     
     // Log for monitoring (Sentry integration point)
-    console.error(`[META_ADS_ERROR]`, sentryPayload)
+    console.error(`[META_ADS_ERROR]`, JSON.stringify(sentryPayload))
+    console.error(`[META_ADS_ERROR] Raw:`, error?.message || error)
+
+    // Store BOTH user message and raw error for debugging
+    const debugMessage = formatted.raw && formatted.raw !== formatted.userMessage
+      ? `${formatted.userMessage} | Debug: ${formatted.raw}`
+      : formatted.userMessage
 
     // Update record with error
     await prisma.metaAdsCampaign.update({
       where: { id: recordId },
       data: {
         status: 'ERROR',
-        errorMessage: formatted.userMessage,
+        errorMessage: debugMessage.slice(0, 500), // limit to 500 chars
       },
     })
   }
