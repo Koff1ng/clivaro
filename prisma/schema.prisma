@@ -1979,3 +1979,36 @@ model OpportunityActivity {
 
   @@index([opportunityId])
 }
+
+// ── Meta Ads Integration ──
+
+model MetaAdsConfig {
+  id            String   @id @default(cuid())
+  tenantId      String   @unique
+  accessToken   String
+  adAccountId   String
+  pageId        String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model MetaAdsCampaign {
+  id              String   @id @default(cuid())
+  tenantId        String
+  trackingId      String   @unique
+  metaCampaignId  String?
+  metaAdSetId     String?
+  metaAdId        String?
+  status          String   @default("PROCESSING")
+  name            String
+  objective       String
+  dailyBudget     Float
+  errorMessage    String?
+  payload         Json
+  createdById     String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([trackingId])
+}
