@@ -328,8 +328,18 @@ const BLOCK_TYPES: { type: BlockType; label: string; icon: React.ReactNode; desc
 // ── Component ──
 export default function EmailBuilder({ value, onChange }: EmailBuilderProps) {
   const { toast } = useToast()
+  const [isRawMode, setIsRawMode] = useState(false)
+  const [rawHtml, setRawHtml] = useState(value || '')
   const [blocks, setBlocks] = useState<EmailBlock[]>(() => {
     const parsed = htmlToBlocks(value)
+    if (!parsed || (parsed.length <= 1 && value && value.length > 200)) {
+      // AI-generated HTML that couldn't be well decomposed — start in raw mode
+      if (value && value.includes('<')) {
+        setIsRawMode(true)
+        setRawHtml(value)
+        return []
+      }
+    }
     return parsed || []
   })
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -427,13 +437,78 @@ export default function EmailBuilder({ value, onChange }: EmailBuilderProps) {
       {/* Hidden file input */}
       <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
 
-      {/* Templates section — only when empty */}
-      {blocks.length === 0 && (
+      {/* Mode toggle (only when there is content) */}
+      {(blocks.length > 0 || isRawMode) && (
+        <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 rounded-lg p-0.5 w-fit">
+          <button
+            type="button"
+            onClick={() => {
+              if (isRawMode && rawHtml) {
+                // Try to parse raw HTML back into blocks
+                const parsed = htmlToBlocks(rawHtml)
+                if (parsed && parsed.length > 1) {
+                  setBlocks(parsed)
+                  setIsRawMode(false)
+                } else {
+                  toast('El HTML no se pudo descomponer en bloques editables', 'warning')
+                }
+              } else {
+                setIsRawMode(false)
+              }
+            }}
+            className={cn(
+              "px-2.5 py-1 text-[10px] font-bold rounded-md transition-all",
+              !isRawMode ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm" : "text-slate-500"
+            )}
+          >
+            📦 Bloques
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              if (!isRawMode) {
+                // Convert blocks to HTML and switch to raw mode
+                setRawHtml(blocks.length > 0 ? blocksToFullHtml(blocks) : value || '')
+              }
+              setIsRawMode(true)
+            }}
+            className={cn(
+              "px-2.5 py-1 text-[10px] font-bold rounded-md transition-all",
+              isRawMode ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm" : "text-slate-500"
+            )}
+          >
+            {'<>'} HTML
+          </button>
+        </div>
+      )}
+
+      {/* Raw HTML mode */}
+      {isRawMode && (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 text-xs text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/20 rounded-lg px-3 py-2">
+            <Sparkles className="w-3.5 h-3.5 shrink-0" />
+            <span>Contenido generado por IA — edita el HTML directamente o usa la vista previa a la derecha.</span>
+          </div>
+          <textarea
+            value={rawHtml}
+            onChange={e => {
+              setRawHtml(e.target.value)
+              onChange(e.target.value)
+            }}
+            className="w-full min-h-[300px] rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-3 text-xs font-mono text-slate-700 dark:text-slate-300 resize-y focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="Pega o edita tu HTML aquí..."
+            spellCheck={false}
+          />
+        </div>
+      )}
+
+      {/* Templates section — only when empty and not in raw mode */}
+      {!isRawMode && blocks.length === 0 && (
         <TemplateSelector onApply={applyTemplate} />
       )}
 
       {/* Blocks canvas */}
-      {blocks.length > 0 && (
+      {!isRawMode && blocks.length > 0 && (
         <div className="space-y-1">
           <div className="flex items-center justify-between mb-3">
             <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Bloques ({blocks.length})</span>
