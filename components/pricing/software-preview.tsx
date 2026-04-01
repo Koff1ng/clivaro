@@ -25,7 +25,7 @@ const screens = [
   { id: 'items', label: 'Productos', icon: Layers, src: '/assets/images_ERP/items.png', color: 'from-orange-500 to-amber-500' },
   { id: 'contabilidad', label: 'Contabilidad', icon: BookOpen, src: '/assets/images_ERP/contabilidad.png', color: 'from-violet-500 to-fuchsia-500' },
   { id: 'reportes', label: 'Reportes', icon: BarChart3, src: '/assets/images_ERP/Reportes.png', color: 'from-rose-500 to-pink-500' },
-  { id: 'campanas', label: 'Marketing', icon: Mail, src: '/assets/images_ERP/Campañas_email.png', color: 'from-sky-500 to-blue-500' },
+  { id: 'campanas', label: 'Marketing', icon: Mail, src: '/assets/images_ERP/campanas_email.png', color: 'from-sky-500 to-blue-500' },
   { id: 'configuracion', label: 'Configuración', icon: Settings, src: '/assets/images_ERP/configuracion.png', color: 'from-slate-500 to-gray-600' },
 ]
 
