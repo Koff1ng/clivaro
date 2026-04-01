@@ -9,6 +9,7 @@ import {
     Banknote,
     FileText,
     MessageCircle,
+    Inbox,
     ClipboardList,
     Receipt,
     FileMinus,
@@ -57,7 +58,9 @@ export const menuGroups: MenuGroup[] = [
         title: 'Marketing',
         key: 'marketing',
         items: [
-            { href: '/marketing/campaigns', label: 'Marketing', icon: Megaphone, permission: 'manage_crm', planFeature: 'marketing' },
+            { href: '/marketing/leads', label: 'Oportunidades', icon: Target, permission: 'manage_crm', planFeature: 'marketing' },
+            { href: '/marketing/campaigns', label: 'Campañas', icon: Megaphone, permission: 'manage_crm', planFeature: 'marketing' },
+            { href: '/marketing/inbox', label: 'Inbox', icon: Inbox, permission: 'manage_crm', planFeature: 'marketing' },
         ]
     },
     {

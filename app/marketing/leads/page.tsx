@@ -3,24 +3,24 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import { PlanGuard } from '@/components/guards/plan-guard'
-import CampaignsClient from '@/components/marketing/campaigns-client'
+import { LeadList } from '@/components/crm/lead-list'
 import { PageHeader } from '@/components/ui/page-header'
-import { Megaphone } from 'lucide-react'
+import { Target } from 'lucide-react'
 
-export default async function CampaignsPage() {
+export default async function LeadsPage() {
   const session = await getServerSession(authOptions)
   if (!session) redirect('/login')
 
   return (
     <MainLayout>
-      <PlanGuard featureKey="marketing" featureLabel="Campañas de Marketing" requiredPlan="Business">
+      <PlanGuard featureKey="marketing" featureLabel="Oportunidades" requiredPlan="Business">
         <div className="space-y-4">
           <PageHeader
-            title="Campañas"
-            description="Email marketing y automatización."
-            icon={<Megaphone className="h-5 w-5" />}
+            title="Oportunidades"
+            description="Pipeline de ventas y leads."
+            icon={<Target className="h-5 w-5" />}
           />
-          <CampaignsClient />
+          <LeadList />
         </div>
       </PlanGuard>
     </MainLayout>
