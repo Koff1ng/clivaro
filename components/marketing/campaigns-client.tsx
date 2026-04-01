@@ -198,7 +198,7 @@ export default function CampaignsClient() {
             {isAiCreating ? <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> Generando...</> : <><Sparkles className="w-3.5 h-3.5 mr-1.5" /> Crear con IA</>}
           </Button>
         </div>
-        <p className="text-[10px] text-purple-400 mt-1.5 pl-2">Powered by Gemini 2.0 Flash · Crea campañas completas con un solo prompt</p>
+        <p className="text-[10px] text-purple-400 mt-1.5 pl-2">🐙 Clivi IA · Crea campañas completas con un solo prompt</p>
       </div>
 
       {/* Header + New Button */}

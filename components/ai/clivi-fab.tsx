@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { X, Send, Loader2, Minimize2, Maximize2, Trash2, ExternalLink } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { usePathname, useRouter } from 'next/navigation'
+import Image from 'next/image'
 
 interface Message {
   id: string
@@ -186,7 +187,7 @@ export default function CliviFab() {
           <X className="w-5 h-5 text-white" />
         ) : (
           <>
-            <span className="text-2xl">🐙</span>
+            <Image src="/clivi-icon.png" alt="Clivi" width={32} height={32} className="rounded-full" />
             {showPulse && (
               <span className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-400 rounded-full border-2 border-white animate-pulse" />
             )}
@@ -206,8 +207,8 @@ export default function CliviFab() {
         >
           {/* Header */}
           <div className="flex items-center gap-3 px-4 py-3 border-b bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 rounded-t-2xl shrink-0">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center shadow-md">
-              <span className="text-lg">🐙</span>
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center shadow-md overflow-hidden">
+              <Image src="/clivi-icon.png" alt="Clivi" width={28} height={28} className="rounded-lg" />
             </div>
             <div className="flex-1 min-w-0">
               <h3 className="text-sm font-black text-slate-900 dark:text-white">Clivi</h3>
@@ -322,7 +323,7 @@ export default function CliviFab() {
                 {isLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
               </button>
             </div>
-            <p className="text-[9px] text-center text-slate-300 mt-1.5">Clivi 🐙 puede ejecutar acciones · Powered by Gemini</p>
+            <p className="text-[9px] text-center text-slate-300 mt-1.5">Clivi 🐙 puede ejecutar acciones · Tu asistente inteligente</p>
           </div>
         </div>
       )}

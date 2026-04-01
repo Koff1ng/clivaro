@@ -78,14 +78,57 @@ export default function CampaignForm({ campaignId, aiDefaults, onClose, onSucces
     setIsDirtySinceSave(true)
   }, [htmlContent, name, subject, scheduledAt])
 
-  // Apply AI defaults when provided
+  // ── Smooth AI fill animation ──
+  const [isAiFilling, setIsAiFilling] = useState(false)
+  const [aiFillingStep, setAiFillingStep] = useState<'name' | 'subject' | 'html' | 'done'>('done')
+
   useEffect(() => {
-    if (aiDefaults) {
-      setValue('name', aiDefaults.name, { shouldValidate: true })
-      setValue('subject', aiDefaults.subject, { shouldValidate: true })
+    if (!aiDefaults) return
+
+    let cancelled = false
+    setIsAiFilling(true)
+    setAiFillingStep('name')
+
+    const typeField = (field: 'name' | 'subject', text: string): Promise<void> =>
+      new Promise((resolve) => {
+        let i = 0
+        const interval = setInterval(() => {
+          if (cancelled) { clearInterval(interval); return }
+          i++
+          setValue(field, text.slice(0, i), { shouldValidate: false })
+          if (i >= text.length) {
+            clearInterval(interval)
+            resolve()
+          }
+        }, 25) // 25ms per character = fast but visible
+      })
+
+    ;(async () => {
+      // Step 1: Type name
+      await typeField('name', aiDefaults.name)
+      if (cancelled) return
+
+      // Brief pause between fields
+      await new Promise(r => setTimeout(r, 300))
+
+      // Step 2: Type subject
+      setAiFillingStep('subject')
+      await typeField('subject', aiDefaults.subject)
+      if (cancelled) return
+
+      await new Promise(r => setTimeout(r, 300))
+
+      // Step 3: Fade in HTML content
+      setAiFillingStep('html')
       setValue('htmlContent', aiDefaults.htmlContent, { shouldValidate: true })
-      setEditorKey(prev => prev + 1) // Force re-render editor with new content
-    }
+      setEditorKey(prev => prev + 1)
+
+      await new Promise(r => setTimeout(r, 800))
+      setAiFillingStep('done')
+      setIsAiFilling(false)
+    })()
+
+    return () => { cancelled = true }
   }, [aiDefaults, setValue])
 
   // AI inline generate
@@ -270,6 +313,27 @@ export default function CampaignForm({ campaignId, aiDefaults, onClose, onSucces
         </CardHeader>
         <CardContent className="pt-4">
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+            {/* AI Filling Banner */}
+            {isAiFilling && (
+              <div className="flex items-center gap-3 p-3 rounded-xl border-2 border-purple-300 dark:border-purple-700 bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 animate-pulse">
+                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center shrink-0">
+                  <span className="text-sm">🐙</span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold text-purple-800 dark:text-purple-300">
+                    Clivi está creando tu campaña...
+                  </p>
+                  <p className="text-xs text-purple-600 dark:text-purple-400">
+                    {aiFillingStep === 'name' && '✍️ Escribiendo nombre...'}
+                    {aiFillingStep === 'subject' && '✍️ Escribiendo asunto...'}
+                    {aiFillingStep === 'html' && '🎨 Generando diseño del email...'}
+                    {aiFillingStep === 'done' && '✅ ¡Listo!'}
+                  </p>
+                </div>
+                <Loader2 className="w-4 h-4 text-purple-500 animate-spin shrink-0" />
+              </div>
+            )}
+
             {/* Top actions bar */}
             <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border p-3 bg-slate-50/50 dark:bg-slate-800/30">
               <div className="flex items-center gap-2 text-xs text-muted-foreground">

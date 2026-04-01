@@ -35,7 +35,7 @@ Reglas:
 - Sugiere acciones concretas cuando sea posible
 - Usa formato markdown básico para organizar respuestas`
 
-export async function generateCampaignContent(prompt: string): Promise<{
+export async function generateCampaignContent(prompt: string, products?: { name: string; price: number; category?: string }[]): Promise<{
   name: string
   subject: string
   htmlContent: string
@@ -45,8 +45,13 @@ export async function generateCampaignContent(prompt: string): Promise<{
     systemInstruction: SYSTEM_PROMPT,
   })
 
+  const productContext = products && products.length > 0
+    ? `\n\nPRODUCTOS REALES DEL NEGOCIO (usa estos en la campaña):\n${products.slice(0, 20).map(p => `- ${p.name} — $${p.price.toLocaleString('es-CO')}${p.category ? ` (${p.category})` : ''}`).join('\n')}\n\nIMPORTANTE: Usa los nombres y precios reales de estos productos en el contenido de la campaña. Destaca los más relevantes según el contexto de la petición.`
+    : ''
+
   const result = await model.generateContent(`
 Genera una campaña de email marketing con base en esta petición: "${prompt}"
+${productContext}
 
 REGLAS IMPORTANTES:
 - NUNCA incluyas "Clivi", "Clivaro" ni nombres de la plataforma en el contenido.
@@ -63,7 +68,7 @@ Responde ÚNICAMENTE con un JSON válido (sin markdown, sin backticks) con esta 
 
   const text = result.response.text().trim()
   // Clean potential markdown wrapping
-  const clean = text.replace(/^```json?\n?/i, '').replace(/\n?```$/i, '').trim()
+  const clean = text.replace(/^```json?\s*\n?/i, '').replace(/\n?\s*```\s*$/i, '').trim()
   return JSON.parse(clean)
 }
 

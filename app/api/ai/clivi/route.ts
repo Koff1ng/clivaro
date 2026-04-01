@@ -4,6 +4,7 @@ import { PERMISSIONS } from '@/lib/permissions'
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import { CLIVI_SYSTEM_PROMPT, generateCampaignContent } from '@/lib/gemini'
 import { prisma } from '@/lib/db'
+import { withTenantRead } from '@/lib/tenancy'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 30
@@ -236,7 +237,28 @@ export async function POST(request: Request) {
         // ── Create campaign ──
         if (parsed.action === 'create-campaign' && parsed.data?.prompt) {
           try {
-            const campaignData = await generateCampaignContent(parsed.data.prompt)
+            // Fetch real products from the tenant's inventory
+            let products: { name: string; price: number; category?: string }[] = []
+            try {
+              products = await withTenantRead(tenantId, async (tenantPrisma) => {
+                const dbProducts = await tenantPrisma.product.findMany({
+                  where: { active: true },
+                  select: { name: true, price: true, category: true },
+                  orderBy: { name: 'asc' },
+                  take: 30,
+                })
+                return dbProducts.map((p: any) => ({
+                  name: p.name,
+                  price: Number(p.price),
+                  category: p.category || undefined,
+                }))
+              })
+            } catch {
+              // If product fetch fails, continue without products
+              console.log('[Clivi] Could not fetch products, generating without product context')
+            }
+
+            const campaignData = await generateCampaignContent(parsed.data.prompt, products)
             return NextResponse.json({
               reply: parsed.reply,
               action: { type: 'create-campaign', data: campaignData },
