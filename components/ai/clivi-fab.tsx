@@ -45,6 +45,12 @@ function renderMarkdown(text: string): string {
 }
 
 export default function CliviFab() {
+  const pathname = usePathname()
+  const router = useRouter()
+
+  // Only show Clivi on CRM and marketing pages to save API tokens
+  const isCrmContext = pathname.startsWith('/crm') || pathname.startsWith('/marketing')
+  
   const [isOpen, setIsOpen] = useState(false)
   const [isExpanded, setIsExpanded] = useState(false)
   const [messages, setMessages] = useState<Message[]>([])
@@ -53,8 +59,8 @@ export default function CliviFab() {
   const [showPulse, setShowPulse] = useState(true)
   const chatEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
-  const pathname = usePathname()
-  const router = useRouter()
+
+  if (!isCrmContext) return null
 
   useEffect(() => {
     if (messages.length === 0) {
