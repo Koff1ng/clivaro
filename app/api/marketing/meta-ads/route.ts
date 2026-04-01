@@ -16,6 +16,10 @@ export async function GET(request: Request) {
     const campaigns = await getMetaCampaigns(tenantId)
     return NextResponse.json(campaigns)
   } catch (e: any) {
+    // If meta ads is not configured, return empty array instead of error
+    if (e.message?.includes('no conectada') || e.message?.includes('not connected')) {
+      return NextResponse.json([])
+    }
     return NextResponse.json({ error: e.message }, { status: 500 })
   }
 }
@@ -29,6 +33,19 @@ export async function POST(request: Request) {
   const userId = (session.user as any).id
   const body = await request.json()
 
+  // Validate required fields
+  if (!body.name || !body.objective || !body.headline || !body.bodyText || !body.linkUrl) {
+    return NextResponse.json({ 
+      error: 'Faltan campos requeridos: nombre, objetivo, título, texto y URL de destino.' 
+    }, { status: 400 })
+  }
+
+  if (!body.dailyBudget || body.dailyBudget < 5000) {
+    return NextResponse.json({ 
+      error: 'El presupuesto diario mínimo es $5.000 COP.' 
+    }, { status: 400 })
+  }
+
   try {
     const result = await publishFullCampaign(tenantId, userId, body)
     return NextResponse.json(result)
@@ -36,3 +53,4 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: e.message }, { status: 400 })
   }
 }
+
