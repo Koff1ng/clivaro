@@ -32,7 +32,7 @@ export default function RootLayout({
   return (
     <html lang="es" suppressHydrationWarning>
       <body
-        className={`${fontSans.className} antialiased bg-background text-foreground selection:bg-primary/10 selection:text-primary`}
+        className={`${fontSans.variable} font-sans antialiased bg-background text-foreground selection:bg-primary/10 selection:text-primary`}
       >
         <ErrorBoundary>
           <Providers>
