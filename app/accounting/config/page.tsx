@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { MainLayout } from '@/components/layout/main-layout'
 import { PageHeader } from '@/components/ui/page-header'
 import { Button } from '@/components/ui/button'
 import { AccountSelect } from '@/components/accounting/account-select'
@@ -102,6 +103,7 @@ export default function AccountingConfigPage() {
     }
 
     return (
+        <MainLayout>
         <div className="container mx-auto px-4 py-6">
             <PageHeader
                 title="Configuración Contable"
@@ -284,5 +286,6 @@ export default function AccountingConfigPage() {
                 </ul>
             </div>
         </div>
+        </MainLayout>
     )
 }

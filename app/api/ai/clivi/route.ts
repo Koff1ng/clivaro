@@ -212,11 +212,27 @@ export async function POST(request: Request) {
     const text = result.response.text().trim()
 
     // Check if response is an action JSON
+    let parsed: any = null
     try {
-      const cleanText = text.replace(/^```json?\n?/i, '').replace(/\n?```$/i, '').trim()
-      const parsed = JSON.parse(cleanText)
+      // Strategy 1: Direct parse
+      parsed = JSON.parse(text)
+    } catch {
+      try {
+        // Strategy 2: Strip markdown fences
+        const cleanText = text.replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?\s*```\s*$/i, '').trim()
+        parsed = JSON.parse(cleanText)
+      } catch {
+        // Strategy 3: Extract JSON object from mixed text (model sometimes adds text before/after)
+        const jsonMatch = text.match(/\{[\s\S]*"action"\s*:\s*"[^"]+[\s\S]*"reply"\s*:\s*"[\s\S]*?\}/)
+        if (jsonMatch) {
+          try {
+            parsed = JSON.parse(jsonMatch[0])
+          } catch { /* not valid JSON */ }
+        }
+      }
+    }
 
-      if (parsed.action && parsed.reply) {
+    if (parsed && parsed.action && parsed.reply) {
         // ── Create campaign ──
         if (parsed.action === 'create-campaign' && parsed.data?.prompt) {
           try {
@@ -272,9 +288,6 @@ export async function POST(request: Request) {
             })
           }
         }
-      }
-    } catch {
-      // Not JSON — normal conversational reply
     }
 
     return NextResponse.json({ reply: text })

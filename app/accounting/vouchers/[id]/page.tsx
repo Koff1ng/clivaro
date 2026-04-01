@@ -42,15 +42,14 @@ export default function VoucherDetailPage() {
                 headers: { 'Content-Type': 'application/json' }
             })
 
+            const data = await res.json().catch(() => ({ error: 'Error inesperado del servidor' }))
+
             if (!res.ok) {
-                const errorData = await res.json().catch(() => ({ error: 'Error inesperado del servidor' }))
-                throw new Error(errorData.error || 'Error al aprobar')
+                throw new Error(data.error || 'Error al aprobar')
             }
 
             toast('Comprobante aprobado y contabilizado', 'success')
-            // Refresh
-            const updated = await res.json()
-            setVoucher(updated)
+            setVoucher(data)
         } catch (e: any) {
             toast(e.message, 'error')
         } finally {
@@ -68,14 +67,14 @@ export default function VoucherDetailPage() {
                 headers: { 'Content-Type': 'application/json' }
             })
 
+            const data = await res.json().catch(() => ({ error: 'Error inesperado del servidor' }))
+
             if (!res.ok) {
-                const errorData = await res.json().catch(() => ({ error: 'Error inesperado del servidor' }))
-                throw new Error(errorData.error || 'Error al anular')
+                throw new Error(data.error || 'Error al anular')
             }
 
             toast('Comprobante anulado', 'success')
-            const updated = await res.json()
-            setVoucher(updated)
+            setVoucher(data)
         } catch (e: any) {
             toast(e.message, 'error')
         } finally {

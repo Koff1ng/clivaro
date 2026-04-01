@@ -51,6 +51,7 @@ export default function AddonsPage() {
     const [loading, setLoading] = useState(false)
     const [period, setPeriod] = useState(`${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`)
     const [year, setYear] = useState(new Date().getFullYear().toString())
+    const [amount, setAmount] = useState('')
 
     const handleExecute = async () => {
         if (!selectedAddon) return
@@ -62,7 +63,8 @@ export default function AddonsPage() {
                 body: JSON.stringify({
                     type: selectedAddon,
                     period,
-                    year
+                    year,
+                    amount: amount ? parseFloat(amount) : undefined
                 })
             })
 
@@ -148,6 +150,17 @@ export default function AddonsPage() {
                                 onChange={(e) => setPeriod(e.target.value)}
                             />
                         </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor="dep-amount">Monto de Depreciación ($)</Label>
+                            <Input
+                                id="dep-amount"
+                                type="number"
+                                placeholder="Ej: 1500000"
+                                value={amount}
+                                onChange={(e) => setAmount(e.target.value)}
+                            />
+                            <p className="text-[11px] text-muted-foreground">Ingresa el valor total de depreciación a registrar este mes.</p>
+                        </div>
                     </div>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setSelectedAddon(null)}>Cancelar</Button>
@@ -209,6 +222,17 @@ export default function AddonsPage() {
                                 value={period}
                                 onChange={(e) => setPeriod(e.target.value)}
                             />
+                        </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor="def-amount">Monto de Amortización ($)</Label>
+                            <Input
+                                id="def-amount"
+                                type="number"
+                                placeholder="Ej: 850000"
+                                value={amount}
+                                onChange={(e) => setAmount(e.target.value)}
+                            />
+                            <p className="text-[11px] text-muted-foreground">Ingresa el valor de la cuota de amortización a registrar.</p>
                         </div>
                     </div>
                     <DialogFooter>

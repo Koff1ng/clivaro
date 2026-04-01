@@ -13,6 +13,7 @@ import { Loader2, Plus, Search, Users, ShieldCheck, Building, User } from 'lucid
 import {
     Dialog,
     DialogContent,
+    DialogDescription,
     DialogHeader,
     DialogTitle,
     DialogFooter,
@@ -122,6 +123,7 @@ export default function ThirdPartiesPage() {
                         <DialogContent className="max-w-md">
                             <DialogHeader>
                                 <DialogTitle>Crear Nuevo Tercero (Contable)</DialogTitle>
+                                <DialogDescription>Registra un tercero para asociarlo a comprobantes contables.</DialogDescription>
                             </DialogHeader>
                             <div className="space-y-4 py-4">
                                 <div className="grid grid-cols-2 gap-4">

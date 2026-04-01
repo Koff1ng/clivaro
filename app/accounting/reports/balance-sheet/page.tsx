@@ -42,9 +42,9 @@ export default function BalanceSheetReportPage() {
         fetchReport()
     }, [])
 
-    const totalAssets = data.filter(a => a.code.startsWith('1')).reduce((sum, a) => sum + (a.code.length === 1 ? a.balance : 0), 0)
-    const totalLiabilities = data.filter(a => a.code.startsWith('2')).reduce((sum, a) => sum + (a.code.length === 1 ? a.balance : 0), 0)
-    const totalEquity = data.filter(a => a.code.startsWith('3')).reduce((sum, a) => sum + (a.code.length === 1 ? a.balance : 0), 0)
+    const totalAssets = data.filter(a => a.code.startsWith('1')).reduce((sum, a) => sum + a.balance, 0)
+    const totalLiabilities = data.filter(a => a.code.startsWith('2')).reduce((sum, a) => sum + a.balance, 0)
+    const totalEquity = data.filter(a => a.code.startsWith('3')).reduce((sum, a) => sum + a.balance, 0)
 
     return (
         <MainLayout>
@@ -115,13 +115,13 @@ export default function BalanceSheetReportPage() {
                                         ))
                                     )}
                                 </TableBody>
-                                <div className="p-4 bg-slate-100 text-xs font-bold flex justify-between border-t">
-                                    <span>ECUACIÓN CONTABLE (Activo = Pasivo + Patrimonio)</span>
-                                    <span className={Math.abs(totalAssets - (totalLiabilities + totalEquity)) < 0.01 ? 'text-green-600' : 'text-red-600'}>
-                                        Diferencia: {formatCurrency(totalAssets - (totalLiabilities + totalEquity))}
-                                    </span>
-                                </div>
                             </Table>
+                            <div className="p-4 bg-slate-100 text-xs font-bold flex justify-between border-t">
+                                <span>ECUACIÓN CONTABLE (Activo = Pasivo + Patrimonio)</span>
+                                <span className={Math.abs(totalAssets - (totalLiabilities + totalEquity)) < 0.01 ? 'text-green-600' : 'text-red-600'}>
+                                    Diferencia: {formatCurrency(totalAssets - (totalLiabilities + totalEquity))}
+                                </span>
+                            </div>
                         </div>
                     </CardContent>
                 </Card>
