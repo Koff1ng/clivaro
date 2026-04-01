@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic'
 export const maxDuration = 30
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '')
-const MODEL = 'gemini-2.0-flash'
+const MODEL = 'gemini-2.5-flash-lite'
 
 // ── Actions prompt ──
 const ACTIONS_PROMPT = `
