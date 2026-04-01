@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { Plus_Jakarta_Sans } from 'next/font/google'
+import { Inter } from 'next/font/google'
 import './globals.css'
 import { ToastContainer } from '@/components/ui/toast'
 import { ErrorBoundary } from '@/components/ui/error-boundary'
@@ -7,10 +7,11 @@ import { Providers } from './providers'
 import { SpeedInsights } from '@vercel/speed-insights/next'
 import { Analytics } from '@vercel/analytics/react'
 
-const fontSans = Plus_Jakarta_Sans({
+// Inter as fallback for non-Apple devices; Apple devices use SF Pro via system stack
+const fontSans = Inter({
   subsets: ['latin'],
   weight: ['400', '500', '600', '700'],
-  style: ['normal'],
+  variable: '--font-sans',
 })
 
 export const metadata: Metadata = {

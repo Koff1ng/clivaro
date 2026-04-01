@@ -19,8 +19,25 @@ const config = {
     },
     extend: {
       fontFamily: {
-        sans: ["Plus Jakarta Sans", "Inter", "sans-serif"],
-        heading: ["Plus Jakarta Sans", "sans-serif"],
+        sans: [
+          "-apple-system",
+          "BlinkMacSystemFont",
+          "SF Pro Display",
+          "SF Pro Text",
+          "Inter",
+          "Segoe UI",
+          "Roboto",
+          "Helvetica Neue",
+          "Arial",
+          "sans-serif",
+        ],
+        heading: [
+          "-apple-system",
+          "BlinkMacSystemFont",
+          "SF Pro Display",
+          "Inter",
+          "sans-serif",
+        ],
       },
       colors: {
         border: "hsl(var(--border))",
