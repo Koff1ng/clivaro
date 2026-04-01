@@ -235,8 +235,27 @@ export async function publishFullCampaign(
   input: MetaFullCampaignInput
 ): Promise<MetaPublishResult> {
   const config = await getMetaConfig(tenantId)
-  const pageId = input.pageId || config.pageId
-  if (!pageId) throw new Error('No se ha configurado una página de Facebook. Configúrala en Meta Ads → Conectar.')
+  let pageId = input.pageId || config.pageId
+
+  // Auto-fetch first page if not configured
+  if (!pageId) {
+    try {
+      FacebookAdsApi.init(config.accessToken)
+      const mePages = await (new (bizSdk.User)('me')).getAccounts(['id', 'name'], { limit: 1 })
+      if (mePages && mePages.length > 0) {
+        pageId = mePages[0].id
+        // Save for future use
+        await prisma.metaAdsConfig.update({
+          where: { tenantId },
+          data: { pageId },
+        })
+      }
+    } catch (e) {
+      console.warn('[META_ADS] Could not auto-fetch page ID:', (e as Error).message)
+    }
+  }
+
+  if (!pageId) throw new Error('No se encontró una Página de Facebook asociada a tu cuenta. Agrega el ID de página en Meta Ads → Conectar.')
 
   // Create tracking record immediately
   const record = await prisma.metaAdsCampaign.create({
