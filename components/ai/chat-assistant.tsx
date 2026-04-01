@@ -129,8 +129,22 @@ export function ChatAssistant() {
         })
     }
 
-    // ─── Renderiza contenido con acciones y markdown ───────────────────
+    // ─── Renderiza contenido con acciones, meta ads, y markdown ───────────────────
     const renderContent = (content: string) => {
+        // Parse META_ADS_CREATE tags
+        const metaAdsRegex = /{{META_ADS_CREATE:([\s\S]*?)}}/g
+        let metaAdsMatch
+        const metaAdsCampaigns: any[] = []
+        let cleanContent = content
+
+        while ((metaAdsMatch = metaAdsRegex.exec(content)) !== null) {
+            try {
+                const campaignData = JSON.parse(metaAdsMatch[1])
+                metaAdsCampaigns.push(campaignData)
+                cleanContent = cleanContent.replace(metaAdsMatch[0], '')
+            } catch { /* invalid JSON, skip */ }
+        }
+
         const actionRegex = /{{ACTION:([^|]+)\|([^}]+)}}/g
         const parts: (string | JSX.Element)[] = []
         let lastIndex = 0
@@ -139,47 +153,95 @@ export function ChatAssistant() {
         const textParts: string[] = []
         const actions: { label: string, path: string }[] = []
 
-        while ((match = actionRegex.exec(content)) !== null) {
+        while ((match = actionRegex.exec(cleanContent)) !== null) {
             if (match.index > lastIndex) {
-                textParts.push(content.substring(lastIndex, match.index))
+                textParts.push(cleanContent.substring(lastIndex, match.index))
             }
             actions.push({ label: match[1], path: match[2] })
             lastIndex = match.index + match[0].length
         }
 
-        if (lastIndex < content.length) {
-            textParts.push(content.substring(lastIndex))
+        if (lastIndex < cleanContent.length) {
+            textParts.push(cleanContent.substring(lastIndex))
         }
 
-        // Si no hay acciones, devolvemos solo el texto parseado
-        if (actions.length === 0) {
-            return <div className="space-y-1">{parseMarkdown(content)}</div>
+        const handleCreateFromClivi = async (campaignData: any) => {
+            try {
+                const res = await fetch('/api/marketing/meta-ads', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        ...campaignData,
+                        targetCountries: campaignData.targetCountries || ['CO'],
+                        targetAgeMin: campaignData.targetAgeMin || 18,
+                        targetAgeMax: campaignData.targetAgeMax || 65,
+                        targetGenders: [0],
+                        callToAction: campaignData.callToAction || 'LEARN_MORE',
+                        startDate: new Date().toISOString().split('T')[0],
+                    }),
+                })
+                const data = await res.json()
+                if (!res.ok) throw new Error(data.error)
+                toast(`Campaña "${campaignData.name}" creada exitosamente`, 'success')
+            } catch (e: any) {
+                toast(e.message || 'Error al crear la campaña', 'error')
+            }
         }
 
-        // Si hay acciones, las ponemos al final de forma elegante
         return (
             <div className="space-y-3">
                 <div className="space-y-1">{parseMarkdown(textParts.join('\n'))}</div>
-                <div className="flex flex-col gap-2 pt-2 border-t border-border/30">
-                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-1">Acciones sugeridas</p>
-                    {actions.map((action, i) => (
-                        <Button
-                            key={i}
-                            variant="secondary"
-                            size="sm"
-                            className="w-full h-10 flex items-center justify-between group bg-sky-500 hover:bg-sky-600 text-white border-none shadow-md transition-all transform active:scale-[0.98] rounded-xl"
-                            onClick={() => {
-                                router.push(action.path)
-                                setIsOpen(false)
-                            }}
-                        >
-                            <span className="font-bold tracking-tight">{action.label}</span>
-                            <div className="bg-white/20 p-1.5 rounded-lg group-hover:bg-white/30 transition-colors">
-                                <Maximize2 className="h-3.5 w-3.5" />
+                
+                {/* Meta Ads Campaign Cards from Clivi */}
+                {metaAdsCampaigns.map((campaign, i) => (
+                    <div key={`meta-${i}`} className="p-4 rounded-xl border-2 border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-900/10 space-y-3">
+                        <div className="flex items-center gap-2">
+                            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center">
+                                <svg viewBox="0 0 24 24" className="w-4 h-4 text-white" fill="currentColor">
+                                    <path d="M12 2.04C6.5 2.04 2 6.53 2 12.06C2 17.06 5.66 21.21 10.44 21.96V14.96H7.9V12.06H10.44V9.85C10.44 7.34 11.93 5.96 14.22 5.96C15.31 5.96 16.45 6.15 16.45 6.15V8.62H15.19C13.95 8.62 13.56 9.39 13.56 10.18V12.06H16.34L15.89 14.96H13.56V21.96A10 10 0 0 0 22 12.06C22 6.53 17.5 2.04 12 2.04Z" />
+                                </svg>
                             </div>
+                            <span className="text-xs font-bold text-blue-700 dark:text-blue-400 uppercase tracking-wider">Campaña sugerida por Clivi</span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-1 text-xs">
+                            <span className="text-muted-foreground">Nombre:</span><span className="font-medium">{campaign.name}</span>
+                            {campaign.objective && <><span className="text-muted-foreground">Objetivo:</span><span className="font-medium">{campaign.objective.replace('OUTCOME_', '')}</span></>}
+                            {campaign.headline && <><span className="text-muted-foreground">Título:</span><span className="font-medium">{campaign.headline}</span></>}
+                            {campaign.dailyBudget && <><span className="text-muted-foreground">Presupuesto:</span><span className="font-medium text-green-600">${campaign.dailyBudget.toLocaleString()}/día</span></>}
+                        </div>
+                        <Button
+                            size="sm"
+                            className="w-full h-9 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold"
+                            onClick={() => handleCreateFromClivi(campaign)}
+                        >
+                            🚀 Crear esta campaña
                         </Button>
-                    ))}
-                </div>
+                    </div>
+                ))}
+
+                {/* Action buttons */}
+                {actions.length > 0 && (
+                    <div className="flex flex-col gap-2 pt-2 border-t border-border/30">
+                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-1">Acciones sugeridas</p>
+                        {actions.map((action, i) => (
+                            <Button
+                                key={i}
+                                variant="secondary"
+                                size="sm"
+                                className="w-full h-10 flex items-center justify-between group bg-sky-500 hover:bg-sky-600 text-white border-none shadow-md transition-all transform active:scale-[0.98] rounded-xl"
+                                onClick={() => {
+                                    router.push(action.path)
+                                    setIsOpen(false)
+                                }}
+                            >
+                                <span className="font-bold tracking-tight">{action.label}</span>
+                                <div className="bg-white/20 p-1.5 rounded-lg group-hover:bg-white/30 transition-colors">
+                                    <Maximize2 className="h-3.5 w-3.5" />
+                                </div>
+                            </Button>
+                        ))}
+                    </div>
+                )}
             </div>
         )
     }

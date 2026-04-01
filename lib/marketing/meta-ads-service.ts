@@ -368,3 +368,28 @@ export async function toggleCampaignStatus(tenantId: string, trackingId: string,
     throw new Error(formatted.userMessage)
   }
 }
+
+/**
+ * Deletes a campaign from tracking (and optionally from Meta).
+ */
+export async function deleteCampaign(tenantId: string, trackingId: string) {
+  const record = await prisma.metaAdsCampaign.findFirst({ where: { tenantId, trackingId } })
+  if (!record) throw new Error('Campaña no encontrada.')
+
+  // Try to delete from Meta if it was created
+  if (record.metaCampaignId) {
+    try {
+      const config = await getMetaConfig(tenantId)
+      FacebookAdsApi.init(config.accessToken)
+      const campaign = new Campaign(record.metaCampaignId)
+      await campaign.update([], { status: 'DELETED' })
+    } catch (error) {
+      // Non-critical: if Meta deletion fails, still remove from tracking
+      console.warn(`[META_ADS] Could not delete campaign from Meta: ${trackingId}`)
+    }
+  }
+
+  await prisma.metaAdsCampaign.delete({ where: { id: record.id } })
+  return { deleted: true }
+}
+

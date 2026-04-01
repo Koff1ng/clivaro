@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requirePermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
-import { getMetaCampaignByTrackingId, toggleCampaignStatus } from '@/lib/marketing/meta-ads-service'
+import { getMetaCampaignByTrackingId, toggleCampaignStatus, deleteCampaign } from '@/lib/marketing/meta-ads-service'
 
 export const dynamic = 'force-dynamic'
 
@@ -44,6 +44,27 @@ export async function PATCH(
   try {
     const result = await toggleCampaignStatus(tenantId, trackingId, body.action)
     return NextResponse.json(result)
+  } catch (e: any) {
+    return NextResponse.json({ error: e.message }, { status: 400 })
+  }
+}
+
+// DELETE: Remove campaign from tracking
+export async function DELETE(
+  request: Request,
+  { params }: { params: { id: string } | Promise<{ id: string }> }
+) {
+  const resolvedParams = await Promise.resolve(params)
+  const trackingId = resolvedParams.id
+
+  const session = await requirePermission(request as any, PERMISSIONS.MANAGE_CRM)
+  if (session instanceof NextResponse) return session
+
+  const tenantId = (session.user as any).tenantId
+
+  try {
+    await deleteCampaign(tenantId, trackingId)
+    return NextResponse.json({ success: true })
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 400 })
   }

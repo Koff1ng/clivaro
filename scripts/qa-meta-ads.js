@@ -1,30 +1,38 @@
 const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const p = new PrismaClient();
 
-async function verify() {
+(async () => {
+  // Check remaining master tables
+  const checks = ['User', 'Plan', 'Role', 'Permission', 'Subscription', 'Account', 'Session'];
+  console.log('=== MASTER TABLES STATUS ===');
+  for (const table of checks) {
+    try {
+      const r = await p['$queryRawUnsafe'](`SELECT COUNT(*) as c FROM "public"."${table}"`);
+      console.log(`  ${table}: ${Number(r[0].c)} rows`);
+    } catch(e) { console.log(`  ${table}: ERROR`); }
+  }
+
+  // Check if Users exist in tenant schemas
+  console.log('\n=== USERS IN tenant_prueba ===');
   try {
-    const c1 = await prisma.metaAdsConfig.findMany();
-    console.log('MetaAdsConfig: OK, rows=' + c1.length);
-  } catch (e) { console.log('MetaAdsConfig: FAIL -', e.message.split('\n').pop()); }
+    const users = await p['$queryRawUnsafe'](`SELECT id, email, name, "tenantId" FROM "tenant_prueba"."User" LIMIT 5`);
+    console.log(`  Found ${users.length} users:`);
+    users.forEach(u => console.log(`  - ${u.email} (${u.name}) tenantId=${u.tenantId}`));
+  } catch(e) { console.log('  No User table or error'); }
 
+  // Check Plans in tenant schemas
+  console.log('\n=== PLANS ===');
   try {
-    const c2 = await prisma.metaAdsCampaign.findMany();
-    console.log('MetaAdsCampaign: OK, rows=' + c2.length);
-  } catch (e) { console.log('MetaAdsCampaign: FAIL -', e.message.split('\n').pop()); }
+    const plans = await p['$queryRawUnsafe'](`SELECT id, name FROM "tenant_prueba"."Plan" LIMIT 5`);
+    plans.forEach(pl => console.log(`  - ${pl.name}`));
+  } catch(e) { console.log('  No Plan table or error'); }
 
+  // Check Roles in tenant schemas
+  console.log('\n=== ROLES IN tenant_prueba ===');
   try {
-    const t = await prisma.metaAdsConfig.create({ data: { tenantId: '__v__', accessToken: 'x', adAccountId: 'act_x' }});
-    await prisma.metaAdsConfig.delete({ where: { id: t.id }});
-    console.log('CRUD Config: OK');
-  } catch (e) { console.log('CRUD Config: FAIL -', e.message.split('\n').pop()); }
+    const roles = await p['$queryRawUnsafe'](`SELECT id, name FROM "tenant_prueba"."Role" LIMIT 10`);
+    roles.forEach(r => console.log(`  - ${r.name}`));
+  } catch(e) { console.log('  No Role table or error'); }
 
-  try {
-    const t = await prisma.metaAdsCampaign.create({ data: { tenantId: '__v__', trackingId: 'v1', name: 'V', objective: 'X', dailyBudget: 1, payload: {}, createdById: 'v' }});
-    await prisma.metaAdsCampaign.update({ where: { id: t.id }, data: { status: 'ACTIVE' }});
-    await prisma.metaAdsCampaign.delete({ where: { id: t.id }});
-    console.log('CRUD Campaign: OK');
-  } catch (e) { console.log('CRUD Campaign: FAIL -', e.message.split('\n').pop()); }
-
-  await prisma['$disconnect']();
-}
-verify();
+  await p['$disconnect']();
+})();

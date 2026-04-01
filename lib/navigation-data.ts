@@ -5,6 +5,7 @@ import {
     Users,
     Target,
     Megaphone,
+    Radio,
     ShoppingCart,
     Banknote,
     FileText,
@@ -60,7 +61,7 @@ export const menuGroups: MenuGroup[] = [
         items: [
             { href: '/marketing/leads', label: 'Oportunidades', icon: Target, permission: 'manage_crm', planFeature: 'marketing' },
             { href: '/marketing/campaigns', label: 'Campañas', icon: Megaphone, permission: 'manage_crm', planFeature: 'marketing' },
-            { href: '/marketing/meta-ads', label: 'Meta Ads', icon: Megaphone, permission: 'manage_crm', planFeature: 'marketing' },
+            { href: '/marketing/meta-ads', label: 'Meta Ads', icon: Radio, permission: 'manage_crm', planFeature: 'marketing' },
             { href: '/marketing/inbox', label: 'Inbox', icon: Inbox, permission: 'manage_crm', planFeature: 'marketing' },
         ]
     },

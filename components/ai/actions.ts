@@ -110,7 +110,29 @@ export async function getAssistantResponse(
             return { inventoryContext, salesContext, accountingContext };
         });
 
-        discoveredContext = `${ragData.inventoryContext}${ragData.salesContext}${ragData.accountingContext}`;
+        // Meta Ads context (from master DB)
+        let metaAdsContext = "";
+        if (query.includes("meta") || query.includes("facebook") || query.includes("instagram") || query.includes("campaña") || query.includes("anuncio") || query.includes("ads") || query.includes("publicidad")) {
+            try {
+                const { prisma: masterPrisma } = require('@/lib/db');
+                const campaigns = await masterPrisma.metaAdsCampaign?.findMany?.({
+                    where: { tenantId },
+                    take: 5,
+                    orderBy: { createdAt: 'desc' },
+                    select: { name: true, status: true, objective: true, dailyBudget: true, createdAt: true }
+                }) || [];
+                
+                if (campaigns.length > 0) {
+                    metaAdsContext = "\nCAMPAÑAS META ADS ACTIVAS:\n" + campaigns.map((c: any) =>
+                        `- ${c.name} | Estado: ${c.status} | Objetivo: ${c.objective} | Presupuesto: $${c.dailyBudget}/día`
+                    ).join("\n");
+                } else {
+                    metaAdsContext = "\nMETA ADS: El usuario no tiene campañas creadas aún.";
+                }
+            } catch { /* Meta Ads tables might not exist yet */ }
+        }
+
+        discoveredContext = `${ragData.inventoryContext}${ragData.salesContext}${ragData.accountingContext}${metaAdsContext}`;
 
         const userRoles = (session.user as any).roles;
         const rolesStr = Array.isArray(userRoles) ? userRoles.join(', ') : 'Ninguno';
@@ -146,6 +168,7 @@ Utiliza estos nombres exactos para referirte a las secciones:
   - Clientes: **Marketing -> Clientes** -> \`/crm/customers\`
   - Oportunidades: **Marketing -> Oportunidades** -> \`/crm/leads\`
   - Campañas: **Marketing -> Campañas** -> \`/marketing/campaigns\`
+  - Meta Ads: **Marketing -> Meta Ads** -> \`/marketing/meta-ads\`
 
 - **Ventas / Punto de Venta (POS):**
   - Punto de Venta: **Ventas -> Punto de Venta** -> \`/pos\`
@@ -178,7 +201,8 @@ Ejemplo: "Puedes ver las facturas en **POS -> Facturas**. {{ACTION:Ver Facturas|
 
 **REGLAS DE ORO:**
 1. NO USES RUTAS TÉCNICAS en el texto descriptivo.
-2. Si no sabes algo, remite a gerencia@clientumstudio.com.`;
+2. Si no sabes algo, remite a gerencia@clientumstudio.com.
+3. Si el usuario quiere crear una campaña de Facebook/Instagram, usa el formato {{META_ADS_CREATE:json}} con un JSON que contenga: name, objective (OUTCOME_AWARENESS/OUTCOME_TRAFFIC/OUTCOME_ENGAGEMENT/OUTCOME_LEADS/OUTCOME_SALES), headline, bodyText, linkUrl, dailyBudget (en COP), targetCountries (ej ["CO"]). Solo sugiere esto cuando el usuario explícitamente quiere crear una campaña.`;
 
         // --- 3. Llamada a Groq ---
         const messages: ChatMessage[] = [
