@@ -1,1003 +1,244 @@
 'use client'
 
-import { useState } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
+import { useState, useEffect, useCallback } from 'react'
 import { Badge } from '@/components/ui/badge'
+import { cn } from '@/lib/utils'
 import {
   LayoutDashboard,
-  Package,
-  Warehouse,
-  Users,
   FileText,
-  ShoppingCart,
-  Wallet,
-  TrendingUp,
-  AlertTriangle,
-  DollarSign,
   BarChart3,
-  PieChart,
-  Building2,
-  ShoppingBag,
-  PackageCheck,
-  Target,
   Mail,
-  UserCog,
-  FileCheck,
-  Receipt,
-  Search,
-  Plus,
-  MoreVertical,
-  Edit,
-  Trash2,
-  Eye
+  Settings,
+  BookOpen,
+  Package,
+  Layers,
+  ChevronLeft,
+  ChevronRight,
+  Maximize2,
+  X
 } from 'lucide-react'
-import { Logo } from '@/components/ui/logo'
-import { cn } from '@/lib/utils'
 
-type Section =
-  | 'dashboard'
-  | 'products'
-  | 'inventory'
-  | 'customers'
-  | 'quotes'
-  | 'invoices'
-  | 'pos'
-  | 'cash'
-  | 'suppliers'
-  | 'purchases'
-  | 'receipts'
-  | 'leads'
-  | 'campaigns'
-  | 'users'
-
-const menuItems = [
-  { id: 'dashboard' as Section, label: 'Dashboard', icon: LayoutDashboard },
-  { id: 'products' as Section, label: 'Productos', icon: Package },
-  { id: 'inventory' as Section, label: 'Inventario', icon: Warehouse },
-  { id: 'customers' as Section, label: 'Clientes', icon: Users },
-  { id: 'leads' as Section, label: 'Oportunidades', icon: Target },
-  { id: 'campaigns' as Section, label: 'Campañas', icon: Mail },
-  { id: 'quotes' as Section, label: 'Cotizaciones', icon: FileCheck },
-  { id: 'invoices' as Section, label: 'Facturas', icon: Receipt },
-  { id: 'suppliers' as Section, label: 'Proveedores', icon: Building2 },
-  { id: 'purchases' as Section, label: 'Órdenes Compra', icon: ShoppingBag },
-  { id: 'receipts' as Section, label: 'Recepciones', icon: PackageCheck },
-  { id: 'pos' as Section, label: 'Punto de Venta', icon: ShoppingCart },
-  { id: 'cash' as Section, label: 'Caja', icon: Wallet },
-  { id: 'users' as Section, label: 'Usuarios', icon: UserCog },
+const screens = [
+  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, src: '/assets/images_ERP/Dashboard.png', color: 'from-blue-500 to-cyan-500' },
+  { id: 'facturas', label: 'Facturación', icon: FileText, src: '/assets/images_ERP/Facturas.png', color: 'from-indigo-500 to-purple-500' },
+  { id: 'inventario', label: 'Inventario', icon: Package, src: '/assets/images_ERP/inventario.png', color: 'from-emerald-500 to-teal-500' },
+  { id: 'items', label: 'Productos', icon: Layers, src: '/assets/images_ERP/items.png', color: 'from-orange-500 to-amber-500' },
+  { id: 'contabilidad', label: 'Contabilidad', icon: BookOpen, src: '/assets/images_ERP/contabilidad.png', color: 'from-violet-500 to-fuchsia-500' },
+  { id: 'reportes', label: 'Reportes', icon: BarChart3, src: '/assets/images_ERP/Reportes.png', color: 'from-rose-500 to-pink-500' },
+  { id: 'campanas', label: 'Marketing', icon: Mail, src: '/assets/images_ERP/Campañas_email.png', color: 'from-sky-500 to-blue-500' },
+  { id: 'configuracion', label: 'Configuración', icon: Settings, src: '/assets/images_ERP/configuracion.png', color: 'from-slate-500 to-gray-600' },
 ]
 
 export function SoftwarePreview() {
-  const [activeSection, setActiveSection] = useState<Section>('dashboard')
+  const [active, setActive] = useState(0)
+  const [isFullscreen, setIsFullscreen] = useState(false)
+  const [isPaused, setIsPaused] = useState(false)
 
-  const getSectionUrl = (section: Section) => {
-    const urls: Record<Section, string> = {
-      dashboard: 'clivaro.app/dashboard',
-      products: 'clivaro.app/products',
-      inventory: 'clivaro.app/inventory',
-      customers: 'clivaro.app/crm/customers',
-      quotes: 'clivaro.app/sales/quotes',
-      invoices: 'clivaro.app/sales/invoices',
-      pos: 'clivaro.app/pos',
-      cash: 'clivaro.app/cash/shifts',
-      suppliers: 'clivaro.app/purchases/suppliers',
-      purchases: 'clivaro.app/purchases/orders',
-      receipts: 'clivaro.app/purchases/receipts',
-      leads: 'clivaro.app/crm/leads',
-      campaigns: 'clivaro.app/marketing/campaigns',
-      users: 'clivaro.app/admin/users',
-    }
-    return urls[section]
-  }
+  // Auto-rotate every 4 seconds
+  useEffect(() => {
+    if (isPaused || isFullscreen) return
+    const timer = setInterval(() => {
+      setActive(prev => (prev + 1) % screens.length)
+    }, 4000)
+    return () => clearInterval(timer)
+  }, [isPaused, isFullscreen])
+
+  const goTo = useCallback((idx: number) => {
+    setActive(idx)
+    setIsPaused(true)
+    // Resume auto-rotation after 8s of inactivity
+    setTimeout(() => setIsPaused(false), 8000)
+  }, [])
+
+  const prev = () => goTo((active - 1 + screens.length) % screens.length)
+  const next = () => goTo((active + 1) % screens.length)
+
+  const currentScreen = screens[active]
 
   return (
-    <div className="relative bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 py-16">
-      <div className="mx-auto max-w-7xl px-6 lg:px-8">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl font-bold mb-4">Vista Previa del Software</h2>
-          <p className="text-gray-600 dark:text-gray-400">
-            Explora todas las funcionalidades de Clivaro. Haz clic en cualquier sección del menú para verla en acción.
-          </p>
-        </div>
+    <>
+      <div className="relative py-16">
+        <div className="mx-auto max-w-7xl px-6 lg:px-8">
+          {/* Header */}
+          <div className="text-center mb-12">
+            <Badge className="mb-4 bg-blue-100 text-blue-700">Vista Real</Badge>
+            <h2 className="text-3xl lg:text-4xl font-bold mb-4">
+              Conoce Clivaro por dentro
+            </h2>
+            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+              Capturas reales de nuestra plataforma. Sin maquetas, sin renders — así es como se ve tu nuevo ERP.
+            </p>
+          </div>
 
-        {/* Preview Container */}
-        <div className="relative bg-white dark:bg-gray-800 rounded-xl shadow-2xl overflow-hidden border border-gray-200 dark:border-gray-700">
-          {/* Browser Bar */}
-          <div className="bg-gray-100 dark:bg-gray-900 px-4 py-2 flex items-center gap-2 border-b border-gray-200 dark:border-gray-700">
-            <div className="flex gap-1.5">
-              <div className="w-3 h-3 rounded-full bg-red-500"></div>
-              <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
-              <div className="w-3 h-3 rounded-full bg-green-500"></div>
-            </div>
-            <div className="flex-1 bg-white dark:bg-gray-800 rounded px-3 py-1 text-xs text-gray-500 dark:text-gray-400 text-center">
-              {getSectionUrl(activeSection)}
+          {/* Tab Nav */}
+          <div className="flex justify-center mb-8">
+            <div className="inline-flex flex-wrap justify-center gap-2 p-1.5 bg-slate-100 rounded-2xl">
+              {screens.map((s, idx) => {
+                const Icon = s.icon
+                const isActive = idx === active
+                return (
+                  <button
+                    key={s.id}
+                    onClick={() => goTo(idx)}
+                    className={cn(
+                      'flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-300',
+                      isActive
+                        ? 'bg-white shadow-lg shadow-blue-500/10 text-blue-700 scale-105'
+                        : 'text-slate-500 hover:text-slate-700 hover:bg-white/50'
+                    )}
+                  >
+                    <Icon className="w-4 h-4" />
+                    <span className="hidden sm:inline">{s.label}</span>
+                  </button>
+                )
+              })}
             </div>
           </div>
 
-          <div className="flex h-[700px]">
-            {/* Sidebar */}
-            <div className="w-64 bg-gray-50 dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 flex flex-col">
-              {/* Logo */}
-              <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-                <Logo size="md" showByline={false} />
-              </div>
+          {/* Gallery Frame */}
+          <div
+            className="relative group"
+            onMouseEnter={() => setIsPaused(true)}
+            onMouseLeave={() => setIsPaused(false)}
+          >
+            {/* Glow effect */}
+            <div className={cn(
+              'absolute -inset-1 rounded-2xl opacity-30 blur-xl transition-all duration-700 bg-gradient-to-r',
+              currentScreen.color
+            )} />
 
-              {/* Navigation */}
-              <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-                {menuItems.map((item) => {
-                  const Icon = item.icon
-                  const isActive = activeSection === item.id
-                  return (
-                    <button
-                      key={item.id}
-                      onClick={() => setActiveSection(item.id)}
-                      className={cn(
-                        'w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200',
-                        isActive
-                          ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 shadow-sm'
-                          : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
-                      )}
-                    >
-                      <Icon className="h-5 w-5" />
-                      <span>{item.label}</span>
-                    </button>
-                  )
-                })}
-              </nav>
-
-              {/* User Info */}
-              <div className="p-4 border-t border-gray-200 dark:border-gray-700">
+            {/* Browser chrome */}
+            <div className="relative bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden">
+              {/* Title bar */}
+              <div className="flex items-center justify-between px-4 py-2.5 bg-slate-50 border-b border-slate-200">
                 <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center text-white text-sm font-semibold">
-                    A
+                  <div className="flex gap-1.5">
+                    <div className="w-3 h-3 rounded-full bg-red-400" />
+                    <div className="w-3 h-3 rounded-full bg-amber-400" />
+                    <div className="w-3 h-3 rounded-full bg-green-400" />
                   </div>
-                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Administrator</span>
+                </div>
+                <div className="flex-1 mx-4">
+                  <div className="bg-white border border-slate-200 rounded-lg px-4 py-1 text-xs text-slate-400 text-center max-w-md mx-auto">
+                    <span className="text-green-500 mr-1">🔒</span>
+                    clivaro.app/{currentScreen.id}
+                  </div>
+                </div>
+                <button
+                  onClick={() => setIsFullscreen(true)}
+                  className="p-1 rounded hover:bg-slate-200 transition-colors"
+                  title="Pantalla completa"
+                >
+                  <Maximize2 className="w-4 h-4 text-slate-400" />
+                </button>
+              </div>
+
+              {/* Screenshot container */}
+              <div className="relative aspect-[16/9] bg-slate-900 overflow-hidden">
+                {screens.map((s, idx) => (
+                  <img
+                    key={s.id}
+                    src={s.src}
+                    alt={`Clivaro ${s.label}`}
+                    className={cn(
+                      'absolute inset-0 w-full h-full object-cover object-top transition-all duration-700',
+                      idx === active
+                        ? 'opacity-100 scale-100'
+                        : 'opacity-0 scale-105'
+                    )}
+                    loading={idx < 2 ? 'eager' : 'lazy'}
+                  />
+                ))}
+
+                {/* Navigation arrows */}
+                <button
+                  onClick={prev}
+                  className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/30 backdrop-blur-sm text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 hover:bg-black/50 hover:scale-110"
+                >
+                  <ChevronLeft className="w-5 h-5" />
+                </button>
+                <button
+                  onClick={next}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/30 backdrop-blur-sm text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 hover:bg-black/50 hover:scale-110"
+                >
+                  <ChevronRight className="w-5 h-5" />
+                </button>
+
+                {/* Current label */}
+                <div className="absolute bottom-4 left-4 right-4 flex items-end justify-between">
+                  <div className="bg-black/40 backdrop-blur-sm rounded-xl px-4 py-2 text-white">
+                    <div className="flex items-center gap-2">
+                      <currentScreen.icon className="w-5 h-5" />
+                      <span className="font-bold">{currentScreen.label}</span>
+                    </div>
+                  </div>
+
+                  {/* Progress dots */}
+                  <div className="flex gap-1.5">
+                    {screens.map((_, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => goTo(idx)}
+                        className={cn(
+                          'h-1.5 rounded-full transition-all duration-500',
+                          idx === active
+                            ? 'w-6 bg-white'
+                            : 'w-1.5 bg-white/40 hover:bg-white/70'
+                        )}
+                      />
+                    ))}
+                  </div>
                 </div>
               </div>
-            </div>
-
-            {/* Main Content */}
-            <div className="flex-1 bg-white dark:bg-gray-800 p-6 overflow-y-auto">
-              {activeSection === 'dashboard' && <DashboardPreview />}
-              {activeSection === 'products' && <ProductsPreview />}
-              {activeSection === 'inventory' && <InventoryPreview />}
-              {activeSection === 'customers' && <CustomersPreview />}
-              {activeSection === 'quotes' && <QuotesPreview />}
-              {activeSection === 'invoices' && <InvoicesPreview />}
-              {activeSection === 'pos' && <POSPreview />}
-              {activeSection === 'cash' && <CashPreview />}
-              {activeSection === 'suppliers' && <SuppliersPreview />}
-              {activeSection === 'purchases' && <PurchasesPreview />}
-              {activeSection === 'receipts' && <ReceiptsPreview />}
-              {activeSection === 'leads' && <LeadsPreview />}
-              {activeSection === 'campaigns' && <CampaignsPreview />}
-              {activeSection === 'users' && <UsersPreview />}
             </div>
           </div>
         </div>
       </div>
-    </div>
-  )
-}
 
-// Preview Components
-function DashboardPreview() {
-  return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
-        <p className="text-gray-600 dark:text-gray-400">Resumen general del negocio</p>
-      </div>
-      <div className="grid grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Ventas Hoy</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">$ 190.400</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Ventas del Mes</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">$ 823.480</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Productos</CardTitle>
-            <Package className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">10</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Stock Bajo</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">2</div>
-          </CardContent>
-        </Card>
-      </div>
-      <div className="grid grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Ventas por Día del Mes</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="h-64 flex items-end justify-between gap-1">
-              {[0, 0, 0, 0, 0, 0, 0, 95, 0, 0, 0, 45, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0].map((value, index) => (
-                <div
-                  key={index}
-                  className="flex-1 bg-blue-600 rounded-t transition-all duration-500 hover:bg-blue-700"
-                  style={{ height: `${value}%`, minHeight: value > 0 ? '4px' : '2px' }}
-                />
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Ventas por Método de Pago</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="h-64 flex items-center justify-center">
-              <div className="relative w-48 h-48">
-                <svg viewBox="0 0 100 100" className="transform -rotate-90">
-                  <circle cx="50" cy="50" r="40" fill="none" stroke="#3b82f6" strokeWidth="20" strokeDasharray={`${73 * 2.513} 251.3`} />
-                  <circle cx="50" cy="50" r="40" fill="none" stroke="#f59e0b" strokeWidth="20" strokeDasharray={`${21 * 2.513} 251.3`} strokeDashoffset={`-${73 * 2.513}`} />
-                  <circle cx="50" cy="50" r="40" fill="none" stroke="#10b981" strokeWidth="20" strokeDasharray={`${6 * 2.513} 251.3`} strokeDashoffset={`-${94 * 2.513}`} />
-                </svg>
-              </div>
-            </div>
-            <div className="mt-4 space-y-2">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 rounded bg-blue-600"></div>
-                  <span className="text-sm">Efectivo: 73%</span>
-                </div>
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 rounded bg-amber-500"></div>
-                  <span className="text-sm">Transferencia: 21%</span>
-                </div>
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 rounded bg-green-500"></div>
-                  <span className="text-sm">Tarjeta: 6%</span>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
-  )
-}
+      {/* Fullscreen modal */}
+      {isFullscreen && (
+        <div
+          className="fixed inset-0 z-[200] bg-black/90 backdrop-blur-sm flex items-center justify-center p-4"
+          onClick={() => setIsFullscreen(false)}
+        >
+          <button
+            onClick={() => setIsFullscreen(false)}
+            className="absolute top-6 right-6 w-10 h-10 rounded-full bg-white/10 text-white flex items-center justify-center hover:bg-white/20 transition-colors z-10"
+          >
+            <X className="w-6 h-6" />
+          </button>
 
-function ProductsPreview() {
-  return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Productos</h1>
-          <p className="text-gray-600 dark:text-gray-400">Gestiona tu catálogo de productos</p>
-        </div>
-        <Button className="bg-gradient-to-r from-blue-600 to-indigo-600">
-          <Plus className="h-4 w-4 mr-2" />
-          Nuevo Producto
-        </Button>
-      </div>
-      <div className="flex gap-4">
-        <div className="flex-1">
-          <div className="relative mb-4">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Buscar productos..."
-              className="w-full pl-10 pr-4 py-2 border rounded-lg"
+          <div className="relative max-w-[90vw] max-h-[90vh]" onClick={e => e.stopPropagation()}>
+            <img
+              src={currentScreen.src}
+              alt={`Clivaro ${currentScreen.label}`}
+              className="max-w-full max-h-[90vh] rounded-xl shadow-2xl object-contain"
             />
+
+            {/* Fullscreen nav */}
+            <button
+              onClick={prev}
+              className="absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-white/10 text-white flex items-center justify-center hover:bg-white/20 transition-all"
+            >
+              <ChevronLeft className="w-6 h-6" />
+            </button>
+            <button
+              onClick={next}
+              className="absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-white/10 text-white flex items-center justify-center hover:bg-white/20 transition-all"
+            >
+              <ChevronRight className="w-6 h-6" />
+            </button>
+
+            {/* Bottom label */}
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/60 backdrop-blur-sm rounded-xl px-6 py-3 text-white flex items-center gap-3">
+              <currentScreen.icon className="w-5 h-5" />
+              <span className="font-bold">{currentScreen.label}</span>
+              <span className="text-white/50">|</span>
+              <span className="text-sm text-white/60">{active + 1} / {screens.length}</span>
+            </div>
           </div>
         </div>
-      </div>
-      <Card>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 dark:bg-gray-900">
-                <tr>
-                  <th className="px-4 py-3 text-left text-sm font-semibold">Nombre</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold">SKU</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold">Precio</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold">Stock</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold">Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {[1, 2, 3, 4, 5].map((i) => (
-                  <tr key={i} className="border-b hover:bg-gray-50 dark:hover:bg-gray-900">
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-gray-200 dark:bg-gray-700 rounded"></div>
-                        <div>
-                          <div className="font-medium">Producto {i}</div>
-                          <div className="text-sm text-gray-500">Categoría {i}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-sm">SKU-{i}000</td>
-                    <td className="px-4 py-3 font-semibold">$ {(i * 50000).toLocaleString()}</td>
-                    <td className="px-4 py-3">
-                      <Badge variant={i === 1 ? 'destructive' : 'default'}>
-                        {i * 25} unidades
-                      </Badge>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex gap-2">
-                        <Button variant="ghost" size="sm">
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="sm">
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  )
-}
-
-function InventoryPreview() {
-  return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Inventario</h1>
-        <p className="text-gray-600 dark:text-gray-400">Control total de tu stock</p>
-      </div>
-      <div className="grid grid-cols-3 gap-4">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm">Stock Total</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">125 unidades</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm">Productos</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">10</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm">Stock Bajo</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-600">2</div>
-          </CardContent>
-        </Card>
-      </div>
-      <Card>
-        <CardHeader>
-          <CardTitle>Productos en Stock</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {[1, 2, 3, 4, 5].map((i) => (
-              <div key={i} className="flex items-center justify-between p-4 border rounded-lg">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-gray-200 dark:bg-gray-700 rounded"></div>
-                  <div>
-                    <div className="font-medium">Producto {i}</div>
-                    <div className="text-sm text-gray-500">SKU-{i}000</div>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <div className="font-semibold">{i * 25} unidades</div>
-                  <div className={`text-sm ${i === 1 ? 'text-red-600' : 'text-green-600'}`}>
-                    {i === 1 ? 'Stock Bajo' : 'En Stock'}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  )
-}
-
-function CustomersPreview() {
-  return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Clientes</h1>
-          <p className="text-gray-600 dark:text-gray-400">Gestiona tu base de clientes</p>
-        </div>
-        <Button className="bg-gradient-to-r from-blue-600 to-indigo-600">
-          <Plus className="h-4 w-4 mr-2" />
-          Nuevo Cliente
-        </Button>
-      </div>
-      <Card>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 dark:bg-gray-900">
-                <tr>
-                  <th className="px-4 py-3 text-left text-sm font-semibold">Cliente</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold">Email</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold">Teléfono</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold">Compras</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold">Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {['Juan Pérez', 'María García', 'Carlos López'].map((name, i) => (
-                  <tr key={i} className="border-b hover:bg-gray-50 dark:hover:bg-gray-900">
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white">
-                          {name[0]}
-                        </div>
-                        <div className="font-medium">{name}</div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-sm">{name.toLowerCase().replace(' ', '.')}@email.com</td>
-                    <td className="px-4 py-3 text-sm">+57 300 {i}00 000{i}</td>
-                    <td className="px-4 py-3">
-                      <Badge>{i + 3} compras</Badge>
-                    </td>
-                    <td className="px-4 py-3">
-                      <Button variant="ghost" size="sm">
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  )
-}
-
-function QuotesPreview() {
-  return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Cotizaciones</h1>
-          <p className="text-gray-600 dark:text-gray-400">Gestiona tus cotizaciones</p>
-        </div>
-        <Button className="bg-gradient-to-r from-blue-600 to-indigo-600">
-          <Plus className="h-4 w-4 mr-2" />
-          Nueva Cotización
-        </Button>
-      </div>
-      <Card>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 dark:bg-gray-900">
-                <tr>
-                  <th className="px-4 py-3 text-left text-sm font-semibold">Número</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold">Cliente</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold">Total</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold">Estado</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold">Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {[1, 2, 3].map((i) => (
-                  <tr key={i} className="border-b hover:bg-gray-50 dark:hover:bg-gray-900">
-                    <td className="px-4 py-3 font-medium">QT-00000{i}</td>
-                    <td className="px-4 py-3">Cliente {i}</td>
-                    <td className="px-4 py-3 font-semibold">$ {(i * 150000).toLocaleString()}</td>
-                    <td className="px-4 py-3">
-                      <Badge variant={i === 1 ? 'default' : 'secondary'}>
-                        {i === 1 ? 'Enviada' : 'Pendiente'}
-                      </Badge>
-                    </td>
-                    <td className="px-4 py-3">
-                      <Button variant="ghost" size="sm">
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  )
-}
-
-function InvoicesPreview() {
-  return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Facturas</h1>
-          <p className="text-gray-600 dark:text-gray-400">Gestiona tus facturas</p>
-        </div>
-        <Button className="bg-gradient-to-r from-blue-600 to-indigo-600">
-          <Plus className="h-4 w-4 mr-2" />
-          Nueva Factura
-        </Button>
-      </div>
-      <Card>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 dark:bg-gray-900">
-                <tr>
-                  <th className="px-4 py-3 text-left text-sm font-semibold">Número</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold">Cliente</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold">Total</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold">Estado</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold">Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {[1, 2, 3].map((i) => (
-                  <tr key={i} className="border-b hover:bg-gray-50 dark:hover:bg-gray-900">
-                    <td className="px-4 py-3 font-medium">INV-00000{i}</td>
-                    <td className="px-4 py-3">Cliente {i}</td>
-                    <td className="px-4 py-3 font-semibold">$ {(i * 200000).toLocaleString()}</td>
-                    <td className="px-4 py-3">
-                      <Badge variant="default" className="bg-green-600">
-                        Pagada
-                      </Badge>
-                    </td>
-                    <td className="px-4 py-3">
-                      <Button variant="ghost" size="sm">
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  )
-}
-
-function POSPreview() {
-  return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Punto de Venta</h1>
-        <p className="text-gray-600 dark:text-gray-400">Ventas rápidas y eficientes</p>
-      </div>
-      <div className="grid grid-cols-3 gap-6">
-        <div className="col-span-2 space-y-4">
-          <div className="relative mb-4">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Buscar productos..."
-              className="w-full pl-10 pr-4 py-2 border rounded-lg"
-            />
-          </div>
-          <Card>
-            <CardHeader>
-              <CardTitle>Productos</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-3 gap-3">
-                {[1, 2, 3, 4, 5, 6].map((i) => (
-                  <div key={i} className="p-4 border rounded-lg hover:border-blue-500 transition-colors cursor-pointer">
-                    <div className="w-full h-24 bg-gray-100 dark:bg-gray-700 rounded mb-2"></div>
-                    <div className="text-sm font-medium">Producto {i}</div>
-                    <div className="text-xs text-gray-500">$ {(i * 10000).toLocaleString()}</div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-        <div className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Carrito</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                <div className="flex justify-between items-center p-2 bg-gray-50 dark:bg-gray-900 rounded">
-                  <span className="text-sm">Producto 1 x2</span>
-                  <span className="font-semibold">$ 20.000</span>
-                </div>
-                <div className="border-t pt-3">
-                  <div className="flex justify-between font-bold text-lg">
-                    <span>Total</span>
-                    <span>$ 20.000</span>
-                  </div>
-                </div>
-                <Button className="w-full bg-gradient-to-r from-blue-600 to-indigo-600">
-                  Procesar Venta
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function CashPreview() {
-  return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Caja</h1>
-        <p className="text-gray-600 dark:text-gray-400">Gestión de turnos y movimientos de caja</p>
-      </div>
-      <div className="grid grid-cols-3 gap-4">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm">Efectivo en Caja</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">$ 500.000</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm">Ventas del Día</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">$ 190.400</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm">Estado</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Badge className="bg-green-600">Turno Abierto</Badge>
-          </CardContent>
-        </Card>
-      </div>
-      <Card>
-        <CardHeader>
-          <CardTitle>Movimientos Recientes</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="flex justify-between items-center p-3 border rounded-lg">
-                <div>
-                  <div className="font-medium">Venta #{i}</div>
-                  <div className="text-sm text-gray-500">Hace {i} horas</div>
-                </div>
-                <div className="font-semibold text-green-600">+$ {(i * 50000).toLocaleString()}</div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  )
-}
-
-function SuppliersPreview() {
-  return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Proveedores</h1>
-          <p className="text-gray-600 dark:text-gray-400">Gestiona tus proveedores</p>
-        </div>
-        <Button className="bg-gradient-to-r from-blue-600 to-indigo-600">
-          <Plus className="h-4 w-4 mr-2" />
-          Nuevo Proveedor
-        </Button>
-      </div>
-      <Card>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 dark:bg-gray-900">
-                <tr>
-                  <th className="px-4 py-3 text-left text-sm font-semibold">Proveedor</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold">Contacto</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold">Órdenes</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold">Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {[1, 2, 3].map((i) => (
-                  <tr key={i} className="border-b hover:bg-gray-50 dark:hover:bg-gray-900">
-                    <td className="px-4 py-3 font-medium">Proveedor {i}</td>
-                    <td className="px-4 py-3 text-sm">contacto{i}@proveedor.com</td>
-                    <td className="px-4 py-3">
-                      <Badge>{i + 2} órdenes</Badge>
-                    </td>
-                    <td className="px-4 py-3">
-                      <Button variant="ghost" size="sm">
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  )
-}
-
-function PurchasesPreview() {
-  return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Órdenes de Compra</h1>
-          <p className="text-gray-600 dark:text-gray-400">Gestiona tus órdenes de compra</p>
-        </div>
-        <Button className="bg-gradient-to-r from-blue-600 to-indigo-600">
-          <Plus className="h-4 w-4 mr-2" />
-          Nueva Orden
-        </Button>
-      </div>
-      <Card>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 dark:bg-gray-900">
-                <tr>
-                  <th className="px-4 py-3 text-left text-sm font-semibold">Número</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold">Proveedor</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold">Total</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold">Estado</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold">Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {[1, 2, 3].map((i) => (
-                  <tr key={i} className="border-b hover:bg-gray-50 dark:hover:bg-gray-900">
-                    <td className="px-4 py-3 font-medium">OC-00000{i}</td>
-                    <td className="px-4 py-3">Proveedor {i}</td>
-                    <td className="px-4 py-3 font-semibold">$ {(i * 300000).toLocaleString()}</td>
-                    <td className="px-4 py-3">
-                      <Badge variant={i === 1 ? 'default' : 'secondary'}>
-                        {i === 1 ? 'Recibida' : 'Pendiente'}
-                      </Badge>
-                    </td>
-                    <td className="px-4 py-3">
-                      <Button variant="ghost" size="sm">
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  )
-}
-
-function ReceiptsPreview() {
-  return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Recepciones</h1>
-          <p className="text-gray-600 dark:text-gray-400">Gestiona las recepciones de mercancía</p>
-        </div>
-        <Button className="bg-gradient-to-r from-blue-600 to-indigo-600">
-          <Plus className="h-4 w-4 mr-2" />
-          Nueva Recepción
-        </Button>
-      </div>
-      <Card>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 dark:bg-gray-900">
-                <tr>
-                  <th className="px-4 py-3 text-left text-sm font-semibold">Número</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold">Orden</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold">Fecha</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold">Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {[1, 2, 3].map((i) => (
-                  <tr key={i} className="border-b hover:bg-gray-50 dark:hover:bg-gray-900">
-                    <td className="px-4 py-3 font-medium">REC-00000{i}</td>
-                    <td className="px-4 py-3">OC-00000{i}</td>
-                    <td className="px-4 py-3 text-sm">01/0{i}/2026</td>
-                    <td className="px-4 py-3">
-                      <Button variant="ghost" size="sm">
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  )
-}
-
-function LeadsPreview() {
-  return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Oportunidades</h1>
-          <p className="text-gray-600 dark:text-gray-400">Gestiona tus oportunidades de venta</p>
-        </div>
-        <Button className="bg-gradient-to-r from-blue-600 to-indigo-600">
-          <Plus className="h-4 w-4 mr-2" />
-          Nueva Oportunidad
-        </Button>
-      </div>
-      <Card>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 dark:bg-gray-900">
-                <tr>
-                  <th className="px-4 py-3 text-left text-sm font-semibold">Oportunidad</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold">Cliente</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold">Valor</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold">Estado</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold">Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {[1, 2, 3].map((i) => (
-                  <tr key={i} className="border-b hover:bg-gray-50 dark:hover:bg-gray-900">
-                    <td className="px-4 py-3 font-medium">Oportunidad {i}</td>
-                    <td className="px-4 py-3">Cliente {i}</td>
-                    <td className="px-4 py-3 font-semibold">$ {(i * 250000).toLocaleString()}</td>
-                    <td className="px-4 py-3">
-                      <Badge variant={i === 1 ? 'default' : 'secondary'}>
-                        {i === 1 ? 'Calificada' : 'Nueva'}
-                      </Badge>
-                    </td>
-                    <td className="px-4 py-3">
-                      <Button variant="ghost" size="sm">
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  )
-}
-
-function CampaignsPreview() {
-  return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Campañas</h1>
-          <p className="text-gray-600 dark:text-gray-400">Gestiona tus campañas de marketing</p>
-        </div>
-        <Button className="bg-gradient-to-r from-blue-600 to-indigo-600">
-          <Plus className="h-4 w-4 mr-2" />
-          Nueva Campaña
-        </Button>
-      </div>
-      <div className="grid grid-cols-3 gap-4">
-        {[1, 2, 3].map((i) => (
-          <Card key={i} className="cursor-pointer hover:shadow-lg transition-shadow">
-            <CardContent className="p-6">
-              <div className="h-32 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg mb-4 flex items-center justify-center text-white font-bold">
-                Campaña {i}
-              </div>
-              <div className="font-semibold mb-2">Campaña Promocional {i}</div>
-              <div className="text-sm text-gray-500 mb-4">Enviada a {i * 50} clientes</div>
-              <Badge variant="default">Activa</Badge>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-function UsersPreview() {
-  return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Usuarios</h1>
-          <p className="text-gray-600 dark:text-gray-400">Gestiona los usuarios del sistema</p>
-        </div>
-        <Button className="bg-gradient-to-r from-blue-600 to-indigo-600">
-          <Plus className="h-4 w-4 mr-2" />
-          Nuevo Usuario
-        </Button>
-      </div>
-      <Card>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 dark:bg-gray-900">
-                <tr>
-                  <th className="px-4 py-3 text-left text-sm font-semibold">Usuario</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold">Rol</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold">Estado</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold">Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {['Administrator', 'Vendedor', 'Cajero'].map((role, i) => (
-                  <tr key={i} className="border-b hover:bg-gray-50 dark:hover:bg-gray-900">
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white">
-                          {role[0]}
-                        </div>
-                        <div>
-                          <div className="font-medium">Usuario {i + 1}</div>
-                          <div className="text-sm text-gray-500">usuario{i + 1}@clivaro.com</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <Badge>{role}</Badge>
-                    </td>
-                    <td className="px-4 py-3">
-                      <Badge variant="default" className="bg-green-600">Activo</Badge>
-                    </td>
-                    <td className="px-4 py-3">
-                      <Button variant="ghost" size="sm">
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+      )}
+    </>
   )
 }
