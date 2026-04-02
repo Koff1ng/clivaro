@@ -10,7 +10,7 @@ export async function getTenantActivePlan(tenantId: string): Promise<PlanName | 
     const subscription = await prisma.subscription.findFirst({
       where: {
         tenantId: tenantId,
-        status: 'active',
+        status: { in: ['active', 'trial'] },
       },
       include: {
         plan: true,
@@ -25,6 +25,10 @@ export async function getTenantActivePlan(tenantId: string): Promise<PlanName | 
     // Verificar si la suscripción está vigente
     const now = new Date()
     if (subscription.endDate && new Date(subscription.endDate) < now) {
+      return null
+    }
+    // Verificar si el trial expiró
+    if (subscription.status === 'trial' && subscription.trialEndDate && new Date(subscription.trialEndDate) < now) {
       return null
     }
 
