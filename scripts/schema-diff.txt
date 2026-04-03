@@ -1,0 +1,16 @@
+DB:95 SQL:82
+MISSING FROM TEMPLATE:
+  +MetaAdsCampaign
+  +MetaAdsConfig
+  +OpportunityActivity
+  +PipelineStage
+  +PurchaseOrderAttachment
+  +RestaurantConfig
+  +RestaurantTable
+  +RestaurantZone
+  +TableOrder
+  +TableOrderLine
+  +TableSession
+  +TenantEmailConfig
+  +WaiterProfile
+EXTRA IN TEMPLATE:

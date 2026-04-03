@@ -2256,3 +2256,247 @@ ALTER TABLE "_ProductTaxes" ADD CONSTRAINT "_ProductTaxes_A_fkey" FOREIGN KEY ("
 -- AddForeignKey
 ALTER TABLE "_ProductTaxes" ADD CONSTRAINT "_ProductTaxes_B_fkey" FOREIGN KEY ("B") REFERENCES "TaxRate"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
+
+
+-- ========================================
+-- ADDED TABLES (auto-synced from tenant_prueba)
+-- Generated: 2026-04-03T05:55:49.116Z
+-- ========================================
+
+CREATE TABLE "MetaAdsCampaign" (
+    "id" TEXT NOT NULL DEFAULT concat('cuid_', gen_random_uuid()),
+    "tenantId" TEXT NOT NULL,
+    "trackingId" TEXT NOT NULL,
+    "metaCampaignId" TEXT,
+    "metaAdSetId" TEXT,
+    "metaAdId" TEXT,
+    "status" TEXT NOT NULL DEFAULT 'PROCESSING',
+    "name" TEXT NOT NULL,
+    "objective" TEXT NOT NULL,
+    "dailyBudget" DOUBLE PRECISION NOT NULL,
+    "errorMessage" TEXT,
+    "payload" JSONB NOT NULL,
+    "createdById" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "MetaAdsCampaign_pkey" PRIMARY KEY ("id")
+);
+
+CREATE TABLE "MetaAdsConfig" (
+    "id" TEXT NOT NULL DEFAULT concat('cuid_', gen_random_uuid()),
+    "tenantId" TEXT NOT NULL,
+    "accessToken" TEXT NOT NULL,
+    "adAccountId" TEXT NOT NULL,
+    "pageId" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "MetaAdsConfig_pkey" PRIMARY KEY ("id")
+);
+
+CREATE TABLE "OpportunityActivity" (
+    "id" TEXT NOT NULL DEFAULT (gen_random_uuid()),
+    "type" TEXT NOT NULL,
+    "content" TEXT,
+    "metadata" TEXT,
+    "opportunityId" TEXT NOT NULL,
+    "createdById" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "OpportunityActivity_pkey" PRIMARY KEY ("id")
+);
+
+CREATE TABLE "PipelineStage" (
+    "id" TEXT NOT NULL DEFAULT (gen_random_uuid()),
+    "name" TEXT NOT NULL,
+    "color" TEXT NOT NULL DEFAULT '#6366f1',
+    "order" INTEGER NOT NULL DEFAULT 0,
+    "isDefault" BOOLEAN NOT NULL DEFAULT false,
+    "isWon" BOOLEAN NOT NULL DEFAULT false,
+    "isLost" BOOLEAN NOT NULL DEFAULT false,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "PipelineStage_pkey" PRIMARY KEY ("id")
+);
+
+CREATE TABLE "PurchaseOrderAttachment" (
+    "id" TEXT NOT NULL DEFAULT (gen_random_uuid()),
+    "purchaseOrderId" TEXT NOT NULL,
+    "fileName" TEXT NOT NULL,
+    "fileUrl" TEXT NOT NULL,
+    "fileType" TEXT NOT NULL DEFAULT 'OTRO',
+    "fileSize" INTEGER NOT NULL DEFAULT 0,
+    "mimeType" TEXT NOT NULL DEFAULT 'application/octet-stream',
+    "notes" TEXT,
+    "uploadedById" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "PurchaseOrderAttachment_pkey" PRIMARY KEY ("id")
+);
+
+CREATE TABLE "RestaurantConfig" (
+    "id" TEXT NOT NULL,
+    "tenantId" TEXT NOT NULL,
+    "isActive" BOOLEAN NOT NULL DEFAULT false,
+    "alegraBusinessId" TEXT,
+    "alegraEmail" TEXT,
+    "alegraToken" TEXT,
+    "alegraEnabled" BOOLEAN NOT NULL DEFAULT false,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "RestaurantConfig_pkey" PRIMARY KEY ("id")
+);
+
+CREATE TABLE "RestaurantTable" (
+    "id" TEXT NOT NULL,
+    "tenantId" TEXT NOT NULL,
+    "zoneId" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "capacity" INTEGER NOT NULL DEFAULT 2,
+    "status" TEXT NOT NULL DEFAULT 'AVAILABLE',
+    "x" INTEGER NOT NULL DEFAULT 0,
+    "y" INTEGER NOT NULL DEFAULT 0,
+    "active" BOOLEAN NOT NULL DEFAULT true,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "RestaurantTable_pkey" PRIMARY KEY ("id")
+);
+
+CREATE TABLE "RestaurantZone" (
+    "id" TEXT NOT NULL,
+    "tenantId" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "description" TEXT,
+    "active" BOOLEAN NOT NULL DEFAULT true,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "RestaurantZone_pkey" PRIMARY KEY ("id")
+);
+
+CREATE TABLE "TableOrder" (
+    "id" TEXT NOT NULL,
+    "tenantId" TEXT NOT NULL,
+    "sessionId" TEXT NOT NULL,
+    "waiterId" TEXT NOT NULL,
+    "status" TEXT NOT NULL DEFAULT 'PENDING',
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "TableOrder_pkey" PRIMARY KEY ("id")
+);
+
+CREATE TABLE "TableOrderLine" (
+    "id" TEXT NOT NULL,
+    "orderId" TEXT NOT NULL,
+    "productId" TEXT NOT NULL,
+    "variantId" TEXT,
+    "quantity" DOUBLE PRECISION NOT NULL,
+    "unitPrice" DOUBLE PRECISION NOT NULL,
+    "notes" TEXT,
+    "status" TEXT NOT NULL DEFAULT 'PENDING',
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "TableOrderLine_pkey" PRIMARY KEY ("id")
+);
+
+CREATE TABLE "TableSession" (
+    "id" TEXT NOT NULL,
+    "tenantId" TEXT NOT NULL,
+    "tableId" TEXT NOT NULL,
+    "waiterId" TEXT NOT NULL,
+    "status" TEXT NOT NULL DEFAULT 'OPEN',
+    "openedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "closedAt" TIMESTAMP(3),
+    "totalAmount" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "tipAmount" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "TableSession_pkey" PRIMARY KEY ("id")
+);
+
+CREATE TABLE "TenantEmailConfig" (
+    "id" TEXT NOT NULL,
+    "tenantId" TEXT NOT NULL,
+    "resendDomainId" TEXT NOT NULL,
+    "domain" TEXT NOT NULL,
+    "fromEmail" TEXT NOT NULL,
+    "fromName" TEXT NOT NULL,
+    "dnsRecords" JSONB NOT NULL,
+    "verified" BOOLEAN NOT NULL DEFAULT false,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "TenantEmailConfig_pkey" PRIMARY KEY ("id")
+);
+
+CREATE TABLE "WaiterProfile" (
+    "id" TEXT NOT NULL,
+    "tenantId" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "code" TEXT NOT NULL,
+    "pin" TEXT NOT NULL,
+    "active" BOOLEAN NOT NULL DEFAULT true,
+    "lastLogin" TIMESTAMP(3),
+    "failedAttempts" INTEGER NOT NULL DEFAULT 0,
+    "lockedUntil" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "WaiterProfile_pkey" PRIMARY KEY ("id")
+);
+
+CREATE UNIQUE INDEX "MetaAdsCampaign_trackingId_key" ON "MetaAdsCampaign" USING btree ("trackingId");
+
+CREATE INDEX "MetaAdsCampaign_tenantId_idx" ON "MetaAdsCampaign" USING btree ("tenantId");
+
+CREATE UNIQUE INDEX "MetaAdsConfig_tenantId_key" ON "MetaAdsConfig" USING btree ("tenantId");
+
+CREATE INDEX "OpportunityActivity_opportunityId_idx" ON "OpportunityActivity" USING btree ("opportunityId");
+
+CREATE INDEX "PipelineStage_order_idx" ON "PipelineStage" USING btree ("order");
+
+CREATE UNIQUE INDEX "RestaurantConfig_tenantId_key" ON "RestaurantConfig" USING btree ("tenantId");
+
+CREATE INDEX "RestaurantTable_tenantId_idx" ON "RestaurantTable" USING btree ("tenantId");
+
+CREATE INDEX "TableOrder_sessionId_idx" ON "TableOrder" USING btree ("sessionId");
+
+CREATE INDEX "TableOrderLine_orderId_idx" ON "TableOrderLine" USING btree ("orderId");
+
+CREATE INDEX "TableSession_tenantId_status_idx" ON "TableSession" USING btree ("tenantId", status);
+
+CREATE INDEX "TableSession_tableId_idx" ON "TableSession" USING btree ("tableId");
+
+CREATE UNIQUE INDEX "TenantEmailConfig_tenantId_key" ON "TenantEmailConfig" USING btree ("tenantId");
+
+CREATE UNIQUE INDEX "WaiterProfile_tenantId_code_key" ON "WaiterProfile" USING btree ("tenantId", code);
+
+CREATE INDEX "WaiterProfile_tenantId_idx" ON "WaiterProfile" USING btree ("tenantId");
+
+ALTER TABLE "TenantEmailConfig" ADD CONSTRAINT "TenantEmailConfig_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES "Tenant"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+ALTER TABLE "RestaurantTable" ADD CONSTRAINT "RestaurantTable_zoneId_fkey" FOREIGN KEY ("zoneId") REFERENCES "RestaurantZone"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+ALTER TABLE "TableSession" ADD CONSTRAINT "TableSession_tableId_fkey" FOREIGN KEY ("tableId") REFERENCES "RestaurantTable"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+ALTER TABLE "TableSession" ADD CONSTRAINT "TableSession_waiterId_fkey" FOREIGN KEY ("waiterId") REFERENCES "WaiterProfile"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+ALTER TABLE "TableOrder" ADD CONSTRAINT "TableOrder_sessionId_fkey" FOREIGN KEY ("sessionId") REFERENCES "TableSession"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+ALTER TABLE "TableOrder" ADD CONSTRAINT "TableOrder_waiterId_fkey" FOREIGN KEY ("waiterId") REFERENCES "WaiterProfile"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+ALTER TABLE "TableOrderLine" ADD CONSTRAINT "TableOrderLine_orderId_fkey" FOREIGN KEY ("orderId") REFERENCES "TableOrder"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+ALTER TABLE "TableOrderLine" ADD CONSTRAINT "TableOrderLine_productId_fkey" FOREIGN KEY ("productId") REFERENCES "Product"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+ALTER TABLE "PurchaseOrderAttachment" ADD CONSTRAINT "PurchaseOrderAttachment_purchaseOrderId_fkey" FOREIGN KEY ("purchaseOrderId") REFERENCES "PurchaseOrder"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+ALTER TABLE "OpportunityActivity" ADD CONSTRAINT "OpportunityActivity_opportunityId_fkey" FOREIGN KEY ("opportunityId") REFERENCES "Opportunity"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
