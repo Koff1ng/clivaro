@@ -4,6 +4,8 @@ import { PERMISSIONS } from '@/lib/permissions'
 import { withTenantRead, withTenantTx } from '@/lib/tenancy'
 import { z } from 'zod'
 
+export const dynamic = 'force-dynamic'
+
 const createWarehouseSchema = z.object({
   name: z.string().min(1),
   location: z.string().optional(),

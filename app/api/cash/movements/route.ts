@@ -4,6 +4,8 @@ import { PERMISSIONS } from '@/lib/permissions'
 import { withTenantRead, withTenantTx } from '@/lib/tenancy'
 import { z } from 'zod'
 
+export const dynamic = 'force-dynamic'
+
 const createMovementSchema = z.object({
   cashShiftId: z.string(),
   type: z.enum(['IN', 'OUT']),

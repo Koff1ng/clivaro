@@ -5,6 +5,8 @@ import { requireAnyPermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
 import { logger } from '@/lib/logger'
 
+export const dynamic = 'force-dynamic'
+
 const stockCheckSchema = z.object({
   warehouseId: z.string().min(1),
   items: z.array(z.object({

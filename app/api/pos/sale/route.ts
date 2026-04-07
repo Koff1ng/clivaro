@@ -12,6 +12,8 @@ import { prisma as masterPrisma } from '@/lib/db'
 import { withTenantTx } from '@/lib/tenancy'
 import { calculateGranularTaxes, TaxRateInfo } from '@/lib/taxes'
 
+export const dynamic = 'force-dynamic'
+
 // Función helper para ejecutar consultas con retry y manejo de errores de conexión
 async function executeWithRetry<T>(
   fn: () => Promise<T>,

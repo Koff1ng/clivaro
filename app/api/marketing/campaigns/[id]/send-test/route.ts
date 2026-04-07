@@ -7,6 +7,8 @@ import { sendEmail } from '@/lib/email'
 import { z } from 'zod'
 import { logger } from '@/lib/logger'
 import {
+
+export const dynamic = 'force-dynamic'
   extractImagePathsFromHtml,
   personalizeEmailHtml,
   prepareImageAttachments,

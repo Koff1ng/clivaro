@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server'
 import { withTenantTx } from '@/lib/tenancy'
 import { logger } from '@/lib/logger'
 
+export const dynamic = 'force-dynamic'
+
 export async function POST(request: Request) {
     try {
         const body = await request.json()

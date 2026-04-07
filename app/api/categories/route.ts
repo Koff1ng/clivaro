@@ -4,6 +4,8 @@ import { PERMISSIONS } from '@/lib/permissions'
 import { withTenantRead, withTenantTx } from '@/lib/tenancy'
 import { z } from 'zod'
 
+export const dynamic = 'force-dynamic'
+
 const createCategorySchema = z.object({
   name: z.string().min(1, 'El nombre de la categoría es requerido'),
 })

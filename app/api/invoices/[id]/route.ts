@@ -6,6 +6,8 @@ import { logger } from '@/lib/logger'
 import { z } from 'zod'
 import { Prisma } from '@prisma/client'
 
+export const dynamic = 'force-dynamic'
+
 const updateInvoiceSchema = z.object({
   status: z.enum(['EMITIDA', 'PAGADA', 'ANULADA', 'EN_COBRANZA', 'ISSUED', 'PAID', 'VOID', 'PARCIAL', 'PARTIAL']).optional(), // Compatibilidad con estados antiguos
   notes: z.string().optional(),

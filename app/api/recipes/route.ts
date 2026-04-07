@@ -5,6 +5,8 @@ import { withTenantRead, withTenantTx, getTenantIdFromSession } from '@/lib/tena
 import { calculateRecipeCost } from '@/lib/recipes'
 import { z } from 'zod'
 
+export const dynamic = 'force-dynamic'
+
 const recipeSchema = z.object({
     productId: z.string(),
     yield: z.number().min(0.01),

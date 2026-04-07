@@ -3,6 +3,8 @@ import { requirePermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
 import { withTenantTx, getTenantIdFromSession } from '@/lib/tenancy'
 import {
+
+export const dynamic = 'force-dynamic'
   ElectronicBillingConfig,
   sendToElectronicBilling,
   validateInvoiceData,

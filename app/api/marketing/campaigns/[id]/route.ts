@@ -5,6 +5,8 @@ import { withTenantRead, withTenantTx, getTenantIdFromSession } from '@/lib/tena
 import { z } from 'zod'
 import { logger } from '@/lib/logger'
 
+export const dynamic = 'force-dynamic'
+
 const updateCampaignSchema = z.object({
   name: z.string().min(1).optional(),
   subject: z.string().min(1).optional(),

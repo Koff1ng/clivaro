@@ -5,6 +5,8 @@ import { ensureRestaurantMode } from '@/lib/restaurant'
 import { requireAnyPermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
 
+export const dynamic = 'force-dynamic'
+
 const updateItemSchema = z.object({
   unitPrice: z.number().min(0).optional(),
   notes: z.string().optional().nullable(),

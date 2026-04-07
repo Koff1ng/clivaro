@@ -5,6 +5,8 @@ import { PERMISSIONS } from '@/lib/permissions'
 import { logger } from '@/lib/logger'
 import { ensureRestaurantMode, getWaiterFromToken } from '@/lib/restaurant'
 
+export const dynamic = 'force-dynamic'
+
 /**
  * GET: Lista todas las mesas (opcionalmente filtradas por zona).
  * Permite acceso por sesion con permiso de restaurante o por token de mesero.

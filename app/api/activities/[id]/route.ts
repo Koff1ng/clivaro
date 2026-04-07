@@ -5,6 +5,8 @@ import { withTenantTx, getTenantIdFromSession } from '@/lib/tenancy'
 import { z } from 'zod'
 import { logger } from '@/lib/logger'
 
+export const dynamic = 'force-dynamic'
+
 const updateActivitySchema = z.object({
   type: z.enum(['CALL', 'EMAIL', 'MEETING', 'TASK', 'NOTE']).optional(),
   subject: z.string().min(1).optional(),

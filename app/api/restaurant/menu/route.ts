@@ -12,6 +12,8 @@ import { PERMISSIONS } from '@/lib/permissions'
 import { getTenantPrismaClient, getTenantIdFromSession } from '@/lib/tenancy'
 import { ensureRestaurantMode, getWaiterFromToken } from '@/lib/restaurant'
 
+export const dynamic = 'force-dynamic'
+
 async function resolveContext(req: Request) {
   const tenantIdHeader = req.headers.get('x-tenant-id')
   const waiterToken = req.headers.get('x-waiter-token')

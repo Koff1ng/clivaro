@@ -9,6 +9,8 @@ import { prisma as masterPrisma } from '@/lib/db'
 import { updateStockLevel, checkStock } from '@/lib/inventory'
 import { resolveAllIngredients } from '@/lib/recipes'
 
+export const dynamic = 'force-dynamic'
+
 const paymentEntrySchema = z.object({
   method: z.enum(['CASH', 'CARD', 'TRANSFER', 'OTHER']),
   amount: z.number().positive(),

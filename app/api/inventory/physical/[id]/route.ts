@@ -5,6 +5,8 @@ import { withTenantRead, withTenantTx, getTenantIdFromSession } from '@/lib/tena
 import { z } from 'zod'
 import { logActivity } from '@/lib/activity'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET(
   request: Request,
   { params }: { params: { id: string } }

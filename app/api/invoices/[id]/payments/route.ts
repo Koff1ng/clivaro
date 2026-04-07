@@ -6,6 +6,8 @@ import { z } from 'zod'
 import { logActivity } from '@/lib/activity'
 import { logger } from '@/lib/logger'
 
+export const dynamic = 'force-dynamic'
+
 const createPaymentSchema = z.object({
   amount: z.number().min(0.01, "El monto debe ser mayor a 0"),
   // TODO: migrar a paymentMethodId dinámico igual que POS sale

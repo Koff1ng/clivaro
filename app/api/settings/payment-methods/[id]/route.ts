@@ -4,6 +4,8 @@ import { PERMISSIONS } from '@/lib/permissions'
 import { withTenantTx, getTenantIdFromSession } from '@/lib/tenancy'
 import { z } from 'zod'
 
+export const dynamic = 'force-dynamic'
+
 const updateSchema = z.object({
     name: z.string().min(1).optional(),
     type: z.enum(['CASH', 'ELECTRONIC', 'CARD', 'TRANSFER', 'CREDIT']).optional(),

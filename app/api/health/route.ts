@@ -4,6 +4,8 @@ import { logger } from '@/lib/logger'
 import { requirePermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET(request: Request) {
     // Only super-admins or high-level users should see full health
     const session = await requirePermission(request as any, PERMISSIONS.MANAGE_USERS)

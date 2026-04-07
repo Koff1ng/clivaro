@@ -5,6 +5,8 @@ import { logger } from '@/lib/logger'
 import { withTenantTx } from '@/lib/tenancy'
 import { handleError } from '@/lib/error-handler'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET(request: Request) {
     const session = await requirePermission(request as any, PERMISSIONS.VIEW_REPORTS)
 

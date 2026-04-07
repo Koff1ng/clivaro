@@ -8,6 +8,8 @@ import { toDecimal } from '@/lib/numbers'
 import { parseDateOnlyToDate } from '@/lib/date-only'
 import { logActivity } from '@/lib/activity'
 
+export const dynamic = 'force-dynamic'
+
 const createQuotationSchema = z.object({
   customerId: z.string().optional(),
   customerName: z.string().optional(),

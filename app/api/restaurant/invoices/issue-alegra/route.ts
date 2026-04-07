@@ -6,6 +6,8 @@ import { ensureRestaurantMode } from '@/lib/restaurant'
 import { requireAnyPermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
 
+export const dynamic = 'force-dynamic'
+
 const issueInvoiceSchema = z.object({
   sessionId: z.string().min(1),
   customerId: z.string().optional().nullable(),

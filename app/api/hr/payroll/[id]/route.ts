@@ -3,6 +3,8 @@ import { requirePermission } from '@/lib/api-middleware';
 import { PERMISSIONS } from '@/lib/permissions';
 import { getTenantIdFromSession, withTenantTx, withTenantRead } from '@/lib/tenancy';
 
+export const dynamic = 'force-dynamic'
+
 export async function GET(
     req: Request,
     { params }: { params: { id: string } }

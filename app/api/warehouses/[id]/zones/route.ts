@@ -4,6 +4,8 @@ import { PERMISSIONS } from '@/lib/permissions'
 import { withTenantTx, getTenantIdFromSession } from '@/lib/tenancy'
 import { z } from 'zod'
 
+export const dynamic = 'force-dynamic'
+
 const zoneSchema = z.object({
     name: z.string().min(1, 'El nombre es obligatorio'),
     description: z.string().optional().nullable(),

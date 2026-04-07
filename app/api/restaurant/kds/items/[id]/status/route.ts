@@ -6,6 +6,8 @@ import { emitRestaurantEvent } from '@/lib/events'
 import { requireAnyPermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
 
+export const dynamic = 'force-dynamic'
+
 const statusSchema = z.object({
   status: z.enum(['PENDING', 'COOKING', 'READY', 'SERVED', 'CANCELLED']),
 })

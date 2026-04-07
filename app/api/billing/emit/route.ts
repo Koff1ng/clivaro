@@ -7,6 +7,8 @@ import { handleError } from '@/lib/error-handler'
 import { sendToElectronicBilling, validateInvoiceData, InvoiceData, ElectronicBillingConfig } from '@/lib/electronic-billing'
 import { prisma as masterPrisma } from '@/lib/db'
 
+export const dynamic = 'force-dynamic'
+
 export async function POST(request: Request) {
     const session = await requirePermission(request as any, PERMISSIONS.MANAGE_SALES)
     if (session instanceof NextResponse) return session

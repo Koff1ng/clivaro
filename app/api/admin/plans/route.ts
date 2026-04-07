@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/api-middleware'
 import { prisma } from '@/lib/db'
 
+export const dynamic = 'force-dynamic'
+
 const DEFAULT_PLANS = [
   {
     name: 'Starter',

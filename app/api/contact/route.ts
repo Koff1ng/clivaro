@@ -4,6 +4,8 @@ import { sendEmail } from '@/lib/email'
 import { rateLimiters } from '@/lib/rate-limit'
 import { logger } from '@/lib/logger'
 
+export const dynamic = 'force-dynamic'
+
 const contactSchema = z.object({
   name: z.string().min(2, 'El nombre debe tener al menos 2 caracteres'),
   email: z.string().email('Correo electrónico inválido'),

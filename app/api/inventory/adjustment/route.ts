@@ -7,6 +7,8 @@ import { updateStockLevel } from '@/lib/inventory'
 import { logActivity } from '@/lib/activity'
 import { handleError } from '@/lib/error-handler'
 
+export const dynamic = 'force-dynamic'
+
 const adjustmentSchema = z.object({
   warehouseId: z.string().optional().nullable(),
   productId: z.string().optional().nullable(),

@@ -4,6 +4,8 @@ import { PERMISSIONS } from '@/lib/permissions'
 import { withTenantRead, getTenantIdFromSession } from '@/lib/tenancy'
 import { calculateRecipeCost } from '@/lib/recipes'
 
+export const dynamic = 'force-dynamic'
+
 /**
  * GET /api/recipes/calculate-cost?productId=xxx
  * Calculate the cost of a product based on its recipe

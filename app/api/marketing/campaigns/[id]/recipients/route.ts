@@ -5,6 +5,8 @@ import { withTenantRead, withTenantTx, getTenantIdFromSession } from '@/lib/tena
 import { z } from 'zod'
 import { logger } from '@/lib/logger'
 
+export const dynamic = 'force-dynamic'
+
 const addRecipientsSchema = z.object({
   customerIds: z.array(z.string()).optional(),
   emails: z.array(z.string().email()).optional(),

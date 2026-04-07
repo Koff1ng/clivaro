@@ -4,6 +4,8 @@ import { PERMISSIONS } from '@/lib/permissions'
 import { getTenantBus, RESTAURANT_EVENTS } from '@/lib/events'
 import { NextResponse } from 'next/server'
 
+export const dynamic = 'force-dynamic'
+
 /**
  * GET: Mantiene una conexión SSE abierta para recibir actualizaciones en tiempo real.
  */

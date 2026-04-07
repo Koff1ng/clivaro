@@ -6,6 +6,8 @@ import { z } from 'zod'
 import { updateStockLevel, checkStock } from '@/lib/inventory'
 import { handleError } from '@/lib/error-handler'
 
+export const dynamic = 'force-dynamic'
+
 const transferSchema = z.object({
   fromWarehouseId: z.string(),
   toWarehouseId: z.string(),

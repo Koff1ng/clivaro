@@ -7,6 +7,8 @@ import { logger } from '@/lib/logger'
 import { z } from 'zod'
 import { parseDateOnlyToDate } from '@/lib/date-only'
 
+export const dynamic = 'force-dynamic'
+
 const createLeadSchema = z.object({
   name: z.string().min(1, 'El nombre es obligatorio'),
   company: z.string().optional(),

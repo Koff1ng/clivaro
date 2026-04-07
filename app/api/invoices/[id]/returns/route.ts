@@ -7,6 +7,8 @@ import { logger } from '@/lib/logger'
 import { logActivity } from '@/lib/activity'
 import { createCreditNoteWithAccounting } from '@/lib/credit-note-service'
 
+export const dynamic = 'force-dynamic'
+
 const createReturnSchema = z.object({
   reason: z.string().min(3, "El motivo debe tener al menos 3 caracteres"),
   warehouseId: z.string().min(1, "El almacén de reingreso es requerido"),

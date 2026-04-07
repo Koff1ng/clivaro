@@ -6,6 +6,8 @@ import { z } from 'zod'
 import { logActivity } from '@/lib/activity'
 import { handleError } from '@/lib/error-handler'
 
+export const dynamic = 'force-dynamic'
+
 const createPhysicalInventorySchema = z.object({
   warehouseId: z.string().min(1),
   notes: z.string().optional(),

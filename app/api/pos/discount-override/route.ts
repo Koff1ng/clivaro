@@ -6,6 +6,8 @@ import { requirePermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
 import { withTenantTx } from '@/lib/tenancy'
 
+export const dynamic = 'force-dynamic'
+
 const schema = z.object({
   username: z.string().min(1),
   password: z.string().min(1),

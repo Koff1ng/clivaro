@@ -5,6 +5,8 @@ import { prisma } from '@/lib/db'
 import { Client } from 'pg'
 import { getSchemaName } from '@/lib/tenant-utils'
 
+export const dynamic = 'force-dynamic'
+
 // Helper to get direct DB URL
 function getDirectPostgresUrl(): string {
     const base = process.env.DIRECT_URL || process.env.DATABASE_URL || ''

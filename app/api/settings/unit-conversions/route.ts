@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server'
 import { requirePermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
 
+export const dynamic = 'force-dynamic'
+
 // Default conversions that match COMMON_UNITS IDs from components/products/unit-select.tsx
 const DEFAULT_CONVERSIONS = [
   { from: 'DOZEN', fromLabel: 'Docena', to: 'UNIT', toLabel: 'Unidad', multiplier: 12 },

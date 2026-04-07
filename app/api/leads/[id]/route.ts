@@ -5,6 +5,8 @@ import { withTenantRead, withTenantTx, getTenantIdFromSession } from '@/lib/tena
 import { z } from 'zod'
 import { parseDateOnlyToDate } from '@/lib/date-only'
 
+export const dynamic = 'force-dynamic'
+
 const updateLeadSchema = z.object({
   name: z.string().min(1).optional(),
   company: z.string().optional(),

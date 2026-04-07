@@ -4,6 +4,8 @@ import { PERMISSIONS } from '@/lib/permissions'
 import { getTenantIdFromSession, withTenantRead } from '@/lib/tenancy'
 import { generatePayslipPDF } from '@/lib/pdf'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET(
     request: Request,
     { params }: { params: { id: string } | Promise<{ id: string }> }

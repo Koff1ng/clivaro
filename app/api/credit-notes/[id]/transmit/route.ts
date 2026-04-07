@@ -6,6 +6,8 @@ import { prisma as masterPrisma } from '@/lib/db'
 import { logger } from '@/lib/logger'
 import { FactusClient } from '@/lib/factus/client'
 
+export const dynamic = 'force-dynamic'
+
 export async function POST(
     request: Request,
     { params }: { params: { id: string } | Promise<{ id: string }> }

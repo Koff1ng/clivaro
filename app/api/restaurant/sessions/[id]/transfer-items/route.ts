@@ -5,6 +5,8 @@ import { ensureRestaurantMode } from '@/lib/restaurant'
 import { requireAnyPermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
 
+export const dynamic = 'force-dynamic'
+
 const transferSchema = z.object({
   targetSessionId: z.string().min(1),
   itemIds: z.array(z.string().min(1)).min(1),

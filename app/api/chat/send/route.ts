@@ -4,6 +4,8 @@ import { withTenantTx, withTenantRead, getTenantIdFromSession } from '@/lib/tena
 import { requirePermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
 
+export const dynamic = 'force-dynamic'
+
 export async function POST(req: NextRequest) {
     const session = await requirePermission(req as any, PERMISSIONS.MANAGE_CRM);
     if (session instanceof NextResponse) return session;

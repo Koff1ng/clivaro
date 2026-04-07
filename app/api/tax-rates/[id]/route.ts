@@ -6,6 +6,8 @@ import { logger } from '@/lib/logger'
 import { handleError } from '@/lib/error-handler'
 import { z } from 'zod'
 
+export const dynamic = 'force-dynamic'
+
 const updateTaxSchema = z.object({
     name: z.string().min(1).optional(),
     rate: z.number().min(0).optional(),

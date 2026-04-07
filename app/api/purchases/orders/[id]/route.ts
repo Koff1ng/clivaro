@@ -7,6 +7,8 @@ import { parseDateOnlyToDate } from '@/lib/date-only'
 import { toDecimal } from '@/lib/numbers'
 import { logActivity } from '@/lib/activity'
 
+export const dynamic = 'force-dynamic'
+
 const updatePurchaseOrderSchema = z.object({
   supplierId: z.string().min(1).optional(),
   items: z.array(z.object({

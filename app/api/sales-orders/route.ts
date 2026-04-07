@@ -4,6 +4,8 @@ import { PERMISSIONS } from '@/lib/permissions'
 import { withTenantTx, withTenantRead, getTenantIdFromSession } from '@/lib/tenancy'
 import { z } from 'zod'
 
+export const dynamic = 'force-dynamic'
+
 const createSalesOrderSchema = z.object({
     customerId: z.string().min(1, 'El cliente es requerido'),
     quotationId: z.string().optional().nullable(),

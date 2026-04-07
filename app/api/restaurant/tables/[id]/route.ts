@@ -6,6 +6,8 @@ import { logger } from '@/lib/logger'
 import { ensureRestaurantMode } from '@/lib/restaurant'
 import { emitRestaurantEvent, RESTAURANT_EVENTS } from '@/lib/events'
 
+export const dynamic = 'force-dynamic'
+
 /**
  * PATCH: Actualiza una mesa (nombre, capacidad, posición, estado).
  */

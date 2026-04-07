@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server'
 import { processJob } from '@/lib/jobs/queue'
 import { logger } from '@/lib/logger'
 
+export const dynamic = 'force-dynamic'
+
 /**
  * Webhook endpoint for QStash to process jobs
  * This endpoint is called by QStash when a job is ready to be processed

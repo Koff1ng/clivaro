@@ -5,6 +5,8 @@ import { withTenantTx, withTenantRead, getTenantIdFromSession } from '@/lib/tena
 import { z } from 'zod'
 import { logActivity } from '@/lib/activity'
 
+export const dynamic = 'force-dynamic'
+
 // Helper function to safely serialize dates
 function serializeDate(date: Date | null | undefined): string | null {
   if (!date) return null

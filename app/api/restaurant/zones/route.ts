@@ -5,6 +5,8 @@ import { PERMISSIONS } from '@/lib/permissions'
 import { logger } from '@/lib/logger'
 import { ensureRestaurantMode } from '@/lib/restaurant'
 
+export const dynamic = 'force-dynamic'
+
 /**
  * GET: Lista todas las zonas del restaurante.
  * Allows waiter token or session with restaurant permission.

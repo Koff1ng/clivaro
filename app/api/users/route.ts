@@ -3,6 +3,8 @@ import { requireAnyPermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
 import { withTenantTx, getTenantIdFromSession } from '@/lib/tenancy'
 
+export const dynamic = 'force-dynamic'
+
 // Minimal users list for filters (inventory/cash/reports)
 export async function GET(request: Request) {
   const session = await requireAnyPermission(request as any, [

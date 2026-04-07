@@ -7,6 +7,8 @@ import { calculateGranularTaxes } from '@/lib/taxes'
 import { z } from 'zod'
 import { Prisma } from '@prisma/client'
 
+export const dynamic = 'force-dynamic'
+
 const convertQuotationSchema = z.object({
   paymentMethod: z.enum(['CASH', 'CARD', 'TRANSFER', 'CHECK']).default('CASH'),
   warehouseId: z.string().optional(),

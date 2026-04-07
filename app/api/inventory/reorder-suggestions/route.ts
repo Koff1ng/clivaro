@@ -3,6 +3,8 @@ import { requireAnyPermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
 import { withTenantRead, getTenantIdFromSession } from '@/lib/tenancy'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET(request: Request) {
   const session = await requireAnyPermission(request as any, [PERMISSIONS.MANAGE_INVENTORY, PERMISSIONS.MANAGE_PURCHASES, PERMISSIONS.VIEW_REPORTS])
   if (session instanceof NextResponse) return session

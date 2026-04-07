@@ -3,6 +3,8 @@ import { requirePermission } from '@/lib/api-middleware';
 import { PERMISSIONS } from '@/lib/permissions';
 import { getTenantIdFromSession, withTenantTx, withTenantRead } from '@/lib/tenancy';
 
+export const dynamic = 'force-dynamic'
+
 /**
  * Fetches all payroll periods for the current tenant.
  * Requires `MANAGE_USERS` permission (Human Resources context).

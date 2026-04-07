@@ -5,6 +5,8 @@ import { emitRestaurantEvent } from '@/lib/events'
 import { requireAnyPermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
 
+export const dynamic = 'force-dynamic'
+
 function apiError(status: number, message: string) {
   return NextResponse.json({ status, error: message }, { status })
 }

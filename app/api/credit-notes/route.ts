@@ -3,6 +3,8 @@ import { requirePermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
 import { withTenantRead, getTenantIdFromSession } from '@/lib/tenancy'
 
+export const dynamic = 'force-dynamic'
+
 /**
  * GET /api/credit-notes
  * List all credit notes with filters

@@ -8,6 +8,8 @@ import { toDecimal } from '@/lib/numbers'
 import { updateStockLevel, updateProductCost } from '@/lib/inventory'
 import { logActivity } from '@/lib/activity'
 
+export const dynamic = 'force-dynamic'
+
 const createReceiptSchema = z.object({
   purchaseOrderId: z.string().min(1, "El ID de la orden de compra es requerido"),
   warehouseId: z.string().min(1, "El almacén es requerido"),

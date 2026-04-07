@@ -6,6 +6,8 @@ import { withTenantTx, getTenantIdFromSession } from '@/lib/tenancy'
 import { logger } from '@/lib/logger'
 import { logActivity } from '@/lib/activity'
 
+export const dynamic = 'force-dynamic'
+
 const voidInvoiceSchema = z.object({
   reason: z.string().min(3),
 })

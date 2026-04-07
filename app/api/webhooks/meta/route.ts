@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 
+export const dynamic = 'force-dynamic'
+
 // This would typically be an environment variable
 const VERIFY_TOKEN = 'clivaro_meta_verify_token'
 

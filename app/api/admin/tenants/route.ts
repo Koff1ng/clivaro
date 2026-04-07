@@ -6,6 +6,8 @@ import { logger } from '@/lib/logger'
 import * as path from 'path'
 import { prisma as masterPrisma } from '@/lib/db'
 
+export const dynamic = 'force-dynamic'
+
 // Función helper para ejecutar consultas con retry y manejo de errores de conexión
 async function executeWithRetry<T>(
   fn: () => Promise<T>,

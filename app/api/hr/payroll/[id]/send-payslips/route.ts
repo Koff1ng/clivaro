@@ -5,6 +5,8 @@ import { getTenantIdFromSession, withTenantTx } from '@/lib/tenancy'
 import { generatePayslipPDF } from '@/lib/pdf'
 import { sendEmail } from '@/lib/email'
 
+export const dynamic = 'force-dynamic'
+
 export async function POST(
     request: Request,
     { params }: { params: { id: string } | Promise<{ id: string }> }

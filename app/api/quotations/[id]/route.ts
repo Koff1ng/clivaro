@@ -6,6 +6,8 @@ import { logger } from '@/lib/logger'
 import { parseDateOnlyToDate } from '@/lib/date-only'
 import { z } from 'zod'
 
+export const dynamic = 'force-dynamic'
+
 const updateQuotationSchema = z.object({
   status: z.enum(['DRAFT', 'SENT', 'ACCEPTED', 'EXPIRED']).optional(),
   notes: z.string().optional(),

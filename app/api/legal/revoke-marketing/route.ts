@@ -4,6 +4,8 @@ import { authOptions } from '@/lib/auth'
 import { prisma as masterPrisma } from '@/lib/db'
 import { withTenantTx } from '@/lib/tenancy'
 
+export const dynamic = 'force-dynamic'
+
 export async function POST(req: Request) {
     try {
         const session = await getServerSession(authOptions)

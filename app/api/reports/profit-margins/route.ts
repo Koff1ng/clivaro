@@ -4,6 +4,8 @@ import { PERMISSIONS } from '@/lib/permissions'
 import { withTenantRead, getTenantIdFromSession } from '@/lib/tenancy'
 import { logger } from '@/lib/logger'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET(request: Request) {
     const session = await requirePermission(request as any, PERMISSIONS.VIEW_REPORTS)
     if (session instanceof NextResponse) return session

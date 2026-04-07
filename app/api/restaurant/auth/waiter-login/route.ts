@@ -5,6 +5,8 @@ import { PERMISSIONS } from '@/lib/permissions'
 import { logger } from '@/lib/logger'
 import { ensureRestaurantMode, verifyPin, generateWaiterToken } from '@/lib/restaurant'
 
+export const dynamic = 'force-dynamic'
+
 const MAX_FAILED_ATTEMPTS = 5
 const LOCKOUT_DURATION_MS = 15 * 60 * 1000 // 15 minutes
 

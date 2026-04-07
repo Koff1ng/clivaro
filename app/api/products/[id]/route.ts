@@ -7,6 +7,8 @@ import { toDecimal } from '@/lib/numbers'
 import { logger } from '@/lib/logger'
 import { logActivity } from '@/lib/activity'
 
+export const dynamic = 'force-dynamic'
+
 const updateProductSchema = z.object({
   sku: z.string().min(1).optional(),
   barcode: z.string().optional().nullable(),

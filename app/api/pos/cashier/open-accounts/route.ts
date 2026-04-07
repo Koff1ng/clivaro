@@ -3,6 +3,8 @@ import { requireAnyPermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
 import { getTenantIdFromSession, withTenantRead } from '@/lib/tenancy'
 
+export const dynamic = 'force-dynamic'
+
 /**
  * GET: Lists all open table sessions for the cashier view.
  * Returns active sessions with table, zone, waiter, orders and totals.

@@ -6,6 +6,8 @@ import { z } from 'zod'
 import { logger } from '@/lib/logger'
 import { logActivity } from '@/lib/activity'
 
+export const dynamic = 'force-dynamic'
+
 const createProductSchema = z.object({
   sku: z.string().min(1),
   barcode: z.string().optional().nullable(),

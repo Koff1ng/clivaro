@@ -6,6 +6,8 @@ import { createJournalEntryFromInvoice } from '@/lib/accounting/invoice-integrat
 import { createCostOfSalesEntry } from '@/lib/accounting/inventory-integration'
 import { logger } from '@/lib/logger'
 
+export const dynamic = 'force-dynamic'
+
 export async function POST(
     request: Request,
     { params }: { params: { id: string } }

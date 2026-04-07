@@ -4,6 +4,8 @@ import { requirePermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
 import { logger } from '@/lib/logger'
 
+export const dynamic = 'force-dynamic'
+
 const RESEND_API_KEY = process.env.RESEND_MASTER_API_KEY
 
 export async function POST(request: Request) {

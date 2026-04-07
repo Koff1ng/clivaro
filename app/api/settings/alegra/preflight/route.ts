@@ -4,6 +4,8 @@ import { PERMISSIONS } from '@/lib/permissions'
 import { AlegraClient } from '@/lib/alegra/client'
 import { logger } from '@/lib/logger'
 
+export const dynamic = 'force-dynamic'
+
 export async function POST(request: Request) {
     const session = await requirePermission(request as any, PERMISSIONS.MANAGE_USERS)
     if (session instanceof NextResponse) return session

@@ -4,6 +4,8 @@ import { prisma } from '@/lib/db'
 import { initializeTenantDatabase } from '@/lib/initialize-tenant'
 import { logger } from '@/lib/logger'
 
+export const dynamic = 'force-dynamic'
+
 /**
  * POST /api/admin/tenants/[id]/reinit
  * Re-initializes the schema for an existing tenant.

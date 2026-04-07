@@ -6,6 +6,8 @@ import { emitRestaurantEvent } from '@/lib/events'
 import { requireAnyPermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
 
+export const dynamic = 'force-dynamic'
+
 const createSessionSchema = z.object({
   tableId: z.string().optional(),
   tableName: z.string().optional(),

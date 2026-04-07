@@ -5,6 +5,8 @@ import { PERMISSIONS } from '@/lib/permissions'
 import { logger } from '@/lib/logger'
 import { ensureRestaurantMode, hashPin } from '@/lib/restaurant'
 
+export const dynamic = 'force-dynamic'
+
 /**
  * GET: Lista todos los meseros.
  */

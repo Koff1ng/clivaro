@@ -5,6 +5,8 @@ import { withTenantRead, getTenantIdFromSession } from '@/lib/tenancy'
 import { enqueueJob } from '@/lib/jobs/queue'
 import { logger } from '@/lib/logger'
 
+export const dynamic = 'force-dynamic'
+
 export async function POST(
     request: Request,
     { params }: { params: { id: string } }

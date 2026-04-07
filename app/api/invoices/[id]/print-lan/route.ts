@@ -5,6 +5,8 @@ import { requirePermission } from "@/lib/api-middleware";
 import { PERMISSIONS } from "@/lib/permissions";
 import { withTenantRead, getTenantIdFromSession } from "@/lib/tenancy";
 
+export const dynamic = 'force-dynamic'
+
 // Helper to safely format numbers
 const safeNum = (n: any) => (typeof n === 'number' ? n : Number(n) || 0);
 

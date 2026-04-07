@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getTenantPrismaClient } from "@/lib/tenancy";
 import { emitRestaurantEvent } from "@/lib/events";
 
+export const dynamic = 'force-dynamic'
+
 export async function POST(req: NextRequest) {
   try {
     // 1. Basic validation (Alegra typically sends a secret or common header)

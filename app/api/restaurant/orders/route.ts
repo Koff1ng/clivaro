@@ -6,6 +6,8 @@ import { emitRestaurantEvent } from '@/lib/events'
 import { requireAnyPermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
 
+export const dynamic = 'force-dynamic'
+
 const createOrderSchema = z.object({
   sessionId: z.string().min(1),
   items: z.array(

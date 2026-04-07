@@ -4,6 +4,8 @@ import { PERMISSIONS } from '@/lib/permissions'
 import { getTenantIdFromSession, withTenantRead } from '@/lib/tenancy'
 import { prisma as masterPrisma } from '@/lib/db'
 
+export const dynamic = 'force-dynamic'
+
 /**
  * GET: Returns the fiscal configuration for the current tenant.
  * Includes DIAN resolution data, numbering range status, and Alegra connection status.

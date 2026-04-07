@@ -5,6 +5,8 @@ import { PERMISSIONS } from '@/lib/permissions'
 import { logger } from '@/lib/logger'
 import { ensureRestaurantMode } from '@/lib/restaurant'
 
+export const dynamic = 'force-dynamic'
+
 /**
  * PATCH: Actualiza una zona de restaurante.
  */

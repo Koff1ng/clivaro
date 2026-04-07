@@ -5,6 +5,8 @@ import { withTenantTx, getTenantIdFromSession } from '@/lib/tenancy'
 import { z } from 'zod'
 import bcrypt from 'bcryptjs'
 
+export const dynamic = 'force-dynamic'
+
 const createUserSchema = z.object({
   username: z.string().min(3, 'El nombre de usuario debe tener al menos 3 caracteres').max(50, 'El nombre de usuario no puede exceder 50 caracteres'),
   email: z.string().email('Email inválido').optional().or(z.literal('')),

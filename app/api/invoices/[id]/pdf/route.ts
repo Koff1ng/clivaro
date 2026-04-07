@@ -5,6 +5,8 @@ import { withTenantRead, getTenantIdFromSession } from '@/lib/tenancy'
 import { generateInvoicePDF } from '@/lib/pdf'
 import { logger } from '@/lib/logger'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET(
   request: Request,
   { params }: { params: { id: string } | Promise<{ id: string }> }

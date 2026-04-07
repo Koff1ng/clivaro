@@ -5,6 +5,8 @@ import { ensureRestaurantMode, getWaiterFromToken } from '@/lib/restaurant'
 import { requireAnyPermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
 
+export const dynamic = 'force-dynamic'
+
 const tipSchema = z.object({
   tipAmount: z.number().min(0),
 })

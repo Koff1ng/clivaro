@@ -3,6 +3,8 @@ import { requirePermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
 import { withTenantRead } from '@/lib/tenancy'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET(request: Request) {
   const session = await requirePermission(request as any, PERMISSIONS.MANAGE_SALES)
 

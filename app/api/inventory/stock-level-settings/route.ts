@@ -4,6 +4,8 @@ import { requirePermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
 import { withTenantTx, getTenantIdFromSession } from '@/lib/tenancy'
 
+export const dynamic = 'force-dynamic'
+
 const schema = z.object({
   warehouseId: z.string().min(1),
   productId: z.string().min(1),

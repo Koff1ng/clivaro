@@ -5,6 +5,8 @@ import { withTenantTx, getTenantIdFromSession } from '@/lib/tenancy'
 import { updateStockLevel } from '@/lib/inventory'
 import { logActivity } from '@/lib/activity'
 
+export const dynamic = 'force-dynamic'
+
 export async function POST(
     request: Request,
     { params }: { params: { id: string } }

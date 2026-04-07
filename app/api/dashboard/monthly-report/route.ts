@@ -4,6 +4,8 @@ import { PERMISSIONS } from '@/lib/permissions'
 import { withTenantRead } from '@/lib/tenancy'
 import { startOfMonth, endOfMonth, eachDayOfInterval, format, setHours, setMinutes, setSeconds, setMilliseconds } from 'date-fns'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET(request: Request) {
   const session = await requirePermission(request as any, PERMISSIONS.VIEW_REPORTS)
 
