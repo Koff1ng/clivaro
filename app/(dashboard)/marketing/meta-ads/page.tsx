@@ -504,145 +504,90 @@ function PageIdAlert({ onSaved }: { onSaved: () => void }) {
 // ── Main Page ──
 
 export default function MetaAdsPage() {
-  const queryClient = useQueryClient()
-  const [showWizard, setShowWizard] = useState(false)
-
-  const { data: connectionStatus, isLoading: checkingConnection } = useQuery({
-    queryKey: ['meta-ads-connection'],
-    queryFn: async () => {
-      const res = await fetch('/api/marketing/meta-ads/connect')
-      if (!res.ok) return { connected: false }
-      return res.json()
-    },
-  })
-
-  const { data: campaigns = [], isLoading } = useQuery({
-    queryKey: ['meta-ads-campaigns'],
-    queryFn: async () => {
-      const res = await fetch('/api/marketing/meta-ads')
-      if (!res.ok) return []
-      return res.json()
-    },
-    enabled: connectionStatus?.connected === true,
-    refetchInterval: 5000,
-  })
-
-  const toggleMutation = useMutation({
-    mutationFn: async ({ trackingId, action }: { trackingId: string; action: 'pause' | 'resume' }) => {
-      const res = await fetch(`/api/marketing/meta-ads/${trackingId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action }) })
-      if (!res.ok) { const d = await res.json(); throw new Error(d.error) }
-      return res.json()
-    },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['meta-ads-campaigns'] }),
-  })
-
-  const deleteMutation = useMutation({
-    mutationFn: async (trackingId: string) => {
-      const res = await fetch(`/api/marketing/meta-ads/${trackingId}`, { method: 'DELETE' })
-      if (!res.ok) { const d = await res.json(); throw new Error(d.error) }
-      return res.json()
-    },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['meta-ads-campaigns'] }),
-  })
-
-  if (checkingConnection) return <div className="flex items-center justify-center py-24"><Loader2 className="w-8 h-8 animate-spin text-muted-foreground" /></div>
-
-  if (!connectionStatus?.connected) {
-    return (
-      <div className="p-6">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold flex items-center gap-2"><Radio className="w-6 h-6 text-blue-600" />Meta Ads</h1>
-          <p className="text-sm text-muted-foreground mt-1">Conecta tu cuenta para publicar anuncios en Facebook e Instagram</p>
-        </div>
-        <MetaConnectCard onConnected={() => queryClient.invalidateQueries({ queryKey: ['meta-ads-connection'] })} />
-      </div>
-    )
-  }
-
-  const activeCampaigns = campaigns.filter((c: any) => c.status === 'ACTIVE').length
-  const totalBudget = campaigns.reduce((sum: number, c: any) => c.status === 'ACTIVE' ? sum + c.dailyBudget : sum, 0)
-
   return (
-    <div className="space-y-6 p-6">
-      {showWizard && <CampaignWizard onClose={() => setShowWizard(false)} onCreated={() => queryClient.invalidateQueries({ queryKey: ['meta-ads-campaigns'] })} />}
-
-      {/* Page ID Missing Alert */}
-      {connectionStatus?.connected && !connectionStatus?.hasPageId && <PageIdAlert onSaved={() => queryClient.invalidateQueries({ queryKey: ['meta-ads-connection'] })} />}
-
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2"><Radio className="w-6 h-6 text-blue-600" />Meta Ads</h1>
-          <p className="text-sm text-muted-foreground mt-1">Gestiona tus campañas de Facebook e Instagram</p>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => queryClient.invalidateQueries({ queryKey: ['meta-ads-campaigns'] })}><RefreshCw className="w-4 h-4 mr-1" />Actualizar</Button>
-          <Button size="sm" onClick={() => setShowWizard(true)} className="bg-blue-600 hover:bg-blue-700"><Plus className="w-4 h-4 mr-1" />Nueva Campaña</Button>
-        </div>
-      </div>
-
-      {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Campañas</CardTitle><Target className="h-4 w-4 text-muted-foreground" /></CardHeader>
-          <CardContent><div className="text-2xl font-bold">{campaigns.length}</div><p className="text-xs text-muted-foreground">{activeCampaigns} activas</p></CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Presupuesto Diario</CardTitle><DollarSign className="h-4 w-4 text-muted-foreground" /></CardHeader>
-          <CardContent><div className="text-2xl font-bold">{formatCOP(totalBudget)}</div><p className="text-xs text-muted-foreground">Campañas activas</p></CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Conexión</CardTitle><CheckCircle2 className="h-4 w-4 text-green-500" /></CardHeader>
-          <CardContent>
-            <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 gap-1"><CheckCircle2 className="w-3 h-3" />Conectado</Badge>
-            <p className="text-xs text-muted-foreground mt-1">{connectionStatus.adAccountId}</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Campaigns */}
-      <Card>
-        <CardHeader><CardTitle>Campañas</CardTitle><CardDescription>Todas tus campañas creadas desde Clivaro</CardDescription></CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="flex items-center justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
-          ) : campaigns.length === 0 ? (
-            <div className="text-center py-12">
-              <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center"><Megaphone className="w-8 h-8 text-blue-500 opacity-60" /></div>
-              <h3 className="text-lg font-semibold mb-1">Todo listo</h3>
-              <p className="text-sm text-muted-foreground max-w-sm mx-auto mb-4">Tu cuenta está conectada. Crea tu primera campaña.</p>
-              <Button onClick={() => setShowWizard(true)} className="bg-blue-600 hover:bg-blue-700"><Plus className="w-4 h-4 mr-1" />Crear Campaña</Button>
+    <div className="relative min-h-[80vh]">
+      {/* Blurred preview of the module UI */}
+      <div className="pointer-events-none select-none blur-[6px] opacity-60" aria-hidden="true">
+        <div className="space-y-6 p-6">
+          {/* Header */}
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold flex items-center gap-2"><Radio className="w-6 h-6 text-blue-600" />Meta Ads</h1>
+              <p className="text-sm text-muted-foreground mt-1">Gestiona tus campañas de Facebook e Instagram</p>
             </div>
-          ) : (
-            <div className="space-y-3">
-              {campaigns.map((campaign: any) => (
-                <div key={campaign.id} className="flex items-center justify-between p-4 border rounded-xl hover:bg-muted/50 transition-colors">
-                  <div className="flex items-center gap-4 min-w-0 flex-1">
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center flex-shrink-0"><Megaphone className="w-5 h-5 text-white" /></div>
-                    <div className="min-w-0">
-                      <h4 className="font-medium truncate">{campaign.name}</h4>
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
-                        <span>{OBJECTIVES.find(o => o.value === campaign.objective)?.label || campaign.objective.replace('OUTCOME_', '')}</span>
-                        <span>•</span><span>{formatCOP(campaign.dailyBudget)}/día</span>
-                        <span>•</span><span>{new Date(campaign.createdAt).toLocaleDateString('es-CO')}</span>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm"><RefreshCw className="w-4 h-4 mr-1" />Actualizar</Button>
+              <Button size="sm" className="bg-blue-600 hover:bg-blue-700"><Plus className="w-4 h-4 mr-1" />Nueva Campaña</Button>
+            </div>
+          </div>
+
+          {/* Stats */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Campañas</CardTitle><Target className="h-4 w-4 text-muted-foreground" /></CardHeader>
+              <CardContent><div className="text-2xl font-bold">3</div><p className="text-xs text-muted-foreground">2 activas</p></CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Presupuesto Diario</CardTitle><DollarSign className="h-4 w-4 text-muted-foreground" /></CardHeader>
+              <CardContent><div className="text-2xl font-bold">$45.000</div><p className="text-xs text-muted-foreground">Campañas activas</p></CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Conexión</CardTitle><CheckCircle2 className="h-4 w-4 text-green-500" /></CardHeader>
+              <CardContent>
+                <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 gap-1"><CheckCircle2 className="w-3 h-3" />Conectado</Badge>
+                <p className="text-xs text-muted-foreground mt-1">act_1234567890</p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Fake Campaigns */}
+          <Card>
+            <CardHeader><CardTitle>Campañas</CardTitle><CardDescription>Todas tus campañas creadas desde Clivaro</CardDescription></CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {[
+                  { name: 'Promo Temporada 2026', obj: 'Tráfico', budget: '$25.000', status: 'ACTIVE' },
+                  { name: 'Lanzamiento Producto Estrella', obj: 'Ventas', budget: '$20.000', status: 'ACTIVE' },
+                  { name: 'Reconocimiento de Marca', obj: 'Reconocimiento', budget: '$15.000', status: 'PAUSED' },
+                ].map((c, i) => (
+                  <div key={i} className="flex items-center justify-between p-4 border rounded-xl">
+                    <div className="flex items-center gap-4 min-w-0 flex-1">
+                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center flex-shrink-0"><Megaphone className="w-5 h-5 text-white" /></div>
+                      <div className="min-w-0">
+                        <h4 className="font-medium truncate">{c.name}</h4>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
+                          <span>{c.obj}</span><span>•</span><span>{c.budget}/día</span>
+                        </div>
                       </div>
-                      {campaign.errorMessage && <p className="text-xs text-red-500 mt-1 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{campaign.errorMessage}</p>}
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      {statusBadge(c.status)}
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    {statusBadge(campaign.status)}
-                    {campaign.status === 'ACTIVE' && <Button variant="ghost" size="sm" onClick={() => toggleMutation.mutate({ trackingId: campaign.trackingId, action: 'pause' })} disabled={toggleMutation.isPending} title="Pausar"><Pause className="w-4 h-4" /></Button>}
-                    {campaign.status === 'PAUSED' && <Button variant="ghost" size="sm" onClick={() => toggleMutation.mutate({ trackingId: campaign.trackingId, action: 'resume' })} disabled={toggleMutation.isPending} title="Reanudar"><Play className="w-4 h-4" /></Button>}
-                    {(campaign.status === 'ERROR' || campaign.status === 'PAUSED') && (
-                      <Button variant="ghost" size="sm" onClick={() => { if (confirm('¿Eliminar esta campaña?')) deleteMutation.mutate(campaign.trackingId) }} disabled={deleteMutation.isPending} title="Eliminar" className="text-red-500 hover:text-red-600"><Trash2 className="w-4 h-4" /></Button>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      {/* "En desarrollo" overlay */}
+      <div className="absolute inset-0 flex items-center justify-center z-10">
+        <div className="flex flex-col items-center gap-4 p-8 rounded-2xl bg-background/80 backdrop-blur-md border shadow-2xl max-w-md text-center">
+          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-blue-500/25">
+            <Radio className="w-8 h-8 text-white" />
+          </div>
+          <div>
+            <h2 className="text-xl font-bold mb-1">Módulo en Desarrollo</h2>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              Estamos ultimando los detalles de la integración con Meta Ads. Pronto podrás crear y gestionar tus campañas de Facebook e Instagram directamente desde Clivaro.
+            </p>
+          </div>
+          <Badge className="bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 gap-1.5 px-4 py-1.5 text-sm font-semibold">
+            <Clock className="w-4 h-4" />Próximamente
+          </Badge>
+        </div>
+      </div>
     </div>
   )
 }
