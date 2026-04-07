@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { logger } from '@/lib/logger'
 import { requirePermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
 import { withTenantRead, getTenantIdFromSession } from '@/lib/tenancy'
@@ -30,7 +31,7 @@ export async function GET(request: Request) {
 
         return NextResponse.json(result)
     } catch (error: any) {
-        console.error('[Calculate Cost API] Error:', error)
+        logger.error('[Calculate Cost API] Error:', error)
         return NextResponse.json({
             error: error.message || 'Failed to calculate cost'
         }, { status: 500 })

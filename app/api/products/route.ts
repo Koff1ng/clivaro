@@ -180,7 +180,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json(result)
   } catch (error) {
-    console.error('Error fetching products:', error)
+    logger.error('Error fetching products:', error)
     return NextResponse.json(
       {
         error: 'Failed to fetch products',
@@ -325,7 +325,7 @@ export async function POST(request: Request) {
       )
     }
 
-    console.error('Error creating product:', {
+    logger.error('Error creating product:', {
       error: errorMessage,
       body: requestBody,
     })

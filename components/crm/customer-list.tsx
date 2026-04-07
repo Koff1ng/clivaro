@@ -7,7 +7,7 @@ import dynamic from 'next/dynamic'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { useDebounce } from '@/lib/hooks/use-debounce'
 import { formatCurrency } from '@/lib/utils'
 import { useToast } from '@/components/ui/toast'
@@ -116,10 +116,7 @@ export function CustomerList() {
 
       setViewCustomer(data)
     } catch (error: any) {
-      console.error('Error loading customer details:', error)
-      console.error('Error name:', error.name)
-      console.error('Error message:', error.message)
-      console.error('Error stack:', error.stack)
+      console.error('Error loading customer details:', error?.message)
 
       let errorMessage = 'Error de conexión al cargar los detalles del cliente'
       if (error.name === 'TypeError' && error.message.includes('fetch')) {
@@ -320,6 +317,7 @@ export function CustomerList() {
             <DialogTitle>
               {selectedCustomer ? 'Editar Cliente' : 'Nuevo Cliente'}
             </DialogTitle>
+            <DialogDescription className="sr-only">Formulario para crear o editar un cliente.</DialogDescription>
           </DialogHeader>
           <CustomerForm
             customer={selectedCustomer}
@@ -336,6 +334,7 @@ export function CustomerList() {
           <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Detalles del Cliente</DialogTitle>
+              <DialogDescription className="sr-only">Información detallada del cliente seleccionado.</DialogDescription>
             </DialogHeader>
             <CustomerDetails customerData={viewCustomer} />
           </DialogContent>

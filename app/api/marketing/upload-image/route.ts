@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { logger } from '@/lib/logger'
 import { requirePermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
 import { createClient } from '@supabase/supabase-js'
@@ -13,13 +14,13 @@ async function ensureBucket(supabase: any) {
   const { data: buckets } = await supabase.storage.listBuckets()
   const exists = buckets?.some((b: any) => b.name === BUCKET)
   if (!exists) {
-    console.log(`[Upload] Creating bucket "${BUCKET}"...`)
+    logger.info(`[Upload] Creating bucket "${BUCKET}"...`)
     const { error } = await supabase.storage.createBucket(BUCKET, {
       public: true,
       fileSizeLimit: 5 * 1024 * 1024,
     })
     if (error && !error.message?.includes('already exists')) {
-      console.error('[Upload] Failed to create bucket:', error)
+      logger.error('[Upload] Failed to create bucket:', error)
       throw new Error(`No se pudo crear el bucket de almacenamiento: ${error.message}`)
     }
   }
@@ -79,7 +80,7 @@ export async function POST(request: Request) {
       })
 
     if (error) {
-      console.error('[Upload] Upload failed:', error)
+      logger.error('[Upload] Upload failed:', error)
       throw error
     }
 
@@ -88,7 +89,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ url: urlData.publicUrl })
   } catch (error: any) {
-    console.error('Error uploading campaign image:', error)
+    logger.error('Error uploading campaign image:', error)
     return NextResponse.json(
       { error: error.message || 'Failed to upload image' },
       { status: 500 }

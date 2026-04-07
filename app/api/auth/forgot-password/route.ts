@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { logger } from '@/lib/logger'
 import { z } from 'zod'
 import { prisma } from '@/lib/db'
 import {
@@ -105,7 +106,7 @@ export async function POST(req: Request) {
     )
 
     if (!emailResult.success) {
-      console.error('[forgot-password] sendEmail failed:', emailResult.error)
+      logger.error('[forgot-password] sendEmail failed:', emailResult.error)
       return NextResponse.json(
         {
           error:
@@ -120,7 +121,7 @@ export async function POST(req: Request) {
       message: `Correo de recuperación enviado exitosamente a: ${masked}` 
     })
   } catch (e: any) {
-    console.error('[forgot-password]', e)
+    logger.error('[forgot-password]', e)
     return NextResponse.json(
       { error: 'Error al procesar la solicitud. Intente nuevamente.' },
       { status: 500 }

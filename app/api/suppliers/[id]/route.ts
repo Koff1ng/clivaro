@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { logger } from '@/lib/logger'
 import { requirePermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
 import { withTenantRead, withTenantTx, getTenantIdFromSession } from '@/lib/tenancy'
@@ -81,7 +82,7 @@ export async function GET(
 
     return NextResponse.json(result)
   } catch (error: any) {
-    console.error('Error fetching supplier:', error)
+    logger.error('Error fetching supplier:', error)
     return NextResponse.json(
       {
         error: error.message || 'Failed to fetch supplier',
@@ -126,7 +127,7 @@ export async function PUT(
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: 'Validation error', details: error.errors }, { status: 400 })
     }
-    console.error('Error updating supplier:', error)
+    logger.error('Error updating supplier:', error)
     return NextResponse.json({ error: 'Failed to update supplier' }, { status: 500 })
   }
 }
@@ -150,7 +151,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Error deleting supplier:', error)
+    logger.error('Error deleting supplier:', error)
     return NextResponse.json({ error: 'Failed to delete supplier' }, { status: 500 })
   }
 }

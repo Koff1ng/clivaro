@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { logger } from '@/lib/logger'
 import { requirePermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
 import { withTenantRead } from '@/lib/tenancy'
@@ -188,7 +189,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json(result)
   } catch (error) {
-    console.error('Error fetching monthly report:', error)
+    logger.error('Error fetching monthly report:', error)
     return NextResponse.json(
       { error: 'Failed to fetch monthly report' },
       { status: 500 }

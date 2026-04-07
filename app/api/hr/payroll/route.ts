@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { logger } from '@/lib/logger'
 import { requirePermission } from '@/lib/api-middleware';
 import { PERMISSIONS } from '@/lib/permissions';
 import { getTenantIdFromSession, withTenantTx, withTenantRead } from '@/lib/tenancy';
@@ -29,7 +30,7 @@ export async function GET(req: Request) {
 
         return NextResponse.json(periods);
     } catch (error: any) {
-        console.error('Error fetching payroll periods:', error);
+        logger.error('Error fetching payroll periods:', error);
         return NextResponse.json(
             { error: 'Error al obtener períodos de nómina', details: error.message },
             { status: 500 }
@@ -155,7 +156,7 @@ export async function POST(req: Request) {
 
         return NextResponse.json(newPeriod, { status: 201 });
     } catch (error: any) {
-        console.error('Error creating payroll period:', error);
+        logger.error('Error creating payroll period:', error);
         return NextResponse.json(
             { error: 'Error al generar la nómina', details: error.message },
             { status: 500 }

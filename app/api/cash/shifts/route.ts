@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { logger } from '@/lib/logger'
 import { requireAnyPermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
 import { withTenantTx, withTenantRead, getTenantIdFromSession } from '@/lib/tenancy'
@@ -57,7 +58,7 @@ function serializeShift(shift: any) {
       })) : [],
     }
   } catch (error) {
-    console.error('Error serializing shift:', error)
+    logger.error('Error serializing shift:', error)
     throw new Error('Failed to serialize shift data')
   }
 }
@@ -107,7 +108,7 @@ export async function GET(request: Request) {
     const serializedShifts = shifts.map(serializeShift)
     return NextResponse.json({ shifts: serializedShifts })
   } catch (error: any) {
-    console.error('Error fetching cash shifts:', error)
+    logger.error('Error fetching cash shifts:', error)
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }
@@ -238,7 +239,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
   } catch (error: any) {
-    console.error('Error managing cash shift:', error)
+    logger.error('Error managing cash shift:', error)
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }

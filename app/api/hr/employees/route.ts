@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { logger } from '@/lib/logger'
 import { requirePermission } from '@/lib/api-middleware';
 import { PERMISSIONS } from '@/lib/permissions';
 import { getTenantIdFromSession, withTenantTx, withTenantRead } from '@/lib/tenancy';
@@ -44,7 +45,7 @@ export async function GET(req: Request) {
 
         return NextResponse.json(employees);
     } catch (error: any) {
-        console.error('Error fetching employees:', error);
+        logger.error('Error fetching employees:', error);
         return NextResponse.json(
             { error: 'Error al obtener empleados', details: error.message },
             { status: 500 }
@@ -106,7 +107,7 @@ export async function POST(req: Request) {
 
         return NextResponse.json(newEmployee, { status: 201 });
     } catch (error: any) {
-        console.error('Error creating employee:', error);
+        logger.error('Error creating employee:', error);
         // Handle unique constraint violation (P2002)
         if (error.code === 'P2002') {
             return NextResponse.json(

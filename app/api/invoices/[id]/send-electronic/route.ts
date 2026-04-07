@@ -1,16 +1,17 @@
 import { NextResponse } from 'next/server'
+import { logger } from '@/lib/logger'
 import { requirePermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
 import { withTenantTx, getTenantIdFromSession } from '@/lib/tenancy'
 import {
-
-export const dynamic = 'force-dynamic'
   ElectronicBillingConfig,
   sendToElectronicBilling,
   validateInvoiceData,
   calculateCUFE,
   InvoiceData
 } from '@/lib/electronic-billing'
+
+export const dynamic = 'force-dynamic'
 
 export async function POST(
   request: Request,
@@ -166,11 +167,10 @@ export async function POST(
 
     return NextResponse.json(result)
   } catch (error: any) {
-    console.error('Error sending invoice to electronic billing:', error)
+    logger.error('Error sending invoice to electronic billing:', error)
     return NextResponse.json(
       { error: error.message || 'Error al enviar factura' },
       { status: 500 }
     )
   }
 }
-

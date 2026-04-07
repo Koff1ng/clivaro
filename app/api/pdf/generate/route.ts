@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { logger } from '@/lib/logger'
 import puppeteer from 'puppeteer-core'
 import chromium from '@sparticuz/chromium'
 import fs from 'fs'
@@ -81,7 +82,7 @@ export async function POST(req: Request) {
       },
     })
   } catch (error) {
-    console.error('PDF Generation Error:', error)
+    logger.error('PDF Generation Error:', error)
     if (browser) await browser.close()
     return NextResponse.json({ error: 'Failed to generate PDF' }, { status: 500 })
   }

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { logger } from '@/lib/logger'
 import { requireAnyPermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
 import { withTenantRead, getTenantIdFromSession } from '@/lib/tenancy'
@@ -72,7 +73,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ suggestions: result })
   } catch (error) {
-    console.error('Error fetching reorder suggestions:', error)
+    logger.error('Error fetching reorder suggestions:', error)
     return NextResponse.json({ error: 'Failed to fetch reorder suggestions' }, { status: 500 })
   }
 }

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { logger } from '@/lib/logger'
 import { requirePermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
 import { withTenantRead, withTenantTx, getTenantIdFromSession } from '@/lib/tenancy'
@@ -113,7 +114,7 @@ export async function POST(request: Request) {
 
         return NextResponse.json(result)
     } catch (error: any) {
-        console.error('[Recipe API] Error:', error)
+        logger.error('[Recipe API] Error:', error)
         return NextResponse.json({ error: error.message || 'Failed to save recipe' }, { status: 500 })
     }
 }

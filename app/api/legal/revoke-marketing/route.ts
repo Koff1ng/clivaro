@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { logger } from '@/lib/logger'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma as masterPrisma } from '@/lib/db'
@@ -32,7 +33,7 @@ export async function POST(req: Request) {
 
         return NextResponse.json({ success: true })
     } catch (error: any) {
-        console.error('[LEGAL_API] Error revoking marketing:', error)
+        logger.error('[LEGAL_API] Error revoking marketing:', error)
         return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
     }
 }

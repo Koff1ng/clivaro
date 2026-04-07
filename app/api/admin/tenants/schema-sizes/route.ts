@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { logger } from '@/lib/logger'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
@@ -65,7 +66,7 @@ export async function GET(request: Request) {
 
         return NextResponse.json({ sizes: results })
     } catch (error: any) {
-        console.error('[SCHEMA-SIZES]', error)
+        logger.error('[SCHEMA-SIZES]', error)
         return NextResponse.json({ error: 'Error fetching schema sizes', details: error?.message }, { status: 500 })
     }
 }

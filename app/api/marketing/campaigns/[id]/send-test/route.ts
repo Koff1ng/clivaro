@@ -7,13 +7,13 @@ import { sendEmail } from '@/lib/email'
 import { z } from 'zod'
 import { logger } from '@/lib/logger'
 import {
-
-export const dynamic = 'force-dynamic'
   extractImagePathsFromHtml,
   personalizeEmailHtml,
   prepareImageAttachments,
   replaceImageUrlsWithCid,
 } from '@/lib/marketing/email-assets'
+
+export const dynamic = 'force-dynamic'
 
 const schema = z.object({
   email: z.string().email(),
@@ -70,5 +70,3 @@ export async function POST(
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }
-
-

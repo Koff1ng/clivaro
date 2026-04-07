@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { logger } from '@/lib/logger'
 import { requirePermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
 import { createClient } from '@supabase/supabase-js'
@@ -76,7 +77,7 @@ export async function POST(request: Request) {
       storagePath: path,
     })
   } catch (error: any) {
-    console.error('Error uploading file:', error)
+    logger.error('Error uploading file:', error)
     return NextResponse.json({ error: error.message || 'Upload failed' }, { status: 500 })
   }
 }

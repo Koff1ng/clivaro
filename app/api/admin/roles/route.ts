@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { logger } from '@/lib/logger'
 import { requirePermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
 import { withTenantTx, getTenantIdFromSession } from '@/lib/tenancy'
@@ -43,7 +44,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ roles })
   } catch (error) {
-    console.error('Error fetching roles:', error)
+    logger.error('Error fetching roles:', error)
     return NextResponse.json(
       { error: 'Failed to fetch roles' },
       { status: 500 }
@@ -101,7 +102,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: error.message }, { status: 400 })
     }
 
-    console.error('Error creating role:', error)
+    logger.error('Error creating role:', error)
     return NextResponse.json(
       { error: 'Failed to create role' },
       { status: 500 }

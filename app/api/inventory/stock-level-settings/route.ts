@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { logger } from '@/lib/logger'
 import { z } from 'zod'
 import { requirePermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
@@ -60,7 +61,7 @@ export async function POST(request: Request) {
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: 'Error de validación', details: error.errors }, { status: 400 })
     }
-    console.error('Error updating stock level settings:', error)
+    logger.error('Error updating stock level settings:', error)
     return NextResponse.json({ error: error.message || 'Failed to update settings' }, { status: 500 })
   }
 }

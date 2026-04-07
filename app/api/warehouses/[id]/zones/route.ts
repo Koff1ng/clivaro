@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { logger } from '@/lib/logger'
 import { requirePermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
 import { withTenantTx, getTenantIdFromSession } from '@/lib/tenancy'
@@ -31,7 +32,7 @@ export async function GET(
 
         return NextResponse.json(zones)
     } catch (error) {
-        console.error('Error fetching zones:', error)
+        logger.error('Error fetching zones:', error)
         return NextResponse.json({ error: 'Failed to fetch zones' }, { status: 500 })
     }
 }
@@ -71,7 +72,7 @@ export async function POST(
 
         return NextResponse.json(zone, { status: 201 })
     } catch (error: any) {
-        console.error('Error creating zone:', error)
+        logger.error('Error creating zone:', error)
         if (error instanceof z.ZodError) {
             return NextResponse.json({ error: 'Error de validación', details: error.errors }, { status: 400 })
         }

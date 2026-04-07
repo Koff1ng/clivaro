@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { logger } from '@/lib/logger'
 import { requirePermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
 import { withTenantRead, withTenantTx, getTenantIdFromSession } from '@/lib/tenancy'
@@ -49,7 +50,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json(result)
   } catch (error: any) {
-    console.error('Error fetching campaigns:', error)
+    logger.error('Error fetching campaigns:', error)
     return NextResponse.json(
       { error: 'Failed to fetch campaigns', details: error.message },
       { status: 500 }
@@ -95,7 +96,7 @@ export async function POST(request: Request) {
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: 'Validation error', details: error.errors }, { status: 400 })
     }
-    console.error('Error creating campaign:', error)
+    logger.error('Error creating campaign:', error)
     return NextResponse.json({ error: error.message || 'Failed to create campaign' }, { status: 500 })
   }
 }

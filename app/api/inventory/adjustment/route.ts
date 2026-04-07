@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { logger } from '@/lib/logger'
 import { requirePermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
 import { withTenantTx, getTenantIdFromSession } from '@/lib/tenancy'
@@ -32,7 +33,7 @@ export async function POST(request: Request) {
     // Validate OUTSIDE the transaction
     const parsed = adjustmentSchema.safeParse(body)
     if (!parsed.success) {
-      console.error('[ADJUSTMENT] Validation failed:', JSON.stringify(parsed.error.flatten()), 'Body:', JSON.stringify(body))
+      logger.error('[ADJUSTMENT] Validation failed:', JSON.stringify(parsed.error.flatten()), 'Body:', JSON.stringify(body))
       return NextResponse.json(
         { error: 'Error de validación', details: parsed.error.flatten() },
         { status: 400 }
@@ -61,7 +62,7 @@ export async function POST(request: Request) {
           throw new Error('NO_WAREHOUSE: No hay almacenes activos para asignar el inventario')
         }
         warehouseId = firstWarehouse.id
-        console.log(`[ADJUSTMENT] Auto-resolved warehouse: ${warehouseId}`)
+        logger.info(`[ADJUSTMENT] Auto-resolved warehouse: ${warehouseId}`)
       }
 
       const quantity = data.quantity
@@ -107,7 +108,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json(result)
   } catch (error: any) {
-    console.error(`[INVENTORY_ADJUSTMENT_POST] Error:`, error?.message || error)
+    logger.error(`[INVENTORY_ADJUSTMENT_POST] Error:`, error?.message || error)
 
     if (error?.message?.startsWith('NO_WAREHOUSE')) {
       return NextResponse.json(

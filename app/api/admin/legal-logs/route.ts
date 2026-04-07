@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { logger } from '@/lib/logger'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
@@ -77,7 +78,7 @@ export async function GET(req: Request) {
                         })
                     })
                 } catch (err) {
-                    console.error(`Error fetching logs for tenant ${tenant.slug}:`, err)
+                    logger.error(`Error fetching logs for tenant ${tenant.slug}:`, err)
                     // Continue with next tenant even if one fails
                 }
             }
@@ -94,7 +95,7 @@ export async function GET(req: Request) {
 
         return NextResponse.json({ logs: allLogs })
     } catch (error: any) {
-        console.error('[ADMIN_LEGAL_LOGS] Error:', error)
+        logger.error('[ADMIN_LEGAL_LOGS] Error:', error)
         return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
     }
 }

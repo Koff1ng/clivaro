@@ -6,13 +6,13 @@ import { requirePlanFeature } from '@/lib/plan-middleware'
 import { sendEmail } from '@/lib/email'
 import { logger } from '@/lib/logger'
 import {
-
-export const dynamic = 'force-dynamic'
   extractImagePathsFromHtml,
   personalizeEmailHtml,
   prepareImageAttachments,
   replaceImageUrlsWithCid,
 } from '@/lib/marketing/email-assets'
+
+export const dynamic = 'force-dynamic'
 
 export async function POST(
   request: Request,
@@ -128,4 +128,3 @@ export async function POST(
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }
-

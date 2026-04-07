@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { logger } from '@/lib/logger'
 import { prisma } from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
@@ -91,7 +92,7 @@ export async function POST(req: NextRequest) {
 
         return new NextResponse('EVENT_RECEIVED', { status: 200 })
     } catch (error) {
-        console.error('Webhook error:', error)
+        logger.error('Webhook error:', error)
         return new NextResponse('Internal Server Error', { status: 500 })
     }
 }

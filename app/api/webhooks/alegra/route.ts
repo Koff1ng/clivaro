@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { logger } from '@/lib/logger'
 import { getTenantPrismaClient } from "@/lib/tenancy";
 import { emitRestaurantEvent } from "@/lib/events";
 
@@ -47,7 +48,7 @@ export async function POST(req: NextRequest) {
         break;
 
       default:
-        console.log(`Unhandled Alegra event: ${event}`);
+        logger.info(`Unhandled Alegra event: ${event}`);
     }
 
     // Optional: Notify UI via SSE if there's an active session watching this invoice
@@ -56,7 +57,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ received: true });
 
   } catch (error: any) {
-    console.error("Alegra Webhook Error:", error);
+    logger.error("Alegra Webhook Error:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

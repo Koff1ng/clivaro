@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { logger } from '@/lib/logger'
 import { requirePermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
 import { withTenantRead, withTenantTx, getTenantIdFromSession } from '@/lib/tenancy'
@@ -85,7 +86,7 @@ export async function GET(
 
     return NextResponse.json(order)
   } catch (error) {
-    console.error('Error fetching purchase order:', error)
+    logger.error('Error fetching purchase order:', error)
     return NextResponse.json({ error: 'Failed to fetch purchase order' }, { status: 500 })
   }
 }
@@ -223,7 +224,7 @@ export async function PUT(
     if (error.message === 'Cannot edit a received order with receipts') {
       return NextResponse.json({ error: error.message }, { status: 400 })
     }
-    console.error('Error updating purchase order:', error)
+    logger.error('Error updating purchase order:', error)
     return NextResponse.json({ error: 'Failed to update purchase order' }, { status: 500 })
   }
 }
@@ -263,7 +264,7 @@ export async function DELETE(
     if (error.message === 'Cannot delete a received order') {
       return NextResponse.json({ error: error.message }, { status: 400 })
     }
-    console.error('Error deleting purchase order:', error)
+    logger.error('Error deleting purchase order:', error)
     return NextResponse.json({ error: 'Failed to delete purchase order' }, { status: 500 })
   }
 }

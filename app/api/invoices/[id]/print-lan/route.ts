@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { logger } from '@/lib/logger'
 import { prisma as masterPrisma } from "@/lib/db";
 import { InvoiceData, printInvoiceLan, PrinterOptions } from "@/lib/escpos/lan-printer";
 import { requirePermission } from "@/lib/api-middleware";
@@ -74,7 +75,7 @@ export async function POST(
                         }
                     }
                 } catch (e) {
-                    console.error("Error parsing custom settings:", e);
+                    logger.error("Error parsing custom settings:", e);
                 }
             }
 
@@ -137,7 +138,7 @@ export async function POST(
             return NextResponse.json({ success: true });
         });
     } catch (error: any) {
-        console.error("LAN Print Error:", error);
+        logger.error("LAN Print Error:", error);
         return NextResponse.json(
             { error: error.message || "Failed to print" },
             { status: 500 }

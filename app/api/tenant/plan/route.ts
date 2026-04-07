@@ -243,7 +243,7 @@ export async function GET(request: Request) {
       }
     })
   } catch (error: any) {
-    console.error('Error fetching tenant plan:', error)
+    logger.error('Error fetching tenant plan:', error)
     return NextResponse.json(
       {
         error: error.message || 'Error al obtener el plan',

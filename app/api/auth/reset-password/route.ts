@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { logger } from '@/lib/logger'
 import { z } from 'zod'
 import bcrypt from 'bcryptjs'
 import { prisma } from '@/lib/db'
@@ -80,7 +81,7 @@ export async function POST(req: Request) {
         { status: 400 }
       )
     }
-    console.error('[reset-password]', e)
+    logger.error('[reset-password]', e)
     return NextResponse.json(
       { error: 'No se pudo restablecer la contraseña. Intente nuevamente.' },
       { status: 500 }

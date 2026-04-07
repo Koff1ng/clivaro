@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { logger } from '@/lib/logger'
 import { requirePermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
 import { withTenantRead, withTenantTx } from '@/lib/tenancy'
@@ -51,7 +52,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json(result)
   } catch (error) {
-    console.error('Error fetching cash movements:', error)
+    logger.error('Error fetching cash movements:', error)
     return NextResponse.json(
       { error: 'Failed to fetch cash movements' },
       { status: 500 }
@@ -134,7 +135,7 @@ export async function POST(request: Request) {
         { status: 400 }
       )
     }
-    console.error('Error creating cash movement:', error)
+    logger.error('Error creating cash movement:', error)
     return NextResponse.json(
       { error: error.message || 'Failed to create cash movement' },
       { status: 500 }

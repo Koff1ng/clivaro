@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { logger } from '@/lib/logger'
 import { requireAuth } from '@/lib/api-middleware'
 import { prisma } from '@/lib/db'
 import { getTransaction, getTransactionByReference, mapWompiStatusToSubscription } from '@/lib/wompi'
@@ -33,7 +34,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'ref es requerido' }, { status: 400 })
     }
 
-    console.log('[Wompi Verify] Starting:', { reference, transactionId, tenantId })
+    logger.info('[Wompi Verify] Starting:', { reference, transactionId, tenantId })
 
     // Find subscription by tenantId
     const subscription = await prisma.subscription.findUnique({
@@ -42,11 +43,11 @@ export async function GET(request: Request) {
     })
 
     if (!subscription) {
-      console.error('[Wompi Verify] No subscription found for tenant:', tenantId)
+      logger.error('[Wompi Verify] No subscription found for tenant:', tenantId)
       return NextResponse.json({ error: 'Suscripción no encontrada' }, { status: 404 })
     }
 
-    console.log('[Wompi Verify] Found subscription:', {
+    logger.info('[Wompi Verify] Found subscription:', {
       id: subscription.id,
       status: subscription.status,
       planName: subscription.plan.name,
@@ -55,17 +56,17 @@ export async function GET(request: Request) {
     // Resolve the transaction — by ID if available, otherwise search by reference
     let transaction: WompiTransaction | null = null
     if (transactionId) {
-      console.log('[Wompi Verify] Fetching transaction by ID:', transactionId)
+      logger.info('[Wompi Verify] Fetching transaction by ID:', transactionId)
       transaction = await getTransaction(transactionId)
     }
     
     if (!transaction && reference) {
-      console.log('[Wompi Verify] No transaction ID or lookup failed, searching by reference:', reference)
+      logger.info('[Wompi Verify] No transaction ID or lookup failed, searching by reference:', reference)
       transaction = await getTransactionByReference(reference)
     }
 
     if (!transaction) {
-      console.log('[Wompi Verify] No transaction found yet (may still be processing)')
+      logger.info('[Wompi Verify] No transaction found yet (may still be processing)')
       return NextResponse.json({
         status: 'PENDING',
         message: 'La transacción aún está siendo procesada por Wompi',
@@ -74,7 +75,7 @@ export async function GET(request: Request) {
       })
     }
 
-    console.log('[Wompi Verify] Transaction from Wompi:', {
+    logger.info('[Wompi Verify] Transaction from Wompi:', {
       id: transaction.id,
       status: transaction.status,
       reference: transaction.reference,
@@ -91,7 +92,7 @@ export async function GET(request: Request) {
       pendingPlanId = queryPlanId
       const targetPlan = await prisma.plan.findUnique({ where: { id: queryPlanId } })
       if (targetPlan) pendingPlanName = targetPlan.name
-      console.log('[Wompi Verify] Using planId from URL:', { pendingPlanId, pendingPlanName })
+      logger.info('[Wompi Verify] Using planId from URL:', { pendingPlanId, pendingPlanName })
     } else {
       try {
         const rows: any[] = await prisma.$queryRawUnsafe(
@@ -106,7 +107,7 @@ export async function GET(request: Request) {
           }
         }
       } catch (e) {
-        console.warn('[Wompi Verify] Could not read wompiResponse:', (e as any)?.message)
+        logger.warn('[Wompi Verify] Could not read wompiResponse:', (e as any)?.message)
       }
     }
 
@@ -119,7 +120,7 @@ export async function GET(request: Request) {
     }
 
     if (newStatus === 'active') {
-      console.log('[Wompi Verify] APPROVED! Activating plan:', pendingPlanId)
+      logger.info('[Wompi Verify] APPROVED! Activating plan:', pendingPlanId)
       await prisma.subscription.update({
         where: { id: subscription.id },
         data: {
@@ -139,10 +140,10 @@ export async function GET(request: Request) {
           subscription.id
         )
       } catch (e) {
-        console.warn('[Wompi Verify] Could not update wompi fields:', (e as any)?.message)
+        logger.warn('[Wompi Verify] Could not update wompi fields:', (e as any)?.message)
       }
     } else if (transaction.status === 'DECLINED' || transaction.status === 'VOIDED' || transaction.status === 'ERROR') {
-      console.log('[Wompi Verify] Payment failed:', transaction.status)
+      logger.info('[Wompi Verify] Payment failed:', transaction.status)
       // Restore to active if was pending_payment (don't lock user out)
       if (subscription.status === 'pending_payment') {
         await prisma.subscription.update({
@@ -159,7 +160,7 @@ export async function GET(request: Request) {
           subscription.id
         )
       } catch (e) {
-        console.warn('[Wompi Verify] Could not update wompi fields:', (e as any)?.message)
+        logger.warn('[Wompi Verify] Could not update wompi fields:', (e as any)?.message)
       }
     }
 
@@ -181,7 +182,7 @@ export async function GET(request: Request) {
       },
     })
   } catch (error: any) {
-    console.error('[Wompi Verify] Error:', error)
+    logger.error('[Wompi Verify] Error:', error)
     return NextResponse.json({ error: error.message || 'Error interno' }, { status: 500 })
   }
 }

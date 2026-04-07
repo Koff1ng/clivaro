@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { logger } from '@/lib/logger'
 import { requirePermission } from '@/lib/api-middleware';
 import { PERMISSIONS } from '@/lib/permissions';
 import { getTenantIdFromSession, withTenantTx, withTenantRead } from '@/lib/tenancy';
@@ -72,7 +73,7 @@ export async function PATCH(
                 const { createJournalEntryFromPayroll } = await import('@/lib/accounting/payroll-integration');
                 await createJournalEntryFromPayroll(updated.id, tenantId, session.user.id);
             } catch (err: any) {
-                console.error('Error integrando nómina con contabilidad:', err);
+                logger.error('Error integrando nómina con contabilidad:', err);
             }
         }
 

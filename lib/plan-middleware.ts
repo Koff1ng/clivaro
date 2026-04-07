@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { PlanName, hasFeature } from './plan-features'
+import { logger } from './logger'
+
 
 /**
  * Obtiene el plan activo de un tenant
@@ -34,7 +36,7 @@ export async function getTenantActivePlan(tenantId: string): Promise<PlanName | 
 
     return subscription.plan.name as PlanName
   } catch (error) {
-    console.error('Error fetching tenant plan:', error)
+    logger.error('Error fetching tenant plan:', error)
     return null
   }
 }

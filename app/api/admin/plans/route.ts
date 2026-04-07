@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { logger } from '@/lib/logger'
 import { requireAuth } from '@/lib/api-middleware'
 import { prisma } from '@/lib/db'
 
@@ -126,7 +127,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json(plans)
   } catch (error: any) {
-    console.error('Error fetching plans:', error)
+    logger.error('Error fetching plans:', error)
     return NextResponse.json(
       { error: error.message || 'Error al obtener planes' },
       { status: 500 }
@@ -175,7 +176,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json(plan, { status: 201 })
   } catch (error: any) {
-    console.error('Error creating plan:', error)
+    logger.error('Error creating plan:', error)
     return NextResponse.json(
       { error: error.message || 'Error al crear plan' },
       { status: 500 }

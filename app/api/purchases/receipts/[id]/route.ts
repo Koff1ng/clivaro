@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { logger } from '@/lib/logger'
 import { requirePermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
 import { withTenantRead, getTenantIdFromSession } from '@/lib/tenancy'
@@ -82,7 +83,7 @@ export async function GET(
             select: { id: true, name: true },
           })
         } catch (err) {
-          console.warn('Could not fetch createdBy user:', err)
+          logger.warn('Could not fetch createdBy user:', err)
         }
       }
 
@@ -102,7 +103,7 @@ export async function GET(
 
     return NextResponse.json(result)
   } catch (error: any) {
-    console.error('Error fetching receipt:', error)
+    logger.error('Error fetching receipt:', error)
     return NextResponse.json(
       {
         error: 'Failed to fetch receipt',

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { logger } from '@/lib/logger'
 import { requirePermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
 import { withTenantRead, withTenantTx, getTenantIdFromSession } from '@/lib/tenancy'
@@ -95,7 +96,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json(result)
   } catch (error: any) {
-    console.error('Error fetching quotations:', error)
+    logger.error('Error fetching quotations:', error)
     return NextResponse.json({ error: error.message || 'Failed to fetch quotations' }, { status: 500 })
   }
 }
@@ -224,7 +225,7 @@ export async function POST(request: Request) {
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: 'Validation error', details: error.errors }, { status: 400 })
     }
-    console.error('Error creating quotation:', error)
+    logger.error('Error creating quotation:', error)
     return NextResponse.json({ error: error.message || 'Failed to create quotation' }, { status: 500 })
   }
 }

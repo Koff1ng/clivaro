@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { logger } from '@/lib/logger'
 import { requirePermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
 import { GoogleGenerativeAI } from '@google/generative-ai'
@@ -255,7 +256,7 @@ export async function POST(request: Request) {
               })
             } catch {
               // If product fetch fails, continue without products
-              console.log('[Clivi] Could not fetch products, generating without product context')
+              logger.info('[Clivi] Could not fetch products, generating without product context')
             }
 
             const campaignData = await generateCampaignContent(parsed.data.prompt, products)
@@ -304,7 +305,7 @@ export async function POST(request: Request) {
               action: { type: 'analytics', data: analyticsData },
             })
           } catch (err: any) {
-            console.error('[Clivi Analytics]', err)
+            logger.error('[Clivi Analytics]', err)
             return NextResponse.json({
               reply: '🐙 Tuve un problema consultando los datos. Puede que no haya suficiente información o que la base de datos no esté disponible. ¿Puedo ayudarte con otra cosa?',
             })
@@ -314,7 +315,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ reply: text })
   } catch (error: any) {
-    console.error('[Clivi] Error:', error)
+    logger.error('[Clivi] Error:', error)
     return NextResponse.json(
       { error: error.message || 'Clivi tuvo un error 🐙' },
       { status: 500 }

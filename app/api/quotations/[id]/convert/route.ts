@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { logger } from '@/lib/logger'
 import { requirePermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
 import { withTenantTx, getTenantIdFromSession } from '@/lib/tenancy'
@@ -204,7 +205,7 @@ export async function POST(
         { status: 400 }
       )
     }
-    console.error('Error al convertir cotización:', error)
+    logger.error('Error al convertir cotización:', error)
     return NextResponse.json(
       { error: error.message || 'Error al convertir cotización' },
       { status: 500 }

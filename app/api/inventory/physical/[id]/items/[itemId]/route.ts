@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { logger } from '@/lib/logger'
 import { requirePermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
 import { withTenantTx, getTenantIdFromSession } from '@/lib/tenancy'
@@ -104,7 +105,7 @@ export async function PUT(
     if (error.message === 'Item no encontrado') {
       return NextResponse.json({ error: error.message }, { status: 404 })
     }
-    console.error('Error updating item:', error)
+    logger.error('Error updating item:', error)
     return NextResponse.json(
       { error: 'Failed to update item' },
       { status: 500 }

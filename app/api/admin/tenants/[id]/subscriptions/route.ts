@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { logger } from '@/lib/logger'
 import { requireAuth } from '@/lib/api-middleware'
 import { prisma } from '@/lib/db'
 
@@ -44,7 +45,7 @@ export async function GET(
 
     return NextResponse.json(subscriptions)
   } catch (error: any) {
-    console.error('Error fetching subscriptions:', error)
+    logger.error('Error fetching subscriptions:', error)
     return NextResponse.json(
       { error: error.message || 'Error al obtener suscripciones' },
       { status: 500 }
@@ -127,7 +128,7 @@ export async function POST(
 
     return NextResponse.json(subscription, { status: 201 })
   } catch (error: any) {
-    console.error('Error creating subscription:', error)
+    logger.error('Error creating subscription:', error)
     return NextResponse.json(
       { error: error.message || 'Error al crear suscripción' },
       { status: 500 }
@@ -209,7 +210,7 @@ export async function PUT(
 
     return NextResponse.json(subscription)
   } catch (error: any) {
-    console.error('Error updating subscription:', error)
+    logger.error('Error updating subscription:', error)
     return NextResponse.json(
       { error: error.message || 'Error al actualizar suscripción' },
       { status: 500 }

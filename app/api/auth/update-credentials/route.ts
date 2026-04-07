@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { logger } from '@/lib/logger'
 import { z } from 'zod'
 import bcrypt from 'bcryptjs'
 import { authOptions } from '@/lib/auth'
@@ -64,7 +65,7 @@ export async function POST(req: Request) {
       success = true;
     }).catch(e => {
         if(e.message !== 'USERNAME_TAKEN') {
-            console.error('[UPDATE-CREDENTIALS] Error:', e)
+            logger.error('[UPDATE-CREDENTIALS] Error:', e)
             errorMsg = 'Error al actualizar credenciales.'
         }
     })
@@ -75,7 +76,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ ok: true, message: 'Credenciales actualizadas exitosamente.' })
   } catch (e: any) {
-    console.error('[UPDATE-CREDENTIALS] Unhandled Exception:', e)
+    logger.error('[UPDATE-CREDENTIALS] Unhandled Exception:', e)
     return NextResponse.json(
       { error: 'Error al procesar la solicitud. Intente nuevamente.' },
       { status: 500 }

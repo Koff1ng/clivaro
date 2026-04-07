@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { logger } from '@/lib/logger'
 import { requireAuth } from '@/lib/api-middleware'
 import { prisma } from '@/lib/db'
 import { generateReference, createPaymentSession } from '@/lib/wompi'
@@ -48,7 +49,7 @@ export async function POST(request: Request) {
     const redirectUrl = `${baseUrl}/settings?tab=subscription&wompiRef=${reference}&planId=${plan.id}`
 
     // Create payment session data
-    console.log('[Wompi] Creating session:', {
+    logger.info('[Wompi] Creating session:', {
       reference,
       amountInCents,
       currency: plan.currency || 'COP',
@@ -84,7 +85,7 @@ export async function POST(request: Request) {
         sub.id
       )
     } catch (e) {
-      console.warn('[Wompi] wompi fields update failed:', (e as any)?.message)
+      logger.warn('[Wompi] wompi fields update failed:', (e as any)?.message)
     }
 
     return NextResponse.json({
@@ -93,7 +94,7 @@ export async function POST(request: Request) {
       planPrice: plan.price,
     })
   } catch (error: any) {
-    console.error('[Wompi] Error creating session:', error)
+    logger.error('[Wompi] Error creating session:', error)
     return NextResponse.json({ error: error.message || 'Error interno' }, { status: 500 })
   }
 }

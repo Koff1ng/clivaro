@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { logger } from '@/lib/logger'
 import { requirePermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
 import { withTenantTx, getTenantIdFromSession } from '@/lib/tenancy'
@@ -51,7 +52,7 @@ export async function GET(
 
         return NextResponse.json({ role })
     } catch (error) {
-        console.error('Error fetching role:', error)
+        logger.error('Error fetching role:', error)
         return NextResponse.json(
             { error: 'Failed to fetch role' },
             { status: 500 }
@@ -131,7 +132,7 @@ export async function PUT(
             return NextResponse.json({ error: error.message }, { status: 400 })
         }
 
-        console.error('Error updating role:', error)
+        logger.error('Error updating role:', error)
         return NextResponse.json(
             { error: 'Failed to update role' },
             { status: 500 }
@@ -183,7 +184,7 @@ export async function DELETE(
             return NextResponse.json({ error: error.message }, { status: 400 })
         }
 
-        console.error('Error deleting role:', error)
+        logger.error('Error deleting role:', error)
         return NextResponse.json(
             { error: 'Failed to delete role' },
             { status: 500 }

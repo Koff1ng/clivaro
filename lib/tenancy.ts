@@ -1,6 +1,7 @@
 import { Prisma, PrismaClient } from '@prisma/client'
 import { prisma as masterPrisma } from './db'
 import { getSchemaNameAsync } from './tenant-utils'
+import { logger } from './logger'
 
 /**
  * Custom error class for tenancy-related failures (e.g., missing tenant context, invalid schema).
@@ -63,7 +64,7 @@ export async function getTenantPrismaClient(tenantId: string): Promise<PrismaCli
         const exists = await schemaExists(tenantId)
         if (!exists) {
             schemaCache.delete(schemaName)
-            console.error(`CRITICAL: Schema "${schemaName}" does not exist in the database.`)
+            logger.error(`CRITICAL: Schema "${schemaName}" does not exist in the database.`)
             throw new TenancyError(`Forbidden: Account is not properly initialized (${schemaName}).`, 403)
         }
         schemaCache.set(schemaName, Date.now())

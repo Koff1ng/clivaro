@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { logger } from '@/lib/logger'
 import { requirePermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
 import { getTenantIdFromSession, withTenantRead } from '@/lib/tenancy'
@@ -103,7 +104,7 @@ export async function GET(request: Request) {
             status: warnings.length === 0 ? 'OK' : (rangeExhausted || resolutionExpired ? 'CRITICAL' : 'WARNING'),
         })
     } catch (error: any) {
-        console.error('Error in fiscal-config GET:', error)
+        logger.error('Error in fiscal-config GET:', error)
         return NextResponse.json({ error: error.message }, { status: 500 })
     }
 }

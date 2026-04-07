@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { logger } from '@/lib/logger'
 import { requirePermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
 import { withTenantRead, withTenantTx, getTenantIdFromSession } from '@/lib/tenancy'
@@ -58,7 +59,7 @@ export async function GET(
 
     return NextResponse.json(lead)
   } catch (error) {
-    console.error('Error fetching lead:', error)
+    logger.error('Error fetching lead:', error)
     return NextResponse.json({ error: 'Failed to fetch lead' }, { status: 500 })
   }
 }
@@ -156,7 +157,7 @@ export async function PUT(
     if (error.message === 'Lead not found') {
       return NextResponse.json({ error: error.message }, { status: 404 })
     }
-    console.error('Error updating lead:', error)
+    logger.error('Error updating lead:', error)
     return NextResponse.json({ error: 'Failed to update lead' }, { status: 500 })
   }
 }
@@ -179,7 +180,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Error deleting lead:', error)
+    logger.error('Error deleting lead:', error)
     return NextResponse.json({ error: 'Failed to delete lead' }, { status: 500 })
   }
 }

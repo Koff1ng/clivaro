@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { logger } from '@/lib/logger'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
@@ -103,7 +104,7 @@ export async function POST(
             }
         })
     } catch (error: any) {
-        console.error('[RESET-CREDENTIALS]', error)
+        logger.error('[RESET-CREDENTIALS]', error)
         return NextResponse.json(
             { error: 'Error al restablecer credenciales', details: error?.message || String(error) },
             { status: 500 }

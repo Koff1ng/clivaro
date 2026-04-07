@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { logger } from '@/lib/logger'
 import { prisma } from '@/lib/db'
 import { verifyEventSignature, mapWompiStatusToSubscription } from '@/lib/wompi'
 import type { WompiEvent } from '@/lib/wompi'
@@ -20,13 +21,13 @@ export async function POST(request: Request) {
 
     const isValid = verifyEventSignature(event)
     if (!isValid) {
-      console.error('[Wompi Webhook] Invalid signature')
+      logger.error('[Wompi Webhook] Invalid signature')
       return NextResponse.json({ error: 'Invalid signature' }, { status: 401 })
     }
 
     const { reference, status, id: transactionId, payment_method_type } = event.data.transaction
 
-    console.log(`[Wompi Webhook] Transaction ${transactionId} — status: ${status}, ref: ${reference}`)
+    logger.info(`[Wompi Webhook] Transaction ${transactionId} — status: ${status}, ref: ${reference}`)
 
     // Find subscription by reference using raw SQL
     const subscriptions: any[] = await prisma.$queryRawUnsafe(
@@ -41,7 +42,7 @@ export async function POST(request: Request) {
     const subscription = subscriptions[0]
 
     if (!subscription) {
-      console.warn(`[Wompi Webhook] No subscription for ref: ${reference}`)
+      logger.warn(`[Wompi Webhook] No subscription for ref: ${reference}`)
       return NextResponse.json({ received: true, warning: 'No subscription found' })
     }
 
@@ -92,10 +93,10 @@ export async function POST(request: Request) {
       )
     }
 
-    console.log(`[Wompi Webhook] Subscription ${subscription.id} → ${newStatus}`)
+    logger.info(`[Wompi Webhook] Subscription ${subscription.id} → ${newStatus}`)
     return NextResponse.json({ received: true, status: newStatus })
   } catch (error: any) {
-    console.error('[Wompi Webhook] Error:', error)
+    logger.error('[Wompi Webhook] Error:', error)
     return NextResponse.json({ received: true, error: error.message })
   }
 }

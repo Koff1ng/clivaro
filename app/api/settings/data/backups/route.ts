@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { logger } from '@/lib/logger'
 import { requirePermission } from '@/lib/api-middleware'
 import { getTenantIdFromSession } from '@/lib/tenancy'
 import { createClient } from '@supabase/supabase-js'
@@ -53,7 +54,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ backups })
   } catch (error: any) {
-    console.error('Error listing backups:', error)
+    logger.error('Error listing backups:', error)
     return NextResponse.json({ backups: [] })
   } finally {
     await masterPrisma.$disconnect()

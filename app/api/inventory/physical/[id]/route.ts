@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { logger } from '@/lib/logger'
 import { requirePermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
 import { withTenantRead, withTenantTx, getTenantIdFromSession } from '@/lib/tenancy'
@@ -43,7 +44,7 @@ export async function GET(
 
     return NextResponse.json({ ...inventory, items: itemsWithDifference })
   } catch (error) {
-    console.error('Error fetching physical inventory:', error)
+    logger.error('Error fetching physical inventory:', error)
     return NextResponse.json({ error: 'Failed to fetch physical inventory' }, { status: 500 })
   }
 }
@@ -137,7 +138,7 @@ export async function PUT(
     if (error.message === 'Invalid action') {
       return NextResponse.json({ error: error.message }, { status: 400 })
     }
-    console.error('Error updating physical inventory:', error)
+    logger.error('Error updating physical inventory:', error)
     return NextResponse.json({ error: 'Failed to update physical inventory' }, { status: 500 })
   }
 }

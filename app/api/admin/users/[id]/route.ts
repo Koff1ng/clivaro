@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { logger } from '@/lib/logger'
 import { requirePermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
 import { withTenantTx, getTenantIdFromSession } from '@/lib/tenancy'
@@ -89,7 +90,7 @@ export async function GET(
 
     return NextResponse.json({ user })
   } catch (error) {
-    console.error('Error fetching user:', error)
+    logger.error('Error fetching user:', error)
     return NextResponse.json(
       { error: 'Failed to fetch user' },
       { status: 500 }
@@ -227,7 +228,7 @@ export async function PUT(
       return NextResponse.json({ error: 'El email ya está en uso' }, { status: 400 })
     }
 
-    console.error('Error updating user:', error)
+    logger.error('Error updating user:', error)
     return NextResponse.json(
       { error: 'Failed to update user' },
       { status: 500 }
@@ -280,7 +281,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'No puedes eliminar tu propio usuario' }, { status: 400 })
     }
 
-    console.error('Error deleting user:', error)
+    logger.error('Error deleting user:', error)
     return NextResponse.json(
       { error: 'Failed to delete user' },
       { status: 500 }

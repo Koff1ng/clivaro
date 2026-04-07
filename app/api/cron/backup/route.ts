@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { logger } from '@/lib/logger'
 import { PrismaClient } from '@prisma/client'
 import { withTenantRead } from '@/lib/tenancy'
 import { createClient } from '@supabase/supabase-js'
@@ -101,7 +102,7 @@ export async function GET(request: Request) {
 
         results.push({ tenant: tenant.name, status: 'success' })
       } catch (err: any) {
-        console.error(`Backup failed for ${tenant.name}:`, err)
+        logger.error(`Backup failed for ${tenant.name}:`, err)
         results.push({ tenant: tenant.name, status: 'error', error: err.message })
       }
     }
@@ -112,7 +113,7 @@ export async function GET(request: Request) {
       results,
     })
   } catch (error: any) {
-    console.error('Cron backup error:', error)
+    logger.error('Cron backup error:', error)
     return NextResponse.json({ error: error.message }, { status: 500 })
   } finally {
     await masterPrisma.$disconnect()

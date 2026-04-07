@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { logger } from '@/lib/logger'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
@@ -48,7 +49,7 @@ export async function POST(
         const directBase = stripSchemaParam(process.env.DIRECT_URL || process.env.DATABASE_URL || '')
         const schemaUrl = withSchemaParam(directBase, schemaName)
 
-        console.log(`[RESET-DB] Starting factory reset for "${tenant.slug}" → schema "${schemaName}"`)
+        logger.info(`[RESET-DB] Starting factory reset for "${tenant.slug}" → schema "${schemaName}"`)
 
         // STEP 1: Drop and recreate schema
         const baseClient = new Client({ connectionString: directBase })
@@ -56,7 +57,7 @@ export async function POST(
             await baseClient.connect()
             await baseClient.query(`DROP SCHEMA IF EXISTS "${schemaName}" CASCADE`)
             await baseClient.query(`CREATE SCHEMA "${schemaName}"`)
-            console.log(`[RESET-DB] Schema dropped and recreated`)
+            logger.info(`[RESET-DB] Schema dropped and recreated`)
         } finally {
             await baseClient.end().catch(() => { })
         }
@@ -73,10 +74,10 @@ export async function POST(
                     executed++
                 } catch (e: any) {
                     if (e?.message?.includes('already exists') || e?.message?.includes('duplicate')) { skipped++ }
-                    else { console.warn(`[RESET-DB] Stmt warning: ${e?.message?.slice(0, 100)}`) }
+                    else { logger.warn(`[RESET-DB] Stmt warning: ${e?.message?.slice(0, 100)}`) }
                 }
             }
-            console.log(`[RESET-DB] ${executed} statements executed, ${skipped} skipped`)
+            logger.info(`[RESET-DB] ${executed} statements executed, ${skipped} skipped`)
         } finally {
             await ddlClient.end().catch(() => { })
         }
@@ -122,7 +123,7 @@ export async function POST(
                 update: {}, create: { userId: adminUser.id, roleId: adminRole.id },
             })
 
-            console.log(`[RESET-DB] Initial data seeded successfully`)
+            logger.info(`[RESET-DB] Initial data seeded successfully`)
         } finally {
             await tenantPrisma.$disconnect()
         }
@@ -134,7 +135,7 @@ export async function POST(
             credentials: { username: 'admin', password: 'Admin123!', loginUrl: `/login/${tenant.slug}` }
         })
     } catch (error: any) {
-        console.error('[RESET-DB] Error:', error)
+        logger.error('[RESET-DB] Error:', error)
         return NextResponse.json(
             { error: 'Error al reiniciar la base de datos', details: error?.message },
             { status: 500 }

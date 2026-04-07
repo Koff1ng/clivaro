@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { logger } from '@/lib/logger'
 import { requirePermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
 import { getTenantIdFromSession, withTenantTx } from '@/lib/tenancy'
@@ -140,12 +141,12 @@ export async function POST(
                 if (emailResult.success) {
                     successCount++
                 } else {
-                    console.error(`Error enviando email a ${payslip.employee.email}:`, emailResult.message)
+                    logger.error(`Error enviando email a ${payslip.employee.email}:`, emailResult.message)
                     failureCount++
                 }
 
             } catch (err) {
-                console.error(`Error generando/enviando payslip para empleado ${payslip.employee.id}:`, err)
+                logger.error(`Error generando/enviando payslip para empleado ${payslip.employee.id}:`, err)
                 failureCount++
             }
         }
@@ -158,7 +159,7 @@ export async function POST(
         })
 
     } catch (error) {
-        console.error('Error sending mass payslip pdfs:', error)
+        logger.error('Error sending mass payslip pdfs:', error)
         return NextResponse.json(
             { error: 'Error general al procesar correos masivos' },
             { status: 500 }

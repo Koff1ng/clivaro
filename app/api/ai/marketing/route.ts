@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { logger } from '@/lib/logger'
 import { requirePermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
 import {
@@ -68,7 +69,7 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: `Unknown action: ${action}` }, { status: 400 })
     }
   } catch (error: any) {
-    console.error('[AI Marketing] Error:', error)
+    logger.error('[AI Marketing] Error:', error)
     return NextResponse.json(
       { error: error.message || 'AI request failed' },
       { status: 500 }

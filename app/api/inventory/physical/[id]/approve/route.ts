@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { logger } from '@/lib/logger'
 import { requirePermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
 import { withTenantTx, getTenantIdFromSession } from '@/lib/tenancy'
@@ -82,7 +83,7 @@ export async function POST(
 
         return NextResponse.json(result)
     } catch (error: any) {
-        console.error('Error approving physical inventory:', error)
+        logger.error('Error approving physical inventory:', error)
         return NextResponse.json({ error: error.message || 'Failed to approve inventory' }, { status: 500 })
     }
 }

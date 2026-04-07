@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { logger } from '@/lib/logger'
 import { requirePermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
 import { withTenantRead, withTenantTx } from '@/lib/tenancy'
@@ -31,7 +32,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json(result)
   } catch (error) {
-    console.error('Error fetching warehouses:', error)
+    logger.error('Error fetching warehouses:', error)
     return NextResponse.json(
       { error: 'Failed to fetch warehouses' },
       { status: 500 }
@@ -70,7 +71,7 @@ export async function POST(request: Request) {
         { status: 400 }
       )
     }
-    console.error('Error creating warehouse:', error)
+    logger.error('Error creating warehouse:', error)
     return NextResponse.json(
       { error: 'Failed to create warehouse' },
       { status: 500 }

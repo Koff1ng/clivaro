@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { logger } from '@/lib/logger'
 import { requirePermission } from '@/lib/api-middleware'
 import { getTenantIdFromSession, withTenantRead } from '@/lib/tenancy'
 import * as XLSX from 'xlsx'
@@ -192,7 +193,7 @@ export async function POST(req: Request) {
         }
 
     } catch (error: any) {
-        console.error('Export Error:', error)
+        logger.error('Export Error:', error)
         return NextResponse.json({ error: error.message }, { status: 500 })
     }
 }

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { logger } from '@/lib/logger'
 import { requirePermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
 import { withTenantRead, withTenantTx } from '@/lib/tenancy'
@@ -35,7 +36,7 @@ export async function GET(
 
     return NextResponse.json({ attachments })
   } catch (error: any) {
-    console.error('Error fetching attachments:', error)
+    logger.error('Error fetching attachments:', error)
     return NextResponse.json({ error: 'Failed to fetch attachments' }, { status: 500 })
   }
 }
@@ -84,7 +85,7 @@ export async function POST(
 
     return NextResponse.json(attachment, { status: 201 })
   } catch (error: any) {
-    console.error('Error creating attachment:', error)
+    logger.error('Error creating attachment:', error)
     return NextResponse.json({ error: error.message || 'Failed to create attachment' }, { status: 500 })
   }
 }
@@ -115,7 +116,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true })
   } catch (error: any) {
-    console.error('Error deleting attachment:', error)
+    logger.error('Error deleting attachment:', error)
     return NextResponse.json({ error: 'Failed to delete attachment' }, { status: 500 })
   }
 }

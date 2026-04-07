@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { logger } from '@/lib/logger'
 import { requirePermission } from '@/lib/api-middleware';
 import { PERMISSIONS } from '@/lib/permissions';
 import { getTenantIdFromSession, withTenantTx, withTenantRead } from '@/lib/tenancy';
@@ -31,7 +32,7 @@ export async function GET(
 
         return NextResponse.json(employee);
     } catch (error: any) {
-        console.error('Error fetching employee:', error);
+        logger.error('Error fetching employee:', error);
         return NextResponse.json(
             { error: 'Error al obtener empleado', details: error.message },
             { status: 500 }
@@ -95,7 +96,7 @@ export async function PUT(
 
         return NextResponse.json(updatedEmployee);
     } catch (error: any) {
-        console.error('Error updating employee:', error);
+        logger.error('Error updating employee:', error);
         if (error.code === 'P2002') {
             return NextResponse.json(
                 { error: 'Ya existe un empleado con este número de documento' },
@@ -147,7 +148,7 @@ export async function DELETE(
 
         return NextResponse.json({ success: true });
     } catch (error: any) {
-        console.error('Error deleting employee:', error);
+        logger.error('Error deleting employee:', error);
         return NextResponse.json(
             { error: 'Error al eliminar empleado', details: error.message },
             { status: 500 }

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { logger } from '@/lib/logger'
 import { requirePermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
 import { withTenantTx, getTenantIdFromSession } from '@/lib/tenancy'
@@ -43,7 +44,7 @@ export async function PUT(
 
         return NextResponse.json(zone)
     } catch (error: any) {
-        console.error('Error updating zone:', error)
+        logger.error('Error updating zone:', error)
         if (error instanceof z.ZodError) {
             return NextResponse.json({ error: 'Error de validación', details: error.errors }, { status: 400 })
         }
@@ -79,7 +80,7 @@ export async function DELETE(
 
         return NextResponse.json({ success: true })
     } catch (error: any) {
-        console.error('Error deleting zone:', error)
+        logger.error('Error deleting zone:', error)
         return NextResponse.json({ error: error.message || 'Failed to delete zone' }, { status: 500 })
     }
 }

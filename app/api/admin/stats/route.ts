@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { logger } from '@/lib/logger'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
@@ -128,7 +129,7 @@ export async function GET() {
       plans: plans.map(p => ({ id: p.id, name: p.name, price: p.price })),
     })
   } catch (error: any) {
-    console.error('Admin stats error:', error)
+    logger.error('Admin stats error:', error)
     return NextResponse.json({ error: 'Error interno' }, { status: 500 })
   }
 }

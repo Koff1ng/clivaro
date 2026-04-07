@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { logger } from '@/lib/logger'
 import { requireAuth } from '@/lib/api-middleware'
 import { withTenantRead, getTenantIdFromSession, TenancyError } from '@/lib/tenancy'
 import { prisma as masterPrisma } from '@/lib/db'
@@ -43,7 +44,7 @@ export async function GET(request: Request) {
                     return { productsCount: pCount, stockLevelsCount: slCount, warehousesCount: wCount, sampleProducts: samples }
                 })
             } catch (te: any) {
-                console.error('Tenancy access error in debug', te)
+                logger.error('Tenancy access error in debug', te)
             }
         } else {
             // Master DB fallback for superadmin

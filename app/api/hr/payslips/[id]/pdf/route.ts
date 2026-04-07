@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { logger } from '@/lib/logger'
 import { requirePermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
 import { getTenantIdFromSession, withTenantRead } from '@/lib/tenancy'
@@ -107,7 +108,7 @@ export async function GET(
         })
 
     } catch (error) {
-        console.error('Error generating payslip pdf:', error)
+        logger.error('Error generating payslip pdf:', error)
         return NextResponse.json(
             { error: 'Error al generar el documento pdf de nomina' },
             { status: 500 }

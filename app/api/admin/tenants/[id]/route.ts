@@ -88,7 +88,7 @@ export async function GET(
 
     return NextResponse.json(tenant)
   } catch (error: any) {
-    console.error('Error fetching tenant:', error)
+    logger.error('Error fetching tenant:', error)
     return NextResponse.json(
       { error: error.message || 'Error al obtener tenant' },
       { status: 500 }
@@ -148,7 +148,7 @@ export async function PUT(
 
     return NextResponse.json(tenant)
   } catch (error: any) {
-    console.error('Error updating tenant:', error)
+    logger.error('Error updating tenant:', error)
     return NextResponse.json(
       { error: error.message || 'Error al actualizar tenant' },
       { status: 500 }
@@ -213,11 +213,11 @@ export async function DELETE(
         })
 
         try {
-          console.log(`[DELETE TENANT] Eliminando schema: ${schemaName}`)
+          logger.info(`[DELETE TENANT] Eliminando schema: ${schemaName}`)
           await adminPrisma.$executeRawUnsafe(`DROP SCHEMA IF EXISTS "${schemaName}" CASCADE`)
-          console.log(`[DELETE TENANT] ✓ Schema ${schemaName} eliminado`)
+          logger.info(`[DELETE TENANT] ✓ Schema ${schemaName} eliminado`)
         } catch (schemaError: any) {
-          console.error(`[DELETE TENANT] ⚠️ Error eliminando schema: ${schemaError?.message}`)
+          logger.error(`[DELETE TENANT] ⚠️ Error eliminando schema: ${schemaError?.message}`)
           // Continue with tenant deletion even if schema deletion fails
         } finally {
           await adminPrisma.$disconnect()
@@ -232,7 +232,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true, schemaDeleted: isPostgres })
   } catch (error: any) {
-    console.error('Error deleting tenant:', error)
+    logger.error('Error deleting tenant:', error)
     return NextResponse.json(
       { error: error.message || 'Error al eliminar tenant' },
       { status: 500 }

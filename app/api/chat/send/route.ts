@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { logger } from '@/lib/logger'
 import { prisma as masterPrisma } from '@/lib/db'
 import { withTenantTx, withTenantRead, getTenantIdFromSession } from '@/lib/tenancy'
 import { requirePermission } from '@/lib/api-middleware'
@@ -79,7 +80,7 @@ export async function POST(req: NextRequest) {
         })
 
     } catch (error: any) {
-        console.error('Send message error:', error)
+        logger.error('Send message error:', error)
         return new NextResponse(error.message || 'Internal Error', { status: 500 })
     }
 }

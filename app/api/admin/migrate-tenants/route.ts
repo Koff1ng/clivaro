@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { logger } from '@/lib/logger'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
@@ -45,7 +46,7 @@ export async function POST(req: Request) {
         try {
             for (const tenant of tenants) {
                 const schemaName = getSchemaName(tenant.id)
-                console.log(`[MIGRATE] Updating schema: ${schemaName} (${tenant.slug})`)
+                logger.info(`[MIGRATE] Updating schema: ${schemaName} (${tenant.slug})`)
 
                 try {
                     // Update User table with missing legal columns
@@ -109,7 +110,7 @@ export async function POST(req: Request) {
 
                     results.push({ tenant: tenant.slug, status: 'success' })
                 } catch (err: any) {
-                    console.error(`[MIGRATE] Error updating ${schemaName}:`, err.message)
+                    logger.error(`[MIGRATE] Error updating ${schemaName}:`, err.message)
                     results.push({ tenant: tenant.slug, status: 'error', message: err.message })
                 }
             }
@@ -127,7 +128,7 @@ export async function POST(req: Request) {
             }
         })
     } catch (error: any) {
-        console.error('[ADMIN_TENANT_MIGRATE] Error:', error)
+        logger.error('[ADMIN_TENANT_MIGRATE] Error:', error)
         return NextResponse.json({ error: 'Internal Server Error', details: error.message }, { status: 500 })
     }
 }

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { logger } from '@/lib/logger'
 import { requirePermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
 import { withTenantRead, getTenantIdFromSession } from '@/lib/tenancy'
@@ -98,7 +99,7 @@ export async function GET(request: Request) {
       })
     })
   } catch (error) {
-    console.error('Error fetching movements:', error)
+    logger.error('Error fetching movements:', error)
     return NextResponse.json(
       {
         error: 'Failed to fetch movements',
