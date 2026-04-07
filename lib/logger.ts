@@ -42,15 +42,18 @@ class Logger {
     }
   }
 
-  debug(message: string, context?: LogContext) {
+  debug(message: string, ...args: any[]) {
+    const context = args.length === 1 && typeof args[0] === 'object' && !(args[0] instanceof Error) ? args[0] : args.length > 0 ? { details: args } : undefined
     this.log('debug', message, context)
   }
 
-  info(message: string, context?: LogContext) {
+  info(message: string, ...args: any[]) {
+    const context = args.length === 1 && typeof args[0] === 'object' && !(args[0] instanceof Error) ? args[0] : args.length > 0 ? { details: args } : undefined
     this.log('info', message, context)
   }
 
-  warn(message: string, context?: LogContext) {
+  warn(message: string, ...args: any[]) {
+    const context = args.length === 1 && typeof args[0] === 'object' && !(args[0] instanceof Error) ? args[0] : args.length > 0 ? { details: args } : undefined
     this.log('warn', message, context)
   }
 
@@ -61,9 +64,10 @@ class Logger {
         ? {
             errorName: error.name,
             errorMessage: error.message,
-            errorStack: error.stack,
+            // Only include stack traces in development
+            ...(this.isDevelopment ? { errorStack: error.stack } : {}),
           }
-        : { error: String(error) }),
+        : error !== undefined ? { error: String(error) } : {}),
     }
     this.log('error', message, errorContext)
   }

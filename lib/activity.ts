@@ -1,4 +1,5 @@
 
+import { logger } from './logger'
 import { PrismaClient } from '@prisma/client'
 
 type ActivityType =
@@ -57,7 +58,7 @@ export async function logActivity({
             }
         })
     } catch (error) {
-        console.error('Failed to log activity:', error)
+        logger.error('Failed to log activity:', error)
         // Don't throw, we don't want to break the main flow if logging fails
     }
 }

@@ -1,4 +1,5 @@
 import { ElectronicBillingConfig, ElectronicBillingResponse } from '@/lib/electronic-billing'
+import { logger } from '../logger'
 
 // DIAN URLs
 const DIAN_URLS = {
@@ -16,7 +17,7 @@ export async function sendBill(
     // TODO: Implement SOAP Request with 'soap' lib or axios with XML body
     // Requires constructing the SOAP Envelope with Security Header (WSE)
 
-    console.log(`Sending bill to ${endpoint}...`)
+    logger.info(`Sending bill to ${endpoint}...`)
 
     // Simulate successful DIAN response
     return {

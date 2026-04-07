@@ -1,4 +1,5 @@
 /**
+import { logger } from './logger'
  * Helpers para recuperación de contraseña (usuarios en schema tenant_*).
  */
 import { createHash, randomBytes } from 'crypto'
@@ -86,7 +87,7 @@ export function buildPasswordResetUrl(tenantSlug: string, rawToken: string): str
     process.env.VERCEL_URL?.replace(/\/$/, '') ||
     ''
   if (!base) {
-    console.warn('[password-reset] NEXTAUTH_URL no definido; el enlace del correo puede ser inválido')
+    logger.warn('[password-reset] NEXTAUTH_URL no definido; el enlace del correo puede ser inválido')
   }
   const origin = base.startsWith('http') ? base : `https://${base}`
   return `${origin}/login/${encodeURIComponent(tenantSlug)}/reset-password?token=${encodeURIComponent(rawToken)}`

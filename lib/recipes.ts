@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client'
+import { logger } from './logger'
 
 /**
  * Resolves all raw ingredients needed for a given product and quantity,
@@ -30,7 +31,7 @@ export async function resolveAllIngredients(
         const { productId: currentId, quantity: currentQty } = stack.pop()!
 
         if (visited.has(currentId)) {
-            console.warn(`[Recipes] Circular dependency detected for product ${currentId}`)
+            logger.warn(`[Recipes] Circular dependency detected for product ${currentId}`)
             continue
         }
         visited.add(currentId)

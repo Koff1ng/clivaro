@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client'
+import { logger } from './logger'
 import { prisma } from './db'
 
 /**
@@ -6,7 +7,7 @@ import { prisma } from './db'
  * Use withTenantTx from @/lib/tenancy instead.
  */
 export function getTenantPrisma(databaseUrl: string): PrismaClient {
-  console.warn('[DEPRECATION] getTenantPrisma is deprecated. Use withTenantTx instead.')
+  logger.warn('[DEPRECATION] getTenantPrisma is deprecated. Use withTenantTx instead.')
   return prisma
 }
 

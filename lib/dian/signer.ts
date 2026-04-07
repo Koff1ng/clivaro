@@ -1,4 +1,5 @@
 import { SignedXml } from 'xml-crypto'
+import { logger } from '../logger'
 import { DOMParser } from 'xmldom'
 
 export function signXML(xml: string, certificateP12: Buffer, password: string): string {
@@ -14,7 +15,7 @@ export function signXML(xml: string, certificateP12: Buffer, password: string): 
     // Signature logic placeholder
     // TODO: Use 'node-forge' to parse P12 if needed, or 'crypto'
 
-    console.log('Simulating XML Signing...')
+    logger.info('Simulating XML Signing...')
 
     return xml.replace(
         '<ext:ExtensionContent></ext:ExtensionContent>',

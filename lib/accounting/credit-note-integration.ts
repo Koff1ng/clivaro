@@ -1,4 +1,5 @@
 
+import { logger } from '../logger'
 import { prisma } from '@/lib/db'
 import { createJournalEntry } from './journal-service'
 import { getAccountingConfig } from './config-service'
@@ -45,7 +46,7 @@ export async function createJournalEntryFromCreditNote(
     })
 
     if (existing) {
-        console.log(`Journal entry already exists for credit note ${creditNoteId}`)
+        logger.info(`Journal entry already exists for credit note ${creditNoteId}`)
         return existing
     }
 
@@ -155,7 +156,7 @@ export async function reverseCostOfSalesForReturn(
     })
 
     if (existing) {
-        console.log(`Cost reversal entry already exists for credit note ${creditNoteId}`)
+        logger.info(`Cost reversal entry already exists for credit note ${creditNoteId}`)
         return existing
     }
 
@@ -174,7 +175,7 @@ export async function reverseCostOfSalesForReturn(
 
     // Only create entry if there's actualcost to reverse
     if (totalCost <= 0) {
-        console.log(`No cost to reverse for credit note ${creditNoteId}`)
+        logger.info(`No cost to reverse for credit note ${creditNoteId}`)
         return null
     }
 

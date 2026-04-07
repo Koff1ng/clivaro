@@ -1,4 +1,5 @@
 import { NextAuthOptions } from 'next-auth'
+import { logger } from './logger'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import { Client } from 'pg'
 import { prisma } from './db'
@@ -83,7 +84,7 @@ async function findUserInTenantSchema(
     } catch (queryError: any) {
       // If the query failed because "legalAccepted" is missing, retry without it
       if (queryError?.message?.includes('legalAccepted')) {
-        console.warn(`[AUTH] Schema "${schemaName}" is missing legal compliance columns. Retrying without them...`)
+        logger.warn(`[AUTH] Schema "${schemaName}" is missing legal compliance columns. Retrying without them...`)
         const fallbackResult = await client.query(
           `SELECT id, username, email, name, password, active, "isSuperAdmin", "forcePasswordChange"
            FROM "User"
@@ -137,7 +138,7 @@ export const authOptions: NextAuthOptions = {
         try {
           // ── STRATEGY A: Tenant Login ──────────────────────────────────────
           if (credentials.tenantSlug) {
-            console.log(`[AUTH] Tenant login: slug="${credentials.tenantSlug}" user="${credentials.username}"`)
+            logger.info(`[AUTH] Tenant login: slug="${credentials.tenantSlug}" user="${credentials.username}"`)
 
             // Step 1: Resolve tenant from master DB (public schema)
             const tenant = await prisma.tenant.findUnique({
@@ -146,7 +147,7 @@ export const authOptions: NextAuthOptions = {
             })
 
             if (!tenant) {
-              console.warn(`[AUTH] Tenant not found for slug: "${credentials.tenantSlug}"`)
+              logger.warn(`[AUTH] Tenant not found for slug: "${credentials.tenantSlug}"`)
               throw new Error('INVALID_CREDENTIALS: Empresa no encontrada.')
             }
             if (!tenant.active) {
@@ -154,7 +155,7 @@ export const authOptions: NextAuthOptions = {
             }
 
             const schemaName = getSchemaName(tenant.id)
-            console.log(`[AUTH] Resolved: ${tenant.slug} → id=${tenant.id} schema=${schemaName}`)
+            logger.info(`[AUTH] Resolved: ${tenant.slug} → id=${tenant.id} schema=${schemaName}`)
 
             // Step 2: Find user in tenant's schema using raw pg Client
             // This is 100% isolated — no shared connection pool, no contamination
@@ -162,12 +163,12 @@ export const authOptions: NextAuthOptions = {
             try {
               tenantUser = await findUserInTenantSchema(tenant.id, credentials.username, tenant.slug)
             } catch (dbError: any) {
-              console.error(`[AUTH] DB error for tenant schema "${schemaName}":`, dbError?.message)
+              logger.error(`[AUTH] DB error for tenant schema "${schemaName}":`, dbError?.message)
               throw new Error('TENANT_DB_ERROR: No se pudo conectar con la base de datos de la empresa.')
             }
 
             if (!tenantUser) {
-              console.warn(`[AUTH] User "${credentials.username}" not found in schema "${schemaName}"`)
+              logger.warn(`[AUTH] User "${credentials.username}" not found in schema "${schemaName}"`)
               throw new Error('INVALID_CREDENTIALS: Usuario o contraseña incorrectos.')
             }
             if (!tenantUser.active) {
@@ -176,11 +177,11 @@ export const authOptions: NextAuthOptions = {
 
             const isValid = await bcrypt.compare(credentials.password, tenantUser.password)
             if (!isValid) {
-              console.warn(`[AUTH] Wrong password for "${credentials.username}" in schema "${schemaName}"`)
+              logger.warn(`[AUTH] Wrong password for "${credentials.username}" in schema "${schemaName}"`)
               throw new Error('INVALID_CREDENTIALS: Usuario o contraseña incorrectos.')
             }
 
-            console.log(`[AUTH] ✓ Tenant auth success: ${tenantUser.username} @ ${tenant.slug} | roles=[${tenantUser.roles.join(', ')}] | perms=${tenantUser.permissions.length}`)
+            logger.info(`[AUTH] ✓ Tenant auth success: ${tenantUser.username} @ ${tenant.slug} | roles=[${tenantUser.roles.join(', ')}] | perms=${tenantUser.permissions.length}`)
 
             return {
               id: tenantUser.id,
@@ -197,7 +198,7 @@ export const authOptions: NextAuthOptions = {
           }
 
           // ── STRATEGY B: Super Admin Login (master public schema ONLY) ─────
-          console.log(`[AUTH] Super admin login: user="${credentials.username}"`)
+          logger.info(`[AUTH] Super admin login: user="${credentials.username}"`)
 
           const connString = getDirectPostgresUrl()
           const client = new Client({
@@ -261,18 +262,18 @@ export const authOptions: NextAuthOptions = {
               }
             }
           } catch (err: any) {
-            console.error('[AUTH] SuperAdmin SQL error:', err.message)
+            logger.error('[AUTH] SuperAdmin SQL error:', err.message)
             // Fallback to null (unauthorized) rather than crashing
           } finally {
             await client.end().catch(() => { })
           }
 
           if (!superAdmin) {
-            console.warn(`[AUTH] Super admin auth failed for: "${credentials.username}"`)
+            logger.warn(`[AUTH] Super admin auth failed for: "${credentials.username}"`)
             return null
           }
 
-          console.log(`[AUTH] ✓ Super admin auth success: ${superAdmin.username || superAdmin.name}`)
+          logger.info(`[AUTH] ✓ Super admin auth success: ${superAdmin.username || superAdmin.name}`)
           return superAdmin
 
         } catch (error: any) {
@@ -286,7 +287,7 @@ export const authOptions: NextAuthOptions = {
           ) {
             throw error
           }
-          console.error('[AUTH] Unexpected auth error:', msg)
+          logger.error('[AUTH] Unexpected auth error:', msg)
           throw new Error('TENANT_DB_ERROR: Error interno de autenticación.')
         }
       },

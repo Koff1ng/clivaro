@@ -1,4 +1,5 @@
 import nodemailer from 'nodemailer'
+import { logger } from './logger'
 
 export interface EmailConfig {
   host: string
@@ -51,7 +52,7 @@ export function getEmailTransporter(): nodemailer.Transporter | null {
   const smtpPass = process.env.SMTP_PASSWORD
 
   if (!smtpHost || !smtpPort || !smtpUser || !smtpPass) {
-    console.warn('SMTP configuration not found. Email sending will be disabled.')
+    logger.warn('SMTP configuration not found. Email sending will be disabled.')
     return null
   }
 
@@ -59,7 +60,7 @@ export function getEmailTransporter(): nodemailer.Transporter | null {
     const port = parseInt(smtpPort, 10)
     const secure = port === 465
 
-    console.log('Creating email transporter:', {
+    logger.info('Creating email transporter:', {
       host: smtpHost,
       port: port,
       secure: secure,
@@ -89,7 +90,7 @@ export function getEmailTransporter(): nodemailer.Transporter | null {
 
     return transporter
   } catch (error: any) {
-    console.error('Error creating email transporter:', error)
+    logger.error('Error creating email transporter:', error)
     return null
   }
 }
@@ -110,7 +111,7 @@ async function sendViaSmtp(options: EmailOptions): Promise<SendEmailResult> {
     const fromEmail = process.env.SMTP_FROM || process.env.SMTP_USER || 'noreply@ferreteria.com'
     const fromName = process.env.COMPANY_NAME || 'Clivaro'
 
-    console.log('Sending email via SMTP:', {
+    logger.info('Sending email via SMTP:', {
       from: `"${fromName}" <${fromEmail}>`,
       to: options.to,
       subject: options.subject,
@@ -142,7 +143,7 @@ async function sendViaSmtp(options: EmailOptions): Promise<SendEmailResult> {
       accepted: info.accepted as string[],
     }
   } catch (error: any) {
-    console.error('Error sending email via SMTP:', error)
+    logger.error('Error sending email via SMTP:', error)
     return {
       success: false,
       message: `Error al enviar email vía SMTP: ${error.message}`,
@@ -222,7 +223,7 @@ export type SendEmailConfig = {
  * Con `preferSmtp: true`: primero SMTP, si falla entonces Resend, si no hay ninguno error.
  */
 export async function sendEmail(options: EmailOptions, sendConfig?: SendEmailConfig): Promise<SendEmailResult> {
-  console.log('sendEmail called:', {
+  logger.info('sendEmail called:', {
     to: options.to,
     subject: options.subject,
     preferSmtp: !!sendConfig?.preferSmtp,
@@ -235,7 +236,7 @@ export async function sendEmail(options: EmailOptions, sendConfig?: SendEmailCon
     if (smtpResult.success) {
       return smtpResult
     }
-    console.warn('[sendEmail] SMTP (preferSmtp) failed, trying Resend if available:', smtpResult.error)
+    logger.warn('[sendEmail] SMTP (preferSmtp) failed, trying Resend if available:', smtpResult.error)
   }
 
   const resendApiKey = process.env.RESEND_API_KEY
@@ -245,9 +246,9 @@ export async function sendEmail(options: EmailOptions, sendConfig?: SendEmailCon
       if (res.success) {
         return res
       }
-      console.error('Resend failed, falling back to SMTP:', res.message)
+      logger.error('Resend failed, falling back to SMTP:', res.message)
     } catch (resendError: any) {
-      console.error('Resend exception, falling back to SMTP:', resendError?.message)
+      logger.error('Resend exception, falling back to SMTP:', resendError?.message)
     }
   }
 

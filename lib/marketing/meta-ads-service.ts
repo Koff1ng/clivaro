@@ -1,4 +1,5 @@
 /**
+import { logger } from '../logger'
  * MetaAdsService — Core service for Facebook/Instagram Ads from Clivaro
  * 
  * Uses the official facebook-nodejs-business-sdk.
@@ -251,7 +252,7 @@ export async function publishFullCampaign(
         })
       }
     } catch (e) {
-      console.warn('[META_ADS] Could not auto-fetch page ID:', (e as Error).message)
+      logger.warn('[META_ADS] Could not auto-fetch page ID:', (e as Error).message)
     }
   }
 
@@ -273,7 +274,7 @@ export async function publishFullCampaign(
 
   // Fire and forget — process in background
   processMetaCampaign(tenantId, record.id, config.accessToken, config.adAccountId, pageId, input)
-    .catch(err => console.error(`[META_ADS] Background processing failed for ${record.trackingId}:`, err))
+    .catch(err => logger.error(`[META_ADS] Background processing failed for ${record.trackingId}:`, err))
 
   return {
     trackingId: record.trackingId,
@@ -323,14 +324,14 @@ async function processMetaCampaign(
       },
     })
 
-    console.log(`[META_ADS] Campaign published successfully: ${input.name}`)
+    logger.info(`[META_ADS] Campaign published successfully: ${input.name}`)
   } catch (error: any) {
     const formatted = formatMetaError(error)
     const sentryPayload = buildSentryPayload(tenantId, 'publishFullCampaign', formatted)
     
     // Log for monitoring (Sentry integration point)
-    console.error(`[META_ADS_ERROR]`, JSON.stringify(sentryPayload))
-    console.error(`[META_ADS_ERROR] Raw:`, error?.message || error)
+    logger.error(`[META_ADS_ERROR]`, JSON.stringify(sentryPayload))
+    logger.error(`[META_ADS_ERROR] Raw:`, error?.message || error)
 
     // Store BOTH user message and raw error for debugging
     const debugMessage = formatted.raw && formatted.raw !== formatted.userMessage
@@ -410,7 +411,7 @@ export async function deleteCampaign(tenantId: string, trackingId: string) {
       await campaign.update([], { status: 'DELETED' })
     } catch (error) {
       // Non-critical: if Meta deletion fails, still remove from tracking
-      console.warn(`[META_ADS] Could not delete campaign from Meta: ${trackingId}`)
+      logger.warn(`[META_ADS] Could not delete campaign from Meta: ${trackingId}`)
     }
   }
 

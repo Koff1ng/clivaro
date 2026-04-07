@@ -1,4 +1,5 @@
 
+import { logger } from '../logger'
 import { prisma } from '@/lib/db'
 import { createJournalEntry } from './journal-service'
 import { getAccountingConfig } from './config-service'
@@ -43,7 +44,7 @@ export async function createCostOfSalesEntry(
     })
 
     if (existing) {
-        console.log(`Cost of sales entry already exists for invoice ${invoiceId}`)
+        logger.info(`Cost of sales entry already exists for invoice ${invoiceId}`)
         return existing
     }
 
@@ -85,7 +86,7 @@ export async function createCostOfSalesEntry(
 
     // If no items with cost, skip
     if (totalCost === 0) {
-        console.log(`No cost of sales to record for invoice ${invoiceId}`)
+        logger.info(`No cost of sales to record for invoice ${invoiceId}`)
         return null
     }
 

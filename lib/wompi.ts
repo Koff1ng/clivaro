@@ -1,4 +1,5 @@
 /**
+import { logger } from './logger'
  * Wompi Payment Gateway Integration
  * https://docs.wompi.co/docs/colombia
  */
@@ -136,7 +137,7 @@ function getNestedValue(obj: any, path: string): any {
  */
 export async function getTransaction(transactionId: string): Promise<WompiTransaction | null> {
   const url = `${WOMPI_API_URL}/transactions/${transactionId}`
-  console.log('[Wompi] getTransaction URL:', url)
+  logger.info('[Wompi] getTransaction URL:', url)
 
   try {
     // Try without auth first (Wompi docs show this is a public GET)
@@ -144,31 +145,31 @@ export async function getTransaction(transactionId: string): Promise<WompiTransa
       headers: { 'Accept': 'application/json' },
     })
 
-    console.log('[Wompi] getTransaction response (no auth):', response.status, response.statusText)
+    logger.info('[Wompi] getTransaction response (no auth):', response.status, response.statusText)
 
     // If unauthorized, try with Bearer token
     if (response.status === 401 || response.status === 403) {
-      console.log('[Wompi] Retrying with Bearer auth...')
+      logger.info('[Wompi] Retrying with Bearer auth...')
       response = await fetch(url, {
         headers: {
           'Accept': 'application/json',
           'Authorization': `Bearer ${WOMPI_PRIVATE_KEY}`,
         },
       })
-      console.log('[Wompi] getTransaction response (with auth):', response.status, response.statusText)
+      logger.info('[Wompi] getTransaction response (with auth):', response.status, response.statusText)
     }
 
     if (!response.ok) {
       const errorText = await response.text()
-      console.error(`[Wompi] Error fetching transaction ${transactionId}:`, response.status, errorText)
+      logger.error(`[Wompi] Error fetching transaction ${transactionId}:`, response.status, errorText)
       return null
     }
 
     const result = await response.json()
-    console.log('[Wompi] Transaction result:', JSON.stringify(result.data?.status), result.data?.reference)
+    logger.info('[Wompi] Transaction result:', JSON.stringify(result.data?.status), result.data?.reference)
     return result.data as WompiTransaction
   } catch (error) {
-    console.error('[Wompi] Error fetching transaction:', error)
+    logger.error('[Wompi] Error fetching transaction:', error)
     return null
   }
 }
@@ -181,7 +182,7 @@ export async function getTransaction(transactionId: string): Promise<WompiTransa
  */
 export async function getTransactionByReference(reference: string): Promise<WompiTransaction | null> {
   const url = `${WOMPI_API_URL}/transactions?reference=${encodeURIComponent(reference)}`
-  console.log('[Wompi] getTransactionByReference URL:', url)
+  logger.info('[Wompi] getTransactionByReference URL:', url)
 
   try {
     let response = await fetch(url, {
@@ -199,13 +200,13 @@ export async function getTransactionByReference(reference: string): Promise<Womp
 
     if (!response.ok) {
       const errorText = await response.text()
-      console.error(`[Wompi] Error searching transaction by ref ${reference}:`, response.status, errorText)
+      logger.error(`[Wompi] Error searching transaction by ref ${reference}:`, response.status, errorText)
       return null
     }
 
     const result = await response.json()
     const transactions = result.data || []
-    console.log(`[Wompi] Found ${transactions.length} transactions for ref ${reference}`)
+    logger.info(`[Wompi] Found ${transactions.length} transactions for ref ${reference}`)
 
     if (transactions.length === 0) return null
 
@@ -215,10 +216,10 @@ export async function getTransactionByReference(reference: string): Promise<Womp
       new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     )
     const tx = sorted[0]
-    console.log('[Wompi] Best match:', tx.id, tx.status, tx.reference)
+    logger.info('[Wompi] Best match:', tx.id, tx.status, tx.reference)
     return tx as WompiTransaction
   } catch (error) {
-    console.error('[Wompi] Error searching transaction by reference:', error)
+    logger.error('[Wompi] Error searching transaction by reference:', error)
     return null
   }
 }

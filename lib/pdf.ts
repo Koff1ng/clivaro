@@ -1,4 +1,5 @@
 import puppeteer, { Browser } from 'puppeteer-core'
+import { logger } from './logger'
 import chromium from '@sparticuz/chromium'
 import { formatCurrency, formatDate } from './utils'
 import QRCode from 'qrcode'
@@ -1140,7 +1141,7 @@ export async function generateInvoicePDF(invoice: InvoicePDFData): Promise<Buffe
         executablePath = await chromium.executablePath()
         chromiumArgs = chromium.args || []
       } catch (chromiumError: any) {
-        console.error('Error getting chromium executable path:', chromiumError)
+        logger.error('Error getting chromium executable path:', chromiumError)
         throw new Error(`Error configurando Chromium para Vercel: ${chromiumError?.message || 'Error desconocido'}`)
       }
     }
@@ -1157,7 +1158,7 @@ export async function generateInvoicePDF(invoice: InvoicePDFData): Promise<Buffe
         timeout: 30000,
       })
     } catch (launchError: any) {
-      console.error('Error launching Puppeteer:', launchError)
+      logger.error('Error launching Puppeteer:', launchError)
       throw new Error(`Error al iniciar Puppeteer: ${launchError?.message || 'Error desconocido'}`)
     }
 
@@ -1197,14 +1198,14 @@ export async function generateInvoicePDF(invoice: InvoicePDFData): Promise<Buffe
       if (browser) {
         await (browser as Browser).close().catch(() => { })
       }
-      console.error('Error en proceso de generación de PDF:', pageError)
+      logger.error('Error en proceso de generación de PDF:', pageError)
       throw new Error(`Error al generar PDF: ${pageError?.message || 'Error desconocido'}`)
     }
   } catch (error: any) {
     if (browser) {
       await (browser as Browser).close().catch(() => { })
     }
-    console.error('Error general en generateInvoicePDF:', error)
+    logger.error('Error general en generateInvoicePDF:', error)
     throw error
   }
 }
@@ -1580,7 +1581,7 @@ export async function generatePayslipPDF(data: PayslipPDFData): Promise<Buffer> 
     if (browser) {
       await (browser as Browser).close().catch(() => { })
     }
-    console.error('Error general en generatePayslipPDF:', error)
+    logger.error('Error general en generatePayslipPDF:', error)
     throw error
   }
 }

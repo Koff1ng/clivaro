@@ -1,4 +1,5 @@
 import { prisma as masterPrisma } from './db'
+import { logger } from './logger'
 import { withTenantRead, withTenantTx } from './tenancy'
 import { NextResponse } from 'next/server'
 import crypto from 'crypto'
@@ -118,7 +119,7 @@ export async function getWaiterFromToken(token: string, tenantId: string) {
             })
         })
     } catch (error) {
-        console.error('Error verifying waiter token:', error)
+        logger.error('Error verifying waiter token:', error)
         return null
     }
 }

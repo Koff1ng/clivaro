@@ -1,4 +1,5 @@
 import { prisma } from './db'
+import { logger } from './logger'
 import type { PrismaClient } from '@prisma/client'
 
 /**
@@ -119,7 +120,7 @@ export async function updateStockLevel(
   const zoneId = movementDetails?.zoneId || null
 
   if (process.env.NODE_ENV !== 'production') {
-    console.log(`[updateStockLevel] Actualizando stock:`, {
+    logger.info(`[updateStockLevel] Actualizando stock:`, {
       warehouseId,
       zoneId,
       productId,

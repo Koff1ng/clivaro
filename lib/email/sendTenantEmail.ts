@@ -1,4 +1,5 @@
 import { withTenantRead } from '@/lib/tenancy'
+import { logger } from '../logger'
 
 export interface TenantEmailOptions {
   tenantId: string
@@ -65,7 +66,7 @@ export async function sendTenantEmail(options: TenantEmailOptions) {
   const data = await response.json()
 
   if (!response.ok) {
-    console.error('Resend API Error (Tenant Email):', data)
+    logger.error('Resend API Error (Tenant Email):', data)
     throw new Error(data.message || 'Error al enviar email via Resend')
   }
 

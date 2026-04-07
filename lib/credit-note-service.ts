@@ -1,4 +1,5 @@
 import { Prisma } from '@prisma/client'
+import { logger } from './logger'
 import { generateCreditNoteNumber, calculateCreditNoteTotals } from './credit-note-helpers'
 import { createJournalEntryFromCreditNote, reverseCostOfSalesForReturn } from './accounting/credit-note-integration'
 
@@ -118,7 +119,7 @@ export async function createCreditNoteWithAccounting(
     try {
         await createJournalEntryFromCreditNote(creditNote.id, tenantId, userId)
     } catch (err: any) {
-        console.error('Failed to create journal entry for credit note:', err.message)
+        logger.error('Failed to create journal entry for credit note:', err.message)
         // Don't fail the whole operation if accounting config is missing
     }
 
@@ -132,7 +133,7 @@ export async function createCreditNoteWithAccounting(
                 userId
             )
         } catch (err: any) {
-            console.error('Failed to reverse invoice cost of sales:', err.message)
+            logger.error('Failed to reverse invoice cost of sales:', err.message)
             // Don't fail the whole operation
         }
     }

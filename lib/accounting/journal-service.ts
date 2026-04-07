@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/db'
+import { logger } from '../logger'
 import { logAction } from './audit-service'
 import { validatePeriodNotClosed } from './period-service'
 
@@ -79,7 +80,7 @@ export async function createJournalEntry(tenantId: string, userId: string, data:
 
         if (foundAccounts.length !== accountIds.length) {
             const missing = accountIds.filter(id => !foundAccounts.find(a => a.id === id))
-            console.error(`[JOURNAL_ERROR] Missing accounts in schema for tenant ${tenantId}:`, missing)
+            logger.error(`[JOURNAL_ERROR] Missing accounts in schema for tenant ${tenantId}:`, missing)
             throw new Error(`Error de integridad contable: Las cuentas [${missing.join(', ')}] no existen en el Plan de Cuentas de esta empresa.`)
         }
 
@@ -128,9 +129,9 @@ export async function createJournalEntry(tenantId: string, userId: string, data:
 
             return entry
         } catch (err: any) {
-            console.error(`[JOURNAL_CREATE_ERROR] Failed for tenant ${tenantId}:`, err.message)
+            logger.error(`[JOURNAL_CREATE_ERROR] Failed for tenant ${tenantId}:`, err.message)
             if (err.code === 'P2003') {
-                console.error(`[JOURNAL_CREATE_ERROR] Foreign key violation details:`, JSON.stringify(err.meta))
+                logger.error(`[JOURNAL_CREATE_ERROR] Foreign key violation details:`, JSON.stringify(err.meta))
             }
             throw err
         }

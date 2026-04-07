@@ -1,4 +1,5 @@
 
+import { logger } from '../logger'
 import { prisma } from '@/lib/db'
 import { createJournalEntry } from './journal-service'
 import { getAccountingConfig } from './config-service'
@@ -41,7 +42,7 @@ export async function createJournalEntryFromPayment(
     })
 
     if (existing) {
-        console.log(`Journal entry already exists for payment ${paymentId}`)
+        logger.info(`Journal entry already exists for payment ${paymentId}`)
         return existing
     }
 

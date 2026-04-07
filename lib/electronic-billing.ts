@@ -1,4 +1,5 @@
 import { createHash } from 'crypto'
+import { logger } from './logger'
 import { FactusClient } from './factus/client'
 import type { FactusInvoiceRequest, FactusCustomer, FactusItem } from './factus/types'
 
@@ -289,7 +290,7 @@ async function sendToFactus(
     }
 
     if (process.env.NODE_ENV !== 'production') {
-      console.log('[Factus] Creating invoice with payload:', JSON.stringify(factusRequest, null, 2))
+      logger.info('[Factus] Creating invoice with payload:', JSON.stringify(factusRequest, null, 2))
     }
     const factusResponse = await client.createInvoice(factusRequest)
 
@@ -317,7 +318,7 @@ async function sendToFactus(
     }
 
   } catch (error: any) {
-    console.error('[Factus] Error:', error)
+    logger.error('[Factus] Error:', error)
     return {
       success: false,
       message: error.message || 'Error al enviar factura a Factus',

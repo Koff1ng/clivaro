@@ -1,4 +1,5 @@
 
+import { logger } from '../logger'
 import { prisma } from '@/lib/db'
 import { createJournalEntry } from './journal-service'
 import { getAccountingConfig } from './config-service'
@@ -45,7 +46,7 @@ export async function createJournalEntryFromInvoice(
     })
 
     if (existing) {
-        console.log(`Journal entry already exists for invoice ${invoiceId}`)
+        logger.info(`Journal entry already exists for invoice ${invoiceId}`)
         return existing
     }
 
@@ -143,7 +144,7 @@ export async function reverseInvoiceEntry(
     })
 
     if (!originalEntry) {
-        console.log(`No journal entry found for invoice ${invoiceId}`)
+        logger.info(`No journal entry found for invoice ${invoiceId}`)
         return null
     }
 

@@ -1,4 +1,5 @@
 import { ThermalPrinter, PrinterTypes, CharacterSet } from "node-thermal-printer";
+import { logger } from '../logger'
 
 // ---------- helpers ----------
 // ---------- helpers ----------
@@ -97,11 +98,11 @@ export async function printInvoiceLan(invoice: InvoiceData, options?: PrinterOpt
 
     // Simulator mode
     if (invoice.printerInterface === 'simulator') {
-        console.log("=== SIMULATED PRINT JOB ===");
-        console.log("Invoice:", invoice.prefix, invoice.number);
-        console.log("Total:", invoice.total);
-        console.log("Design Options:", options);
-        console.log("=== END SIMULATION ===");
+        logger.info("=== SIMULATED PRINT JOB ===");
+        logger.info("Invoice:", invoice.prefix, invoice.number);
+        logger.info("Total:", invoice.total);
+        logger.info("Design Options:", options);
+        logger.info("=== END SIMULATION ===");
         return { success: true };
     }
 
@@ -223,7 +224,7 @@ export async function printInvoiceLan(invoice: InvoiceData, options?: PrinterOpt
         if (!executed) throw new Error("Print job failed to execute (no response).");
         return { success: true };
     } catch (err: any) {
-        console.error("Print execution error:", err);
+        logger.error("Print execution error:", err);
         throw new Error(`Print failed: ${err.message}`);
     }
 }

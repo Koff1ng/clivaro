@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client'
+import { logger } from './logger'
 import bcrypt from 'bcryptjs'
 import { Client } from 'pg'
 import { TENANT_SQL_STATEMENTS } from './tenant-sql-statements'
@@ -44,20 +45,20 @@ async function initializePostgresTenant(databaseUrl: string, tenantId: string, t
   const directUrl = process.env.DIRECT_DATABASE_URL || process.env.DIRECT_URL || baseUrl
   const directUrlForSchema = stripSchemaParam(directUrl)
 
-  console.log('='.repeat(60))
-  console.log('[TENANT INIT] Iniciando inicialización de tenant PostgreSQL')
-  console.log(`[TENANT INIT] ID: ${tenantId}`)
-  console.log(`[TENANT INIT] Empresa: ${tenantName}`)
-  console.log(`[TENANT INIT] Schema: ${schemaName}`)
-  console.log('='.repeat(60))
+  logger.info('='.repeat(60))
+  logger.info('[TENANT INIT] Iniciando inicialización de tenant PostgreSQL')
+  logger.info(`[TENANT INIT] ID: ${tenantId}`)
+  logger.info(`[TENANT INIT] Empresa: ${tenantName}`)
+  logger.info(`[TENANT INIT] Schema: ${schemaName}`)
+  logger.info('='.repeat(60))
 
   // Step 1: Create schema using a plain pg Client (no schema param yet)
   const baseClient = new Client({ connectionString: directUrlForSchema })
   try {
     await baseClient.connect()
-    console.log(`[STEP 1/4] CREATE SCHEMA IF NOT EXISTS "${schemaName}"`)
+    logger.info(`[STEP 1/4] CREATE SCHEMA IF NOT EXISTS "${schemaName}"`)
     await baseClient.query(`CREATE SCHEMA IF NOT EXISTS "${schemaName}"`)
-    console.log('[STEP 1/4] ✓ Schema creado')
+    logger.info('[STEP 1/4] ✓ Schema creado')
   } catch (schemaError: any) {
     throw new Error(`Error creando schema "${schemaName}": ${schemaError?.message || schemaError}`)
   } finally {
@@ -65,7 +66,7 @@ async function initializePostgresTenant(databaseUrl: string, tenantId: string, t
   }
 
   // Step 2: Connect to the tenant schema and execute all CREATE TABLE / INDEX / FK statements
-  console.log(`[STEP 2/4] Creando tablas en schema "${schemaName}" (${TENANT_SQL_STATEMENTS.length} statements)...`)
+  logger.info(`[STEP 2/4] Creando tablas en schema "${schemaName}" (${TENANT_SQL_STATEMENTS.length} statements)...`)
   const tenantSchemaUrl = withSchemaParam(directUrlForSchema, schemaName)
   const ddlClient = new Client({ connectionString: tenantSchemaUrl })
 
@@ -90,14 +91,14 @@ async function initializePostgresTenant(databaseUrl: string, tenantId: string, t
         }
       }
     }
-    console.log(`[STEP 2/4] ✓ ${executed} statements ejecutados, ${skipped} ignorados (ya existían)`)
+    logger.info(`[STEP 2/4] ✓ ${executed} statements ejecutados, ${skipped} ignorados (ya existían)`)
   } finally {
     await ddlClient.end()
   }
 
   // Step 2.5: Ensure critical schema sync for existing tables
   // This handles the case where reinit is run on an outdated schema
-  console.log(`[STEP 2.5/4] Sincronizando columnas legales en "${schemaName}"...`)
+  logger.info(`[STEP 2.5/4] Sincronizando columnas legales en "${schemaName}"...`)
   const syncClient = new Client({ connectionString: tenantSchemaUrl })
   try {
     await syncClient.connect()
@@ -110,15 +111,15 @@ async function initializePostgresTenant(databaseUrl: string, tenantId: string, t
       ADD COLUMN IF NOT EXISTS "marketingAccepted" BOOLEAN NOT NULL DEFAULT false,
       ADD COLUMN IF NOT EXISTS "acceptanceIp" TEXT;
     `)
-    console.log('[STEP 2.5/4] ✓ Columnas sincronizadas')
+    logger.info('[STEP 2.5/4] ✓ Columnas sincronizadas')
   } catch (syncErr: any) {
-    console.warn(`[TENANT INIT] Warning during schema sync: ${syncErr.message}`)
+    logger.warn(`[TENANT INIT] Warning during schema sync: ${syncErr.message}`)
   } finally {
     await syncClient.end()
   }
 
   // Step 2.6: Sync SoftRestaurant / Professional / AI features
-  console.log(`[STEP 2.6/4] Sincronizando campos avanzados en "${schemaName}"...`)
+  logger.info(`[STEP 2.6/4] Sincronizando campos avanzados en "${schemaName}"...`)
   const srClient = new Client({ connectionString: tenantSchemaUrl })
   try {
     await srClient.connect()
@@ -167,15 +168,15 @@ async function initializePostgresTenant(databaseUrl: string, tenantId: string, t
       ALTER TABLE "CreditNoteItem" ADD COLUMN IF NOT EXISTS "zoneId" TEXT;
     `)
 
-    console.log('[STEP 2.6/4] ✓ Campos sincronizados')
+    logger.info('[STEP 2.6/4] ✓ Campos sincronizados')
   } catch (srErr: any) {
-    console.warn(`[TENANT INIT] Warning during SR sync: ${srErr.message}`)
+    logger.warn(`[TENANT INIT] Warning during SR sync: ${srErr.message}`)
   } finally {
     await srClient.end()
   }
 
   // Step 2.7: Sync restaurant module columns (rate-limiting, fiscal)
-  console.log(`[STEP 2.7/4] Sincronizando campos de restaurante y fiscal en "${schemaName}"...`)
+  logger.info(`[STEP 2.7/4] Sincronizando campos de restaurante y fiscal en "${schemaName}"...`)
   const restClient = new Client({ connectionString: tenantSchemaUrl })
   try {
     await restClient.connect()
@@ -229,15 +230,15 @@ async function initializePostgresTenant(databaseUrl: string, tenantId: string, t
       END $$;
     `)
 
-    console.log('[STEP 2.7/4] ✓ Campos de restaurante sincronizados')
+    logger.info('[STEP 2.7/4] ✓ Campos de restaurante sincronizados')
   } catch (restErr: any) {
-    console.warn(`[TENANT INIT] Warning during restaurant sync: ${restErr.message}`)
+    logger.warn(`[TENANT INIT] Warning during restaurant sync: ${restErr.message}`)
   } finally {
     await restClient.end()
   }
 
   // Step 2.8: Sync PaymentMethod.dianCode column (added after initial schema)
-  console.log(`[STEP 2.8/4] Sincronizando PaymentMethod.dianCode en "${schemaName}"...`)
+  logger.info(`[STEP 2.8/4] Sincronizando PaymentMethod.dianCode en "${schemaName}"...`)
   const pmClient = new Client({ connectionString: tenantSchemaUrl })
   try {
     await pmClient.connect()
@@ -257,15 +258,15 @@ async function initializePostgresTenant(databaseUrl: string, tenantId: string, t
       END
       WHERE "dianCode" = 'ZZZ';
     `)
-    console.log('[STEP 2.8/4] ✓ PaymentMethod.dianCode sincronizado')
+    logger.info('[STEP 2.8/4] ✓ PaymentMethod.dianCode sincronizado')
   } catch (pmErr: any) {
-    console.warn(`[TENANT INIT] Warning during PaymentMethod sync: ${pmErr.message}`)
+    logger.warn(`[TENANT INIT] Warning during PaymentMethod sync: ${pmErr.message}`)
   } finally {
     await pmClient.end()
   }
 
   // Step 2.9: Sync TenantSettings onboarding columns (fiscal identity, business profile)
-  console.log(`[STEP 2.9/4] Sincronizando columnas de onboarding en TenantSettings "${schemaName}"...`)
+  logger.info(`[STEP 2.9/4] Sincronizando columnas de onboarding en TenantSettings "${schemaName}"...`)
   const obClient = new Client({ connectionString: tenantSchemaUrl })
   try {
     await obClient.connect()
@@ -282,15 +283,15 @@ async function initializePostgresTenant(databaseUrl: string, tenantId: string, t
         ADD COLUMN IF NOT EXISTS "companyCity" TEXT,
         ADD COLUMN IF NOT EXISTS "companyDepartment" TEXT;
     `)
-    console.log('[STEP 2.9/4] ✓ Columnas de onboarding sincronizadas')
+    logger.info('[STEP 2.9/4] ✓ Columnas de onboarding sincronizadas')
   } catch (obErr: any) {
-    console.warn(`[TENANT INIT] Warning during onboarding columns sync: ${obErr.message}`)
+    logger.warn(`[TENANT INIT] Warning during onboarding columns sync: ${obErr.message}`)
   } finally {
     await obClient.end()
   }
 
   // Step 3: Seed initial data (admin user, warehouse) via PrismaClient
-  console.log('[STEP 3/4] Creando datos iniciales (admin, roles, almacén)...')
+  logger.info('[STEP 3/4] Creando datos iniciales (admin, roles, almacén)...')
 
   const tenantPrisma = new PrismaClient({
     datasources: { db: { url: tenantSchemaUrl } },
@@ -463,10 +464,10 @@ async function initializePostgresTenant(databaseUrl: string, tenantId: string, t
         data: { userId: user.id, roleId: adminRoleId },
       })
     }
-    console.log('[STEP 3/4] ✓ Roles y permisos configurados')
+    logger.info('[STEP 3/4] ✓ Roles y permisos configurados')
 
     // Step 4: Accounting Setup
-    console.log('[STEP 4/4] Configurando contabilidad (PUC y Config)...')
+    logger.info('[STEP 4/4] Configurando contabilidad (PUC y Config)...')
     try {
       await initializePUC(tenantId, tenantPrisma)
       
@@ -486,15 +487,15 @@ async function initializePostgresTenant(databaseUrl: string, tenantId: string, t
       }
 
       await updateAccountingConfig(tenantId, configData, tenantPrisma)
-      console.log('[STEP 4/4] ✓ Contabilidad configurada')
+      logger.info('[STEP 4/4] ✓ Contabilidad configurada')
     } catch (accErr: any) {
-      console.warn(`[TENANT INIT] Warning during accounting setup: ${accErr.message}`)
+      logger.warn(`[TENANT INIT] Warning during accounting setup: ${accErr.message}`)
     }
 
     return { adminUsername, adminPassword: defaultPassword }
   } catch (dataError: any) {
     // Log the error for better server-side debugging
-    console.error(`[TENANT_INIT] Error creating initial data:`, dataError)
+    logger.error(`[TENANT_INIT] Error creating initial data:`, dataError)
     throw new Error(`Error creando datos iniciales: ${dataError?.message || dataError}`)
   } finally {
     await tenantPrisma.$disconnect()
