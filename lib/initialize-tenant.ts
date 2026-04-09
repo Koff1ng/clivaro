@@ -35,11 +35,11 @@ function withSchemaParam(databaseUrl: string, schema: string): string {
  * Uses embedded SQL statements (no file I/O, no child_process) for full
  * compatibility with serverless environments like Vercel Lambda.
  */
-async function initializePostgresTenant(databaseUrl: string, tenantId: string, tenantName: string) {
+async function initializePostgresTenant(databaseUrl: string, tenantId: string, tenantName: string, tenantSlug?: string) {
   const baseUrl = stripSchemaParam(databaseUrl)
-  // CRITICAL: Use getSchemaName() — same function used at runtime by withTenantTx
-  // This ensures the schema created here exactly matches the schema queried at runtime
-  const schemaName = getSchemaName(tenantId)
+  // CRITICAL: Use getSchemaName() with slug — same function used at runtime by auth.ts
+  // This ensures the schema created here exactly matches the schema queried at login
+  const schemaName = getSchemaName(tenantId, tenantSlug)
 
   // Use DIRECT_DATABASE_URL or DIRECT_URL for DDL operations if available (avoids PgBouncer issues)
   const directUrl = process.env.DIRECT_DATABASE_URL || process.env.DIRECT_URL || baseUrl
@@ -332,7 +332,7 @@ async function initializePostgresTenant(databaseUrl: string, tenantId: string, t
     // Admin user — upsert so reinit doesn't create duplicates
     const user = await tenantPrisma.user.upsert({
       where: { username: adminUsername },
-      update: {}, // keep existing password if already set
+      update: { password: hashedPassword, active: true }, // always reset to default on init
       create: {
         username: adminUsername,
         password: hashedPassword,
@@ -516,7 +516,7 @@ export async function initializeTenantDatabase(
     databaseUrl.startsWith('postgresql://') || databaseUrl.startsWith('postgres://')
 
   if (isPostgres) {
-    return await initializePostgresTenant(databaseUrl, identifier, tenantName)
+    return await initializePostgresTenant(databaseUrl, identifier, tenantName, tenantSlug)
   } else {
     throw new Error('SQLite initialization is not supported in this environment.')
   }
