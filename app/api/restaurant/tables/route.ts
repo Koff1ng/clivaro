@@ -74,7 +74,7 @@ export async function POST(request: Request) {
 
   try {
     const table = await withTenantTx(tenantId, async (tx) => {
-      return await tx.restaurantTable.create({
+      return await (tx as any).restaurantTable.create({
         data: {
           zoneId,
           name,

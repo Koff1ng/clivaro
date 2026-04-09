@@ -33,7 +33,7 @@ export async function POST(request: Request) {
     // Validate OUTSIDE the transaction
     const parsed = adjustmentSchema.safeParse(body)
     if (!parsed.success) {
-      logger.error('[ADJUSTMENT] Validation failed:', JSON.stringify(parsed.error.flatten()), 'Body:', JSON.stringify(body))
+      logger.error('[ADJUSTMENT] Validation failed:', JSON.stringify(parsed.error.flatten()), { body: JSON.stringify(body) })
       return NextResponse.json(
         { error: 'Error de validación', details: parsed.error.flatten() },
         { status: 400 }

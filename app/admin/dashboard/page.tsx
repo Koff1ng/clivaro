@@ -1,4 +1,4 @@
-import { MainLayout } from '@/components/layout/main-layout'
+import { AdminLayout } from '@/components/layout/admin-layout'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { redirect } from 'next/navigation'
@@ -25,8 +25,8 @@ export default async function AdminDashboardPage() {
   }
 
   return (
-    <MainLayout>
+    <AdminLayout>
       <AdminDashboard />
-    </MainLayout>
+    </AdminLayout>
   )
 }

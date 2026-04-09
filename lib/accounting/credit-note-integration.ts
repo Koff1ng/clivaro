@@ -62,7 +62,7 @@ export async function createJournalEntryFromCreditNote(
     const total = creditNote.total
 
     // Build journal entry lines
-    const lines = []
+    const lines: { accountId: string; description: string; debit: number; credit: number; thirdPartyName?: string; thirdPartyNit?: string }[] = []
 
     // DEBIT: Sales Revenue (contra-income)
     lines.push({
@@ -180,7 +180,7 @@ export async function reverseCostOfSalesForReturn(
     }
 
     // Build journal entry
-    const lines = []
+    const lines: { accountId: string; description: string; debit: number; credit: number }[] = []
 
     // DEBIT: Inventory (items back in stock)
     lines.push({

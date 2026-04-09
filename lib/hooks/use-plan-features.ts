@@ -24,6 +24,7 @@ interface TenantPlan {
     createdAt: string
   } | null
   features: string[] | null
+  featureFlags?: Record<string, boolean>
   expired?: boolean
   previousPlan?: {
     id: string
@@ -109,6 +110,22 @@ export function useTenantPlan() {
 
   const newFeatures = getNewFeatures()
 
+  // Mapping from FeatureFlag keys (DB) to PlanFeature keys (code)
+  const FLAG_TO_PLAN_FEATURE: Record<string, keyof PlanFeatures> = {
+    'MODULE_POS': 'pos',
+    'MODULE_CRM': 'manageCRM',
+    'MODULE_ACCOUNTING': 'manageAccounting',
+    'MODULE_PAYROLL': 'managePayroll',
+    'MODULE_INVENTORY': 'manageInventory',
+    'MODULE_RESTAURANT': 'manageRestaurant',
+    'MODULE_MARKETING': 'marketing',
+    'MODULE_PURCHASES': 'managePurchases',
+    'FEATURE_ELECTRONIC_INVOICE': 'invoices',
+    'FEATURE_MULTI_WAREHOUSE': 'multiWarehouse',
+  }
+
+  const featureFlags = data?.featureFlags || {}
+
   return {
     plan: data?.plan,
     subscription: data?.subscription,
@@ -121,8 +138,15 @@ export function useTenantPlan() {
     isExpired: data?.expired || false,
     isRecentChange: data?.isRecentChange || false,
     newFeatures,
+    featureFlags,
     hasFeature: (feature: keyof PlanFeatures) => {
       if (isSuperAdmin) return true
+      // Check if any feature flag overrides this plan feature
+      for (const [flagKey, planFeature] of Object.entries(FLAG_TO_PLAN_FEATURE)) {
+        if (planFeature === feature && flagKey in featureFlags) {
+          return featureFlags[flagKey]
+        }
+      }
       return hasFeature(planName, feature)
     },
     isNewFeature: (feature: keyof PlanFeatures) => {

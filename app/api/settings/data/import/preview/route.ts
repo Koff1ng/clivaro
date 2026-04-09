@@ -69,7 +69,7 @@ export async function POST(req: Request) {
         // Check for forbidden fields to warn user
         const detectedForbidden = forbiddenFields[entityType]?.filter(field => headers.includes(field)) || []
 
-        let error = null
+        let error: any = null
         if (detectedForbidden.length > 0) {
             if (entityType === 'clients') {
                 error = `Parece que estás intentando importar PRODUCTOS como CLIENTES. Se detectaron columnas: ${detectedForbidden.join(', ')}.`

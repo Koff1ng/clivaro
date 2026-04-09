@@ -24,6 +24,7 @@ import {
   RefreshCw,
   KeyRound,
   HardDrive,
+  LogIn,
 } from 'lucide-react'
 import { useToast } from '@/components/ui/toast'
 import { TenantForm } from './tenant-form'
@@ -139,6 +140,23 @@ export function TenantsClient() {
     },
     onError: (error: Error) => {
       toast(error.message || 'Error al reiniciar BD', 'error')
+    }
+  })
+
+  const impersonateMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`/api/admin/tenants/${id}/impersonate`, { method: 'POST' })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Error al impersonar')
+      return data
+    },
+    onSuccess: (data) => {
+      // Open impersonation landing page that auto-redirects to tenant ERP
+      toast(`Impersonando "${data.tenant.name}" como ${data.user.name}. Token válido por ${data.expiresIn}.`, 'success')
+      window.open(`/api/auth/impersonate-login?token=${data.token}`, '_blank')
+    },
+    onError: (error: Error) => {
+      toast(error.message || 'Error al impersonar tenant', 'error')
     }
   })
 
@@ -357,6 +375,27 @@ export function TenantsClient() {
                       >
                         <Eye className="h-4 w-4 mr-2" />
                         Ver Detalles
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          if (confirm(`¿Iniciar sesión como admin del tenant "${tenant.name}"?\n\nSe generará un token temporal de 30 minutos.`)) {
+                            impersonateMutation.mutate(tenant.id)
+                          }
+                        }}
+                        disabled={impersonateMutation.isPending}
+                        title="Log in as — Impersonar sesión de este tenant"
+                        className="border-amber-300 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950"
+                      >
+                        {impersonateMutation.isPending ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <>
+                            <LogIn className="h-4 w-4 mr-1" />
+                            Log in as
+                          </>
+                        )}
                       </Button>
                       <Button
                         variant="outline"

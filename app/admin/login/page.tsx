@@ -29,7 +29,7 @@ export default function AdminLoginPage() {
         username,
         password,
         redirect: false,
-        callbackUrl: '/dashboard',
+        callbackUrl: '/admin/dashboard',
       })
 
       if (result?.error) {
@@ -52,7 +52,7 @@ export default function AdminLoginPage() {
         setLoading(false)
       } else if (result?.ok) {
         await new Promise(resolve => setTimeout(resolve, 300))
-        window.location.href = '/dashboard'
+        window.location.href = '/admin/dashboard'
       } else {
         setError('Error al iniciar sesión. Por favor, intente nuevamente.')
         setLoading(false)
