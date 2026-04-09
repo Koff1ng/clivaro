@@ -1,7 +1,7 @@
 /**
-import { logger } from './logger'
  * Helpers para recuperación de contraseña (usuarios en schema tenant_*).
  */
+import { logger } from './logger'
 import { createHash, randomBytes } from 'crypto'
 import { Client } from 'pg'
 import { getSchemaName } from '@/lib/tenant-utils'

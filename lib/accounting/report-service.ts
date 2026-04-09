@@ -40,7 +40,7 @@ export async function getBalanceSheet(tenantId: string, asOfDate: Date) {
     })
 
     const allAccounts = [...accounts, ...liabilities, ...equity]
-    const reportData = []
+    const reportData: { id: string; code: string; name: string; balance: number }[] = []
 
     for (const acc of allAccounts) {
         const balance = await getAccountBalanceAtDate(tenantId, acc.id, asOfDate)
@@ -75,7 +75,7 @@ export async function getProfitAndLoss(tenantId: string, startDate: Date, endDat
         orderBy: { code: 'asc' }
     })
 
-    const reportData = []
+    const reportData: { id: string; code: string; name: string; movement: number }[] = []
 
     for (const acc of accounts) {
         const movement = await getAccountMovementInPeriod(tenantId, acc.id, startDate, endDate)

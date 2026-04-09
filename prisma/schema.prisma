@@ -1063,6 +1063,10 @@ model Tenant {
 
   /// Tokens para "olvidé mi contraseña" (usuarios del schema tenant_*; el token vive en public)
   passwordResetTokens PasswordResetToken[]
+
+  // Super Admin: Feature Flags & Support
+  featureFlags    TenantFeatureFlag[]
+  supportTickets  SupportTicket[]
 }
 
 /// Restablecimiento de contraseña (BD maestra). userId = id del usuario en el schema del tenant.
@@ -2011,4 +2015,76 @@ model MetaAdsCampaign {
 
   @@index([tenantId])
   @@index([trackingId])
+}
+
+// ═══════════════════════════════════════════════════════════
+// Super Admin Platform Models
+// ═══════════════════════════════════════════════════════════
+
+model AdminAuditLog {
+  id               String   @id @default(cuid())
+  action           String   // IMPERSONATE_TENANT, UPDATE_PLAN, SUSPEND_TENANT, CREATE_TENANT, etc.
+  adminUserId      String
+  adminUserName    String
+  targetTenantId   String?
+  targetTenantName String?
+  details          String?  // JSON con detalles adicionales
+  ipAddress        String?
+  createdAt        DateTime @default(now())
+
+  @@index([adminUserId])
+  @@index([createdAt])
+  @@index([action])
+}
+
+model FeatureFlag {
+  id          String   @id @default(cuid())
+  key         String   @unique // "MODULE_POS", "MODULE_CRM", "MODULE_ACCOUNTING", etc.
+  name        String
+  description String?
+  category    String   @default("module") // "module" | "feature" | "beta"
+  isGlobal    Boolean  @default(false)     // Si está habilitado globalmente para todos
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  tenantFlags TenantFeatureFlag[]
+}
+
+model TenantFeatureFlag {
+  id            String   @id @default(cuid())
+  tenantId      String
+  featureFlagId String
+  enabled       Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  tenant      Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  featureFlag FeatureFlag @relation(fields: [featureFlagId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, featureFlagId])
+  @@index([tenantId])
+}
+
+model SupportTicket {
+  id            String    @id @default(cuid())
+  tenantId      String?
+  tenantName    String?
+  subject       String
+  description   String
+  status        String    @default("OPEN") // OPEN, IN_PROGRESS, RESOLVED, CLOSED
+  priority      String    @default("MEDIUM") // LOW, MEDIUM, HIGH, CRITICAL
+  category      String?   // BUG, FEATURE_REQUEST, QUESTION, BILLING
+  userAgent     String?
+  reportedBy    String?   // Nombre del usuario que reportó
+  reportedEmail String?
+  assignedTo    String?   // Nombre del super admin asignado
+  resolvedAt    DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId])
+  @@index([status])
+  @@index([priority])
+  @@index([createdAt])
 }

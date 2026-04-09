@@ -32,50 +32,48 @@ import {
   Globe,
   HelpCircle,
 } from 'iconoir-react'
-import { ChevronsUpDown, Sparkles, LayoutDashboard, Building2, Users, ShieldCheck as LuShieldCheck, ScrollText, CreditCard, Activity, ServerCog, BarChart3 } from 'lucide-react'
+import { ChevronsUpDown, Sparkles, LayoutDashboard, Building2, Users, ShieldCheck as LuShieldCheck, ScrollText, CreditCard, Activity, ServerCog, BarChart3, ToggleRight, Headphones, FileText } from 'lucide-react'
 import { Logo } from '@/components/ui/logo'
 import { AppIcon } from '@/components/ui/app-icon'
 import { useSidebar } from '@/lib/sidebar-context'
 import { useTenantPlan } from '@/lib/hooks/use-plan-features'
 import { menuGroups, type MenuGroup, type MenuItem } from '@/lib/navigation-data'
 
-// Admin-specific navigation for Super Admin panel
+// Admin-specific navigation for Super Admin panel — ONLY the 5 strategic modules
 const adminMenuGroups = [
   {
-    title: 'General',
-    key: 'admin-general',
+    title: 'Dashboard Global',
+    key: 'admin-dashboard',
     items: [
-      { href: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+      { href: '/admin/dashboard', label: 'KPIs & Analítica', icon: BarChart3 },
     ]
   },
   {
-    title: 'Gestión de Plataforma',
-    key: 'admin-platform',
+    title: 'Gestión de Inquilinos',
+    key: 'admin-tenants',
     items: [
-      { href: '/admin/tenants', label: 'Tenants', icon: Building2 },
-      { href: '/admin/users', label: 'Usuarios', icon: Users },
-      { href: '/admin/roles', label: 'Roles y Permisos', icon: LuShieldCheck },
+      { href: '/admin/tenants', label: 'Directorio Empresas', icon: Building2 },
     ]
   },
   {
-    title: 'Compliance',
-    key: 'admin-compliance',
+    title: 'Suscripciones y Pagos',
+    key: 'admin-subscriptions',
     items: [
-      { href: '/admin/legal-logs', label: 'Auditoría Legal', icon: ScrollText },
+      { href: '/admin/subscriptions', label: 'Planes y Cobranza', icon: CreditCard },
     ]
   },
   {
-    title: 'Facturación',
-    key: 'admin-billing',
+    title: 'Feature Flags',
+    key: 'admin-features',
     items: [
-      { href: '/admin/(dashboard)/sales', label: 'Ventas Plataforma', icon: CreditCard },
+      { href: '/admin/feature-flags', label: 'Módulos & Beta', icon: ToggleRight },
     ]
   },
   {
-    title: 'Sistema',
-    key: 'admin-system',
+    title: 'Auditoría y Soporte',
+    key: 'admin-audit',
     items: [
-      { href: '/settings', label: 'Configuración', icon: ServerCog },
+      { href: '/admin/audit', label: 'Logs & Tickets', icon: Headphones },
     ]
   },
 ]
@@ -272,7 +270,7 @@ export function Sidebar() {
           <div className={cn(
             'flex items-center justify-center border-b border-white/5 px-4 transition-opacity duration-300 opacity-100 h-16 sm:h-16 overflow-hidden'
           )}>
-            <Link href="/dashboard" prefetch scroll={false} className="w-full flex items-center justify-center h-full">
+            <Link href={isOnAdminRoute ? '/admin/dashboard' : '/dashboard'} prefetch scroll={false} className="w-full flex items-center justify-center h-full">
               <Logo
                 size="lg"
                 showByline={false}
@@ -517,7 +515,7 @@ export function Sidebar() {
                         {session?.user?.name?.split(' ')[0]}
                       </span>
                       <span className="text-[10px] sm:text-xs font-medium text-slate-400 truncate w-full uppercase tracking-widest opacity-80">
-                        {planName || 'Plan Gratuito'}
+                        {isOnAdminRoute ? <span className="text-amber-400">Super Admin</span> : (planName || 'Plan Gratuito')}
                       </span>
                     </div>
                     <ChevronsUpDown className="w-4 h-4 text-slate-500 shrink-0" />
@@ -549,13 +547,15 @@ export function Sidebar() {
                   </DropdownMenuItem>
                 </Link>
 
-                <DropdownMenuItem
-                  onClick={handleUpgradePlan}
-                  className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer hover:bg-slate-800 focus:bg-slate-800 focus:text-white transition-colors text-sky-400"
-                >
-                  <Sparkles className="w-4 h-4" />
-                  <span className="text-sm font-medium">Mejorar Plan</span>
-                </DropdownMenuItem>
+                {!isOnAdminRoute && (
+                  <DropdownMenuItem
+                    onClick={handleUpgradePlan}
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer hover:bg-slate-800 focus:bg-slate-800 focus:text-white transition-colors text-sky-400"
+                  >
+                    <Sparkles className="w-4 h-4" />
+                    <span className="text-sm font-medium">Mejorar Plan</span>
+                  </DropdownMenuItem>
+                )}
 
                 <DropdownMenuSeparator className="bg-slate-800 my-1" />
 

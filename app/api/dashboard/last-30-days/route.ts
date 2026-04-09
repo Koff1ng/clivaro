@@ -64,7 +64,7 @@ export async function GET(request: Request) {
     })
 
     // Generate array for the period
-    const days = []
+    const days: { day: string; sales: number; count: number }[] = []
     for (let i = numDays - 1; i >= 0; i--) {
       const date = new Date()
       date.setDate(date.getDate() - i)

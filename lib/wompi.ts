@@ -1,8 +1,8 @@
 /**
-import { logger } from './logger'
  * Wompi Payment Gateway Integration
  * https://docs.wompi.co/docs/colombia
  */
+import { logger } from './logger'
 import crypto from 'crypto'
 
 // ─── Config ───
@@ -161,7 +161,7 @@ export async function getTransaction(transactionId: string): Promise<WompiTransa
 
     if (!response.ok) {
       const errorText = await response.text()
-      logger.error(`[Wompi] Error fetching transaction ${transactionId}:`, response.status, errorText)
+      logger.error(`[Wompi] Error fetching transaction ${transactionId}: ${response.status}`, { responseText: errorText })
       return null
     }
 
@@ -200,7 +200,7 @@ export async function getTransactionByReference(reference: string): Promise<Womp
 
     if (!response.ok) {
       const errorText = await response.text()
-      logger.error(`[Wompi] Error searching transaction by ref ${reference}:`, response.status, errorText)
+      logger.error(`[Wompi] Error searching transaction by ref ${reference}: ${response.status}`, { responseText: errorText })
       return null
     }
 

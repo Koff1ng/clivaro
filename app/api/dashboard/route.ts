@@ -284,7 +284,7 @@ export async function GET(request: Request) {
             salesByDay[dateKey] = (salesByDay[dateKey] || 0) + invoice.total
           })
 
-          const days = []
+          const days: { day: string; sales: number }[] = []
           for (let i = 29; i >= 0; i--) {
             const date = new Date()
             date.setDate(date.getDate() - i)

@@ -218,6 +218,29 @@ export async function GET(request: Request) {
       // Wompi columns don't exist yet — billing info unavailable
     }
 
+    // Fetch feature flags for this tenant from the master DB
+    let featureFlags: Record<string, boolean> = {}
+    try {
+      const tenantFlags = await (prisma as any).tenantFeatureFlag.findMany({
+        where: { tenantId },
+        include: { featureFlag: { select: { key: true, isGlobal: true } } }
+      })
+      const globalFlags = await (prisma as any).featureFlag.findMany({
+        where: { isGlobal: true },
+        select: { key: true }
+      })
+      // Start with global flags (all enabled)
+      for (const gf of globalFlags) {
+        featureFlags[gf.key] = true
+      }
+      // Override with tenant-specific flags
+      for (const tf of tenantFlags) {
+        featureFlags[tf.featureFlag.key] = tf.enabled
+      }
+    } catch {
+      // Feature flag tables may not exist yet
+    }
+
     return NextResponse.json({
       plan: subscription.plan,
       subscription: {
@@ -230,6 +253,7 @@ export async function GET(request: Request) {
         nextPaymentDate: nextPaymentDate?.toISOString() || null,
       },
       features: subscription.plan.features ? JSON.parse(subscription.plan.features) : [],
+      featureFlags,
       billing,
       previousPlan: previousSubscription && planChanged ? {
         id: previousSubscription.plan.id,

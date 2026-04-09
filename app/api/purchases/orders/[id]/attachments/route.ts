@@ -28,7 +28,7 @@ export async function GET(
 
   try {
     const attachments = await withTenantRead(tenantId, async (prisma) => {
-      return prisma.purchaseOrderAttachment.findMany({
+      return (prisma as any).purchaseOrderAttachment.findMany({
         where: { purchaseOrderId: orderId },
         orderBy: { createdAt: 'desc' },
       })
@@ -69,7 +69,7 @@ export async function POST(
       const po = await prisma.purchaseOrder.findUnique({ where: { id: orderId } })
       if (!po) throw new Error('Purchase order not found')
 
-      return prisma.purchaseOrderAttachment.create({
+      return (prisma as any).purchaseOrderAttachment.create({
         data: {
           purchaseOrderId: orderId,
           fileName,
@@ -109,7 +109,7 @@ export async function DELETE(
     }
 
     await withTenantTx(tenantId, async (prisma) => {
-      await prisma.purchaseOrderAttachment.delete({
+      await (prisma as any).purchaseOrderAttachment.delete({
         where: { id: attachmentId },
       })
     })

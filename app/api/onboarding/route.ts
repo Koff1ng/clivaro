@@ -260,7 +260,7 @@ export async function GET(request: Request) {
 
       // Obtener el plan del tenant (completamente opcional - no crítico para onboarding)
       // Si falla, simplemente continuamos sin plan
-      let subscription = null
+      let subscription: any = null
       try {
         // Intentar obtener la suscripción con retry logic y timeout corto
         // para evitar saturar el pool de conexiones

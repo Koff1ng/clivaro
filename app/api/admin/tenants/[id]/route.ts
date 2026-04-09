@@ -174,7 +174,7 @@ export async function DELETE(
     // Verificar si es super admin
     const dbUser = await prisma.user.findUnique({
       where: { id: user.id },
-      select: { isSuperAdmin: true }
+      select: { isSuperAdmin: true, name: true }
     })
 
     if (!dbUser?.isSuperAdmin) {
@@ -184,10 +184,11 @@ export async function DELETE(
       )
     }
 
-    // Get tenant info before deleting
+    // Get tenant info
+    // Check if force=true for hard delete, otherwise soft-delete
     const tenant = await prisma.tenant.findUnique({
       where: { id },
-      select: { slug: true, databaseUrl: true }
+      select: { id: true, name: true, slug: true, databaseUrl: true, active: true }
     })
 
     if (!tenant) {
@@ -198,6 +199,34 @@ export async function DELETE(
     }
 
     // Delete the PostgreSQL schema if using Postgres
+    const url = new URL(request.url)
+    const forceDelete = url.searchParams.get('force') === 'true'
+
+    // SOFT DELETE by default — just deactivate the tenant
+    if (!forceDelete) {
+      await prisma.tenant.update({ where: { id }, data: { active: false } })
+      try {
+        await (prisma as any).adminAuditLog.create({
+          data: {
+            action: 'SOFT_DELETE_TENANT',
+            adminUserId: user.id,
+            adminUserName: dbUser?.name || user.name || '',
+            targetTenantId: tenant.id,
+            targetTenantName: tenant.name,
+            details: JSON.stringify({ slug: tenant.slug }),
+            ipAddress: request.headers.get('x-forwarded-for') || 'unknown',
+          }
+        })
+      } catch { /* audit table may not exist */ }
+      logger.info(`[DELETE TENANT] Soft-deleted "${tenant.name}" (${tenant.slug})`)
+      return NextResponse.json({
+        success: true,
+        softDelete: true,
+        message: `Tenant "${tenant.name}" desactivado. Use force=true para eliminación permanente.`
+      })
+    }
+
+    // HARD DELETE (force=true)
     const isPostgres = tenant.databaseUrl?.startsWith('postgresql://') || tenant.databaseUrl?.startsWith('postgres://')
 
     if (isPostgres) {

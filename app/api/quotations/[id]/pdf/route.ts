@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic'
 
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await requirePermission(request as any, PERMISSIONS.MANAGE_SALES)
   if (session instanceof NextResponse) return session
@@ -19,7 +19,7 @@ export async function GET(
   try {
     const quotation = await withTenantRead(tenantId, async (prisma) => {
       return await prisma.quotation.findUnique({
-        where: { id: params.id },
+        where: { id: (await params).id },
         include: {
           customer: {
             select: {
@@ -59,7 +59,7 @@ export async function GET(
 
     const pdfBuffer = await generateQuotationPDF(quotation as any)
 
-    return new Response(pdfBuffer, {
+    return new Response(pdfBuffer as unknown as BodyInit, {
       status: 200,
       headers: {
         'Content-Type': 'application/pdf',

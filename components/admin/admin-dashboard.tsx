@@ -9,6 +9,7 @@ import {
   Users,
   CreditCard,
   TrendingUp,
+  TrendingDown,
   Activity,
   Server,
   AlertCircle,
@@ -17,6 +18,11 @@ import {
   DollarSign,
   Loader2,
   BarChart3,
+  ArrowUpRight,
+  ArrowDownRight,
+  Target,
+  Zap,
+  Headphones,
 } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import Link from 'next/link'
@@ -29,15 +35,15 @@ export function AdminDashboard() {
       if (!res.ok) throw new Error('Error cargando estadísticas')
       return res.json()
     },
-    refetchInterval: 30000, // Refresh every 30s
+    refetchInterval: 30000,
   })
 
   if (isLoading) {
     return (
       <div className="space-y-6">
         <PageHeader
-          title="Dashboard"
-          description="Panel de administración de la plataforma Clivaro"
+          title="Dashboard Global"
+          description="Panel de control centralizado de la plataforma Clivaro"
           icon={<BarChart3 className="h-5 w-5" />}
         />
         <div className="flex items-center justify-center py-20">
@@ -50,6 +56,8 @@ export function AdminDashboard() {
   const overview = stats?.overview || {}
   const revenue = stats?.revenue || {}
   const costs = stats?.costs || {}
+  const churn = stats?.churn || {}
+  const conversion = stats?.conversion || {}
   const planDist = stats?.planDistribution || {}
   const recentTenants = stats?.recentTenants || []
   const monthlyGrowth = stats?.monthlyGrowth || {}
@@ -59,12 +67,67 @@ export function AdminDashboard() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Dashboard"
-        description="Panel de administración de la plataforma Clivaro"
+        title="Dashboard Global"
+        description="Métricas de salud del negocio SaaS — Clivaro ERP"
         icon={<BarChart3 className="h-5 w-5" />}
       />
 
-      {/* KPI Cards */}
+      {/* KPI Cards — Row 1: Financial */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card className="border-l-4 border-l-emerald-500">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">MRR</CardTitle>
+            <DollarSign className="h-4 w-4 text-emerald-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{formatCOP(revenue.mrr || 0)}</div>
+            <p className="text-xs text-muted-foreground mt-1">
+              ≈ ${revenue.mrrUsd || 0} USD/mes
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="border-l-4 border-l-blue-500">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">ARR</CardTitle>
+            <TrendingUp className="h-4 w-4 text-blue-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{formatCOP(revenue.arr || 0)}</div>
+            <p className="text-xs text-muted-foreground mt-1">
+              ≈ ${revenue.arrUsd || 0} USD/año
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="border-l-4 border-l-red-500">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Tasa de Churn</CardTitle>
+            <TrendingDown className="h-4 w-4 text-red-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{churn.rate || 0}%</div>
+            <p className="text-xs text-muted-foreground mt-1">
+              {churn.churned || 0} perdidos en {churn.period || '30d'}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="border-l-4 border-l-purple-500">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Conversión</CardTitle>
+            <Target className="h-4 w-4 text-purple-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{conversion.rate || 0}%</div>
+            <p className="text-xs text-muted-foreground mt-1">
+              {conversion.paid || 0} de {conversion.total || 0} pagan
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* KPI Cards — Row 2: Operational */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -94,27 +157,27 @@ export function AdminDashboard() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">MRR</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Nuevos este Mes</CardTitle>
+            <Zap className="h-4 w-4 text-amber-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatCOP(revenue.mrr || 0)}</div>
+            <div className="text-2xl font-bold text-amber-600">{overview.newThisMonth || 0}</div>
             <p className="text-xs text-muted-foreground mt-1">
-              ≈ ${revenue.mrrUsd || 0} USD/mes
+              Registros en {new Date().toLocaleDateString('es-CO', { month: 'long' })}
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Usuarios Total</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Tickets Abiertos</CardTitle>
+            <Headphones className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{overview.totalUsers}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              En toda la plataforma
-            </p>
+            <div className="text-2xl font-bold">{overview.openTickets || 0}</div>
+            <Link href="/admin/audit" className="text-xs text-blue-600 hover:underline mt-1 block">
+              Ver tickets →
+            </Link>
           </CardContent>
         </Card>
       </div>
@@ -178,7 +241,7 @@ export function AdminDashboard() {
                     <div className="w-24 h-2 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
                       <div
                         className="h-full bg-blue-500 rounded-full"
-                        style={{ width: `${((count as number) / overview.totalTenants) * 100}%` }}
+                        style={{ width: `${Math.min(((count as number) / (overview.totalTenants || 1)) * 100, 100)}%` }}
                       />
                     </div>
                     <span className="text-sm font-semibold w-6 text-right">{count as number}</span>

@@ -37,6 +37,12 @@
     "types/**/*.d.ts"
   ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "scripts",
+    "prisma/seed.ts",
+    "prisma/seed-demo.ts",
+    "supabase/functions",
+    "whatsapp-bridge",
+    "tmp"
   ]
 }

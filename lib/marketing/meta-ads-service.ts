@@ -1,5 +1,4 @@
 /**
-import { logger } from '../logger'
  * MetaAdsService — Core service for Facebook/Instagram Ads from Clivaro
  * 
  * Uses the official facebook-nodejs-business-sdk.
@@ -7,6 +6,7 @@ import { logger } from '../logger'
  * Async orchestration: publishFullCampaign returns tracking ID immediately.
  */
 
+import { logger } from '../logger'
 import { prisma } from '@/lib/db'
 import { formatMetaError, isTokenExpired, buildSentryPayload } from './meta-ads-errors'
 import type { MetaFullCampaignInput, MetaPublishResult, MetaConnectInput } from './meta-ads-types'

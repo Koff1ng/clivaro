@@ -73,7 +73,7 @@ export async function GET(request: Request) {
         }
 
         // 5. Tenant info from master DB
-        let tenantInfo = null
+        let tenantInfo: any = null
         if (tenantId) {
             try {
                 tenantInfo = await prisma.tenant.findUnique({ where: { id: tenantId }, select: { id: true, name: true, slug: true, active: true } })

@@ -32,7 +32,7 @@ export async function createJournalEntryFromPayroll(periodId: string, tenantId: 
     if (!sueldosAccount) throw new Error('No existe cuenta de gastos para sueldos (código 5105)')
     if (!bancosAccount) throw new Error('No existe cuenta de bancos configurada (código 1110)')
 
-    const lines = []
+    const lines: { accountId: string; description: string; debit: number; credit: number }[] = []
 
     // Gasto por salarios (Débito)
     if (period.totalEarnings > 0) {

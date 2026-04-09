@@ -1,18 +1,11 @@
-import { Metadata } from 'next'
-import { MainLayout } from '@/components/layout/main-layout'
-import { LegalAuditDashboard } from '@/components/admin/legal-audit-dashboard'
+import { redirect } from 'next/navigation'
 
-export const metadata: Metadata = {
-    title: 'Auditoría Legal | Clivaro Admin',
-    description: 'Registro de aceptación de términos y condiciones',
-}
+export const dynamic = 'force-dynamic'
 
-export default function LegalAuditPage() {
-    return (
-        <MainLayout>
-            <div className="p-6 md:p-8">
-                <LegalAuditDashboard />
-            </div>
-        </MainLayout>
-    )
+/**
+ * Legacy route — redirects to the centralized Audit panel.
+ * Legal-logs are now part of the unified Audit & Support module.
+ */
+export default function LegacyLegalLogsPage() {
+  redirect('/admin/audit')
 }
