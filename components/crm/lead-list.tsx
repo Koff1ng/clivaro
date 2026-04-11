@@ -12,7 +12,8 @@ import { LeadDetails } from './lead-details'
 import { LeadDashboard } from './lead-dashboard'
 import { LeadKanban } from './lead-kanban'
 import { formatCurrency } from '@/lib/utils'
-import { Search, Plus, Edit, Trash2, Eye, Filter, LayoutGrid, BarChart3, Loader2 } from 'lucide-react'
+import { Search, Plus, Edit, Trash2, Eye, Filter, LayoutGrid, BarChart3, Loader2, Target } from 'lucide-react'
+import { EmptyTableState } from '@/components/ui/empty-table-state'
 
 async function fetchLeads(page: number, search: string, stage: string, assignedToId: string) {
   const params = new URLSearchParams({
@@ -223,6 +224,16 @@ export function LeadList() {
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground mr-2" />
               <span className="text-muted-foreground">Cargando oportunidades...</span>
             </div>
+          ) : leads.length === 0 ? (
+            <div className="border rounded-2xl bg-card/80 backdrop-blur-sm shadow-sm overflow-hidden">
+              <EmptyTableState
+                icon={Target}
+                title="Registra tu primera oportunidad"
+                description="El CRM te permite hacer seguimiento a prospectos, cotizaciones y cierres. Visualiza tu pipeline de ventas en tiempo real."
+                actionLabel="Nueva Oportunidad"
+                onAction={() => { setSelectedLead(null); setIsFormOpen(true) }}
+              />
+            </div>
           ) : (
             <div className="border rounded-lg">
               <Table>
@@ -241,78 +252,52 @@ export function LeadList() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {leads.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={9} className="text-center text-gray-500">
-                        No hay oportunidades
+                  {leads.map((lead: any) => (
+                    <TableRow key={lead.id}>
+                      <TableCell className="font-medium">{lead.name}</TableCell>
+                      <TableCell>{lead.company || '-'}</TableCell>
+                      <TableCell>
+                        <div className="text-sm">
+                          {lead.email && <div>{lead.email}</div>}
+                          {lead.phone && <div className="text-gray-500">{lead.phone}</div>}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <span className={`px-2 py-1 text-xs rounded ${getStageColor(lead.stage)}`}>
+                          {getStageLabel(lead.stage)}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 bg-gray-200 rounded-full h-2">
+                            <div className="bg-blue-600 h-2 rounded-full" style={{ width: `${lead.probability || 0}%` }} />
+                          </div>
+                          <span className="text-xs text-gray-600">{lead.probability || 0}%</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>{formatCurrency(lead.expectedRevenue || 0)}</TableCell>
+                      <TableCell className="font-semibold text-blue-600">
+                        {formatCurrency((lead.expectedRevenue || 0) * ((lead.probability || 0) / 100))}
+                      </TableCell>
+                      <TableCell>
+                        {lead.expectedCloseDate ? new Date(lead.expectedCloseDate).toLocaleDateString('es-ES') : '-'}
+                      </TableCell>
+                      <TableCell>{lead.assignedTo?.name || 'Sin asignar'}</TableCell>
+                      <TableCell>
+                        <div className="flex gap-2">
+                          <Button variant="ghost" size="sm" onClick={() => handleView(lead)} title="Ver detalles">
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="sm" onClick={() => handleEdit(lead)} title="Editar">
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="sm" onClick={() => handleDelete(lead)} title="Eliminar">
+                            <Trash2 className="h-4 w-4 text-red-500" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
-                  ) : (
-                    leads.map((lead: any) => (
-                      <TableRow key={lead.id}>
-                        <TableCell className="font-medium">{lead.name}</TableCell>
-                        <TableCell>{lead.company || '-'}</TableCell>
-                        <TableCell>
-                          <div className="text-sm">
-                            {lead.email && <div>{lead.email}</div>}
-                            {lead.phone && <div className="text-gray-500">{lead.phone}</div>}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <span className={`px-2 py-1 text-xs rounded ${getStageColor(lead.stage)}`}>
-                            {getStageLabel(lead.stage)}
-                          </span>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <div className="flex-1 bg-gray-200 rounded-full h-2">
-                              <div
-                                className="bg-blue-600 h-2 rounded-full"
-                                style={{ width: `${lead.probability || 0}%` }}
-                              />
-                            </div>
-                            <span className="text-xs text-gray-600">{lead.probability || 0}%</span>
-                          </div>
-                        </TableCell>
-                        <TableCell>{formatCurrency(lead.expectedRevenue || 0)}</TableCell>
-                        <TableCell className="font-semibold text-blue-600">
-                          {formatCurrency((lead.expectedRevenue || 0) * ((lead.probability || 0) / 100))}
-                        </TableCell>
-                        <TableCell>
-                          {lead.expectedCloseDate ? new Date(lead.expectedCloseDate).toLocaleDateString('es-ES') : '-'}
-                        </TableCell>
-                        <TableCell>{lead.assignedTo?.name || 'Sin asignar'}</TableCell>
-                        <TableCell>
-                          <div className="flex gap-2">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleView(lead)}
-                              title="Ver detalles"
-                            >
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleEdit(lead)}
-                              title="Editar"
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleDelete(lead)}
-                              title="Eliminar"
-                            >
-                              <Trash2 className="h-4 w-4 text-red-500" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
+                  ))}
                 </TableBody>
               </Table>
             </div>

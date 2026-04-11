@@ -10,8 +10,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { SupplierForm } from './supplier-form'
 import { SupplierDetails } from './supplier-details'
 import { formatCurrency } from '@/lib/utils'
-import { Search, Plus, Edit, Trash2, Eye, Mail, Phone, Loader2, Building2, FileText } from 'lucide-react'
+import { Search, Plus, Edit, Trash2, Eye, Mail, Phone, Loader2, Building2, FileText, Truck } from 'lucide-react'
 import { useToast } from '@/components/ui/toast'
+import { EmptyTableState } from '@/components/ui/empty-table-state'
 
 async function fetchSuppliers(page: number, search: string) {
   const params = new URLSearchParams({
@@ -128,6 +129,16 @@ export function SupplierList() {
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground mr-2" />
           <span className="text-muted-foreground">Cargando proveedores...</span>
         </div>
+      ) : suppliers.length === 0 ? (
+        <div className="border rounded-2xl bg-card/80 backdrop-blur-sm shadow-sm overflow-hidden">
+          <EmptyTableState
+            icon={Truck}
+            title="Agrega tu primer proveedor"
+            description="Registra a tus proveedores para gestionar órdenes de compra, recepciones de mercancía y llevar el control de costos."
+            actionLabel="Crear Primer Proveedor"
+            onAction={() => { setSelectedSupplier(null); setIsFormOpen(true) }}
+          />
+        </div>
       ) : (
         <div className="border rounded-2xl bg-card/80 backdrop-blur-sm shadow-sm overflow-hidden">
           <Table>
@@ -142,82 +153,56 @@ export function SupplierList() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {suppliers.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={6} className="text-center text-gray-500 py-8">
-                    No hay proveedores
+              {suppliers.map((supplier: any) => (
+                <TableRow key={supplier.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 border-b transition-colors">
+                  <TableCell className="py-3 px-4 font-medium">{supplier.name}</TableCell>
+                  <TableCell className="py-3 px-4">
+                    {supplier.taxId && (
+                      <div className="text-sm text-gray-600 dark:text-gray-400">NIT: {supplier.taxId}</div>
+                    )}
+                  </TableCell>
+                  <TableCell className="py-3 px-4">
+                    {supplier.email ? (
+                      <div className="flex items-center gap-1 text-sm text-gray-600 dark:text-gray-300">
+                        <Mail className="h-3 w-3" />
+                        {supplier.email}
+                      </div>
+                    ) : (
+                      <span className="text-gray-400">-</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="py-3 px-4">
+                    {supplier.phone ? (
+                      <div className="flex items-center gap-1 text-sm text-gray-600 dark:text-gray-300">
+                        <Phone className="h-3 w-3" />
+                        {supplier.phone}
+                      </div>
+                    ) : (
+                      <span className="text-gray-400">-</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="py-3 px-4">
+                    {supplier.active ? (
+                      <span className="px-2 py-0.5 text-xs bg-green-100 text-green-800 rounded-full border border-green-200">Activo</span>
+                    ) : (
+                      <span className="px-2 py-0.5 text-xs bg-gray-100 text-gray-800 rounded-full border border-gray-200">Inactivo</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="py-3 px-4">
+                    <div className="flex gap-1">
+                      <Button variant="ghost" size="sm" onClick={() => handleView(supplier)} className="h-8 w-8 p-0 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full" title="Ver detalles">
+                        <Eye className="h-4 w-4 text-gray-500" />
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => handleEdit(supplier)} className="h-8 w-8 p-0 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full" title="Editar">
+                        <Edit className="h-4 w-4 text-gray-500" />
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => handleDelete(supplier)} className="h-8 w-8 p-0 hover:bg-red-50 text-red-500 rounded-full" title="Desactivar">
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
-              ) : (
-                suppliers.map((supplier: any) => (
-                  <TableRow key={supplier.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 border-b transition-colors">
-                    <TableCell className="py-3 px-4 font-medium">{supplier.name}</TableCell>
-                    <TableCell className="py-3 px-4">
-                      {supplier.taxId && (
-                        <div className="text-sm text-gray-600 dark:text-gray-400">NIT: {supplier.taxId}</div>
-                      )}
-                    </TableCell>
-                    <TableCell className="py-3 px-4">
-                      {supplier.email ? (
-                        <div className="flex items-center gap-1 text-sm text-gray-600 dark:text-gray-300">
-                          <Mail className="h-3 w-3" />
-                          {supplier.email}
-                        </div>
-                      ) : (
-                        <span className="text-gray-400">-</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="py-3 px-4">
-                      {supplier.phone ? (
-                        <div className="flex items-center gap-1 text-sm text-gray-600 dark:text-gray-300">
-                          <Phone className="h-3 w-3" />
-                          {supplier.phone}
-                        </div>
-                      ) : (
-                        <span className="text-gray-400">-</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="py-3 px-4">
-                      {supplier.active ? (
-                        <span className="px-2 py-0.5 text-xs bg-green-100 text-green-800 rounded-full border border-green-200">Activo</span>
-                      ) : (
-                        <span className="px-2 py-0.5 text-xs bg-gray-100 text-gray-800 rounded-full border border-gray-200">Inactivo</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="py-3 px-4">
-                      <div className="flex gap-1">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleView(supplier)}
-                          className="h-8 w-8 p-0 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full"
-                          title="Ver detalles"
-                        >
-                          <Eye className="h-4 w-4 text-gray-500" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleEdit(supplier)}
-                          className="h-8 w-8 p-0 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full"
-                          title="Editar"
-                        >
-                          <Edit className="h-4 w-4 text-gray-500" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDelete(supplier)}
-                          className="h-8 w-8 p-0 hover:bg-red-50 text-red-500 rounded-full"
-                          title="Desactivar"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
+              ))}
             </TableBody>
           </Table>
         </div>

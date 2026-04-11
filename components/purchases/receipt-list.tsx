@@ -11,7 +11,8 @@ import { useToast } from '@/components/ui/toast'
 import { ReceiptForm } from './receipt-form'
 import { ReceiptDetails } from './receipt-details'
 import { formatCurrency, formatDate } from '@/lib/utils'
-import { Search, Plus, Eye, Loader2, PackagePlus, FileText } from 'lucide-react'
+import { Search, Plus, Eye, Loader2, PackagePlus, FileText, PackageCheck } from 'lucide-react'
+import { EmptyTableState } from '@/components/ui/empty-table-state'
 
 async function fetchReceipts(page: number, search: string, purchaseOrderId: string) {
   const params = new URLSearchParams({
@@ -131,6 +132,18 @@ export function ReceiptList() {
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground mr-2" />
           <span className="text-muted-foreground">Cargando recepciones...</span>
         </div>
+      ) : receipts.length === 0 ? (
+        <div className="border rounded-2xl bg-card/80 backdrop-blur-sm shadow-sm overflow-hidden">
+          <EmptyTableState
+            icon={PackageCheck}
+            title="Registra tu primera recepción"
+            description="Registra la recepción de mercancía de tus proveedores. El inventario se actualiza automáticamente al confirmar."
+            actionLabel="Nueva Recepción"
+            onAction={() => { setSelectedPurchaseOrder(null); setIsFormOpen(true) }}
+            secondaryLabel="Crear Orden de Compra"
+            secondaryAction="/purchases/orders?new=purchase_order"
+          />
+        </div>
       ) : (
         <div className="border rounded-lg">
           <Table>
@@ -146,34 +159,21 @@ export function ReceiptList() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {receipts.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={7} className="text-center text-gray-500">
-                    No hay recepciones
+              {receipts.map((receipt: any) => (
+                <TableRow key={receipt.id}>
+                  <TableCell className="font-medium">{receipt.number}</TableCell>
+                  <TableCell>{receipt.purchaseOrder?.number || '-'}</TableCell>
+                  <TableCell>{receipt.purchaseOrder?.supplier?.name || '-'}</TableCell>
+                  <TableCell>{receipt.warehouse?.name || '-'}</TableCell>
+                  <TableCell>{formatDate(receipt.receivedAt || receipt.createdAt)}</TableCell>
+                  <TableCell>{formatCurrency(receipt.total || 0)}</TableCell>
+                  <TableCell>
+                    <Button variant="ghost" size="sm" onClick={() => handleView(receipt)} title="Ver detalles">
+                      <Eye className="h-4 w-4" />
+                    </Button>
                   </TableCell>
                 </TableRow>
-              ) : (
-                receipts.map((receipt: any) => (
-                  <TableRow key={receipt.id}>
-                    <TableCell className="font-medium">{receipt.number}</TableCell>
-                    <TableCell>{receipt.purchaseOrder?.number || '-'}</TableCell>
-                    <TableCell>{receipt.purchaseOrder?.supplier?.name || '-'}</TableCell>
-                    <TableCell>{receipt.warehouse?.name || '-'}</TableCell>
-                    <TableCell>{formatDate(receipt.receivedAt || receipt.createdAt)}</TableCell>
-                    <TableCell>{formatCurrency(receipt.total || 0)}</TableCell>
-                    <TableCell>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleView(receipt)}
-                        title="Ver detalles"
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
+              ))}
             </TableBody>
           </Table>
         </div>

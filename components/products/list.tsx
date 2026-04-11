@@ -11,7 +11,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { useDebounce } from '@/lib/hooks/use-debounce'
 import { formatCurrency } from '@/lib/utils'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Plus, Search, Edit, Loader2 } from 'lucide-react'
+import { Plus, Search, Edit, Loader2, Package } from 'lucide-react'
+import { EmptyTableState } from '@/components/ui/empty-table-state'
 
 // Lazy load heavy form component
 const ProductForm = dynamic(() => import('./form').then(mod => ({ default: mod.ProductForm })), {
@@ -178,6 +179,16 @@ export function ProductsList() {
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground mr-2" />
           <span className="text-muted-foreground">Cargando items...</span>
         </div>
+      ) : products.length === 0 ? (
+        <div className="border rounded-2xl bg-card/80 backdrop-blur-sm shadow-sm overflow-hidden">
+          <EmptyTableState
+            icon={Package}
+            title="Agrega tu primer producto"
+            description="Registra los productos o servicios que ofreces. Incluye precios, stock, categorías y códigos de barras para empezar a vender."
+            actionLabel="Crear Primer Producto"
+            onAction={() => { setEditingProduct(null); setIsDialogOpen(true) }}
+          />
+        </div>
       ) : (
         <div className="border rounded-2xl bg-card/80 backdrop-blur-sm shadow-sm overflow-hidden">
           <Table>
@@ -194,21 +205,13 @@ export function ProductsList() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {products.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={8} className="text-center text-gray-500 py-8">
-                    No hay items registrados
-                  </TableCell>
-                </TableRow>
-              ) : (
-                products.map((product: any) => (
-                  <ProductRow
-                    key={product.id}
-                    product={product}
-                    onEdit={handleEdit}
-                  />
-                ))
-              )}
+              {products.map((product: any) => (
+                <ProductRow
+                  key={product.id}
+                  product={product}
+                  onEdit={handleEdit}
+                />
+              ))}
             </TableBody>
           </Table>
         </div>

@@ -9,7 +9,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge'
 import { useDebounce } from '@/lib/hooks/use-debounce'
 import { formatCurrency, formatDate } from '@/lib/utils'
-import { Search, Eye, Trash2, Loader2, Plus } from 'lucide-react'
+import { Search, Eye, Trash2, Loader2, Plus, ClipboardList } from 'lucide-react'
+import { EmptyTableState } from '@/components/ui/empty-table-state'
 import { useToast } from '@/components/ui/toast'
 import Link from 'next/link'
 
@@ -141,6 +142,16 @@ export function OrderList() {
                     <Loader2 className="h-6 w-6 animate-spin text-muted-foreground mr-2" />
                     <span className="text-muted-foreground">Cargando órdenes...</span>
                 </div>
+            ) : orders.length === 0 ? (
+                <div className="border rounded-2xl bg-card/80 backdrop-blur-sm shadow-sm overflow-hidden">
+                    <EmptyTableState
+                        icon={ClipboardList}
+                        title="Crea tu primera orden de venta"
+                        description="Las órdenes de venta te permiten registrar pedidos de clientes antes de facturar. Gestiona el ciclo completo de ventas."
+                        actionLabel="Nueva Orden de Venta"
+                        onAction="/sales/orders/new"
+                    />
+                </div>
             ) : (
                 <div className="border rounded-2xl bg-card/80 backdrop-blur-sm shadow-sm">
                     <Table>
@@ -156,56 +167,34 @@ export function OrderList() {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {orders.length === 0 ? (
-                                <TableRow>
-                                    <TableCell colSpan={7} className="text-center text-gray-500 py-8">
-                                        No se encontraron órdenes de venta
-                                    </TableCell>
-                                </TableRow>
-                            ) : (
-                                orders.map((order: any) => {
-                                    const isDeleting = deletingIds.has(order.id)
-                                    return (
-                                        <TableRow
-                                            key={order.id}
-                                            className={`${isDeleting ? 'opacity-50' : ''} hover:bg-gray-50 dark:hover:bg-gray-800/50 border-b transition-colors`}
-                                        >
-                                            <TableCell className="py-3 px-4 font-medium text-sm">{order.number}</TableCell>
-                                            <TableCell className="py-3 px-4 text-sm text-gray-600 dark:text-gray-400">{formatDate(order.createdAt)}</TableCell>
-                                            <TableCell className="py-3 px-4 text-sm font-medium">{order.customer?.name || 'Cliente General'}</TableCell>
-                                            <TableCell className="py-3 px-4">{getStatusBadge(order.status)}</TableCell>
-                                            <TableCell className="py-3 px-4 text-center text-sm">{order._count?.items || 0}</TableCell>
-                                            <TableCell className="py-3 px-4 text-right font-bold text-sm">{formatCurrency(order.total)}</TableCell>
-                                            <TableCell className="py-3 px-4 text-right">
-                                                <div className="flex justify-end gap-1">
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="sm"
-                                                        title="Ver detalles"
-                                                        onClick={() => handleView(order)}
-                                                        className="h-8 w-8 p-0 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full"
-                                                    >
-                                                        <Eye className="h-4 w-4 text-gray-500" />
+                            {orders.map((order: any) => {
+                                const isDeleting = deletingIds.has(order.id)
+                                return (
+                                    <TableRow
+                                        key={order.id}
+                                        className={`${isDeleting ? 'opacity-50' : ''} hover:bg-gray-50 dark:hover:bg-gray-800/50 border-b transition-colors`}
+                                    >
+                                        <TableCell className="py-3 px-4 font-medium text-sm">{order.number}</TableCell>
+                                        <TableCell className="py-3 px-4 text-sm text-gray-600 dark:text-gray-400">{formatDate(order.createdAt)}</TableCell>
+                                        <TableCell className="py-3 px-4 text-sm font-medium">{order.customer?.name || 'Cliente General'}</TableCell>
+                                        <TableCell className="py-3 px-4">{getStatusBadge(order.status)}</TableCell>
+                                        <TableCell className="py-3 px-4 text-center text-sm">{order._count?.items || 0}</TableCell>
+                                        <TableCell className="py-3 px-4 text-right font-bold text-sm">{formatCurrency(order.total)}</TableCell>
+                                        <TableCell className="py-3 px-4 text-right">
+                                            <div className="flex justify-end gap-1">
+                                                <Button variant="ghost" size="sm" title="Ver detalles" onClick={() => handleView(order)} className="h-8 w-8 p-0 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full">
+                                                    <Eye className="h-4 w-4 text-gray-500" />
+                                                </Button>
+                                                {order.status === 'OPEN' && (
+                                                    <Button variant="ghost" size="sm" onClick={() => handleDelete(order)} title="Eliminar orden" disabled={deleteOrderMutation.isPending} className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-full">
+                                                        <Trash2 className="h-4 w-4" />
                                                     </Button>
-
-                                                    {order.status === 'OPEN' && (
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            onClick={() => handleDelete(order)}
-                                                            title="Eliminar orden"
-                                                            disabled={deleteOrderMutation.isPending}
-                                                            className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-full"
-                                                        >
-                                                            <Trash2 className="h-4 w-4" />
-                                                        </Button>
-                                                    )}
-                                                </div>
-                                            </TableCell>
-                                        </TableRow>
-                                    )
-                                })
-                            )}
+                                                )}
+                                            </div>
+                                        </TableCell>
+                                    </TableRow>
+                                )
+                            })}
                         </TableBody>
                     </Table>
                 </div>

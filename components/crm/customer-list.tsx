@@ -11,7 +11,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { useDebounce } from '@/lib/hooks/use-debounce'
 import { formatCurrency } from '@/lib/utils'
 import { useToast } from '@/components/ui/toast'
-import { Search, Plus, Edit, Trash2, Eye, Mail, Phone, Loader2 } from 'lucide-react'
+import { Search, Plus, Edit, Trash2, Eye, Mail, Phone, Loader2, Users } from 'lucide-react'
+import { EmptyTableState } from '@/components/ui/empty-table-state'
 
 // Lazy load heavy components
 const CustomerForm = dynamic(() => import('./customer-form').then(mod => ({ default: mod.CustomerForm })), {
@@ -176,6 +177,16 @@ export function CustomerList() {
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground mr-2" />
           <span className="text-muted-foreground">Cargando clientes...</span>
         </div>
+      ) : customers.length === 0 ? (
+        <div className="border rounded-2xl bg-card/80 backdrop-blur-sm shadow-sm overflow-hidden">
+          <EmptyTableState
+            icon={Users}
+            title="Registra tu primer cliente"
+            description="Gestiona tu base de clientes con historial de compras, crédito, datos fiscales y contacto para facturación electrónica."
+            actionLabel="Crear Primer Cliente"
+            onAction={() => { setSelectedCustomer(null); setIsFormOpen(true) }}
+          />
+        </div>
       ) : (
         <div className="border rounded-2xl bg-card/80 backdrop-blur-sm shadow-sm">
           <Table>
@@ -191,95 +202,69 @@ export function CustomerList() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {customers.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={7} className="text-center text-gray-500">
-                    No hay clientes
+              {customers.map((customer: any) => (
+                <TableRow key={customer.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 border-b">
+                  <TableCell className="font-medium">{customer.name}</TableCell>
+                  <TableCell>
+                    {customer.taxId && (
+                      <div className="text-sm text-gray-600">NIT: {customer.taxId}</div>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {customer.email ? (
+                      <div className="flex items-center gap-1 text-sm">
+                        <Mail className="h-3 w-3" />
+                        {customer.email}
+                      </div>
+                    ) : (
+                      <span className="text-gray-400">-</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {customer.phone ? (
+                      <div className="flex items-center gap-1 text-sm">
+                        <Phone className="h-3 w-3" />
+                        {customer.phone}
+                      </div>
+                    ) : (
+                      <span className="text-gray-400">-</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {customer.tags ? (
+                      <div className="flex gap-1 flex-wrap">
+                        {customer.tags.split(',').filter(Boolean).map((tag: string, i: number) => (
+                          <span key={i} className="px-2 py-0.5 text-xs bg-blue-100 text-blue-800 rounded">
+                            {tag.trim()}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <span className="text-gray-400">-</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {customer.active ? (
+                      <span className="px-2 py-1 text-xs bg-green-100 text-green-800 rounded">Activo</span>
+                    ) : (
+                      <span className="px-2 py-1 text-xs bg-gray-100 text-gray-800 rounded">Inactivo</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex gap-1 sm:gap-2">
+                      <Button variant="ghost" size="sm" onClick={() => handleView(customer)} title="Ver detalles" className="h-8 w-8 p-0">
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => handleEdit(customer)} title="Editar" className="h-8 w-8 p-0">
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => handleDelete(customer)} title="Desactivar" className="h-8 w-8 p-0">
+                        <Trash2 className="h-4 w-4 text-red-500" />
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
-              ) : (
-                customers.map((customer: any) => (
-                  <TableRow key={customer.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 border-b">
-                    <TableCell className="font-medium">{customer.name}</TableCell>
-                    <TableCell>
-                      {customer.taxId && (
-                        <div className="text-sm text-gray-600">NIT: {customer.taxId}</div>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {customer.email ? (
-                        <div className="flex items-center gap-1 text-sm">
-                          <Mail className="h-3 w-3" />
-                          {customer.email}
-                        </div>
-                      ) : (
-                        <span className="text-gray-400">-</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {customer.phone ? (
-                        <div className="flex items-center gap-1 text-sm">
-                          <Phone className="h-3 w-3" />
-                          {customer.phone}
-                        </div>
-                      ) : (
-                        <span className="text-gray-400">-</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {customer.tags ? (
-                        <div className="flex gap-1 flex-wrap">
-                          {customer.tags.split(',').filter(Boolean).map((tag: string, i: number) => (
-                            <span key={i} className="px-2 py-0.5 text-xs bg-blue-100 text-blue-800 rounded">
-                              {tag.trim()}
-                            </span>
-                          ))}
-                        </div>
-                      ) : (
-                        <span className="text-gray-400">-</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {customer.active ? (
-                        <span className="px-2 py-1 text-xs bg-green-100 text-green-800 rounded">Activo</span>
-                      ) : (
-                        <span className="px-2 py-1 text-xs bg-gray-100 text-gray-800 rounded">Inactivo</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex gap-1 sm:gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleView(customer)}
-                          title="Ver detalles"
-                          className="h-8 w-8 p-0"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleEdit(customer)}
-                          title="Editar"
-                          className="h-8 w-8 p-0"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDelete(customer)}
-                          title="Desactivar"
-                          className="h-8 w-8 p-0"
-                        >
-                          <Trash2 className="h-4 w-4 text-red-500" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
+              ))}
             </TableBody>
           </Table>
         </div>

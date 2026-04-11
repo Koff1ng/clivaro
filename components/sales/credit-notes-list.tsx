@@ -6,7 +6,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
-import { FileText, Download, Send, Search, Filter } from 'lucide-react'
+import { FileText, Download, Send, Search, Filter, FileX2 } from 'lucide-react'
+import { EmptyTableState } from '@/components/ui/empty-table-state'
 import { formatCurrency } from '@/lib/utils'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
@@ -129,11 +130,21 @@ export function CreditNotesList() {
                 <div className="text-center py-12">
                     <p className="text-muted-foreground">Cargando notas crédito...</p>
                 </div>
+            ) : creditNotes.length === 0 ? (
+                <div className="border rounded-2xl bg-card/80 backdrop-blur-sm shadow-sm overflow-hidden">
+                    <EmptyTableState
+                        icon={FileX2}
+                        title="Sin notas crédito"
+                        description="Las notas crédito se generan para corregir o anular facturas emitidas. Se transmiten automáticamente a la DIAN vía Factus."
+                        actionLabel="Ver Facturas"
+                        onAction="/sales/invoices"
+                    />
+                </div>
             ) : filteredNotes.length === 0 ? (
                 <Card>
                     <CardContent className="py-12 text-center">
                         <FileText className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                        <p className="text-muted-foreground">No se encontraron notas crédito</p>
+                        <p className="text-muted-foreground">No se encontraron notas crédito con esos filtros</p>
                     </CardContent>
                 </Card>
             ) : (

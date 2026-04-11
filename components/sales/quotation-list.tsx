@@ -12,7 +12,8 @@ import { useDebounce } from '@/lib/hooks/use-debounce'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { useToast } from '@/components/ui/toast'
 import { LoadingOverlay } from '@/components/ui/loading-overlay'
-import { Search, Plus, Edit, Trash2, Eye, FileText, X, Loader2, Filter, ClipboardEdit } from 'lucide-react'
+import { Search, Plus, Edit, Trash2, Eye, FileText, X, Loader2, Filter, ClipboardEdit, ScrollText } from 'lucide-react'
+import { EmptyTableState } from '@/components/ui/empty-table-state'
 import { Mail } from 'iconoir-react'
 import {
   DropdownMenu,
@@ -372,6 +373,24 @@ export function QuotationList() {
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground mr-2" />
             <span className="text-muted-foreground">Cargando cotizaciones...</span>
           </div>
+        ) : quotations.length === 0 && !hasActiveFilters ? (
+          <div className="border rounded-2xl bg-card/80 backdrop-blur-sm shadow-sm overflow-hidden">
+            <EmptyTableState
+              icon={ScrollText}
+              title="Crea tu primera cotización"
+              description="Envía cotizaciones profesionales a tus clientes por email. Incluye productos, precios, validez y condiciones comerciales."
+              actionLabel="Nueva Cotización"
+              onAction={() => { setSelectedQuotation(null); setIsFormOpen(true) }}
+            />
+          </div>
+        ) : quotations.length === 0 && hasActiveFilters ? (
+          <div className="border rounded-lg p-12">
+            <div className="flex flex-col items-center gap-2">
+              <FileText className="h-12 w-12 text-muted-foreground/50" />
+              <p className="text-muted-foreground font-medium">No se encontraron cotizaciones con los filtros aplicados</p>
+              <Button variant="outline" size="sm" onClick={clearFilters} className="mt-2">Limpiar filtros</Button>
+            </div>
+          </div>
         ) : (
           <div className="border rounded-lg">
             <Table>
@@ -387,94 +406,49 @@ export function QuotationList() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {quotations.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={7} className="text-center py-12">
-                      <div className="flex flex-col items-center gap-2">
-                        <FileText className="h-12 w-12 text-muted-foreground/50" />
-                        <p className="text-muted-foreground font-medium">
-                          {hasActiveFilters
-                            ? 'No se encontraron cotizaciones con los filtros aplicados'
-                            : 'No hay cotizaciones'}
-                        </p>
-                        {hasActiveFilters && (
-                          <Button variant="outline" size="sm" onClick={clearFilters} className="mt-2">
-                            Limpiar filtros
+                {quotations.map((quotation: any) => (
+                  <TableRow key={quotation.id}>
+                    <TableCell className="font-medium">{quotation.number}</TableCell>
+                    <TableCell>{quotation.customer?.name || '-'}</TableCell>
+                    <TableCell>{formatDate(quotation.createdAt)}</TableCell>
+                    <TableCell>
+                      {quotation.validUntil ? formatDate(quotation.validUntil) : '-'}
+                    </TableCell>
+                    <TableCell>
+                      <span className={`px-2 py-1 text-xs rounded ${getStatusColor(quotation.status)}`}>
+                        {getStatusLabel(quotation.status)}
+                      </span>
+                    </TableCell>
+                    <TableCell>{formatCurrency(quotation.total)}</TableCell>
+                    <TableCell>
+                      <div className="flex gap-2">
+                        <Button variant="ghost" size="sm" onClick={() => handleView(quotation)} title="Ver detalles">
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        {quotation.status === 'DRAFT' && (
+                          <>
+                            <Button variant="ghost" size="sm" onClick={() => handleEdit(quotation)} title="Editar">
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => handleSend(quotation)} title="Enviar">
+                              <Mail className="h-4 w-4" />
+                            </Button>
+                          </>
+                        )}
+                        {(quotation.status === 'SENT' || quotation.status === 'ACCEPTED') && (
+                          <Button variant="ghost" size="sm" onClick={() => handleSend(quotation)} title="Reenviar por email">
+                            <Mail className="h-4 w-4" />
+                          </Button>
+                        )}
+                        {quotation.status === 'DRAFT' && (
+                          <Button variant="ghost" size="sm" onClick={() => handleDelete(quotation)} title="Eliminar">
+                            <Trash2 className="h-4 w-4 text-red-500" />
                           </Button>
                         )}
                       </div>
                     </TableCell>
                   </TableRow>
-                ) : (
-                  quotations.map((quotation: any) => (
-                    <TableRow key={quotation.id}>
-                      <TableCell className="font-medium">{quotation.number}</TableCell>
-                      <TableCell>{quotation.customer?.name || '-'}</TableCell>
-                      <TableCell>{formatDate(quotation.createdAt)}</TableCell>
-                      <TableCell>
-                        {quotation.validUntil ? formatDate(quotation.validUntil) : '-'}
-                      </TableCell>
-                      <TableCell>
-                        <span className={`px-2 py-1 text-xs rounded ${getStatusColor(quotation.status)}`}>
-                          {getStatusLabel(quotation.status)}
-                        </span>
-                      </TableCell>
-                      <TableCell>{formatCurrency(quotation.total)}</TableCell>
-                      <TableCell>
-                        <div className="flex gap-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleView(quotation)}
-                            title="Ver detalles"
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          {quotation.status === 'DRAFT' && (
-                            <>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleEdit(quotation)}
-                                title="Editar"
-                              >
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleSend(quotation)}
-                                title="Enviar"
-                              >
-                                <Mail className="h-4 w-4" />
-                              </Button>
-                            </>
-                          )}
-                          {(quotation.status === 'SENT' || quotation.status === 'ACCEPTED') && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleSend(quotation)}
-                              title="Reenviar por email"
-                            >
-                              <Mail className="h-4 w-4" />
-                            </Button>
-                          )}
-                          {quotation.status === 'DRAFT' && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleDelete(quotation)}
-                              title="Eliminar"
-                            >
-                              <Trash2 className="h-4 w-4 text-red-500" />
-                            </Button>
-                          )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
+                ))}
               </TableBody>
             </Table>
           </div>

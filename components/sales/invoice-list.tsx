@@ -10,9 +10,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useDebounce } from '@/lib/hooks/use-debounce'
 import { formatCurrency, formatDate } from '@/lib/utils'
-import { Search, Eye, FileText, QrCode, CheckCircle, XCircle, Clock, Trash2, Loader2, ShieldCheck, Send, Copy } from 'lucide-react'
+import { Search, Eye, FileText, QrCode, CheckCircle, XCircle, Clock, Trash2, Loader2, ShieldCheck, Send, Copy, Receipt } from 'lucide-react'
 import { useToast } from '@/components/ui/toast'
 import { Badge } from '@/components/ui/badge'
+import { EmptyTableState } from '@/components/ui/empty-table-state'
 
 // Lazy load heavy component
 const InvoiceDetails = dynamic(() => import('./invoice-details').then(mod => ({ default: mod.InvoiceDetails })), {
@@ -377,6 +378,16 @@ export function InvoiceList() {
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground mr-2" />
           <span className="text-muted-foreground">Cargando facturas...</span>
         </div>
+      ) : invoices.length === 0 ? (
+        <div className="border rounded-2xl bg-card/80 backdrop-blur-sm shadow-sm overflow-hidden">
+          <EmptyTableState
+            icon={Receipt}
+            title="Crea tu primera factura"
+            description="Las facturas se generan automáticamente al completar una venta en el Punto de Venta. También puedes crear facturas electrónicas válidas ante la DIAN."
+            actionLabel="Ir al Punto de Venta"
+            onAction="/pos"
+          />
+        </div>
       ) : (
         <div className="border rounded-2xl bg-card/80 backdrop-blur-sm shadow-sm">
           <Table>
@@ -393,106 +404,98 @@ export function InvoiceList() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {invoices.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={8} className="text-center text-gray-500">
-                    No hay facturas
-                  </TableCell>
-                </TableRow>
-              ) : (
-                invoices.map((invoice: any) => {
-                  const isDeleting = deletingIds.has(invoice.id)
-                  return (
-                    <TableRow
-                      key={invoice.id}
-                      className={`${isDeleting ? 'animate-slide-up-out' : ''} hover:bg-gray-50 dark:hover:bg-gray-800/50 border-b transition-colors`}
-                    >
-                      <TableCell className="font-medium">
-                        <div className="flex items-center gap-2">
-                          {invoice.number}
-                          {invoice.cufe && (
-                            <span title="Factura electrónica">
-                              <FileText className="h-4 w-4 text-green-600" />
-                            </span>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>{invoice.customer?.name || '-'}</TableCell>
-                      <TableCell>{formatDate(invoice.createdAt)}</TableCell>
-                      <TableCell>
-                        <span className={`px-2 py-1 text-xs rounded ${getStatusColor(invoice.status)}`}>
-                          {getStatusLabel(invoice.status)}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        <div className="space-y-1">
-                          {getElectronicBadge(invoice.electronicStatus, invoice.cufe)}
-                          {invoice.cufe && (
-                            <div className="flex items-center gap-1">
-                              <code className="text-[9px] font-mono text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded max-w-[100px] truncate">
-                                {invoice.cufe}
-                              </code>
-                              <button
-                                onClick={(e) => { e.stopPropagation(); copyCufe(invoice.cufe) }}
-                                className="p-0.5 rounded hover:bg-muted transition-colors"
-                                title="Copiar CUFE"
-                              >
-                                <Copy className="h-2.5 w-2.5 text-muted-foreground" />
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right">{formatCurrency(invoice.total)}</TableCell>
-                      <TableCell className="text-right">
-                        {(() => {
-                          const totalPaid = (invoice.payments || []).reduce((sum: number, p: any) => sum + (p.amount || 0), 0)
-                          const balance = Math.max(0, invoice.total - totalPaid)
-                          return (
-                            <span className={balance > 0 ? 'text-orange-600 font-medium' : 'text-gray-400'}>
-                              {formatCurrency(balance)}
-                            </span>
-                          )
-                        })()}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex gap-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleView(invoice)}
-                            title="Ver detalles"
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          {(!invoice.electronicStatus || invoice.electronicStatus === 'PENDING' || invoice.electronicStatus === 'REJECTED') && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleSendElectronic(invoice)}
-                              title={invoice.electronicStatus === 'REJECTED' ? 'Reintentar envío DIAN' : 'Enviar a DIAN vía Factus'}
-                              disabled={sendElectronicMutation.isPending}
-                              className={invoice.electronicStatus === 'REJECTED' ? 'text-red-600 hover:text-red-700 hover:bg-red-50' : ''}
+              {invoices.map((invoice: any) => {
+                const isDeleting = deletingIds.has(invoice.id)
+                return (
+                  <TableRow
+                    key={invoice.id}
+                    className={`${isDeleting ? 'animate-slide-up-out' : ''} hover:bg-gray-50 dark:hover:bg-gray-800/50 border-b transition-colors`}
+                  >
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-2">
+                        {invoice.number}
+                        {invoice.cufe && (
+                          <span title="Factura electrónica">
+                            <FileText className="h-4 w-4 text-green-600" />
+                          </span>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>{invoice.customer?.name || '-'}</TableCell>
+                    <TableCell>{formatDate(invoice.createdAt)}</TableCell>
+                    <TableCell>
+                      <span className={`px-2 py-1 text-xs rounded ${getStatusColor(invoice.status)}`}>
+                        {getStatusLabel(invoice.status)}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <div className="space-y-1">
+                        {getElectronicBadge(invoice.electronicStatus, invoice.cufe)}
+                        {invoice.cufe && (
+                          <div className="flex items-center gap-1">
+                            <code className="text-[9px] font-mono text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded max-w-[100px] truncate">
+                              {invoice.cufe}
+                            </code>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); copyCufe(invoice.cufe) }}
+                              className="p-0.5 rounded hover:bg-muted transition-colors"
+                              title="Copiar CUFE"
                             >
-                              {sendElectronicMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                            </Button>
-                          )}
+                              <Copy className="h-2.5 w-2.5 text-muted-foreground" />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right">{formatCurrency(invoice.total)}</TableCell>
+                    <TableCell className="text-right">
+                      {(() => {
+                        const totalPaid = (invoice.payments || []).reduce((sum: number, p: any) => sum + (p.amount || 0), 0)
+                        const balance = Math.max(0, invoice.total - totalPaid)
+                        return (
+                          <span className={balance > 0 ? 'text-orange-600 font-medium' : 'text-gray-400'}>
+                            {formatCurrency(balance)}
+                          </span>
+                        )
+                      })()}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleView(invoice)}
+                          title="Ver detalles"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        {(!invoice.electronicStatus || invoice.electronicStatus === 'PENDING' || invoice.electronicStatus === 'REJECTED') && (
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => handleDelete(invoice)}
-                            title="Eliminar factura"
-                            disabled={deleteInvoiceMutation.isPending}
-                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                            onClick={() => handleSendElectronic(invoice)}
+                            title={invoice.electronicStatus === 'REJECTED' ? 'Reintentar envío DIAN' : 'Enviar a DIAN vía Factus'}
+                            disabled={sendElectronicMutation.isPending}
+                            className={invoice.electronicStatus === 'REJECTED' ? 'text-red-600 hover:text-red-700 hover:bg-red-50' : ''}
                           >
-                            <Trash2 className="h-4 w-4" />
+                            {sendElectronicMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                           </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  )
-                })
-              )}
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDelete(invoice)}
+                          title="Eliminar factura"
+                          disabled={deleteInvoiceMutation.isPending}
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                )
+              })}
             </TableBody>
           </Table>
         </div>

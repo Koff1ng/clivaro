@@ -11,7 +11,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { useToast } from '@/components/ui/toast'
 import { useDebounce } from '@/lib/hooks/use-debounce'
 import { formatCurrency, formatDate } from '@/lib/utils'
-import { Search, Plus, Eye, Edit, Trash2, Loader2, ClipboardEdit, FileText } from 'lucide-react'
+import { Search, Plus, Eye, Edit, Trash2, Loader2, ClipboardEdit, FileText, ShoppingCart } from 'lucide-react'
+import { EmptyTableState } from '@/components/ui/empty-table-state'
 
 // Lazy load heavy components
 const PurchaseOrderForm = dynamic(() => import('./purchase-order-form').then(mod => ({ default: mod.PurchaseOrderForm })), {
@@ -214,6 +215,16 @@ export function PurchaseOrderList() {
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground mr-2" />
           <span className="text-muted-foreground">Cargando órdenes de compra...</span>
         </div>
+      ) : orders.length === 0 ? (
+        <div className="border rounded-2xl bg-card/80 backdrop-blur-sm shadow-sm overflow-hidden">
+          <EmptyTableState
+            icon={ShoppingCart}
+            title="Crea tu primera orden de compra"
+            description="Gestiona las compras a tus proveedores. Controla pedidos, recepciones y costos de adquisición de mercancía."
+            actionLabel="Nueva Orden de Compra"
+            onAction={() => { setSelectedOrder(null); setIsFormOpen(true) }}
+          />
+        </div>
       ) : (
         <div className="border rounded-lg">
           <Table>
@@ -228,57 +239,34 @@ export function PurchaseOrderList() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {orders.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={6} className="text-center text-gray-500">
-                    No hay órdenes de compra
+              {orders.map((order: any) => (
+                <TableRow key={order.id}>
+                  <TableCell className="font-medium">{order.number}</TableCell>
+                  <TableCell>{order.supplier?.name || '-'}</TableCell>
+                  <TableCell>{formatDate(order.createdAt)}</TableCell>
+                  <TableCell>
+                    <span className={`px-2 py-1 text-xs rounded ${getStatusColor(order.status)}`}>
+                      {getStatusLabel(order.status)}
+                    </span>
+                  </TableCell>
+                  <TableCell>{formatCurrency(order.total)}</TableCell>
+                  <TableCell>
+                    <div className="flex gap-2">
+                      <Button variant="ghost" size="sm" onClick={() => handleView(order)} title="Ver detalles">
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => handleEdit(order)} title="Editar">
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      {order.status === 'DRAFT' && (
+                        <Button variant="ghost" size="sm" onClick={() => handleDelete(order)} title="Eliminar">
+                          <Trash2 className="h-4 w-4 text-red-500" />
+                        </Button>
+                      )}
+                    </div>
                   </TableCell>
                 </TableRow>
-              ) : (
-                orders.map((order: any) => (
-                  <TableRow key={order.id}>
-                    <TableCell className="font-medium">{order.number}</TableCell>
-                    <TableCell>{order.supplier?.name || '-'}</TableCell>
-                    <TableCell>{formatDate(order.createdAt)}</TableCell>
-                    <TableCell>
-                      <span className={`px-2 py-1 text-xs rounded ${getStatusColor(order.status)}`}>
-                        {getStatusLabel(order.status)}
-                      </span>
-                    </TableCell>
-                    <TableCell>{formatCurrency(order.total)}</TableCell>
-                    <TableCell>
-                      <div className="flex gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleView(order)}
-                          title="Ver detalles"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleEdit(order)}
-                          title="Editar"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        {order.status === 'DRAFT' && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDelete(order)}
-                            title="Eliminar"
-                          >
-                            <Trash2 className="h-4 w-4 text-red-500" />
-                          </Button>
-                        )}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
+              ))}
             </TableBody>
           </Table>
         </div>
