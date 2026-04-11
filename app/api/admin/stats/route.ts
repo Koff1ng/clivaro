@@ -146,6 +146,8 @@ export async function GET() {
     })
     const conversionRate = tenants.length > 0 ? (paidTenants.length / tenants.length) * 100 : 0
 
+    const usdCopRate = parseFloat(process.env.USD_COP_RATE || '4200')
+
     return NextResponse.json({
       overview: {
         totalTenants: tenants.length,
@@ -161,9 +163,10 @@ export async function GET() {
       },
       revenue: {
         mrr,
-        mrrUsd: Math.round(mrr / 4200),
+        mrrUsd: Math.round(mrr / usdCopRate),
         arr,
-        arrUsd: Math.round(arr / 4200),
+        arrUsd: Math.round(arr / usdCopRate),
+        exchangeRate: usdCopRate,
       },
       churn: {
         rate: Math.round(churnRate * 100) / 100,

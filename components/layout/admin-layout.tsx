@@ -9,12 +9,12 @@ import { SidebarProvider } from '@/lib/sidebar-context'
 
 function AdminLayoutContent({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex h-screen bg-[#0A0F1E]">
+    <div className="flex h-screen bg-[#f7f7f8]">
       <Sidebar />
       <div className="flex-1 flex flex-col overflow-hidden">
         <AdminHeader />
         <main className="flex-1 overflow-y-auto">
-          <div className="container mx-auto px-4 py-4 sm:px-6 sm:py-6">
+          <div className="container mx-auto px-4 py-4 sm:px-6 sm:py-6 max-w-7xl">
             {children}
           </div>
         </main>
@@ -40,10 +40,10 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
 
   if (status === 'loading') {
     return (
-      <div className="flex h-screen items-center justify-center bg-[#0A0F1E]">
+      <div className="flex h-screen items-center justify-center bg-white">
         <div className="flex flex-col items-center gap-3">
-          <div className="h-8 w-8 rounded-full border-2 border-amber-400 border-t-transparent animate-spin" />
-          <span className="text-sm text-slate-400">Verificando acceso...</span>
+          <div className="h-8 w-8 rounded-full border-2 border-[#10a37f] border-t-transparent animate-spin" />
+          <span className="text-sm text-[#6e6e80]">Verificando acceso...</span>
         </div>
       </div>
     )
@@ -60,3 +60,4 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
     </SidebarProvider>
   )
 }
+

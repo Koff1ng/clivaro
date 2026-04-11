@@ -263,13 +263,17 @@ export function Sidebar() {
       <aside
         data-tour="sidebar"
         className={cn(
-          'fixed md:static top-0 left-0 z-50 h-screen flex flex-col border-r border-slate-800 bg-[#0F172A] text-slate-100 transition-all duration-300 ease-in-out overflow-hidden print:hidden',
+          'fixed md:static top-0 left-0 z-50 h-screen flex flex-col border-r transition-all duration-300 ease-in-out overflow-hidden print:hidden',
+          isOnAdminRoute
+            ? 'bg-white border-[#e5e5e5] text-[#0d0d0d]'
+            : 'bg-[#0F172A] border-slate-800 text-slate-100',
           isOpen ? 'w-56 translate-x-0' : 'w-0 -translate-x-full md:translate-x-0 md:w-16'
         )}
       >
         {isOpen && (
           <div className={cn(
-            'flex items-center justify-center border-b border-white/5 px-4 transition-opacity duration-300 opacity-100 h-16 sm:h-16 overflow-hidden'
+            'flex items-center justify-center border-b px-4 transition-opacity duration-300 opacity-100 h-16 sm:h-16 overflow-hidden',
+            isOnAdminRoute ? 'border-[#e5e5e5]' : 'border-white/5'
           )}>
             <Link href={isOnAdminRoute ? '/admin/dashboard' : '/dashboard'} prefetch scroll={false} className="w-full flex items-center justify-center h-full">
               <Logo
@@ -299,10 +303,13 @@ export function Sidebar() {
                   const isGroupOpen = openGroups[group.key] !== false
 
                   return (
-                    <div key={group.key} className={cn("mb-2", { 'border-t border-slate-800 pt-2 mt-2': groupIndex > 0 && !isOpen })}>
+                    <div key={group.key} className={cn("mb-2", { 'border-t pt-2 mt-2': groupIndex > 0 && !isOpen }, isOnAdminRoute ? 'border-[#e5e5e5]' : 'border-slate-800')}>
                       {isOpen && (
                         <div
-                          className="flex items-center justify-between px-3 py-2 text-xs font-semibold text-slate-400 uppercase tracking-wider cursor-pointer hover:text-white transition-colors select-none"
+                          className={cn(
+                            "flex items-center justify-between px-3 py-2 text-xs font-semibold uppercase tracking-wider cursor-pointer transition-colors select-none",
+                            isOnAdminRoute ? 'text-[#6e6e80] hover:text-[#0d0d0d]' : 'text-slate-400 hover:text-white'
+                          )}
                           onClick={() => toggleGroup(group.key)}
                         >
                           <span>{group.title}</span>
@@ -327,8 +334,8 @@ export function Sidebar() {
                                 'flex rounded-lg font-medium transition-all duration-200 relative group',
                                 isOpen ? 'flex-row items-center gap-3 text-[13px] px-2.5 py-1.5 ml-1' : 'flex-col items-center justify-center gap-1 px-1 py-1.5',
                                 isActive
-                                  ? 'bg-slate-800/80 text-white font-semibold'
-                                  : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200',
+                                  ? (isOnAdminRoute ? 'bg-[#10a37f]/10 text-[#10a37f] font-semibold' : 'bg-slate-800/80 text-white font-semibold')
+                                  : (isOnAdminRoute ? 'text-[#6e6e80] hover:bg-[#f7f7f8] hover:text-[#0d0d0d]' : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200'),
                               )}
                               title={!isOpen ? item.label : undefined}
                             >

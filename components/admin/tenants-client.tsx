@@ -222,7 +222,7 @@ export function TenantsClient() {
         description="Administra empresas, planes y suscripciones desde el panel de super administrador."
         icon={<Building2 className="h-5 w-5" />}
         actions={
-          <Button onClick={() => setShowForm(true)} className="bg-gradient-to-r from-blue-600 to-indigo-600">
+          <Button onClick={() => setShowForm(true)} className="bg-[#10a37f] hover:bg-[#0d8c6d] text-white">
             <Plus className="h-4 w-4 mr-2" />
             Nuevo Tenant
           </Button>
@@ -241,7 +241,7 @@ export function TenantsClient() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Tenants</CardTitle>
@@ -333,9 +333,22 @@ export function TenantsClient() {
                         {tenant.adminPassword && (
                           <div className="flex items-center gap-1">
                             <span className="text-gray-500 dark:text-gray-400">Password:</span>
-                            <span className="ml-2 font-mono bg-yellow-100 dark:bg-yellow-900 px-1 rounded">
-                              {tenant.adminPassword}
-                            </span>
+                            <button
+                              type="button"
+                              className="ml-2 font-mono text-xs bg-gray-100 px-2 py-0.5 rounded hover:bg-gray-200 transition-colors"
+                              onClick={(e) => {
+                                const btn = e.currentTarget
+                                if (btn.textContent === '••••••••') {
+                                  btn.textContent = tenant.adminPassword
+                                  setTimeout(() => { btn.textContent = '••••••••' }, 3000)
+                                } else {
+                                  btn.textContent = '••••••••'
+                                }
+                              }}
+                              title="Click para revelar — se oculta en 3s"
+                            >
+                              ••••••••
+                            </button>
                           </div>
                         )}
                         {plan && (

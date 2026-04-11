@@ -70,11 +70,11 @@ export default function AdminLoginPage() {
   return (
     <div className="w-full h-screen grid lg:grid-cols-2 overflow-hidden">
       {/* Left Panel - Brand & Visuals */}
-      <div className="hidden lg:flex relative flex-col justify-between pt-4 px-12 pb-12 bg-slate-950 text-white overflow-hidden">
+      <div className="hidden lg:flex relative flex-col justify-between pt-4 px-12 pb-12 bg-[#0d0d0d] text-white overflow-hidden">
         {/* Abstract Background Effects */}
         <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
-          <div className="absolute top-[-20%] right-[-10%] w-[600px] h-[600px] bg-indigo-600/20 rounded-full blur-3xl" />
-          <div className="absolute bottom-[-20%] left-[-10%] w-[500px] h-[500px] bg-purple-600/20 rounded-full blur-3xl" />
+          <div className="absolute top-[-20%] right-[-10%] w-[600px] h-[600px] bg-[#10a37f]/20 rounded-full blur-3xl" />
+          <div className="absolute bottom-[-20%] left-[-10%] w-[500px] h-[500px] bg-[#10a37f]/10 rounded-full blur-3xl" />
         </div>
 
         <div>
@@ -85,7 +85,7 @@ export default function AdminLoginPage() {
                 size="lg"
                 className="w-72 md:w-80 lg:w-96 h-auto -mb-10 ml-19"
               />
-              <div className="px-3 py-1 rounded-full bg-slate-800/50 border border-slate-700 text-xs font-medium text-slate-300 flex items-center gap-2 h-fit">
+              <div className="px-3 py-1 rounded-full bg-[#10a37f]/10 border border-[#10a37f]/30 text-xs font-medium text-[#10a37f] flex items-center gap-2 h-fit">
                 <Shield className="w-3 h-3" />
                 Acceso Administrativo
               </div>
@@ -99,15 +99,15 @@ export default function AdminLoginPage() {
 
           <div className="relative z-10 space-y-4">
             <div className="flex items-center gap-3 text-slate-300">
-              <CheckCircle2 className="w-5 h-5 text-indigo-500" />
+              <CheckCircle2 className="w-5 h-5 text-[#10a37f]" />
               <span>Gestión global de inquilinos y suscripciones</span>
             </div>
             <div className="flex items-center gap-3 text-slate-300">
-              <CheckCircle2 className="w-5 h-5 text-indigo-500" />
+              <CheckCircle2 className="w-5 h-5 text-[#10a37f]" />
               <span>Monitoreo de sistema y auditoría</span>
             </div>
             <div className="flex items-center gap-3 text-slate-300">
-              <CheckCircle2 className="w-5 h-5 text-indigo-500" />
+              <CheckCircle2 className="w-5 h-5 text-[#10a37f]" />
               <span>Configuración avanzada de plataforma</span>
             </div>
           </div>
@@ -130,7 +130,7 @@ export default function AdminLoginPage() {
 
           <div className="text-center lg:text-left space-y-2">
             <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white flex items-center gap-2">
-              <Shield className="w-8 h-8 text-indigo-600 hidden lg:block" />
+              <Shield className="w-8 h-8 text-[#10a37f] hidden lg:block" />
               Portal de Administración
             </h1>
             <p className="text-gray-500 dark:text-gray-400">
@@ -162,7 +162,7 @@ export default function AdminLoginPage() {
                   onChange={(e) => setUsername(e.target.value)}
                   required
                   disabled={loading}
-                  className="pl-10 h-12 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 focus:border-indigo-500 focus:ring-indigo-500/20 transition-all text-base"
+                  className="pl-10 h-12 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 focus:border-[#10a37f] focus:ring-[#10a37f]/20 transition-all text-base"
                   autoComplete="username"
                 />
               </div>
@@ -184,7 +184,7 @@ export default function AdminLoginPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   disabled={loading}
-                  className="pl-10 h-12 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 focus:border-indigo-500 focus:ring-indigo-500/20 transition-all text-base"
+                  className="pl-10 h-12 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 focus:border-[#10a37f] focus:ring-[#10a37f]/20 transition-all text-base"
                   autoComplete="current-password"
                 />
               </div>
@@ -192,7 +192,7 @@ export default function AdminLoginPage() {
 
             <Button
               type="submit"
-              className="w-full h-12 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-lg shadow-lg hover:shadow-indigo-500/25 transition-all duration-200"
+              className="w-full h-12 bg-[#10a37f] hover:bg-[#0d8c6d] text-white font-semibold text-lg shadow-lg hover:shadow-[#10a37f]/25 transition-all duration-200"
               disabled={loading}
             >
               {loading ? (
@@ -212,7 +212,7 @@ export default function AdminLoginPage() {
           <div className="pt-6 border-t border-gray-100 dark:border-gray-800 text-center">
             <Link
               href="/"
-              className="text-sm text-gray-500 hover:text-indigo-600 font-medium hover:underline inline-flex items-center gap-1 transition-colors"
+              className="text-sm text-gray-500 hover:text-[#10a37f] font-medium hover:underline inline-flex items-center gap-1 transition-colors"
             >
               ← Volver al inicio
             </Link>

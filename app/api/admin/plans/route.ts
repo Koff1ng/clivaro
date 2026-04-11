@@ -184,4 +184,91 @@ export async function POST(request: Request) {
   }
 }
 
+export async function PUT(request: Request) {
+  try {
+    const session = await requireAuth(request)
+    if (session instanceof NextResponse) return session
+
+    const user = session.user as any
+    const dbUser = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: { isSuperAdmin: true }
+    })
+    if (!dbUser?.isSuperAdmin) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
+    }
+
+    const body = await request.json()
+    const { id, name, description, price, currency, interval, features, active } = body
+
+    if (!id) {
+      return NextResponse.json({ error: 'Se requiere id del plan' }, { status: 400 })
+    }
+
+    const plan = await prisma.plan.update({
+      where: { id },
+      data: {
+        ...(name !== undefined && { name }),
+        ...(description !== undefined && { description }),
+        ...(price !== undefined && { price: parseFloat(price) }),
+        ...(currency !== undefined && { currency }),
+        ...(interval !== undefined && { interval }),
+        ...(features !== undefined && { features: JSON.stringify(features) }),
+        ...(active !== undefined && { active }),
+      }
+    })
+
+    return NextResponse.json(plan)
+  } catch (error: any) {
+    logger.error('Error updating plan:', error)
+    return NextResponse.json(
+      { error: error.message || 'Error al actualizar plan' },
+      { status: 500 }
+    )
+  }
+}
+
+export async function DELETE(request: Request) {
+  try {
+    const session = await requireAuth(request)
+    if (session instanceof NextResponse) return session
+
+    const user = session.user as any
+    const dbUser = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: { isSuperAdmin: true }
+    })
+    if (!dbUser?.isSuperAdmin) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
+    }
+
+    const { searchParams } = new URL(request.url)
+    const id = searchParams.get('id')
+    if (!id) {
+      return NextResponse.json({ error: 'Se requiere id del plan' }, { status: 400 })
+    }
+
+    const subscriberCount = await prisma.subscription.count({
+      where: { planId: id, status: { in: ['active', 'trial'] } }
+    })
+
+    if (subscriberCount > 0) {
+      return NextResponse.json(
+        { error: `No se puede eliminar: ${subscriberCount} suscriptor(es) activos` },
+        { status: 409 }
+      )
+    }
+
+    await prisma.plan.delete({ where: { id } })
+    return NextResponse.json({ success: true })
+  } catch (error: any) {
+    logger.error('Error deleting plan:', error)
+    return NextResponse.json(
+      { error: error.message || 'Error al eliminar plan' },
+      { status: 500 }
+    )
+  }
+}
+
+
 
