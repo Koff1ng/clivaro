@@ -237,9 +237,13 @@ export async function POST(request: Request) {
       const finalTotal = finalSubtotal + totalTaxAmount
 
       // 4. Payment validation
+      // Allow underpayment ONLY when a real customer is specified (credit/fiar).
+      // The credit balance is handled automatically below.
       const tenderedTotal = data.payments?.reduce((sum, p) => sum + p.amount, 0) || data.cashReceived || 0
-      if (tenderedTotal < finalTotal - 0.01) {
-        throw new Error(`Monto insuficiente. Total: ${finalTotal}, Recibido: ${tenderedTotal}`)
+      const isUnderpaid = tenderedTotal < finalTotal - 0.01
+
+      if (isUnderpaid && !data.customerId) {
+        throw new Error(`Monto insuficiente. Total: ${finalTotal.toFixed(2)}, Recibido: ${tenderedTotal.toFixed(2)}. Selecciona un cliente para fiar.`)
       }
 
       // 5. Customer resolution
@@ -263,6 +267,14 @@ export async function POST(request: Request) {
             createdById: (session.user as any).id
           }
         })).id
+      }
+
+      // 5b. Validate customer for credit sale (must be a real customer, not "Cliente General")
+      if (isUnderpaid) {
+        const creditCustomer = await tx.customer.findUnique({ where: { id: customerId } })
+        if (!creditCustomer || creditCustomer.name === 'Cliente General') {
+          throw new Error('No se puede fiar a Cliente General. Selecciona un cliente real.')
+        }
       }
 
       // 6. Persistence
@@ -350,6 +362,16 @@ export async function POST(request: Request) {
         }
       }
 
+      // 7b. Auto-detect underpayment even if frontend didn't add a CREDIT method
+      // This handles cases where the tenant has no ABONO/CREDIT payment method configured
+      if (isUnderpaid && totalCredit === 0) {
+        const autoCredit = finalTotal - tenderedTotal
+        totalCredit = autoCredit
+        isPaid = false
+        // Adjust totalImmediate to only count what was actually paid
+        totalImmediate = Math.min(totalImmediate, tenderedTotal)
+      }
+
       // Logic for Credit portion
       if (totalCredit > 0) {
         if (!customerId) throw new Error('Se requiere un cliente válido para ventas a crédito')
@@ -360,7 +382,7 @@ export async function POST(request: Request) {
         // Check Credit Limit (only against the new credit added, total balance check)
         if (customer.creditLimit > 0) {
           if (customer.currentBalance + totalCredit > customer.creditLimit) {
-            throw new Error(`Crédito insuficiente. Disponible: ${customer.creditLimit - customer.currentBalance}`)
+            throw new Error(`Crédito insuficiente. Disponible: ${(customer.creditLimit - customer.currentBalance).toFixed(2)}`)
           }
         }
 

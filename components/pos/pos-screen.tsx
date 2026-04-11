@@ -1315,20 +1315,32 @@ export function POSScreen({ mode = 'retail', waiterData, waiterToken, preselecte
 
       if (!cashReceived || isNaN(received) || received < total) {
         if (selectedCustomer && selectedCustomer.id && selectedCustomer.name !== 'Cliente General') {
-          const missing = total - (isNaN(received) ? 0 : received)
-          const wantCredit = window.confirm(`Monto incompleto. Faltan ${formatCurrency(missing)}.\n\n¿Deseas registrar un abono de ${formatCurrency(isNaN(received) ? 0 : received)} y enviar el saldo restante a la cuenta de ${selectedCustomer.name} (ABONO)?`)
+          const actualReceived = isNaN(received) ? 0 : received
+          const missing = total - actualReceived
+          const wantCredit = window.confirm(`Monto incompleto. Faltan ${formatCurrency(missing)}.\n\n¿Deseas ${actualReceived > 0 ? `registrar un abono de ${formatCurrency(actualReceived)} y ` : ''}enviar ${actualReceived > 0 ? 'el saldo restante' : 'el total'} a la cuenta de ${selectedCustomer.name}?`)
           if (!wantCredit) return
           
           const creditMethod = paymentMethods.find(m => m.name === 'ABONO' || m.type === 'CREDIT')
-          // Build payments: only include the actual cash received. The backend will
-          // detect underpayment and set invoice to EN_COBRANZA (credit) automatically.
-          const actualPayments = [
-            { paymentMethodId: paymentMethodId, amount: isNaN(received) ? 0 : received },
-          ].filter(p => p.amount > 0)
-          // If there's a CREDIT method, add it; otherwise backend handles it via balance
+          // Build payments array. Backend auto-detects underpayment with customerId
+          // and creates credit balance even if no CREDIT payment method is configured.
+          const actualPayments: { paymentMethodId: string; amount: number }[] = []
+          
+          // Include cash portion if any was received
+          if (actualReceived > 0) {
+            actualPayments.push({ paymentMethodId: paymentMethodId, amount: actualReceived })
+          }
+          
+          // If a CREDIT method exists in the tenant, add the credit portion explicitly
           if (creditMethod) {
             actualPayments.push({ paymentMethodId: creditMethod.id, amount: missing })
           }
+          
+          // If no payments at all (fiar 100% without CREDIT method), send minimal cash 
+          // The backend will auto-detect via customerId + underpayment
+          if (actualPayments.length === 0) {
+            actualPayments.push({ paymentMethodId: paymentMethodId, amount: 0.01 })
+          }
+          
           saleData.payments = actualPayments
         } else {
           toast(`El efectivo recibido debe ser mayor o igual al total. Selecciona un cliente si deseas dejar fiado o hacer un abono.`, 'warning')
