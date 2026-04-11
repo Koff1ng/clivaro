@@ -1317,33 +1317,16 @@ export function POSScreen({ mode = 'retail', waiterData, waiterToken, preselecte
         if (selectedCustomer && selectedCustomer.id && selectedCustomer.name !== 'Cliente General') {
           const actualReceived = isNaN(received) ? 0 : received
           const missing = total - actualReceived
-          const wantCredit = window.confirm(`Monto incompleto. Faltan ${formatCurrency(missing)}.\n\n¿Deseas ${actualReceived > 0 ? `registrar un abono de ${formatCurrency(actualReceived)} y ` : ''}enviar ${actualReceived > 0 ? 'el saldo restante' : 'el total'} a la cuenta de ${selectedCustomer.name}?`)
+          const wantCredit = window.confirm(`Monto incompleto. Faltan ${formatCurrency(missing)}.\n\n¿Deseas ${actualReceived > 0 ? `registrar un pago de ${formatCurrency(actualReceived)} y ` : ''}enviar ${actualReceived > 0 ? 'el saldo restante' : 'el total'} a la cuenta por cobrar de ${selectedCustomer.name}?`)
           if (!wantCredit) return
           
-          const creditMethod = paymentMethods.find(m => m.name === 'ABONO' || m.type === 'CREDIT')
-          // Build payments array. Backend auto-detects underpayment with customerId
-          // and creates credit balance even if no CREDIT payment method is configured.
-          const actualPayments: { paymentMethodId: string; amount: number }[] = []
-          
-          // Include cash portion if any was received
-          if (actualReceived > 0) {
-            actualPayments.push({ paymentMethodId: paymentMethodId, amount: actualReceived })
-          }
-          
-          // If a CREDIT method exists in the tenant, add the credit portion explicitly
-          if (creditMethod) {
-            actualPayments.push({ paymentMethodId: creditMethod.id, amount: missing })
-          }
-          
-          // If no payments at all (fiar 100% without CREDIT method), send minimal cash 
-          // The backend will auto-detect via customerId + underpayment
-          if (actualPayments.length === 0) {
-            actualPayments.push({ paymentMethodId: paymentMethodId, amount: 0.01 })
-          }
-          
-          saleData.payments = actualPayments
+          // Send only actual cash received. Backend auto-detects underpayment
+          // with customerId and creates credit balance automatically.
+          saleData.payments = actualReceived > 0
+            ? [{ paymentMethodId: paymentMethodId, amount: actualReceived }]
+            : [{ paymentMethodId: paymentMethodId, amount: 0.01 }] // Minimal to pass validation
         } else {
-          toast(`El efectivo recibido debe ser mayor o igual al total. Selecciona un cliente si deseas dejar fiado o hacer un abono.`, 'warning')
+          toast(`El efectivo recibido debe ser mayor o igual al total. Selecciona un cliente para fiar.`, 'warning')
           return
         }
       }
@@ -1399,17 +1382,11 @@ export function POSScreen({ mode = 'retail', waiterData, waiterToken, preselecte
       if (paid < total - 0.01) {
         if (selectedCustomer && selectedCustomer.id && selectedCustomer.name !== 'Cliente General') {
           const missing = total - paid
-          const wantCredit = window.confirm(`Falta pagar ${formatCurrency(missing)}.\n\n¿Deseas enviar el saldo restante a la cuenta de ${selectedCustomer.name} (ABONO)?`)
+          const wantCredit = window.confirm(`Falta pagar ${formatCurrency(missing)}.\n\n¿Deseas enviar el saldo restante a la cuenta por cobrar de ${selectedCustomer.name}?`)
           if (!wantCredit) return
-          
-          const creditMethod = paymentMethods.find(m => m.name === 'ABONO' || m.type === 'CREDIT')
-          // If credit method exists, add it; otherwise backend handles via balance
-          if (creditMethod) {
-            normalized.push({ paymentMethodId: creditMethod.id, amount: missing })
-          }
-          // The backend will detect underpayment and set to EN_COBRANZA
+          // Backend auto-detects underpayment with customerId and creates credit balance
         } else {
-          toast(`Falta pagar: ${formatCurrency(total - paid)}. Selecciona un cliente para fiar la cuota pendiente (ABONO).`, 'warning')
+          toast(`Falta pagar: ${formatCurrency(total - paid)}. Selecciona un cliente para fiar.`, 'warning')
           return
         }
       }
