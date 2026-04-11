@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { WelcomeOnboarding } from '@/components/onboarding/welcome-onboarding'
+import { ProductTour, resetTour } from '@/components/tutorial/product-tour'
 import { 
   Users, 
   Receipt, 
@@ -31,6 +32,7 @@ import {
   ArrowLeftRight,
   Play,
   MessageCircle,
+  GraduationCap,
 } from 'lucide-react'
 import { useToast } from '@/components/ui/toast'
 import { useSession } from 'next-auth/react'
@@ -65,6 +67,7 @@ export function SettingsScreen() {
   
   const [activeSection, setActiveSection] = useState('identity')
   const [showDemoOnboarding, setShowDemoOnboarding] = useState(false)
+  const [showTutorial, setShowTutorial] = useState(false)
 
   const isSuperAdmin = (session?.user as any)?.isSuperAdmin || false
 
@@ -256,6 +259,10 @@ export function SettingsScreen() {
           </div>
         </div>
         <div className="flex items-center gap-3">
+          <Button variant="outline" className="rounded-xl font-bold text-xs px-5 border-indigo-200 text-indigo-600 hover:bg-indigo-50 transition-all" onClick={() => { resetTour(); router.push('/dashboard'); setTimeout(() => setShowTutorial(true), 500) }}>
+             <GraduationCap size={14} className="mr-1.5" />
+             Ver Tutorial
+           </Button>
           <Button variant="outline" className="rounded-xl font-bold text-xs px-5 border-orange-200 text-orange-600 hover:bg-orange-50 transition-all" onClick={() => setShowDemoOnboarding(true)}>
              <Play size={14} className="mr-1.5" />
              Onboarding Demo
@@ -346,6 +353,14 @@ export function SettingsScreen() {
       <WelcomeOnboarding
         isDemo
         onComplete={() => setShowDemoOnboarding(false)}
+      />
+    )}
+
+    {/* Product Tour (re-launched from settings) */}
+    {showTutorial && (
+      <ProductTour
+        forceShow
+        onComplete={() => setShowTutorial(false)}
       />
     )}
     </>

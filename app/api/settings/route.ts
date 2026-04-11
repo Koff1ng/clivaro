@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server'
 import { requirePermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
-import { getTenantIdFromSession, withTenantRead, withTenantTx } from '@/lib/tenancy'
+import { getTenantIdFromSession } from '@/lib/tenancy'
+import { prisma } from '@/lib/db'
 import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
@@ -10,8 +11,14 @@ export const dynamic = 'force-dynamic'
  * GET /api/settings
  * Obtiene las configuraciones del tenant actual.
  * 
- * NOTA: TenantSettings existe TANTO en la BD master como en el schema del tenant.
- * Usamos withTenantRead para leer del schema del tenant.
+ * ARCHITECTURE NOTE: TenantSettings is stored in the MASTER database (public schema).
+ * This is because:
+ * 1. /api/onboarding saves to master via `prisma.tenantSettings.upsert()`
+ * 2. /api/onboarding GET checks from master
+ * 3. TenantSettings is logically a platform-level concept (billing, fiscal identity)
+ * 
+ * The tenant schema also has a TenantSettings table (from init), but it's NOT used.
+ * The canonical source of truth is the master database.
  */
 export async function GET(request: Request) {
   try {
@@ -29,10 +36,8 @@ export async function GET(request: Request) {
 
     const tenantId = getTenantIdFromSession(session)
 
-    const settings = await withTenantRead(tenantId, async (prisma) => {
-      return await prisma.tenantSettings.findUnique({
-        where: { tenantId }
-      })
+    const settings = await prisma.tenantSettings.findUnique({
+      where: { tenantId }
     })
 
     return NextResponse.json({ settings: settings || null })
@@ -48,6 +53,7 @@ export async function GET(request: Request) {
 /**
  * PUT /api/settings
  * Actualiza las configuraciones del tenant actual.
+ * Uses master prisma — same source as onboarding.
  */
 export async function PUT(request: Request) {
   try {
@@ -63,15 +69,13 @@ export async function PUT(request: Request) {
 
     const { tenantId: _, ...updateData } = body
 
-    const settings = await withTenantTx(tenantId, async (prisma) => {
-      return await prisma.tenantSettings.upsert({
-        where: { tenantId },
-        update: updateData,
-        create: {
-          tenantId,
-          ...updateData
-        }
-      })
+    const settings = await prisma.tenantSettings.upsert({
+      where: { tenantId },
+      update: updateData,
+      create: {
+        tenantId,
+        ...updateData
+      }
     })
 
     logger.info('Settings updated', { tenantId, updatedFields: Object.keys(updateData) })

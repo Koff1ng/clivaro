@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { WelcomeOnboarding } from './welcome-onboarding'
+import { ProductTour } from '@/components/tutorial/product-tour'
 
 async function checkOnboarding() {
   try {
@@ -25,6 +26,7 @@ interface OnboardingProviderProps {
 
 export function OnboardingProvider({ children, forceShow, onForceClose }: OnboardingProviderProps) {
   const [showOnboarding, setShowOnboarding] = useState(false)
+  const [showTour, setShowTour] = useState(false)
   const [isChecking, setIsChecking] = useState(true)
 
   const { data, isLoading } = useQuery({
@@ -63,12 +65,25 @@ export function OnboardingProvider({ children, forceShow, onForceClose }: Onboar
             if (forceShow && onForceClose) {
               onForceClose()
             } else {
+              // After onboarding, trigger the product tour
+              setShowTour(true)
+              // Also reload to refresh data
               window.location.reload()
             }
           }}
         />
       )}
-      {!showOnboarding && children}
+      {!showOnboarding && (
+        <>
+          {children}
+          {/* Product Tour — auto starts if not completed */}
+          <ProductTour
+            autoStart={!showOnboarding}
+            forceShow={showTour}
+            onComplete={() => setShowTour(false)}
+          />
+        </>
+      )}
     </>
   )
 }

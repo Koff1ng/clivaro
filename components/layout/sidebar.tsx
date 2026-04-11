@@ -261,6 +261,7 @@ export function Sidebar() {
       )}
 
       <aside
+        data-tour="sidebar"
         className={cn(
           'fixed md:static top-0 left-0 z-50 h-screen flex flex-col border-r border-slate-800 bg-[#0F172A] text-slate-100 transition-all duration-300 ease-in-out overflow-hidden print:hidden',
           isOpen ? 'w-56 translate-x-0' : 'w-0 -translate-x-full md:translate-x-0 md:w-16'
@@ -393,6 +394,16 @@ export function Sidebar() {
                                   handleFeatureClick(item.planFeature)
                                 }
                               }}
+                              data-tour={
+                                item.href === '/pos' ? 'nav-pos'
+                                : item.href === '/products' ? 'nav-products'
+                                : item.href === '/sales/invoices' ? 'nav-invoices'
+                                : item.href === '/crm/customers' ? 'nav-customers'
+                                : item.href === '/accounting/accounts' ? 'nav-accounting'
+                                : item.href === '/dashboard/reports' ? 'nav-reports'
+                                : item.href === '/settings' ? 'nav-settings'
+                                : undefined
+                              }
                               className={cn(
                                 'flex rounded-lg font-medium transition-all duration-200 relative group',
                                 isOpen ? 'flex-row items-center gap-3 text-[13px] px-2.5 py-1.5 ml-1' : 'flex-col items-center justify-center gap-1 px-1 py-1.5',
@@ -434,6 +445,7 @@ export function Sidebar() {
                   {isOpen && <p className="px-3 py-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">Soporte</p>}
                   <button
                     onClick={handleHelp}
+                    data-tour="help-button"
                     className={cn(
                       'flex w-full rounded-lg font-medium transition-colors relative group text-left',
                       isOpen ? 'flex-row items-center gap-3 text-sm px-3 py-2 ml-1' : 'flex-col items-center justify-center gap-1 px-1 py-2',
@@ -490,6 +502,7 @@ export function Sidebar() {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
+                data-tour="user-profile"
                 className={cn(
                   "flex items-center w-full gap-3 p-2 rounded-xl transition-all duration-200 outline-none",
                   "hover:bg-slate-800 active:bg-slate-700 active:scale-[0.98]",

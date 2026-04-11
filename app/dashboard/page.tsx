@@ -33,7 +33,9 @@ export default async function DashboardPage() {
         <DashboardGreeting />
 
         {/* All dashboard content with shared period state */}
-        <DashboardContent />
+        <div data-tour="dashboard-stats">
+          <DashboardContent />
+        </div>
       </div>
     </MainLayout>
   )
