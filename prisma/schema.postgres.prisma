@@ -1076,28 +1076,31 @@ model Plan {
 
 model Subscription {
   id                       String    @id @default(cuid())
-  tenantId                 String    @unique // Un tenant solo puede tener una suscripción activa
+  tenantId                 String    @unique
   planId                   String
-  status                   String // "active" | "cancelled" | "expired" | "trial" | "pending_payment"
+  status                   String
   startDate                DateTime
   endDate                  DateTime?
   trialEndDate             DateTime?
   autoRenew                Boolean   @default(true)
-  // Mercado Pago fields
-  mercadoPagoPaymentId     String? // @unique removed to fix migration error
-  mercadoPagoPreferenceId  String? // ID de la preferencia de pago
-  mercadoPagoStatus        String? // approved, pending, rejected, cancelled, refunded, charged_back
-  mercadoPagoStatusDetail  String? // Detalle del estado
-  mercadoPagoPaymentMethod String? // credit_card, debit_card, ticket, bank_transfer, etc.
-  mercadoPagoTransactionId String? // ID de la transacción
-  mercadoPagoResponse      String? // JSON con respuesta completa de MP
+  // Mercado Pago fields (legacy)
+  mercadoPagoPaymentId     String?
+  mercadoPagoPreferenceId  String?
+  mercadoPagoStatus        String?
+  mercadoPagoStatusDetail  String?
+  mercadoPagoPaymentMethod String?
+  mercadoPagoTransactionId String?
+  mercadoPagoResponse      String?
+  // Wompi fields
+  wompiTransactionId       String?
+  wompiReference           String?
+  wompiStatus              String?
+  wompiPaymentMethod       String?
+  wompiResponse            String?
   createdAt                DateTime  @default(now())
   updatedAt                DateTime  @updatedAt
   tenant                   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   plan                     Plan      @relation(fields: [planId], references: [id])
-
-  // @@index([mercadoPagoPaymentId])
-  // @@index([mercadoPagoPreferenceId])
 }
 
 model TenantSettings {

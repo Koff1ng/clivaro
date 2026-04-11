@@ -195,27 +195,31 @@ export async function GET(request: Request) {
 
     const nextPaymentDate = getNextPaymentDate()
 
-    // Try to get billing info from Wompi columns (may not exist yet)
+    // Get billing info from Wompi columns (now typed in Prisma schema)
     let billing: any = null
     try {
-      const rows: any[] = await prisma.$queryRawUnsafe(
-        `SELECT "wompiTransactionId", "wompiStatus", "wompiPaymentMethod", "wompiReference"
-         FROM "Subscription" WHERE "id" = $1`,
-        subscription.id
-      )
-      if (rows[0]?.wompiTransactionId) {
+      const billingData = await prisma.subscription.findUnique({
+        where: { id: subscription.id },
+        select: {
+          wompiTransactionId: true,
+          wompiStatus: true,
+          wompiPaymentMethod: true,
+          wompiReference: true,
+        },
+      })
+      if (billingData?.wompiTransactionId) {
         billing = {
-          transactionId: rows[0].wompiTransactionId,
-          status: rows[0].wompiStatus,
-          paymentMethod: rows[0].wompiPaymentMethod,
-          reference: rows[0].wompiReference,
+          transactionId: billingData.wompiTransactionId,
+          status: billingData.wompiStatus,
+          paymentMethod: billingData.wompiPaymentMethod,
+          reference: billingData.wompiReference,
           paidAt: subscription.startDate,
           amount: subscription.plan.price,
           currency: subscription.plan.currency || 'COP',
         }
       }
-    } catch {
-      // Wompi columns don't exist yet — billing info unavailable
+    } catch (e: any) {
+      logger.warn('[Tenant Plan] Could not fetch billing data:', e.message)
     }
 
     // Fetch feature flags for this tenant from the master DB

@@ -1114,10 +1114,12 @@ model Subscription {
   mercadoPagoPaymentMethod String?
   mercadoPagoTransactionId String?
   mercadoPagoResponse      String?
-  // Wompi fields are managed via raw SQL — NOT in Prisma schema
-  // because Prisma includes ALL model columns in RETURNING clauses,
-  // which fails if columns don't exist in all tenant databases.
-  // See: lib/wompi.ts for all Wompi operations
+  // Wompi fields — pasarela de pago principal
+  wompiTransactionId       String?   // ID de transacción en Wompi
+  wompiReference           String?   // Referencia CLIV-xxx generada para el pago
+  wompiStatus              String?   // APPROVED, DECLINED, VOIDED, ERROR, PENDING
+  wompiPaymentMethod       String?   // CARD, NEQUI, PSE, BANCOLOMBIA_TRANSFER
+  wompiResponse            String?   // JSON con la respuesta completa o pendingPlanId
   createdAt                DateTime  @default(now())
   updatedAt                DateTime  @updatedAt
   tenant                   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)

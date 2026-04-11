@@ -117,9 +117,12 @@ export function SubscriptionCheckout() {
       let url = `/api/subscriptions/wompi/verify?ref=${reference}${transactionId ? `&id=${transactionId}` : ''}`
       if (planId) url += `&planId=${planId}`
       
-      // Poll up to 5 times with 3s delay
-      for (let attempt = 0; attempt < 5; attempt++) {
-        console.log(`[Wompi] Verify attempt ${attempt + 1}/5`)
+      // Poll up to 6 times with 3s delay between each attempt
+      for (let attempt = 0; attempt < 6; attempt++) {
+        // Wait before retrying (not on first attempt)
+        if (attempt > 0) await new Promise(r => setTimeout(r, 3000))
+
+        console.log(`[Wompi] Verify attempt ${attempt + 1}/6`)
         const res = await fetch(url)
         const data = await res.json()
         const status = (data.status || '').toUpperCase()
@@ -134,6 +137,7 @@ export function SubscriptionCheckout() {
           return
         } else if (status === 'DECLINED' || status === 'VOIDED' || status === 'ERROR') {
           toast('El pago no fue aprobado. Tu plan actual se mantiene sin cambios.', 'error')
+          queryClient.invalidateQueries({ queryKey: ['tenant-plan'] })
           window.history.replaceState({}, '', '/settings?tab=subscription')
           setVerifying(false)
           return
@@ -143,11 +147,10 @@ export function SubscriptionCheckout() {
           setVerifying(false)
           return
         }
-
-        if (attempt < 2) await new Promise(r => setTimeout(r, 2000))
       }
 
       toast('Tu pago está siendo procesado. Te notificaremos cuando se complete.', 'info')
+      queryClient.invalidateQueries({ queryKey: ['tenant-plan'] })
       window.history.replaceState({}, '', '/settings?tab=subscription')
     } catch {
       toast('Error verificando el pago', 'error')

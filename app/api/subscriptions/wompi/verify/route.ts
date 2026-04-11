@@ -2,17 +2,19 @@ import { NextResponse } from 'next/server'
 import { logger } from '@/lib/logger'
 import { requireAuth } from '@/lib/api-middleware'
 import { prisma } from '@/lib/db'
-import { getTransaction, getTransactionByReference, mapWompiStatusToSubscription } from '@/lib/wompi'
+import { getTransaction, getTransactionByReference, calculateEndDate } from '@/lib/wompi'
 import type { WompiTransaction } from '@/lib/wompi'
 
 export const dynamic = 'force-dynamic'
 
 /**
- * GET /api/subscriptions/wompi/verify?ref=REFERENCE&id=TRANSACTION_ID
- * Verifies a Wompi transaction and activates the subscription.
+ * GET /api/subscriptions/wompi/verify?ref=REFERENCE&id=TRANSACTION_ID&planId=PLAN_ID
  * 
- * IMPORTANT: Wompi's Widget Checkout does NOT append the transaction ID
- * to the redirect URL. When `id` is missing, we search by reference.
+ * Called when user is redirected back from Wompi Widget.
+ * Verifies the transaction status and activates the subscription if APPROVED.
+ * 
+ * RACE CONDITION SAFETY: Uses optimistic locking — checks current status
+ * before writing to avoid overwriting a webhook that already processed this.
  */
 export async function GET(request: Request) {
   try {
@@ -29,6 +31,7 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url)
     const reference = searchParams.get('ref')
     const transactionId = searchParams.get('id')
+    const queryPlanId = searchParams.get('planId')
 
     if (!reference) {
       return NextResponse.json({ error: 'ref es requerido' }, { status: 400 })
@@ -47,11 +50,20 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Suscripción no encontrada' }, { status: 404 })
     }
 
-    logger.info('[Wompi Verify] Found subscription:', {
-      id: subscription.id,
-      status: subscription.status,
-      planName: subscription.plan.name,
-    })
+    // OPTIMISTIC LOCK: If the webhook already activated this subscription, skip
+    if (subscription.status === 'active' && subscription.wompiStatus === 'APPROVED' && subscription.wompiTransactionId) {
+      logger.info('[Wompi Verify] Already activated by webhook — returning current state')
+      return NextResponse.json({
+        status: 'APPROVED',
+        subscriptionStatus: 'active',
+        subscription: {
+          id: subscription.id,
+          planName: subscription.plan.name,
+          startDate: subscription.startDate,
+          endDate: subscription.endDate,
+        },
+      })
+    }
 
     // Resolve the transaction — by ID if available, otherwise search by reference
     let transaction: WompiTransaction | null = null
@@ -61,7 +73,7 @@ export async function GET(request: Request) {
     }
     
     if (!transaction && reference) {
-      logger.info('[Wompi Verify] No transaction ID or lookup failed, searching by reference:', reference)
+      logger.info('[Wompi Verify] Searching by reference:', reference)
       transaction = await getTransactionByReference(reference)
     }
 
@@ -81,104 +93,101 @@ export async function GET(request: Request) {
       reference: transaction.reference,
     })
 
-    const newStatus = mapWompiStatusToSubscription(transaction.status)
-
-    // Get pending plan ID: from URL query param (most reliable) > wompiResponse column > current plan
-    const queryPlanId = searchParams.get('planId')
+    // Resolve the target plan ID: from URL > from wompiResponse > current plan
     let pendingPlanId = subscription.planId
     let pendingPlanName = subscription.plan.name
+    let pendingPlanInterval = subscription.plan.interval
 
     if (queryPlanId) {
-      pendingPlanId = queryPlanId
       const targetPlan = await prisma.plan.findUnique({ where: { id: queryPlanId } })
-      if (targetPlan) pendingPlanName = targetPlan.name
-      logger.info('[Wompi Verify] Using planId from URL:', { pendingPlanId, pendingPlanName })
-    } else {
+      if (targetPlan) {
+        pendingPlanId = targetPlan.id
+        pendingPlanName = targetPlan.name
+        pendingPlanInterval = targetPlan.interval
+      }
+    } else if (subscription.wompiResponse) {
       try {
-        const rows: any[] = await prisma.$queryRawUnsafe(
-          `SELECT "wompiResponse" FROM "Subscription" WHERE "id" = $1`,
-          subscription.id
-        )
-        if (rows[0]?.wompiResponse) {
-          const resp = JSON.parse(rows[0].wompiResponse)
-          if (resp.pendingPlanId) {
-            pendingPlanId = resp.pendingPlanId
-            pendingPlanName = resp.pendingPlanName || pendingPlanName
+        const resp = JSON.parse(subscription.wompiResponse)
+        if (resp.pendingPlanId) {
+          const targetPlan = await prisma.plan.findUnique({ where: { id: resp.pendingPlanId } })
+          if (targetPlan) {
+            pendingPlanId = targetPlan.id
+            pendingPlanName = targetPlan.name
+            pendingPlanInterval = targetPlan.interval
           }
         }
-      } catch (e) {
-        logger.warn('[Wompi Verify] Could not read wompiResponse:', (e as any)?.message)
+      } catch {
+        // JSON parse failed — use current plan
       }
     }
 
-    // Calculate end date
-    const endDate = new Date()
-    if (subscription.plan.interval === 'annual') {
-      endDate.setDate(endDate.getDate() + 365)
-    } else {
-      endDate.setDate(endDate.getDate() + 30)
-    }
-
-    if (newStatus === 'active') {
+    if (transaction.status === 'APPROVED') {
+      // ✅ APPROVED — Activate with the TARGET plan's interval
       logger.info('[Wompi Verify] APPROVED! Activating plan:', pendingPlanId)
+      const endDate = calculateEndDate(pendingPlanInterval)
+
       await prisma.subscription.update({
         where: { id: subscription.id },
         data: {
           status: 'active',
           planId: pendingPlanId,
+          wompiTransactionId: transaction.id,
+          wompiStatus: transaction.status,
+          wompiPaymentMethod: transaction.payment_method_type,
+          wompiResponse: JSON.stringify(transaction),
           startDate: new Date(),
           endDate,
           autoRenew: true,
         },
       })
-      try {
-        await prisma.$executeRawUnsafe(
-          `UPDATE "Subscription" SET "wompiTransactionId" = $1, "wompiStatus" = $2,
-           "wompiPaymentMethod" = $3, "wompiResponse" = $4 WHERE "id" = $5`,
-          transaction.id, transaction.status,
-          transaction.payment_method_type, JSON.stringify(transaction),
-          subscription.id
-        )
-      } catch (e) {
-        logger.warn('[Wompi Verify] Could not update wompi fields:', (e as any)?.message)
-      }
-    } else if (transaction.status === 'DECLINED' || transaction.status === 'VOIDED' || transaction.status === 'ERROR') {
+
+      return NextResponse.json({
+        status: 'APPROVED',
+        subscriptionStatus: 'active',
+        subscription: {
+          id: subscription.id,
+          planName: pendingPlanName,
+          startDate: new Date(),
+          endDate,
+        },
+      })
+    } else if (['DECLINED', 'VOIDED', 'ERROR'].includes(transaction.status)) {
+      // ❌ FAILED — Restore to active if was pending_payment (don't lock user out)
       logger.info('[Wompi Verify] Payment failed:', transaction.status)
-      // Restore to active if was pending_payment (don't lock user out)
-      if (subscription.status === 'pending_payment') {
-        await prisma.subscription.update({
-          where: { id: subscription.id },
-          data: { status: 'active' },
-        })
-      }
-      try {
-        await prisma.$executeRawUnsafe(
-          `UPDATE "Subscription" SET "wompiTransactionId" = $1, "wompiStatus" = $2,
-           "wompiPaymentMethod" = $3, "wompiResponse" = $4 WHERE "id" = $5`,
-          transaction.id, transaction.status,
-          transaction.payment_method_type, JSON.stringify(transaction),
-          subscription.id
-        )
-      } catch (e) {
-        logger.warn('[Wompi Verify] Could not update wompi fields:', (e as any)?.message)
-      }
+      const restoredStatus = subscription.status === 'pending_payment' ? 'active' : subscription.status
+
+      await prisma.subscription.update({
+        where: { id: subscription.id },
+        data: {
+          status: restoredStatus,
+          wompiTransactionId: transaction.id,
+          wompiStatus: transaction.status,
+          wompiPaymentMethod: transaction.payment_method_type,
+          wompiResponse: JSON.stringify(transaction),
+        },
+      })
+
+      return NextResponse.json({
+        status: transaction.status,
+        subscriptionStatus: restoredStatus,
+        subscription: {
+          id: subscription.id,
+          planName: subscription.plan.name,
+          startDate: subscription.startDate,
+          endDate: subscription.endDate,
+        },
+      })
     }
 
-    // Fetch updated plan name for the response
-    let responsePlanName = pendingPlanName
-    if (newStatus === 'active' && pendingPlanId !== subscription.planId) {
-      const newPlan = await prisma.plan.findUnique({ where: { id: pendingPlanId } })
-      if (newPlan) responsePlanName = newPlan.name
-    }
-
+    // PENDING — still processing
     return NextResponse.json({
       status: transaction.status,
-      subscriptionStatus: newStatus,
+      subscriptionStatus: subscription.status,
       subscription: {
         id: subscription.id,
-        planName: newStatus === 'active' ? responsePlanName : subscription.plan.name,
-        startDate: newStatus === 'active' ? new Date() : subscription.startDate,
-        endDate: newStatus === 'active' ? endDate : subscription.endDate,
+        planName: subscription.plan.name,
+        startDate: subscription.startDate,
+        endDate: subscription.endDate,
       },
     })
   } catch (error: any) {

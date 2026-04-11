@@ -8,7 +8,16 @@ export const dynamic = 'force-dynamic'
 
 /**
  * POST /api/subscriptions/wompi/create-session
- * Creates or updates a subscription to pending_payment and returns Widget data
+ * 
+ * Creates a payment session for the Wompi Widget checkout.
+ * Stores the reference and pending plan ID using typed Prisma fields.
+ * 
+ * Flow:
+ * 1. Validate plan exists and is paid
+ * 2. Generate unique reference + integrity signature
+ * 3. Upsert subscription to pending_payment (preserving current planId)
+ * 4. Store wompiReference + pendingPlanId
+ * 5. Return Widget data to frontend
  */
 export async function POST(request: Request) {
   try {
@@ -41,8 +50,7 @@ export async function POST(request: Request) {
     const reference = generateReference(tenantId)
     const amountInCents = Math.round(plan.price * 100) // Convert COP to centavos
 
-    // Build redirect URL — must use the actual production domain
-    // NOT VERCEL_URL (which gives clivaro.vercel.app — wrong domain, breaks auth)
+    // Build redirect URL
     const baseUrl = process.env.NODE_ENV === 'production'
       ? 'https://www.clientumstudio.com'
       : (process.env.NEXTAUTH_URL || 'http://localhost:3000')
@@ -53,40 +61,34 @@ export async function POST(request: Request) {
       reference,
       amountInCents,
       currency: plan.currency || 'COP',
-      hasIntegritySecret: !!process.env.WOMPI_INTEGRITY_SECRET,
-      hasPublicKey: !!process.env.WOMPI_PUBLIC_KEY || !!process.env.NEXT_PUBLIC_WOMPI_PUBLIC_KEY,
+      planId: plan.id,
+      planName: plan.name,
       planPrice: plan.price,
     })
     const paymentSession = createPaymentSession(reference, amountInCents, redirectUrl, plan.currency || 'COP')
 
-    // Upsert subscription — only change status, NOT planId
-    // The planId is only updated when payment is APPROVED (verify/webhook)
-    const sub = await prisma.subscription.upsert({
+    // Upsert subscription — set to pending_payment, store reference + pending plan
+    // IMPORTANT: Do NOT change planId here. Only change it when payment is APPROVED.
+    await prisma.subscription.upsert({
       where: { tenantId },
       update: {
         status: 'pending_payment',
         autoRenew: true,
+        wompiReference: reference,
+        wompiStatus: 'PENDING',
+        wompiResponse: JSON.stringify({ pendingPlanId: plan.id, pendingPlanName: plan.name }),
       },
       create: {
         tenantId,
-        planId: plan.id, // Only set planId for brand new subscriptions
+        planId: plan.id, // Only for brand new subscriptions
         status: 'pending_payment',
         startDate: new Date(),
         autoRenew: true,
+        wompiReference: reference,
+        wompiStatus: 'PENDING',
+        wompiResponse: JSON.stringify({ pendingPlanId: plan.id, pendingPlanName: plan.name }),
       },
     })
-
-    // Store reference + pending plan info via raw SQL (fields not in Prisma schema)
-    try {
-      await prisma.$executeRawUnsafe(
-        `UPDATE "Subscription" SET "wompiReference" = $1, "wompiResponse" = $2 WHERE "id" = $3`,
-        reference,
-        JSON.stringify({ pendingPlanId: plan.id, pendingPlanName: plan.name }),
-        sub.id
-      )
-    } catch (e) {
-      logger.warn('[Wompi] wompi fields update failed:', (e as any)?.message)
-    }
 
     return NextResponse.json({
       ...paymentSession,

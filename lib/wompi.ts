@@ -1,6 +1,9 @@
 /**
  * Wompi Payment Gateway Integration
  * https://docs.wompi.co/docs/colombia
+ * 
+ * Pasarela de pago principal para suscripciones de Clivaro.
+ * Maneja: firma de integridad, verificación de webhooks, consultas de transacciones.
  */
 import { logger } from './logger'
 import crypto from 'crypto'
@@ -89,13 +92,6 @@ export function generateIntegritySignature(
 /**
  * Verify the signature of a Wompi webhook event
  * https://docs.wompi.co/docs/colombia/eventos/#paso-a-paso-verifica-la-autenticidad-de-un-evento
- * 
- * Steps:
- * 1. Concatenate values from signature.properties (from event.data)
- * 2. Append timestamp
- * 3. Append events secret
- * 4. SHA256 hash
- * 5. Compare with checksum
  */
 export function verifyEventSignature(event: WompiEvent): boolean {
   const { signature, timestamp, data } = event
@@ -103,8 +99,6 @@ export function verifyEventSignature(event: WompiEvent): boolean {
   // Step 1: Concatenate property values in order
   let concatenated = ''
   for (const prop of signature.properties) {
-    // Navigate the data object using dot notation
-    // e.g. 'transaction.id' → data.transaction.id
     const value = getNestedValue(data, prop)
     concatenated += String(value)
   }
@@ -124,7 +118,6 @@ export function verifyEventSignature(event: WompiEvent): boolean {
 
 /**
  * Navigate a nested object using dot-notation path
- * e.g. getNestedValue({ transaction: { id: '123' } }, 'transaction.id') → '123'
  */
 function getNestedValue(obj: any, path: string): any {
   return path.split('.').reduce((current, key) => current?.[key], obj)
@@ -133,35 +126,22 @@ function getNestedValue(obj: any, path: string): any {
 /**
  * Get transaction details from Wompi API
  * GET https://sandbox.wompi.co/v1/transactions/{id}
- * Note: This endpoint is public — no auth required per Wompi docs
  */
 export async function getTransaction(transactionId: string): Promise<WompiTransaction | null> {
   const url = `${WOMPI_API_URL}/transactions/${transactionId}`
   logger.info('[Wompi] getTransaction URL:', url)
 
   try {
-    // Try without auth first (Wompi docs show this is a public GET)
-    let response = await fetch(url, {
-      headers: { 'Accept': 'application/json' },
+    const response = await fetch(url, {
+      headers: {
+        'Accept': 'application/json',
+        'Authorization': `Bearer ${WOMPI_PRIVATE_KEY}`,
+      },
     })
-
-    logger.info('[Wompi] getTransaction response (no auth):', response.status, response.statusText)
-
-    // If unauthorized, try with Bearer token
-    if (response.status === 401 || response.status === 403) {
-      logger.info('[Wompi] Retrying with Bearer auth...')
-      response = await fetch(url, {
-        headers: {
-          'Accept': 'application/json',
-          'Authorization': `Bearer ${WOMPI_PRIVATE_KEY}`,
-        },
-      })
-      logger.info('[Wompi] getTransaction response (with auth):', response.status, response.statusText)
-    }
 
     if (!response.ok) {
       const errorText = await response.text()
-      logger.error(`[Wompi] Error fetching transaction ${transactionId}: ${response.status}`, { responseText: errorText })
+      logger.error(`[Wompi] Error fetching transaction ${transactionId}: ${response.status}`, { responseText: errorText.substring(0, 500) })
       return null
     }
 
@@ -177,30 +157,22 @@ export async function getTransaction(transactionId: string): Promise<WompiTransa
 /**
  * Search for a transaction by its reference using Wompi API
  * GET https://sandbox.wompi.co/v1/transactions?reference=REF
- * This is critical because Wompi's Widget does NOT append the transaction ID
- * to the redirect URL — only the reference is available client-side.
  */
 export async function getTransactionByReference(reference: string): Promise<WompiTransaction | null> {
   const url = `${WOMPI_API_URL}/transactions?reference=${encodeURIComponent(reference)}`
   logger.info('[Wompi] getTransactionByReference URL:', url)
 
   try {
-    let response = await fetch(url, {
-      headers: { 'Accept': 'application/json' },
+    const response = await fetch(url, {
+      headers: {
+        'Accept': 'application/json',
+        'Authorization': `Bearer ${WOMPI_PRIVATE_KEY}`,
+      },
     })
-
-    if (response.status === 401 || response.status === 403) {
-      response = await fetch(url, {
-        headers: {
-          'Accept': 'application/json',
-          'Authorization': `Bearer ${WOMPI_PRIVATE_KEY}`,
-        },
-      })
-    }
 
     if (!response.ok) {
       const errorText = await response.text()
-      logger.error(`[Wompi] Error searching transaction by ref ${reference}: ${response.status}`, { responseText: errorText })
+      logger.error(`[Wompi] Error searching transaction by ref ${reference}: ${response.status}`, { responseText: errorText.substring(0, 500) })
       return null
     }
 
@@ -211,7 +183,6 @@ export async function getTransactionByReference(reference: string): Promise<Womp
     if (transactions.length === 0) return null
 
     // Return the most recent transaction for this reference
-    // Sort by created_at descending to get the latest
     const sorted = transactions.sort((a: any, b: any) => 
       new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     )
@@ -261,7 +232,11 @@ export function createPaymentSession(
 }
 
 /**
- * Map Wompi transaction status to internal subscription status
+ * Map Wompi transaction status to internal subscription status.
+ * 
+ * IMPORTANTE: DECLINED NO cancela la suscripción.
+ * Si el usuario ya tenía un plan activo y falla un upgrade,
+ * DEBE conservar su plan anterior.
  */
 export function mapWompiStatusToSubscription(wompiStatus: string): string {
   switch (wompiStatus) {
@@ -272,8 +247,23 @@ export function mapWompiStatusToSubscription(wompiStatus: string): string {
     case 'DECLINED':
     case 'VOIDED':
     case 'ERROR':
-      return 'cancelled'
+      // NO cancelar — restaurar al estado anterior si tenía uno
+      return 'payment_failed'
     default:
       return 'pending_payment'
   }
+}
+
+/**
+ * Calcula la fecha de fin de la suscripción basándose en el intervalo del PLAN.
+ * Siempre tomar el intervalo del plan que se está pagando, no del plan anterior.
+ */
+export function calculateEndDate(planInterval: string): Date {
+  const endDate = new Date()
+  if (planInterval === 'annual') {
+    endDate.setDate(endDate.getDate() + 365)
+  } else {
+    endDate.setDate(endDate.getDate() + 30)
+  }
+  return endDate
 }
