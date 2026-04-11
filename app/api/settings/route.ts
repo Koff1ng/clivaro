@@ -8,22 +8,26 @@ export const dynamic = 'force-dynamic'
 
 /**
  * GET /api/settings
- * Obtiene las configuraciones del tenant actual
+ * Obtiene las configuraciones del tenant actual.
+ * 
+ * NOTA: TenantSettings existe TANTO en la BD master como en el schema del tenant.
+ * Usamos withTenantRead para leer del schema del tenant.
  */
 export async function GET(request: Request) {
   try {
     const session = await requirePermission(request as any, PERMISSIONS.MANAGE_USERS)
     if (session instanceof NextResponse) return session
 
-    const tenantId = getTenantIdFromSession(session)
     const user = session.user as any
 
-    if (user.isSuperAdmin && !tenantId) {
+    if (user.isSuperAdmin && !user.tenantId) {
       return NextResponse.json({
         settings: null,
         message: 'Super admin no tiene configuraciones de tenant'
       })
     }
+
+    const tenantId = getTenantIdFromSession(session)
 
     const settings = await withTenantRead(tenantId, async (prisma) => {
       return await prisma.tenantSettings.findUnique({
@@ -43,7 +47,7 @@ export async function GET(request: Request) {
 
 /**
  * PUT /api/settings
- * Actualiza las configuraciones del tenant actual
+ * Actualiza las configuraciones del tenant actual.
  */
 export async function PUT(request: Request) {
   try {
@@ -53,7 +57,6 @@ export async function PUT(request: Request) {
     const tenantId = getTenantIdFromSession(session)
     const body = await request.json()
 
-    // Safety check: ensure body tenantId matches session if provided
     if (body.tenantId && body.tenantId !== tenantId) {
       return NextResponse.json({ error: 'No autorizado para actualizar configuraciones de otro tenant' }, { status: 403 })
     }
@@ -85,4 +88,3 @@ export async function PUT(request: Request) {
     )
   }
 }
-

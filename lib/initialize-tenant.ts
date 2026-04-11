@@ -265,12 +265,13 @@ async function initializePostgresTenant(databaseUrl: string, tenantId: string, t
     await pmClient.end()
   }
 
-  // Step 2.9: Sync TenantSettings onboarding columns (fiscal identity, business profile)
-  logger.info(`[STEP 2.9/4] Sincronizando columnas de onboarding en TenantSettings "${schemaName}"...`)
+  // Step 2.9: Sync ALL TenantSettings columns (full schema parity)
+  logger.info(`[STEP 2.9/4] Sincronizando TODAS las columnas de TenantSettings en "${schemaName}"...`)
   const obClient = new Client({ connectionString: tenantSchemaUrl })
   try {
     await obClient.connect()
     await obClient.query(`SET search_path TO "${schemaName}"`)
+    // Onboarding & fiscal identity
     await obClient.query(`
       ALTER TABLE "TenantSettings"
         ADD COLUMN IF NOT EXISTS "personType" TEXT,
@@ -283,9 +284,40 @@ async function initializePostgresTenant(databaseUrl: string, tenantId: string, t
         ADD COLUMN IF NOT EXISTS "companyCity" TEXT,
         ADD COLUMN IF NOT EXISTS "companyDepartment" TEXT;
     `)
-    logger.info('[STEP 2.9/4] ✓ Columnas de onboarding sincronizadas')
+    // Factus (electronic billing)
+    await obClient.query(`
+      ALTER TABLE "TenantSettings"
+        ADD COLUMN IF NOT EXISTS "factusClientId" TEXT,
+        ADD COLUMN IF NOT EXISTS "factusClientSecret" TEXT,
+        ADD COLUMN IF NOT EXISTS "factusUsername" TEXT,
+        ADD COLUMN IF NOT EXISTS "factusPassword" TEXT,
+        ADD COLUMN IF NOT EXISTS "factusSandbox" BOOLEAN DEFAULT true,
+        ADD COLUMN IF NOT EXISTS "autoSendElectronic" BOOLEAN DEFAULT false;
+    `)
+    // Restaurant mode
+    await obClient.query(`
+      ALTER TABLE "TenantSettings"
+        ADD COLUMN IF NOT EXISTS "enableRestaurantMode" BOOLEAN DEFAULT false;
+    `)
+    // MercadoPago (legacy but in schema)
+    await obClient.query(`
+      ALTER TABLE "TenantSettings"
+        ADD COLUMN IF NOT EXISTS "mercadoPagoAccessToken" TEXT,
+        ADD COLUMN IF NOT EXISTS "mercadoPagoPublicKey" TEXT,
+        ADD COLUMN IF NOT EXISTS "mercadoPagoEnabled" BOOLEAN DEFAULT false,
+        ADD COLUMN IF NOT EXISTS "mercadoPagoWebhookUrl" TEXT;
+    `)
+    // Meta (WhatsApp / Instagram)
+    await obClient.query(`
+      ALTER TABLE "TenantSettings"
+        ADD COLUMN IF NOT EXISTS "metaBusinessId" TEXT,
+        ADD COLUMN IF NOT EXISTS "metaAccessToken" TEXT,
+        ADD COLUMN IF NOT EXISTS "whatsappPhoneNumberId" TEXT,
+        ADD COLUMN IF NOT EXISTS "instagramAccountId" TEXT;
+    `)
+    logger.info('[STEP 2.9/4] ✓ TenantSettings sincronizado completamente')
   } catch (obErr: any) {
-    logger.warn(`[TENANT INIT] Warning during onboarding columns sync: ${obErr.message}`)
+    logger.warn(`[TENANT INIT] Warning during TenantSettings sync: ${obErr.message}`)
   } finally {
     await obClient.end()
   }
