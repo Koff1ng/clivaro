@@ -96,84 +96,104 @@ export function ProductTour({ forceShow, onComplete, autoStart }: ProductTourPro
   const [currentStep, setCurrentStep] = useState(0)
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null)
   const [tooltipPos, setTooltipPos] = useState({ top: 0, left: 0 })
+  const [visibleSteps, setVisibleSteps] = useState<TourStep[]>([])
   const observerRef = useRef<ResizeObserver | null>(null)
+
+  // On activation, filter steps to only those whose target element exists in the DOM.
+  // This handles different plans having different sidebar modules visible.
+  useEffect(() => {
+    if (!isActive) return
+    // Small delay to let sidebar fully render
+    const timer = setTimeout(() => {
+      const available = TOUR_STEPS.filter(step => {
+        return document.querySelector(step.target) !== null
+      })
+      setVisibleSteps(available.length > 0 ? available : TOUR_STEPS.slice(0, 1))
+      setCurrentStep(0)
+    }, 200)
+    return () => clearTimeout(timer)
+  }, [isActive])
 
   // Check if tour should show
   useEffect(() => {
     if (forceShow) {
       setIsActive(true)
-      setCurrentStep(0)
       return
     }
     if (autoStart) {
       const completed = localStorage.getItem(STORAGE_KEY)
       if (!completed) {
-        // Delay to let the main UI render first
         const timer = setTimeout(() => setIsActive(true), 800)
         return () => clearTimeout(timer)
       }
     }
   }, [forceShow, autoStart])
 
-  // Position calculation
+  // Position calculation — scrolls element into view first, then measures
   const updatePosition = useCallback(() => {
-    const step = TOUR_STEPS[currentStep]
+    const step = visibleSteps[currentStep]
     if (!step) return
 
-    const el = document.querySelector(step.target)
+    const el = document.querySelector(step.target) as HTMLElement | null
     if (!el) {
-      // Element not found — try scrolling into view or skip
-      if (currentStep < TOUR_STEPS.length - 1) {
+      // Element disappeared (e.g. collapsed sidebar group) — skip
+      if (currentStep < visibleSteps.length - 1) {
         setCurrentStep(prev => prev + 1)
       }
       return
     }
 
-    const rect = el.getBoundingClientRect()
-    setTargetRect(rect)
+    // Scroll element into view within its scrollable parent (sidebar)
+    el.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' })
 
-    // Calculate tooltip position
-    const padding = 16
-    const tooltipWidth = 360
-    const tooltipHeight = 200
-    const placement = step.placement || 'bottom'
+    // Wait for scroll to settle, then measure
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        const rect = el.getBoundingClientRect()
+        setTargetRect(rect)
 
-    let top = 0
-    let left = 0
+        const padding = 16
+        const tooltipWidth = 360
+        const tooltipHeight = 200
+        const placement = step.placement || 'bottom'
 
-    switch (placement) {
-      case 'right':
-        top = rect.top + rect.height / 2 - tooltipHeight / 2
-        left = rect.right + padding
-        break
-      case 'left':
-        top = rect.top + rect.height / 2 - tooltipHeight / 2
-        left = rect.left - tooltipWidth - padding
-        break
-      case 'top':
-        top = rect.top - tooltipHeight - padding
-        left = rect.left + rect.width / 2 - tooltipWidth / 2
-        break
-      case 'bottom':
-      default:
-        top = rect.bottom + padding
-        left = rect.left + rect.width / 2 - tooltipWidth / 2
-        break
-    }
+        let top = 0
+        let left = 0
 
-    // Clamp to viewport
-    top = Math.max(16, Math.min(top, window.innerHeight - tooltipHeight - 16))
-    left = Math.max(16, Math.min(left, window.innerWidth - tooltipWidth - 16))
+        switch (placement) {
+          case 'right':
+            top = rect.top + rect.height / 2 - tooltipHeight / 2
+            left = rect.right + padding
+            break
+          case 'left':
+            top = rect.top + rect.height / 2 - tooltipHeight / 2
+            left = rect.left - tooltipWidth - padding
+            break
+          case 'top':
+            top = rect.top - tooltipHeight - padding
+            left = rect.left + rect.width / 2 - tooltipWidth / 2
+            break
+          case 'bottom':
+          default:
+            top = rect.bottom + padding
+            left = rect.left + rect.width / 2 - tooltipWidth / 2
+            break
+        }
 
-    setTooltipPos({ top, left })
-  }, [currentStep])
+        // Clamp to viewport
+        top = Math.max(16, Math.min(top, window.innerHeight - tooltipHeight - 16))
+        left = Math.max(16, Math.min(left, window.innerWidth - tooltipWidth - 16))
+
+        setTooltipPos({ top, left })
+      }, 150) // wait for scroll animation
+    })
+  }, [currentStep, visibleSteps])
 
   useEffect(() => {
-    if (!isActive) return
+    if (!isActive || visibleSteps.length === 0) return
     updatePosition()
 
-    // Observe resize
-    const step = TOUR_STEPS[currentStep]
+    const step = visibleSteps[currentStep]
     if (step) {
       const el = document.querySelector(step.target)
       if (el) {
@@ -190,10 +210,10 @@ export function ProductTour({ forceShow, onComplete, autoStart }: ProductTourPro
       window.removeEventListener('scroll', updatePosition, true)
       observerRef.current?.disconnect()
     }
-  }, [isActive, currentStep, updatePosition])
+  }, [isActive, currentStep, visibleSteps, updatePosition])
 
   const handleNext = () => {
-    if (currentStep < TOUR_STEPS.length - 1) {
+    if (currentStep < visibleSteps.length - 1) {
       setCurrentStep(prev => prev + 1)
     } else {
       handleComplete()
@@ -220,10 +240,11 @@ export function ProductTour({ forceShow, onComplete, autoStart }: ProductTourPro
     onComplete?.()
   }
 
-  if (!isActive) return null
+  if (!isActive || visibleSteps.length === 0) return null
 
-  const step = TOUR_STEPS[currentStep]
-  const progress = ((currentStep + 1) / TOUR_STEPS.length) * 100
+  const step = visibleSteps[currentStep]
+  if (!step) return null
+  const progress = ((currentStep + 1) / visibleSteps.length) * 100
 
   return (
     <AnimatePresence>
@@ -317,7 +338,7 @@ export function ProductTour({ forceShow, onComplete, autoStart }: ProductTourPro
                     <div className="flex items-center gap-2">
                       <Sparkles className="w-4 h-4 text-indigo-500" />
                       <span className="text-[11px] font-semibold tracking-widest uppercase text-indigo-500">
-                        {currentStep + 1} / {TOUR_STEPS.length}
+                        {currentStep + 1} / {visibleSteps.length}
                       </span>
                     </div>
                     <button
@@ -357,7 +378,7 @@ export function ProductTour({ forceShow, onComplete, autoStart }: ProductTourPro
                       onClick={handleNext}
                       className="inline-flex items-center gap-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-[13px] font-semibold px-5 py-2.5 rounded-xl hover:bg-slate-800 dark:hover:bg-slate-100 transition-all shadow-sm hover:shadow-md"
                     >
-                      {currentStep === TOUR_STEPS.length - 1 ? (
+                      {currentStep === visibleSteps.length - 1 ? (
                         <>¡Comenzar! <Sparkles className="w-3.5 h-3.5" /></>
                       ) : (
                         <>Siguiente <ArrowRight className="w-3.5 h-3.5" /></>
@@ -367,7 +388,7 @@ export function ProductTour({ forceShow, onComplete, autoStart }: ProductTourPro
 
                   {/* Progress dots */}
                   <div className="flex items-center justify-center gap-1.5 mt-4">
-                    {TOUR_STEPS.map((_, i) => (
+                    {visibleSteps.map((_, i) => (
                       <motion.div
                         key={i}
                         className={`rounded-full transition-all duration-300 ${
