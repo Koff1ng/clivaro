@@ -53,3 +53,6 @@ next-env.d.ts
 
 dist/
 
+# archived debug/audit outputs and one-off scripts
+_archive/
+
