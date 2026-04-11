@@ -1,18 +1,26 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import dynamic from 'next/dynamic'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Check, X, Zap, Building2, Rocket, TrendingUp as TrendingUpIcon, Users, Package, ShoppingCart, BarChart3, Mail, Sparkles, Database, Smartphone, Cloud, Lock, Globe, Headphones, Settings, Printer, Wallet, Truck, FileText, LayoutDashboard, MessageSquare, Calendar, Bell, Search, Shirt, Store, Wine, Hammer, Croissant, Car, BookOpen, Pill, Quote, ShieldCheck, TrendingUp, HelpCircle, MessageCircle, ArrowRight, Fingerprint, Upload, BrainCircuit, Receipt, UtensilsCrossed, Building, Gauge, Bot } from 'lucide-react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { Logo } from '@/components/ui/logo'
-import { ContactForm } from './contact-form'
 import { ScrollNavbar } from './scroll-navbar'
 import { ScrollReveal } from './scroll-reveal'
-import { SoftwarePreview } from './software-preview'
 import { HeroPreview } from './hero-preview'
 import { SpotlightCard } from '@/components/ui/spotlight-card'
+
+// Lazy load below-fold and modal components to reduce initial JS parse time
+const ContactForm = dynamic(() => import('./contact-form').then(mod => ({ default: mod.ContactForm })), {
+  loading: () => null,
+})
+const SoftwarePreview = dynamic(() => import('./software-preview').then(mod => ({ default: mod.SoftwarePreview })), {
+  loading: () => <div className="h-[600px] bg-slate-100 dark:bg-slate-800 rounded-2xl animate-pulse" />,
+})
 
 
 
@@ -271,9 +279,12 @@ export function PricingClient() {
               <ScrollReveal key={idx} delay={idx * 80}>
                 <div className="group relative bg-white dark:bg-slate-950 rounded-2xl border border-slate-100 dark:border-slate-800 p-6 hover:shadow-xl hover:border-blue-200 dark:hover:border-blue-800 transition-all duration-300 hover:-translate-y-1 h-full">
                   <div className="flex items-center gap-4 mb-4">
-                    <img
+                    <Image
                       src={feat.img}
                       alt={feat.name}
+                      width={64}
+                      height={64}
+                      loading="lazy"
                       className="w-16 h-16 object-contain group-hover:scale-110 transition-transform duration-300"
                     />
                     <div>
@@ -488,7 +499,7 @@ export function PricingClient() {
 
                       <CardHeader className="pb-8 pt-10 flex flex-col items-center text-center">
                         <div className="relative w-28 h-28 mb-4 group-hover:-translate-y-2 transition-transform duration-500">
-                          <img src={plan.image} alt={`Plan ${plan.name}`} className="w-full h-full object-contain drop-shadow-xl" />
+                          <Image src={plan.image} alt={`Plan ${plan.name}`} width={112} height={112} loading="lazy" className="w-full h-full object-contain drop-shadow-xl" />
                         </div>
                         <CardTitle className="text-2xl font-bold text-slate-900 dark:text-white">
                           {plan.name}

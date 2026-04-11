@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { Check, ArrowRight, Zap } from 'lucide-react'
 
@@ -216,14 +217,20 @@ export function HeroPreview({ onContactClick, onViewPreview }: HeroPreviewProps)
               whileHover={{ scale: 1.03 }}
               transition={{ type: 'spring', stiffness: 200, damping: 15 }}
             >
-              <motion.img
-                src="/assets/3d/hero-mascot.png"
-                alt="Clivaro - Tu ERP Inteligente"
-                className="w-full h-auto drop-shadow-2xl"
+              <motion.div
                 initial={{ scale: 0.85, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 transition={{ duration: 0.8, ease: [0.25, 0.46, 0.45, 0.94], delay: 0.3 }}
-              />
+              >
+                <Image
+                  src="/assets/3d/hero-mascot.png"
+                  alt="Clivaro - Tu ERP Inteligente"
+                  width={600}
+                  height={600}
+                  priority
+                  className="w-full h-auto drop-shadow-2xl"
+                />
+              </motion.div>
             </motion.div>
           </motion.div>
         </div>

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import Image from 'next/image'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 import {
@@ -136,16 +137,19 @@ export function SoftwarePreview() {
               {/* Screenshot container */}
               <div className="relative aspect-[16/9] bg-slate-900 overflow-hidden">
                 {screens.map((s, idx) => (
-                  <img
+                  <Image
                     key={s.id}
                     src={s.src}
                     alt={`Clivaro ${s.label}`}
+                    width={1920}
+                    height={1080}
                     className={cn(
                       'absolute inset-0 w-full h-full object-cover object-top transition-all duration-700',
                       idx === active
                         ? 'opacity-100 scale-100'
                         : 'opacity-0 scale-105'
                     )}
+                    priority={idx < 2}
                     loading={idx < 2 ? 'eager' : 'lazy'}
                   />
                 ))}
@@ -209,9 +213,11 @@ export function SoftwarePreview() {
           </button>
 
           <div className="relative max-w-[90vw] max-h-[90vh]" onClick={e => e.stopPropagation()}>
-            <img
+            <Image
               src={currentScreen.src}
               alt={`Clivaro ${currentScreen.label}`}
+              width={1920}
+              height={1080}
               className="max-w-full max-h-[90vh] rounded-xl shadow-2xl object-contain"
             />
 

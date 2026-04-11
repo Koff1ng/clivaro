@@ -20,6 +20,16 @@ const nextConfig = {
   // Optimización de bundle
   swcMinify: true, // Usar SWC para minificación (más rápido que Terser)
 
+  // Tree-shaking mejorado para barrel exports pesados
+  experimental: {
+    optimizePackageImports: [
+      'lucide-react',
+      'framer-motion',
+      'date-fns',
+      'iconoir-react',
+    ],
+  },
+
   // Configuración de webpack para excluir puppeteer-core del procesamiento
   webpack: (config, { isServer }) => {
     if (isServer) {
@@ -56,6 +66,40 @@ const nextConfig = {
             key: 'X-Frame-Options',
             value: 'SAMEORIGIN'
           },
+          {
+            key: 'Strict-Transport-Security',
+            value: 'max-age=63072000; includeSubDomains; preload'
+          },
+        ],
+      },
+      // Cache inmutable para assets estáticos de Next.js (JS/CSS bundles con hash)
+      {
+        source: '/_next/static/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable'
+          },
+        ],
+      },
+      // Cache para fuentes
+      {
+        source: '/fonts/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable'
+          },
+        ],
+      },
+      // Cache para assets de imágenes (3D, ERP screenshots, etc.)
+      {
+        source: '/assets/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=604800, stale-while-revalidate=86400'
+          },
         ],
       },
     ]
@@ -63,4 +107,3 @@ const nextConfig = {
 }
 
 module.exports = nextConfig
-

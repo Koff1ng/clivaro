@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import localFont from 'next/font/local'
+import { Plus_Jakarta_Sans } from 'next/font/google'
 import Script from 'next/script'
 import './globals.css'
 import { ToastContainer } from '@/components/ui/toast'
@@ -35,6 +36,13 @@ const sfPro = localFont({
   display: 'swap',
 })
 
+const plusJakartaSans = Plus_Jakarta_Sans({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700'],
+  variable: '--font-jakarta',
+  display: 'swap',
+})
+
 export const metadata: Metadata = {
   title: 'Clivaro',
   description: 'Sistema de gestion empresarial',
@@ -53,10 +61,10 @@ export default function RootLayout({
   return (
     <html lang="es" suppressHydrationWarning>
       <body
-        className={`${sfPro.variable} font-sans antialiased bg-background text-foreground selection:bg-primary/10 selection:text-primary`}
+        className={`${sfPro.variable} ${plusJakartaSans.variable} font-sans antialiased bg-background text-foreground selection:bg-primary/10 selection:text-primary`}
       >
-        {/* Facebook/Meta Pixel */}
-        <Script id="facebook-pixel" strategy="afterInteractive">
+        {/* Facebook/Meta Pixel — deferred to lazyOnload for better LCP */}
+        <Script id="facebook-pixel" strategy="lazyOnload">
           {`
             !function(f,b,e,v,n,t,s)
             {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
