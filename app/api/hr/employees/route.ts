@@ -101,6 +101,13 @@ export async function POST(req: Request) {
                     arlEntity: data.arlEntity,
                     compensationBox: data.compensationBox,
                     paymentMethod: data.paymentMethod,
+                    // Campos Nómina Electrónica
+                    riskLevel: data.riskLevel ? parseInt(data.riskLevel) : 1,
+                    contractType: data.contractType || 'INDEFINIDO',
+                    workerType: data.workerType || '01',
+                    workerSubType: data.workerSubType || '00',
+                    municipality: data.municipality,
+                    integralSalary: data.integralSalary === true,
                 },
             })
         })

@@ -408,5 +408,14 @@ export const TENANT_SQL_STATEMENTS: string[] = [
   "ALTER TABLE \"TableOrderLine\" ADD CONSTRAINT \"TableOrderLine_orderId_fkey\" FOREIGN KEY (\"orderId\") REFERENCES \"TableOrder\"(\"id\") ON DELETE CASCADE ON UPDATE CASCADE",
   "ALTER TABLE \"TableOrderLine\" ADD CONSTRAINT \"TableOrderLine_productId_fkey\" FOREIGN KEY (\"productId\") REFERENCES \"Product\"(\"id\") ON DELETE RESTRICT ON UPDATE CASCADE",
   "ALTER TABLE \"PurchaseOrderAttachment\" ADD CONSTRAINT \"PurchaseOrderAttachment_purchaseOrderId_fkey\" FOREIGN KEY (\"purchaseOrderId\") REFERENCES \"PurchaseOrder\"(\"id\") ON DELETE CASCADE ON UPDATE CASCADE",
-  "ALTER TABLE \"OpportunityActivity\" ADD CONSTRAINT \"OpportunityActivity_opportunityId_fkey\" FOREIGN KEY (\"opportunityId\") REFERENCES \"Opportunity\"(\"id\") ON DELETE CASCADE ON UPDATE CASCADE"
+  "ALTER TABLE \"OpportunityActivity\" ADD CONSTRAINT \"OpportunityActivity_opportunityId_fkey\" FOREIGN KEY (\"opportunityId\") REFERENCES \"Opportunity\"(\"id\") ON DELETE CASCADE ON UPDATE CASCADE",
+  // --- Nómina Electrónica: Nuevos campos (safe for existing tenants) ---
+  "ALTER TABLE \"Employee\" ADD COLUMN IF NOT EXISTS \"riskLevel\" INTEGER NOT NULL DEFAULT 1",
+  "ALTER TABLE \"Employee\" ADD COLUMN IF NOT EXISTS \"contractType\" TEXT NOT NULL DEFAULT 'INDEFINIDO'",
+  "ALTER TABLE \"Employee\" ADD COLUMN IF NOT EXISTS \"workerType\" TEXT NOT NULL DEFAULT '01'",
+  "ALTER TABLE \"Employee\" ADD COLUMN IF NOT EXISTS \"workerSubType\" TEXT NOT NULL DEFAULT '00'",
+  "ALTER TABLE \"Employee\" ADD COLUMN IF NOT EXISTS \"municipality\" TEXT",
+  "ALTER TABLE \"Employee\" ADD COLUMN IF NOT EXISTS \"integralSalary\" BOOLEAN NOT NULL DEFAULT false",
+  "ALTER TABLE \"PayrollPeriod\" ADD COLUMN IF NOT EXISTS \"transmittedAt\" TIMESTAMP(3)",
+  "ALTER TABLE \"PayslipItem\" ADD COLUMN IF NOT EXISTS \"percentage\" DOUBLE PRECISION"
 ]

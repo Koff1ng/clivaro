@@ -6,6 +6,12 @@ import { getTenantIdFromSession, withTenantTx, withTenantRead } from '@/lib/tena
 
 export const dynamic = 'force-dynamic'
 
+/**
+ * GET /api/hr/payroll/[id]
+ * 
+ * Obtiene un período de nómina con todos sus payslips, empleados, items y asiento contable.
+ * Incluye información de estado DIAN para nómina electrónica.
+ */
 export async function GET(
     req: Request,
     { params }: { params: { id: string } }
@@ -34,6 +40,15 @@ export async function GET(
     }
 }
 
+/**
+ * PATCH /api/hr/payroll/[id]
+ * 
+ * Actualiza un período de nómina (nombre, estado).
+ * Protecciones:
+ * - No se puede modificar si ya fue PAGADO
+ * - No se puede modificar si ya fue TRANSMITIDO a la DIAN
+ * - Al marcar como PAID, se crea automáticamente el asiento contable
+ */
 export async function PATCH(
     req: Request,
     { params }: { params: { id: string } }
@@ -51,6 +66,7 @@ export async function PATCH(
             const existing = await tx.payrollPeriod.findFirst({ where: { id: params.id, tenantId } });
             if (!existing) return { notFound: true }
             if (existing.status === 'PAID') return { alreadyPaid: true }
+            if (existing.status === 'TRANSMITTED') return { transmitted: true }
 
             const updateData: any = {};
             if (data.status) updateData.status = data.status;
@@ -65,6 +81,7 @@ export async function PATCH(
 
         if ((result as any).notFound) return NextResponse.json({ error: 'Período no encontrado' }, { status: 404 });
         if ((result as any).alreadyPaid) return NextResponse.json({ error: 'No se puede modificar una nómina que ya ha sido pagada y contabilizada.' }, { status: 400 });
+        if ((result as any).transmitted) return NextResponse.json({ error: 'No se puede modificar una nómina que ya fue transmitida a la DIAN.' }, { status: 400 });
 
         const { updated, wasPaid } = result as any;
 
@@ -83,6 +100,11 @@ export async function PATCH(
     }
 }
 
+/**
+ * DELETE /api/hr/payroll/[id]
+ * 
+ * Elimina un período de nómina. Solo se permite si está en estado DRAFT.
+ */
 export async function DELETE(
     req: Request,
     { params }: { params: { id: string } }

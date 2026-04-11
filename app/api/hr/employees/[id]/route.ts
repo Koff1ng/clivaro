@@ -86,6 +86,13 @@ export async function PUT(
                     arlEntity: data.arlEntity,
                     compensationBox: data.compensationBox,
                     paymentMethod: data.paymentMethod,
+                    // Campos Nómina Electrónica
+                    riskLevel: data.riskLevel !== undefined ? parseInt(data.riskLevel) : undefined,
+                    contractType: data.contractType,
+                    workerType: data.workerType,
+                    workerSubType: data.workerSubType,
+                    municipality: data.municipality,
+                    integralSalary: data.integralSalary,
                 },
             });
         })

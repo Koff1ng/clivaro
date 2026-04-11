@@ -3,10 +3,12 @@ import { logger } from '@/lib/logger'
 import { requirePermission } from '@/lib/api-middleware';
 import { PERMISSIONS } from '@/lib/permissions';
 import { getTenantIdFromSession, withTenantTx, withTenantRead } from '@/lib/tenancy';
+import { calculatePayroll, type PayrollEmployeeInput } from '@/lib/payroll/calculations';
 
 export const dynamic = 'force-dynamic'
 
 /**
+ * GET /api/hr/payroll
  * Fetches all payroll periods for the current tenant.
  * Requires `MANAGE_USERS` permission (Human Resources context).
  */
@@ -39,11 +41,18 @@ export async function GET(req: Request) {
 }
 
 /**
- * Creates a new payroll period and automatically generates payslips for all active employees.
- * This process includes calculating legal deductions for Colombia (Health 4% and Pension 4%).
- * All operations are performed within a tenant-scoped transaction.
+ * POST /api/hr/payroll
  * 
- * @param req - The request object containing `periodName`, `startDate`, and `endDate`.
+ * Creates a new payroll period and automatically generates payslips for all active employees.
+ * Uses the complete Colombian payroll calculations engine (lib/payroll/calculations.ts):
+ * - Salario base proporcional a días trabajados
+ * - Auxilio de transporte (si salario ≤ 2 SMLMV)
+ * - Salud empleado (4%)
+ * - Pensión empleado (4%)
+ * - Fondo Solidaridad Pensional (1% si salario > 4 SMLMV)
+ * - Aportes patronales: ARL, CCF, ICBF, SENA (visibilidad, no se descuentan)
+ * 
+ * All operations are performed within a tenant-scoped transaction.
  */
 export async function POST(req: Request) {
     try {
@@ -67,7 +76,10 @@ export async function POST(req: Request) {
         const startDate = new Date(data.startDate);
         const endDate = new Date(data.endDate);
 
-        // withTenantTx wraps in a transaction so this is equivalent to prisma.$transaction
+        // Calcular días del período (máximo 30)
+        const diffTime = Math.abs(endDate.getTime() - startDate.getTime());
+        const periodDays = Math.min(Math.ceil(diffTime / (1000 * 60 * 60 * 24)), 30);
+
         const newPeriod = await withTenantTx(tenantId, async (tx) => {
             // 1. Create the base Payroll Period
             const period = await tx.payrollPeriod.create({
@@ -92,52 +104,63 @@ export async function POST(req: Request) {
             let grandTotalDeductions = 0;
             let grandNetPay = 0;
 
-            // 3. Create Payslips & Basic Items for each employee
+            // 3. Create Payslips & calculated items for each employee
             for (const emp of employees) {
-                const salary = emp.baseSalary;
+                // Usar el motor de cálculos colombianos completo
+                const input: PayrollEmployeeInput = {
+                    baseSalary: emp.baseSalary,
+                    salaryType: emp.salaryType,
+                    riskLevel: (emp as any).riskLevel ?? 1,
+                    integralSalary: (emp as any).integralSalary ?? false,
+                    workedDays: periodDays,
+                };
 
-                // CÁLCULOS DE LEY (COLOMBIA)
-                const healthDeduction = salary * 0.04; // 4% Salud
-                const pensionDeduction = salary * 0.04; // 4% Pensión
+                const calc = calculatePayroll(input);
 
-                const totalEarnings = salary;
-                const totalDeductions = healthDeduction + pensionDeduction;
-                const netPay = totalEarnings - totalDeductions;
+                grandTotalEarnings += calc.totalEarnings;
+                grandTotalDeductions += calc.totalDeductions;
+                grandNetPay += calc.netPay;
 
-                grandTotalEarnings += totalEarnings;
-                grandTotalDeductions += totalDeductions;
-                grandNetPay += netPay;
+                // Construir items del payslip: devengados + deducciones + aportes patronales
+                const payslipItems = [
+                    ...calc.earnings.map(item => ({
+                        type: item.type,
+                        concept: item.concept,
+                        code: item.code,
+                        amount: item.amount,
+                        percentage: item.percentage || null,
+                        isAutomatic: item.isAutomatic,
+                    })),
+                    ...calc.deductions.map(item => ({
+                        type: item.type,
+                        concept: item.concept,
+                        code: item.code,
+                        amount: item.amount,
+                        percentage: item.percentage || null,
+                        isAutomatic: item.isAutomatic,
+                    })),
+                    // Aportes patronales como items informativos (EMPLOYER)
+                    ...calc.employerContributions.map(item => ({
+                        type: item.type,
+                        concept: item.concept,
+                        code: item.code,
+                        amount: item.amount,
+                        percentage: item.percentage || null,
+                        isAutomatic: item.isAutomatic,
+                    })),
+                ];
 
                 await tx.payslip.create({
                     data: {
                         tenantId,
                         payrollPeriodId: period.id,
                         employeeId: emp.id,
-                        baseSalary: salary,
-                        totalEarnings: totalEarnings,
-                        totalDeductions: totalDeductions,
-                        netPay: netPay,
+                        baseSalary: emp.baseSalary,
+                        totalEarnings: calc.totalEarnings,
+                        totalDeductions: calc.totalDeductions,
+                        netPay: calc.netPay,
                         items: {
-                            create: [
-                                {
-                                    type: 'EARNING',
-                                    concept: 'Salario Base',
-                                    amount: salary,
-                                    isAutomatic: true,
-                                },
-                                {
-                                    type: 'DEDUCTION',
-                                    concept: 'Salud (4%)',
-                                    amount: healthDeduction,
-                                    isAutomatic: true,
-                                },
-                                {
-                                    type: 'DEDUCTION',
-                                    concept: 'Pensión (4%)',
-                                    amount: pensionDeduction,
-                                    isAutomatic: true,
-                                },
-                            ],
+                            create: payslipItems,
                         },
                     },
                 });

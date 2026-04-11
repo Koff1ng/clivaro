@@ -1483,6 +1483,12 @@ model Employee {
   arlEntity         String?
   compensationBox   String?
   paymentMethod     String?
+  riskLevel         Int      @default(1)      // Nivel ARL (1-5)
+  contractType      String   @default("INDEFINIDO") // INDEFINIDO, FIJO, OBRA_LABOR, APRENDIZAJE
+  workerType        String   @default("01")   // Tipo trabajador DIAN (01=dependiente)
+  workerSubType     String   @default("00")   // Subtipo trabajador DIAN
+  municipality      String?                    // Código municipio DIAN
+  integralSalary    Boolean  @default(false)  // ¿Salario integral?
 
   isActive          Boolean         @default(true)
   createdAt         DateTime        @default(now())
@@ -1501,11 +1507,12 @@ model PayrollPeriod {
   periodName      String
   startDate       DateTime
   endDate         DateTime
-  status          String   @default("DRAFT") // DRAFT, APPROVED, PAID
+  status          String   @default("DRAFT") // DRAFT, APPROVED, PAID, TRANSMITTED
   totalEarnings   Float    @default(0)
   totalDeductions Float    @default(0)
   netPay          Float    @default(0)
   paidAt          DateTime?
+  transmittedAt   DateTime?        // Fecha de transmisión a DIAN
   journalEntryId  String?  @unique // Link to Accounting
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -1550,12 +1557,13 @@ model Payslip {
 model PayslipItem {
   id          String   @id @default(cuid())
   payslipId   String
-  type        String   // EARNING, DEDUCTION
+  type        String   // EARNING, DEDUCTION, EMPLOYER
   concept     String
   code        String?  // DIAN code
   units       Float?   // 30 days, 15 hours
   unitType    String?  // DIAS, HORAS
   amount      Float    // Stores net amount (+ for earning, - for deduction)
+  percentage  Float?   // Porcentaje aplicado (ej: 4% salud)
   isAutomatic Boolean  @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
