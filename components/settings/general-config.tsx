@@ -27,6 +27,7 @@ import {
   Settings,
   Globe,
   Save,
+  Check,
   ChevronDown,
   ChevronUp
 } from 'lucide-react'
@@ -147,6 +148,7 @@ export function GeneralConfig({ settings, onSave, isLoading, initialTab = 'ident
     : { printing: { printers: [], ticketDesign: { showLogo: true, showQr: true, showCufe: true, footerText: 'Gracias por su compra', separator: 'dashes' }, posBehavior: { autoPrint: false, previewBeforePrint: true, copies: 1, retryOnFail: false }, enabled: true, paperWidth: 80, type: 'escpos', autoCut: true } }
 
   const [printers, setPrinters] = useState<PrinterDefinition[]>(initialCustomSettings.printing?.printers || [])
+  const [editingPrinterId, setEditingPrinterId] = useState<string | null>(null)
   const [scannedDevices, setScannedDevices] = useState<{ ip: string, name: string, port: number }[]>([])
   const [isScanning, setIsScanning] = useState(false)
   const [showScanDialog, setShowScanDialog] = useState(false)
@@ -449,20 +451,98 @@ export function GeneralConfig({ settings, onSave, isLoading, initialTab = 'ident
               </div>
 
               {printers.map((p) => (
-                <div key={p.id} className="p-6 border rounded-3xl bg-white shadow-sm flex items-center justify-between group hover:border-indigo-200 transition-all">
-                  <div className="flex items-center gap-5">
-                     <div className="h-14 w-14 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 transition-colors group-hover:bg-indigo-50 group-hover:text-indigo-600">
-                        <Printer size={24} />
-                     </div>
-                     <div>
-                        <div className="font-black text-slate-800">{p.name}</div>
-                        <div className="text-xs font-bold text-slate-400 uppercase tracking-tighter">{p.interfaceConfig || 'Sin IP configurada'}</div>
-                     </div>
+                <div key={p.id} className="border rounded-3xl bg-white shadow-sm group hover:border-indigo-200 transition-all overflow-hidden">
+                  <div className="p-6 flex items-center justify-between">
+                    <div className="flex items-center gap-5">
+                       <div className={cn("h-14 w-14 rounded-2xl flex items-center justify-center transition-colors", p.active ? "bg-indigo-50 text-indigo-600" : "bg-slate-50 text-slate-400")}>
+                          <Printer size={24} />
+                       </div>
+                       <div>
+                          <div className="font-black text-slate-800">{p.name}</div>
+                          <div className="text-xs font-bold text-slate-400 uppercase tracking-tighter">
+                            {p.interfaceType === 'usb' ? 'USB' : p.interfaceType === 'lan' ? 'LAN' : 'Bluetooth'} · {p.width}mm
+                            {p.default && <span className="ml-2 text-indigo-500">★ Principal</span>}
+                          </div>
+                          <div className="text-xs text-slate-400 mt-0.5">{p.interfaceConfig || 'Sin IP configurada'}</div>
+                       </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                       <Button type="button" variant="ghost" size="icon" className="h-10 w-10 text-slate-400 hover:bg-slate-50" onClick={() => setEditingPrinterId(editingPrinterId === p.id ? null : p.id)}><Edit size={16} /></Button>
+                       <Button type="button" variant="ghost" size="icon" className="h-10 w-10 text-red-400 hover:bg-red-50" onClick={() => removePrinter(p.id)}><Trash2 size={16} /></Button>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                     <Button type="button" variant="ghost" size="icon" className="h-10 w-10 text-slate-400 hover:bg-slate-50"><Edit size={16} /></Button>
-                     <Button type="button" variant="ghost" size="icon" className="h-10 w-10 text-red-400 hover:bg-red-50" onClick={() => removePrinter(p.id)}><Trash2 size={16} /></Button>
-                  </div>
+                  {/* Inline edit panel */}
+                  {editingPrinterId === p.id && (
+                    <div className="px-6 pb-6 pt-2 border-t bg-slate-50/50 space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1.5">
+                          <Label className="text-[10px] font-bold uppercase text-slate-400">Nombre</Label>
+                          <Input value={p.name} onChange={(e) => updatePrinter(p.id, 'name', e.target.value)} className="rounded-xl h-10" />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-[10px] font-bold uppercase text-slate-400">Tipo</Label>
+                          <Select value={p.type} onValueChange={(v) => updatePrinter(p.id, 'type', v)}>
+                            <SelectTrigger className="rounded-xl h-10"><SelectValue /></SelectTrigger>
+                            <SelectContent className="rounded-xl">
+                              <SelectItem value="thermal">Térmica</SelectItem>
+                              <SelectItem value="laser">Láser</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-[10px] font-bold uppercase text-slate-400">Interfaz</Label>
+                          <Select value={p.interfaceType} onValueChange={(v) => updatePrinter(p.id, 'interfaceType', v)}>
+                            <SelectTrigger className="rounded-xl h-10"><SelectValue /></SelectTrigger>
+                            <SelectContent className="rounded-xl">
+                              <SelectItem value="usb">USB</SelectItem>
+                              <SelectItem value="lan">LAN (Red)</SelectItem>
+                              <SelectItem value="bluetooth">Bluetooth</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-[10px] font-bold uppercase text-slate-400">IP / Config</Label>
+                          <Input value={p.interfaceConfig} onChange={(e) => updatePrinter(p.id, 'interfaceConfig', e.target.value)} placeholder="192.168.1.50:9100" className="rounded-xl h-10 font-mono text-sm" />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-[10px] font-bold uppercase text-slate-400">Ancho papel</Label>
+                          <Select value={String(p.width)} onValueChange={(v) => updatePrinter(p.id, 'width', Number(v))}>
+                            <SelectTrigger className="rounded-xl h-10"><SelectValue /></SelectTrigger>
+                            <SelectContent className="rounded-xl">
+                              <SelectItem value="58">58mm</SelectItem>
+                              <SelectItem value="80">80mm</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-[10px] font-bold uppercase text-slate-400">Columnas</Label>
+                          <Select value={String(p.columns)} onValueChange={(v) => updatePrinter(p.id, 'columns', Number(v))}>
+                            <SelectTrigger className="rounded-xl h-10"><SelectValue /></SelectTrigger>
+                            <SelectContent className="rounded-xl">
+                              <SelectItem value="32">32 (58mm)</SelectItem>
+                              <SelectItem value="42">42 (80mm)</SelectItem>
+                              <SelectItem value="48">48 (80mm ancho)</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between pt-2">
+                        <div className="flex items-center gap-4">
+                          <div className="flex items-center gap-2">
+                            <Switch checked={p.active} onCheckedChange={(c) => updatePrinter(p.id, 'active', c)} />
+                            <span className="text-sm text-slate-600">Activa</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Switch checked={p.default} onCheckedChange={(c) => updatePrinter(p.id, 'default', c)} />
+                            <span className="text-sm text-slate-600">Principal</span>
+                          </div>
+                        </div>
+                        <Button type="button" size="sm" className="rounded-full px-6" onClick={() => setEditingPrinterId(null)}>
+                          <Check size={14} className="mr-1" /> Listo
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
               {printers.length === 0 && (

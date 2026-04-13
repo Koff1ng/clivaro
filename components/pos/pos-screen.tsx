@@ -863,8 +863,18 @@ export function POSScreen({ mode = 'retail', waiterData, waiterToken, preselecte
   const { print: printThermal } = useThermalPrint({ targetId: 'pos-thermal-print', widthMm: 80 })
 
   // ESC/POS silent printing — connects via WebSerial, no browser dialog
-  const printingConfig = settings?.customSettings?.printing
+  // IMPORTANT: customSettings arrives as a JSON string from the API, must parse it
+  const parsedCustomSettings = useMemo(() => {
+    try {
+      if (!settings?.customSettings) return null
+      return typeof settings.customSettings === 'string'
+        ? JSON.parse(settings.customSettings)
+        : settings.customSettings
+    } catch { return null }
+  }, [settings?.customSettings])
+  const printingConfig = parsedCustomSettings?.printing
   const boldSections = printingConfig?.ticketDesign?.boldSections
+  const autoPrintEnabled = printingConfig?.posBehavior?.autoPrint !== false // default true
   const {
     status: escposStatus,
     printInvoice: printEscPos,
@@ -1024,8 +1034,8 @@ export function POSScreen({ mode = 'retail', waiterData, waiterToken, preselecte
       cashReceived: paymentMode === 'SINGLE' && selectedMethod?.type === 'CASH' ? parseFloat(cashReceived || '0') : null,
     })
     setShowReceipt(true)
-    // Auto-print: if ESC/POS printer is connected, print silently
-    if (isEscPosReady) setAutoPrintPending(true)
+    // Auto-print: if ESC/POS printer is connected and auto-print is enabled in settings
+    if (isEscPosReady && autoPrintEnabled) setAutoPrintPending(true)
 
     setCart([])
     setSearchQuery('')
@@ -1177,7 +1187,7 @@ export function POSScreen({ mode = 'retail', waiterData, waiterToken, preselecte
         change: data.change || 0,
       })
       setShowReceipt(true)
-      setAutoPrintPending(true)
+      setAutoPrintPending(isEscPosReady && autoPrintEnabled)
 
       // Clear cart and reset form
       setCart([])
