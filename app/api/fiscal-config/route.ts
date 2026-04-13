@@ -6,6 +6,7 @@ import { getTenantIdFromSession, withTenantRead } from '@/lib/tenancy'
 import { prisma as masterPrisma } from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
+import { safeErrorMessage } from '@/lib/safe-error'
 
 /**
  * GET: Returns the fiscal configuration for the current tenant.
@@ -105,6 +106,6 @@ export async function GET(request: Request) {
         })
     } catch (error: any) {
         logger.error('Error in fiscal-config GET:', error)
-        return NextResponse.json({ error: error.message }, { status: 500 })
+        return NextResponse.json({ error: safeErrorMessage(error) }, { status: 500 })
     }
 }

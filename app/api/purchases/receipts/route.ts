@@ -9,6 +9,7 @@ import { updateStockLevel, updateProductCost } from '@/lib/inventory'
 import { logActivity } from '@/lib/activity'
 
 export const dynamic = 'force-dynamic'
+import { safeErrorMessage } from '@/lib/safe-error'
 
 const createReceiptSchema = z.object({
   purchaseOrderId: z.string().min(1, "El ID de la orden de compra es requerido"),
@@ -303,7 +304,7 @@ export async function POST(request: Request) {
     }
     logger.error('Error creating receipt', error, { endpoint: '/api/purchases/receipts', method: 'POST' })
     return NextResponse.json(
-      { error: error.message || 'Failed to create receipt' },
+      { error: safeErrorMessage(error, 'Failed to create receipt') },
       { status: 500 }
     )
   }

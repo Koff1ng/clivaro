@@ -6,6 +6,7 @@ import { requireAnyPermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
 
 export const dynamic = 'force-dynamic'
+import { safeErrorMessage } from '@/lib/safe-error'
 
 function apiError(status: number, message: string, details?: unknown) {
   return NextResponse.json({ status, error: message, details }, { status })
@@ -99,6 +100,6 @@ export async function POST(
 
     return NextResponse.json(updatedOrder)
   } catch (error: any) {
-    return apiError(400, error.message || 'Failed to send order to kitchen')
+    return apiError(400, safeErrorMessage(error, 'Failed to send order to kitchen'))
   }
 }

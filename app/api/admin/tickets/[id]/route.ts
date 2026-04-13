@@ -5,6 +5,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
+import { safeErrorMessage } from '@/lib/safe-error'
 
 export async function PUT(
   request: Request,
@@ -53,6 +54,6 @@ export async function PUT(
     return NextResponse.json(ticket)
   } catch (error: any) {
     logger.error('Error updating ticket:', error)
-    return NextResponse.json({ error: error.message || 'Error al actualizar ticket' }, { status: 500 })
+    return NextResponse.json({ error: safeErrorMessage(error, 'Error al actualizar ticket') }, { status: 500 })
   }
 }

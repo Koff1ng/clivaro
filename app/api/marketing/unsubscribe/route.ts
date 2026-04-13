@@ -3,6 +3,7 @@ import { withTenantTx } from '@/lib/tenancy'
 import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
+import { safeErrorMessage } from '@/lib/safe-error'
 
 export async function POST(request: Request) {
     try {
@@ -33,6 +34,6 @@ export async function POST(request: Request) {
         return NextResponse.json({ success: true })
     } catch (error: any) {
         logger.error('Error in unsubscribe', error)
-        return NextResponse.json({ error: error.message || 'Failed to unsubscribe' }, { status: 500 })
+        return NextResponse.json({ error: safeErrorMessage(error, 'Failed to unsubscribe') }, { status: 500 })
     }
 }

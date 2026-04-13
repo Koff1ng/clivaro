@@ -5,6 +5,7 @@ import { withTenantTx, getTenantIdFromSession } from '@/lib/tenancy'
 import { z } from 'zod'
 
 export const dynamic = 'force-dynamic'
+import { safeErrorMessage } from '@/lib/safe-error'
 
 const paymentMethodSchema = z.object({
     name: z.string().min(1),
@@ -30,7 +31,7 @@ export async function GET(request: Request) {
         })
         return NextResponse.json(methods)
     } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 })
+        return NextResponse.json({ error: safeErrorMessage(error) }, { status: 500 })
     }
 }
 
@@ -63,6 +64,6 @@ export async function POST(request: Request) {
         if (error instanceof z.ZodError) {
             return NextResponse.json({ error: 'Validación fallida', details: error.errors }, { status: 400 })
         }
-        return NextResponse.json({ error: error.message }, { status: 500 })
+        return NextResponse.json({ error: safeErrorMessage(error) }, { status: 500 })
     }
 }

@@ -5,6 +5,7 @@ import { withTenantRead } from '@/lib/tenancy'
 import { createClient } from '@supabase/supabase-js'
 
 export const dynamic = 'force-dynamic'
+import { safeErrorMessage } from '@/lib/safe-error'
 
 const masterPrisma = new PrismaClient()
 
@@ -114,7 +115,7 @@ export async function GET(request: Request) {
     })
   } catch (error: any) {
     logger.error('Cron backup error:', error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ error: safeErrorMessage(error) }, { status: 500 })
   } finally {
     await masterPrisma.$disconnect()
   }

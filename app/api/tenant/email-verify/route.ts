@@ -5,6 +5,7 @@ import { PERMISSIONS } from '@/lib/permissions'
 import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
+import { safeErrorMessage } from '@/lib/safe-error'
 
 const RESEND_API_KEY = process.env.RESEND_MASTER_API_KEY
 
@@ -58,6 +59,6 @@ export async function POST(request: Request) {
     })
   } catch (error: any) {
     logger.error('Error in email-verify POST', error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ error: safeErrorMessage(error) }, { status: 500 })
   }
 }

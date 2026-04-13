@@ -6,6 +6,7 @@ import { withTenantTx, getTenantIdFromSession } from '@/lib/tenancy'
 import { z } from 'zod'
 
 export const dynamic = 'force-dynamic'
+import { safeErrorMessage } from '@/lib/safe-error'
 
 const updateRoleSchema = z.object({
     name: z.string().min(2, 'El nombre debe tener al menos 2 caracteres').optional(),
@@ -125,11 +126,11 @@ export async function PUT(
         }
 
         if (error.message === 'Rol no encontrado') {
-            return NextResponse.json({ error: error.message }, { status: 404 })
+            return NextResponse.json({ error: safeErrorMessage(error) }, { status: 404 })
         }
 
         if (error.message === 'Ya existe un rol con ese nombre') {
-            return NextResponse.json({ error: error.message }, { status: 400 })
+            return NextResponse.json({ error: safeErrorMessage(error) }, { status: 400 })
         }
 
         logger.error('Error updating role:', error)
@@ -181,7 +182,7 @@ export async function DELETE(
             error.message === 'No se puede eliminar el rol porque tiene usuarios asignados' ||
             error.message === 'No se puede eliminar el rol ADMINISTRADOR'
         ) {
-            return NextResponse.json({ error: error.message }, { status: 400 })
+            return NextResponse.json({ error: safeErrorMessage(error) }, { status: 400 })
         }
 
         logger.error('Error deleting role:', error)

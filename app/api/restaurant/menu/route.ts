@@ -11,6 +11,7 @@ import { requireAnyPermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
 import { getTenantPrismaClient, getTenantIdFromSession } from '@/lib/tenancy'
 import { ensureRestaurantMode, getWaiterFromToken } from '@/lib/restaurant'
+import { safeErrorMessage } from '@/lib/safe-error'
 
 export const dynamic = 'force-dynamic'
 
@@ -100,6 +101,6 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ products, categories, total: products.length })
   } catch (error: any) {
-    return NextResponse.json({ error: error.message || 'Error loading menu' }, { status: 500 })
+    return NextResponse.json({ error: safeErrorMessage(error, 'Error loading menu') }, { status: 500 })
   }
 }

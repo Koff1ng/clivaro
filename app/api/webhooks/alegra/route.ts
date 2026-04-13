@@ -4,6 +4,7 @@ import { getTenantPrismaClient } from "@/lib/tenancy";
 import { emitRestaurantEvent } from "@/lib/events";
 
 export const dynamic = 'force-dynamic'
+import { safeErrorMessage } from '@/lib/safe-error'
 
 export async function POST(req: NextRequest) {
   try {
@@ -58,6 +59,6 @@ export async function POST(req: NextRequest) {
 
   } catch (error: any) {
     logger.error("Alegra Webhook Error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: safeErrorMessage(error) }, { status: 500 });
   }
 }

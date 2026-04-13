@@ -9,6 +9,7 @@ import { z } from 'zod'
 import { Prisma } from '@prisma/client'
 
 export const dynamic = 'force-dynamic'
+import { safeErrorMessage } from '@/lib/safe-error'
 
 const convertQuotationSchema = z.object({
   paymentMethod: z.enum(['CASH', 'CARD', 'TRANSFER', 'CHECK']).default('CASH'),
@@ -207,7 +208,7 @@ export async function POST(
     }
     logger.error('Error al convertir cotización:', error)
     return NextResponse.json(
-      { error: error.message || 'Error al convertir cotización' },
+      { error: safeErrorMessage(error, 'Error al convertir cotización') },
       { status: 500 }
     )
   }

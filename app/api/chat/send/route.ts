@@ -6,6 +6,7 @@ import { requirePermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
 
 export const dynamic = 'force-dynamic'
+import { safeErrorMessage } from '@/lib/safe-error'
 
 export async function POST(req: NextRequest) {
     const session = await requirePermission(req as any, PERMISSIONS.MANAGE_CRM);
@@ -81,6 +82,6 @@ export async function POST(req: NextRequest) {
 
     } catch (error: any) {
         logger.error('Send message error:', error)
-        return new NextResponse(error.message || 'Internal Error', { status: 500 })
+        return new NextResponse(safeErrorMessage(error, 'Internal Error'), { status: 500 })
     }
 }

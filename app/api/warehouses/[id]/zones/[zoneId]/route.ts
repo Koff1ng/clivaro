@@ -6,6 +6,7 @@ import { withTenantTx, getTenantIdFromSession } from '@/lib/tenancy'
 import { z } from 'zod'
 
 export const dynamic = 'force-dynamic'
+import { safeErrorMessage } from '@/lib/safe-error'
 
 const updateZoneSchema = z.object({
     name: z.string().min(1).optional(),
@@ -48,7 +49,7 @@ export async function PUT(
         if (error instanceof z.ZodError) {
             return NextResponse.json({ error: 'Error de validación', details: error.errors }, { status: 400 })
         }
-        return NextResponse.json({ error: error.message || 'Failed to update zone' }, { status: 500 })
+        return NextResponse.json({ error: safeErrorMessage(error, 'Failed to update zone') }, { status: 500 })
     }
 }
 
@@ -81,6 +82,6 @@ export async function DELETE(
         return NextResponse.json({ success: true })
     } catch (error: any) {
         logger.error('Error deleting zone:', error)
-        return NextResponse.json({ error: error.message || 'Failed to delete zone' }, { status: 500 })
+        return NextResponse.json({ error: safeErrorMessage(error, 'Failed to delete zone') }, { status: 500 })
     }
 }

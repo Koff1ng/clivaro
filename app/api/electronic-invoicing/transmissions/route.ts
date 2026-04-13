@@ -5,6 +5,7 @@ import { withTenantRead, getTenantIdFromSession } from '@/lib/tenancy'
 import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
+import { safeErrorMessage } from '@/lib/safe-error'
 
 export async function GET(request: Request) {
   const session = await requirePermission(request as any, PERMISSIONS.MANAGE_SALES)
@@ -96,7 +97,7 @@ export async function GET(request: Request) {
   } catch (error: any) {
     logger.error('[Electronic Invoicing API Error]:', error)
     return NextResponse.json(
-      { error: error.message || 'Error al cargar facturas electrónicas' },
+      { error: safeErrorMessage(error, 'Error al cargar facturas electrónicas') },
       { status: 500 }
     )
   }

@@ -54,6 +54,19 @@ export interface CompanyData {
 }
 
 /**
+ * Per-section bold configuration — matches TicketDesignSettings.boldSections
+ */
+export interface BoldSections {
+    companyName?: boolean
+    documentTitle?: boolean
+    customerName?: boolean
+    itemNames?: boolean
+    totals?: boolean
+    footer?: boolean
+    legalText?: boolean
+}
+
+/**
  * Format date for ticket
  */
 function formatDateTime(date: Date | string | null | undefined): string {
@@ -94,16 +107,17 @@ const PAYMENT_LABELS: Record<string, string> = {
 export function buildInvoiceTicket(
     invoice: InvoiceData,
     company: CompanyData,
-    options: { width?: number; openDrawer?: boolean; printQR?: boolean } = {}
+    options: { width?: number; openDrawer?: boolean; printQR?: boolean; boldSections?: BoldSections } = {}
 ): EscPosEncoder {
     const width = options.width || 32
+    const bs = options.boldSections || { companyName: true, documentTitle: true, customerName: true, itemNames: false, totals: true, footer: true, legalText: false }
     const encoder = createEncoder()
 
     // ========== HEADER: Company Info ==========
     encoder
         .align('center')
         .size('large')
-        .bold(true)
+        .bold(bs.companyName !== false)
         .line(truncate(company.name, width))
         .size('normal')
         .bold(false)
@@ -128,7 +142,7 @@ export function buildInvoiceTicket(
     const isElectronic = !!invoice.cufe
     encoder
         .align('center')
-        .bold(true)
+        .bold(bs.documentTitle !== false)
         .line(isElectronic ? 'FACTURA ELECTRONICA' : 'FACTURA DE VENTA')
         .size('wide')
         .line(`${invoice.prefix || 'FV'}-${invoice.number}`)
@@ -155,7 +169,7 @@ export function buildInvoiceTicket(
 
     // ========== CUSTOMER ==========
     encoder
-        .bold(true)
+        .bold(bs.customerName !== false)
         .line('CLIENTE:')
         .bold(false)
         .line(truncate(invoice.customer.name, width))
@@ -174,7 +188,7 @@ export function buildInvoiceTicket(
 
     // ========== ITEMS HEADER ==========
     encoder
-        .bold(true)
+        .bold(bs.itemNames !== false ? true : false)
         .align('left')
 
     // Column widths for 32 chars: Cant(4) Desc(16) P.Unit(12)
@@ -250,7 +264,7 @@ export function buildInvoiceTicket(
     // TOTAL
     encoder
         .hr('=', width)
-        .bold(true)
+        .bold(bs.totals !== false)
         .size('wide')
         .row('TOTAL:', formatCurrency(invoice.total), width)
         .size('normal')
@@ -321,10 +335,12 @@ export function buildInvoiceTicket(
         .newline()
         .hr('-', width)
         .align('center')
+        .bold(bs.legalText === true)
         .line('Esta factura equivale a')
         .line('letra de cambio Art.774 C.C.')
+        .bold(false)
         .newline()
-        .bold(true)
+        .bold(bs.footer !== false)
         .line('Gracias por su compra!')
         .bold(false)
         .newline()

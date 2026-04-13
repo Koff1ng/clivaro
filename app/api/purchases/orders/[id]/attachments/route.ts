@@ -5,6 +5,7 @@ import { PERMISSIONS } from '@/lib/permissions'
 import { withTenantRead, withTenantTx } from '@/lib/tenancy'
 
 export const dynamic = 'force-dynamic'
+import { safeErrorMessage } from '@/lib/safe-error'
 
 // Valid file types for purchase order documents
 const VALID_FILE_TYPES = [
@@ -86,7 +87,7 @@ export async function POST(
     return NextResponse.json(attachment, { status: 201 })
   } catch (error: any) {
     logger.error('Error creating attachment:', error)
-    return NextResponse.json({ error: error.message || 'Failed to create attachment' }, { status: 500 })
+    return NextResponse.json({ error: safeErrorMessage(error, 'Failed to create attachment') }, { status: 500 })
   }
 }
 

@@ -5,6 +5,7 @@ import { withTenantTx, withTenantRead, getTenantIdFromSession } from '@/lib/tena
 import { z } from 'zod'
 
 export const dynamic = 'force-dynamic'
+import { safeErrorMessage } from '@/lib/safe-error'
 
 const createSalesOrderSchema = z.object({
     customerId: z.string().min(1, 'El cliente es requerido'),
@@ -76,7 +77,7 @@ export async function GET(request: Request) {
         })
         return NextResponse.json(result)
     } catch (error: any) {
-        return NextResponse.json({ error: error.message || 'Error al listar órdenes de venta' }, { status: 500 })
+        return NextResponse.json({ error: safeErrorMessage(error, 'Error al listar órdenes de venta') }, { status: 500 })
     }
 }
 
@@ -157,6 +158,6 @@ export async function POST(request: Request) {
         if (error instanceof z.ZodError) {
             return NextResponse.json({ error: 'Validación fallida', details: error.errors }, { status: 400 })
         }
-        return NextResponse.json({ error: error.message || 'Error al crear la orden de venta' }, { status: 500 })
+        return NextResponse.json({ error: safeErrorMessage(error, 'Error al crear la orden de venta') }, { status: 500 })
     }
 }

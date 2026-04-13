@@ -5,6 +5,7 @@ import { withTenantTx, getTenantIdFromSession } from '@/lib/tenancy'
 import { z } from 'zod'
 
 export const dynamic = 'force-dynamic'
+import { safeErrorMessage } from '@/lib/safe-error'
 
 const updateSalesOrderSchema = z.object({
     notes: z.string().optional().nullable(),
@@ -125,7 +126,7 @@ export async function PUT(
         if (error instanceof z.ZodError) {
             return NextResponse.json({ error: 'Validación fallida', details: error.errors }, { status: 400 })
         }
-        return NextResponse.json({ error: error.message }, { status: 500 })
+        return NextResponse.json({ error: safeErrorMessage(error) }, { status: 500 })
     }
 }
 

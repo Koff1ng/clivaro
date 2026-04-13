@@ -9,6 +9,7 @@ import { PERMISSIONS } from '@/lib/permissions'
 import { getTenantIdFromSession, getTenantPrismaClient } from '@/lib/tenancy'
 import { ensureRestaurantMode, verifyPin, generateWaiterToken, hashPin } from '@/lib/restaurant'
 import { logger } from '@/lib/logger'
+import { safeErrorMessage } from '@/lib/safe-error'
 
 export const dynamic = 'force-dynamic'
 
@@ -81,6 +82,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true, waiter: waiterClean, token })
   } catch (error: any) {
     logger.error('Error in POST /api/restaurant/waiters/login', error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ error: safeErrorMessage(error) }, { status: 500 })
   }
 }

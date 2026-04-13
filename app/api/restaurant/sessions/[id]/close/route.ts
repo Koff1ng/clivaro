@@ -10,6 +10,7 @@ import { updateStockLevel, checkStock } from '@/lib/inventory'
 import { resolveAllIngredients } from '@/lib/recipes'
 
 export const dynamic = 'force-dynamic'
+import { safeErrorMessage } from '@/lib/safe-error'
 
 const paymentEntrySchema = z.object({
   method: z.enum(['CASH', 'CARD', 'TRANSFER', 'OTHER']),
@@ -525,6 +526,6 @@ export async function POST(
       warnings,
     })
   } catch (error: any) {
-    return apiError(400, error.message || 'Failed to close table session')
+    return apiError(400, safeErrorMessage(error, 'Failed to close table session'))
   }
 }

@@ -3,6 +3,7 @@ import { getTenantPrismaClient } from "@/lib/tenancy";
 import { ensureRestaurantMode } from "@/lib/restaurant";
 
 export const dynamic = 'force-dynamic';
+import { safeErrorMessage } from '@/lib/safe-error'
 
 export async function GET(req: NextRequest) {
   try {
@@ -47,6 +48,6 @@ export async function GET(req: NextRequest) {
     });
 
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 400 });
+    return NextResponse.json({ error: safeErrorMessage(error) }, { status: 400 });
   }
 }

@@ -6,6 +6,7 @@ import { requireAnyPermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
 
 export const dynamic = 'force-dynamic'
+import { safeErrorMessage } from '@/lib/safe-error'
 
 const updateItemSchema = z.object({
   unitPrice: z.number().min(0).optional(),
@@ -86,6 +87,6 @@ export async function PATCH(
 
     return NextResponse.json({ success: true })
   } catch (error: any) {
-    return apiError(400, error.message || 'Error al actualizar item')
+    return apiError(400, safeErrorMessage(error, 'Error al actualizar item'))
   }
 }

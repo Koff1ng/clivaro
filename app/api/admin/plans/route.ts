@@ -4,6 +4,7 @@ import { requireAuth } from '@/lib/api-middleware'
 import { prisma } from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
+import { safeErrorMessage } from '@/lib/safe-error'
 
 const DEFAULT_PLANS = [
   {
@@ -129,7 +130,7 @@ export async function GET(request: Request) {
   } catch (error: any) {
     logger.error('Error fetching plans:', error)
     return NextResponse.json(
-      { error: error.message || 'Error al obtener planes' },
+      { error: safeErrorMessage(error, 'Error al obtener planes') },
       { status: 500 }
     )
   }
@@ -178,7 +179,7 @@ export async function POST(request: Request) {
   } catch (error: any) {
     logger.error('Error creating plan:', error)
     return NextResponse.json(
-      { error: error.message || 'Error al crear plan' },
+      { error: safeErrorMessage(error, 'Error al crear plan') },
       { status: 500 }
     )
   }
@@ -222,7 +223,7 @@ export async function PUT(request: Request) {
   } catch (error: any) {
     logger.error('Error updating plan:', error)
     return NextResponse.json(
-      { error: error.message || 'Error al actualizar plan' },
+      { error: safeErrorMessage(error, 'Error al actualizar plan') },
       { status: 500 }
     )
   }
@@ -264,7 +265,7 @@ export async function DELETE(request: Request) {
   } catch (error: any) {
     logger.error('Error deleting plan:', error)
     return NextResponse.json(
-      { error: error.message || 'Error al eliminar plan' },
+      { error: safeErrorMessage(error, 'Error al eliminar plan') },
       { status: 500 }
     )
   }

@@ -7,6 +7,7 @@ import { PERMISSIONS } from "@/lib/permissions";
 import { withTenantRead, getTenantIdFromSession } from "@/lib/tenancy";
 
 export const dynamic = 'force-dynamic'
+import { safeErrorMessage } from '@/lib/safe-error'
 
 // Helper to safely format numbers
 const safeNum = (n: any) => (typeof n === 'number' ? n : Number(n) || 0);
@@ -140,7 +141,7 @@ export async function POST(
     } catch (error: any) {
         logger.error("LAN Print Error:", error);
         return NextResponse.json(
-            { error: error.message || "Failed to print" },
+            { error: safeErrorMessage(error, 'Failed to print') },
             { status: 500 }
         );
     }

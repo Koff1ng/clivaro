@@ -7,6 +7,7 @@ import { updateStockLevel } from '@/lib/inventory'
 import { logActivity } from '@/lib/activity'
 
 export const dynamic = 'force-dynamic'
+import { safeErrorMessage } from '@/lib/safe-error'
 
 export async function POST(
     request: Request,
@@ -84,6 +85,6 @@ export async function POST(
         return NextResponse.json(result)
     } catch (error: any) {
         logger.error('Error approving physical inventory:', error)
-        return NextResponse.json({ error: error.message || 'Failed to approve inventory' }, { status: 500 })
+        return NextResponse.json({ error: safeErrorMessage(error, 'Failed to approve inventory') }, { status: 500 })
     }
 }

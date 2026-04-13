@@ -7,6 +7,7 @@ import { requirePlanFeature } from '@/lib/plan-middleware'
 import { z } from 'zod'
 
 export const dynamic = 'force-dynamic'
+import { safeErrorMessage } from '@/lib/safe-error'
 
 const createCampaignSchema = z.object({
   name: z.string().min(1),
@@ -52,7 +53,7 @@ export async function GET(request: Request) {
   } catch (error: any) {
     logger.error('Error fetching campaigns:', error)
     return NextResponse.json(
-      { error: 'Failed to fetch campaigns', details: error.message },
+      { error: 'Failed to fetch campaigns', details: safeErrorMessage(error) },
       { status: 500 }
     )
   }
@@ -97,7 +98,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Validation error', details: error.errors }, { status: 400 })
     }
     logger.error('Error creating campaign:', error)
-    return NextResponse.json({ error: error.message || 'Failed to create campaign' }, { status: 500 })
+    return NextResponse.json({ error: safeErrorMessage(error, 'Failed to create campaign') }, { status: 500 })
   }
 }
 

@@ -7,6 +7,7 @@ import { logger } from '@/lib/logger'
 import { logActivity } from '@/lib/activity'
 
 export const dynamic = 'force-dynamic'
+import { safeErrorMessage } from '@/lib/safe-error'
 
 const voidInvoiceSchema = z.object({
   reason: z.string().min(3),
@@ -196,7 +197,7 @@ export async function POST(
       return NextResponse.json({ error: 'Error de validación', details: error.errors }, { status: 400 })
     }
     logger.error('Error voiding invoice', error)
-    return NextResponse.json({ error: error.message || 'Error al anular la factura' }, { status: 500 })
+    return NextResponse.json({ error: safeErrorMessage(error, 'Error al anular la factura') }, { status: 500 })
   }
 }
 

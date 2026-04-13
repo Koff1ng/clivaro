@@ -5,6 +5,7 @@ import { getTenantPrisma } from '@/lib/tenant-db'
 import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
+import { safeErrorMessage } from '@/lib/safe-error'
 
 // Función helper para ejecutar consultas con retry y manejo de errores de conexión
 async function executeWithRetry<T>(
@@ -252,7 +253,7 @@ export async function GET(request: Request) {
     })
     return NextResponse.json(
       { 
-        error: error.message || 'Error al obtener el historial de pagos',
+        error: safeErrorMessage(error, 'Error al obtener el historial de pagos'),
         details: process.env.NODE_ENV === 'development' ? error?.message : undefined,
         code: error?.code || 'UNKNOWN_ERROR',
       },

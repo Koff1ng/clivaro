@@ -5,6 +5,7 @@ import { PERMISSIONS } from "@/lib/permissions";
 import { ensureRestaurantMode, hashPin } from "@/lib/restaurant";
 
 export const dynamic = 'force-dynamic';
+import { safeErrorMessage } from '@/lib/safe-error'
 
 export async function GET(req: NextRequest) {
   const session = await requirePermission(req as any, PERMISSIONS.MANAGE_RESTAURANT);
@@ -22,7 +23,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ waiters });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: safeErrorMessage(error) }, { status: 500 });
   }
 }
 
@@ -63,6 +64,6 @@ export async function POST(req: NextRequest) {
       }
       return NextResponse.json({ error: "El código de mesero ya existe" }, { status: 400 });
     }
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: safeErrorMessage(error) }, { status: 500 });
   }
 }

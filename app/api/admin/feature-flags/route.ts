@@ -5,6 +5,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
+import { safeErrorMessage } from '@/lib/safe-error'
 
 const DEFAULT_FLAGS = [
   { key: 'MODULE_POS', name: 'Punto de Venta (POS)', category: 'module', description: 'Sistema de punto de venta con facturación' },
@@ -90,6 +91,6 @@ export async function POST(request: Request) {
     return NextResponse.json(flag, { status: 201 })
   } catch (error: any) {
     logger.error('Error creating feature flag:', error)
-    return NextResponse.json({ error: error.message || 'Error interno' }, { status: 500 })
+    return NextResponse.json({ error: safeErrorMessage(error, 'Error interno') }, { status: 500 })
   }
 }

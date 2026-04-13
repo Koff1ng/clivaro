@@ -6,6 +6,7 @@ import { requireAnyPermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
 
 export const dynamic = 'force-dynamic'
+import { safeErrorMessage } from '@/lib/safe-error'
 
 function apiError(status: number, message: string) {
   return NextResponse.json({ status, error: message }, { status })
@@ -67,6 +68,6 @@ export async function POST(
 
     return NextResponse.json({ success: true, message: 'Folio cancelado' })
   } catch (error: any) {
-    return apiError(400, error.message || 'Failed to cancel session')
+    return apiError(400, safeErrorMessage(error, 'Failed to cancel session'))
   }
 }

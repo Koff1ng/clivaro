@@ -6,6 +6,7 @@ import { requireAnyPermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
 
 export const dynamic = 'force-dynamic'
+import { safeErrorMessage } from '@/lib/safe-error'
 
 const tipSchema = z.object({
   tipAmount: z.number().min(0),
@@ -80,6 +81,6 @@ export async function PATCH(
 
     return NextResponse.json({ success: true, tipAmount: parsed.data.tipAmount })
   } catch (error: any) {
-    return apiError(400, error.message || 'Failed to update tip')
+    return apiError(400, safeErrorMessage(error, 'Failed to update tip'))
   }
 }

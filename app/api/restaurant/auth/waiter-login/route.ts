@@ -6,6 +6,7 @@ import { logger } from '@/lib/logger'
 import { ensureRestaurantMode, verifyPin, generateWaiterToken } from '@/lib/restaurant'
 
 export const dynamic = 'force-dynamic'
+import { safeErrorMessage } from '@/lib/safe-error'
 
 const MAX_FAILED_ATTEMPTS = 5
 const LOCKOUT_DURATION_MS = 15 * 60 * 1000 // 15 minutes
@@ -113,6 +114,6 @@ export async function POST(request: Request) {
         return NextResponse.json(result)
     } catch (error: any) {
         logger.error('Error in api/restaurant/auth/waiter-login POST', error)
-        return NextResponse.json({ error: error.message }, { status: 500 })
+        return NextResponse.json({ error: safeErrorMessage(error) }, { status: 500 })
     }
 }

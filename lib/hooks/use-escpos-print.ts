@@ -14,6 +14,7 @@ import {
     InvoiceData,
     CompanyData
 } from '@/lib/escpos'
+import type { BoldSections } from '@/lib/escpos/invoice-builder'
 
 export interface UseEscPosPrintOptions {
     /** Use global printer instance (shared across components) */
@@ -26,6 +27,8 @@ export interface UseEscPosPrintOptions {
     openDrawer?: boolean
     /** Print QR code for electronic invoices */
     printQR?: boolean
+    /** Per-section bold configuration from ticket design settings */
+    boldSections?: BoldSections
 }
 
 export interface UseEscPosPrintReturn {
@@ -67,6 +70,7 @@ export function useEscPosPrint(options: UseEscPosPrintOptions = {}): UseEscPosPr
         paperWidth = 32,
         openDrawer = false,
         printQR = true,
+        boldSections,
     } = options
 
     const printerRef = useRef<ThermalPrinter | null>(null)
@@ -221,9 +225,10 @@ export function useEscPosPrint(options: UseEscPosPrintOptions = {}): UseEscPosPr
             width: paperWidth,
             openDrawer,
             printQR,
+            boldSections,
         })
         return printRaw(encoder)
-    }, [printRaw, paperWidth, openDrawer, printQR])
+    }, [printRaw, paperWidth, openDrawer, printQR, boldSections])
 
     // Print test
     const printTest = useCallback(async (company: CompanyData): Promise<boolean> => {

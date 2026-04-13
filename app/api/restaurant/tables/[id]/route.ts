@@ -7,6 +7,7 @@ import { ensureRestaurantMode } from '@/lib/restaurant'
 import { emitRestaurantEvent, RESTAURANT_EVENTS } from '@/lib/events'
 
 export const dynamic = 'force-dynamic'
+import { safeErrorMessage } from '@/lib/safe-error'
 
 /**
  * PATCH: Actualiza una mesa (nombre, capacidad, posición, estado).
@@ -54,7 +55,7 @@ export async function PATCH(
         return NextResponse.json(table)
     } catch (error: any) {
         logger.error(`Error in api/restaurant/tables/${id} PATCH`, error)
-        return NextResponse.json({ error: error.message }, { status: 500 })
+        return NextResponse.json({ error: safeErrorMessage(error) }, { status: 500 })
     }
 }
 
@@ -92,6 +93,6 @@ export async function DELETE(
         return NextResponse.json({ success: true })
     } catch (error: any) {
         logger.error(`Error in api/restaurant/tables/${id} DELETE`, error)
-        return NextResponse.json({ error: error.message }, { status: 500 })
+        return NextResponse.json({ error: safeErrorMessage(error) }, { status: 500 })
     }
 }

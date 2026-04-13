@@ -6,6 +6,7 @@ import { logger } from '@/lib/logger'
 import { z } from 'zod'
 
 export const dynamic = 'force-dynamic'
+import { safeErrorMessage } from '@/lib/safe-error'
 
 const updateCustomerSchema = z.object({
   name: z.string().min(1),
@@ -106,7 +107,7 @@ export async function GET(
     return NextResponse.json(responseData)
   } catch (error: any) {
     logger.error('Error fetching customer', error, { endpoint: '/api/customers/[id]', method: 'GET' })
-    return NextResponse.json({ error: 'Failed to fetch customer', details: error.message }, { status: 500 })
+    return NextResponse.json({ error: 'Failed to fetch customer', details: safeErrorMessage(error) }, { status: 500 })
   }
 }
 

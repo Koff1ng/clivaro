@@ -5,6 +5,7 @@ import { initializeTenantDatabase } from '@/lib/initialize-tenant'
 import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
+import { safeErrorMessage } from '@/lib/safe-error'
 
 /**
  * POST /api/admin/tenants/[id]/reinit
@@ -57,7 +58,7 @@ export async function POST(
     } catch (error: any) {
         logger.error('Error re-initializing tenant', error)
         return NextResponse.json(
-            { error: 'Error al re-inicializar el tenant', details: error.message },
+            { error: 'Error al re-inicializar el tenant', details: safeErrorMessage(error) },
             { status: 500 }
         )
     }

@@ -5,6 +5,7 @@ import { withTenantRead, getTenantIdFromSession } from '@/lib/tenancy'
 import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
+import { safeErrorMessage } from '@/lib/safe-error'
 
 export async function GET(
   request: Request,
@@ -81,7 +82,7 @@ export async function GET(
     })
   } catch (error: any) {
     logger.error('Error fetching shift payments', error)
-    return NextResponse.json({ error: error.message || 'Failed to fetch payments' }, { status: 500 })
+    return NextResponse.json({ error: safeErrorMessage(error, 'Failed to fetch payments') }, { status: 500 })
   }
 }
 

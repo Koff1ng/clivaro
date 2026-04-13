@@ -6,6 +6,7 @@ import { withTenantRead, getTenantIdFromSession } from '@/lib/tenancy'
 import { calculateRecipeCost } from '@/lib/recipes'
 
 export const dynamic = 'force-dynamic'
+import { safeErrorMessage } from '@/lib/safe-error'
 
 /**
  * GET /api/recipes/calculate-cost?productId=xxx
@@ -33,7 +34,7 @@ export async function GET(request: Request) {
     } catch (error: any) {
         logger.error('[Calculate Cost API] Error:', error)
         return NextResponse.json({
-            error: error.message || 'Failed to calculate cost'
+            error: safeErrorMessage(error, 'Failed to calculate cost')
         }, { status: 500 })
     }
 }

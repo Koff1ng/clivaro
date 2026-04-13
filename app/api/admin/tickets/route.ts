@@ -6,6 +6,7 @@ import { prisma } from '@/lib/db'
 import { sendEmail } from '@/lib/email'
 
 export const dynamic = 'force-dynamic'
+import { safeErrorMessage } from '@/lib/safe-error'
 
 export async function GET(request: Request) {
   try {
@@ -107,6 +108,6 @@ export async function POST(request: Request) {
     return NextResponse.json(ticket, { status: 201 })
   } catch (error: any) {
     logger.error('Error creating ticket:', error)
-    return NextResponse.json({ error: error.message || 'Error al crear ticket' }, { status: 500 })
+    return NextResponse.json({ error: safeErrorMessage(error, 'Error al crear ticket') }, { status: 500 })
   }
 }

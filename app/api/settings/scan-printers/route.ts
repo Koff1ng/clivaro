@@ -3,6 +3,7 @@ import { networkInterfaces } from 'os'
 import * as net from 'net'
 
 export const dynamic = 'force-dynamic'
+import { safeErrorMessage } from '@/lib/safe-error'
 
 /**
  * Checks if a port is open on a host
@@ -98,6 +99,6 @@ export async function GET() {
             }))
         })
     } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 })
+        return NextResponse.json({ error: safeErrorMessage(error) }, { status: 500 })
     }
 }

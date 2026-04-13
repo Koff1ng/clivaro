@@ -7,6 +7,7 @@ import { requireAnyPermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
 
 export const dynamic = 'force-dynamic'
+import { safeErrorMessage } from '@/lib/safe-error'
 
 const statusSchema = z.object({
   status: z.enum(['PENDING', 'COOKING', 'READY', 'SERVED', 'CANCELLED']),
@@ -92,6 +93,6 @@ export async function PATCH(
 
     return NextResponse.json(updatedItem)
   } catch (error: any) {
-    return apiError(400, error.message || 'Failed to update item status')
+    return apiError(400, safeErrorMessage(error, 'Failed to update item status'))
   }
 }

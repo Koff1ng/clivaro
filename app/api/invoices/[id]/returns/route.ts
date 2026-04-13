@@ -8,6 +8,7 @@ import { logActivity } from '@/lib/activity'
 import { createCreditNoteWithAccounting } from '@/lib/credit-note-service'
 
 export const dynamic = 'force-dynamic'
+import { safeErrorMessage } from '@/lib/safe-error'
 
 const createReturnSchema = z.object({
   reason: z.string().min(3, "El motivo debe tener al menos 3 caracteres"),
@@ -301,7 +302,7 @@ export async function POST(
       return NextResponse.json({ error: 'Error de validación', details: error.errors }, { status: 400 })
     }
     logger.error('Error creating return', error)
-    return NextResponse.json({ error: error.message || 'Error al crear devolución' }, { status: 500 })
+    return NextResponse.json({ error: safeErrorMessage(error, 'Error al crear devolución') }, { status: 500 })
   }
 }
 

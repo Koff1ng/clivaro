@@ -7,6 +7,7 @@ import { requireAnyPermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
 
 export const dynamic = 'force-dynamic'
+import { safeErrorMessage } from '@/lib/safe-error'
 
 const issueInvoiceSchema = z.object({
   sessionId: z.string().min(1),
@@ -148,6 +149,6 @@ export async function POST(req: NextRequest) {
       number: String(alegraInvoice.number),
     })
   } catch (error: any) {
-    return apiError(400, error.message || 'Failed to issue invoice in Alegra')
+    return apiError(400, safeErrorMessage(error, 'Failed to issue invoice in Alegra'))
   }
 }

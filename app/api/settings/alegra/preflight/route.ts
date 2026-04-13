@@ -5,6 +5,7 @@ import { AlegraClient } from '@/lib/alegra/client'
 import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
+import { safeErrorMessage } from '@/lib/safe-error'
 
 export async function POST(request: Request) {
     const session = await requirePermission(request as any, PERMISSIONS.MANAGE_USERS)
@@ -32,7 +33,7 @@ export async function POST(request: Request) {
         logger.error('Alegra Preflight Error', error)
         return NextResponse.json({
             success: false,
-            error: error.message || 'Connection failed'
+            error: safeErrorMessage(error, 'Connection failed')
         }, { status: 400 })
     }
 }

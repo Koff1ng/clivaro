@@ -5,6 +5,7 @@ import { PERMISSIONS } from '@/lib/permissions'
 import { createClient } from '@supabase/supabase-js'
 
 export const dynamic = 'force-dynamic'
+import { safeErrorMessage } from '@/lib/safe-error'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || ''
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
@@ -21,7 +22,7 @@ async function ensureBucket(supabase: any) {
     })
     if (error && !error.message?.includes('already exists')) {
       logger.error('[Upload] Failed to create bucket:', error)
-      throw new Error(`No se pudo crear el bucket de almacenamiento: ${error.message}`)
+      throw new Error(`No se pudo crear el bucket de almacenamiento: ${safeErrorMessage(error)}`)
     }
   }
 }
@@ -91,7 +92,7 @@ export async function POST(request: Request) {
   } catch (error: any) {
     logger.error('Error uploading campaign image:', error)
     return NextResponse.json(
-      { error: error.message || 'Failed to upload image' },
+      { error: safeErrorMessage(error, 'Failed to upload image') },
       { status: 500 }
     )
   }

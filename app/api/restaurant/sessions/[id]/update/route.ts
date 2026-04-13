@@ -6,6 +6,7 @@ import { requireAnyPermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
 
 export const dynamic = 'force-dynamic'
+import { safeErrorMessage } from '@/lib/safe-error'
 
 const updateSchema = z.object({
   waiterId: z.string().min(1).optional(),
@@ -88,6 +89,6 @@ export async function PATCH(
 
     return NextResponse.json(updated)
   } catch (error: any) {
-    return apiError(400, error.message || 'Failed to update session')
+    return apiError(400, safeErrorMessage(error, 'Failed to update session'))
   }
 }

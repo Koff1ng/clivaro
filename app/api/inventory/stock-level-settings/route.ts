@@ -6,6 +6,7 @@ import { PERMISSIONS } from '@/lib/permissions'
 import { withTenantTx, getTenantIdFromSession } from '@/lib/tenancy'
 
 export const dynamic = 'force-dynamic'
+import { safeErrorMessage } from '@/lib/safe-error'
 
 const schema = z.object({
   warehouseId: z.string().min(1),
@@ -62,7 +63,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Error de validación', details: error.errors }, { status: 400 })
     }
     logger.error('Error updating stock level settings:', error)
-    return NextResponse.json({ error: error.message || 'Failed to update settings' }, { status: 500 })
+    return NextResponse.json({ error: safeErrorMessage(error, 'Failed to update settings') }, { status: 500 })
   }
 }
 

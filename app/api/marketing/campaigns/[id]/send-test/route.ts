@@ -14,6 +14,7 @@ import {
 } from '@/lib/marketing/email-assets'
 
 export const dynamic = 'force-dynamic'
+import { safeErrorMessage } from '@/lib/safe-error'
 
 const schema = z.object({
   email: z.string().email(),
@@ -67,6 +68,6 @@ export async function POST(
   } catch (error: any) {
     if (error instanceof z.ZodError) return NextResponse.json({ error: 'Validation error', details: error.errors }, { status: 400 })
     logger.error('Error sending test campaign', error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ error: safeErrorMessage(error) }, { status: 500 })
   }
 }

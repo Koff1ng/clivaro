@@ -6,6 +6,7 @@ import { logger } from '@/lib/logger'
 import { ensureRestaurantMode, getWaiterFromToken } from '@/lib/restaurant'
 
 export const dynamic = 'force-dynamic'
+import { safeErrorMessage } from '@/lib/safe-error'
 
 /**
  * GET: Lista todas las mesas (opcionalmente filtradas por zona).
@@ -51,7 +52,7 @@ export async function GET(request: Request) {
     return NextResponse.json(tables)
   } catch (error: any) {
     logger.error('Error in api/restaurant/tables GET', error)
-    return NextResponse.json({ status: 500, error: error.message }, { status: 500 })
+    return NextResponse.json({ status: 500, error: safeErrorMessage(error) }, { status: 500 })
   }
 }
 
@@ -87,6 +88,6 @@ export async function POST(request: Request) {
     return NextResponse.json(table)
   } catch (error: any) {
     logger.error('Error in api/restaurant/tables POST', error)
-    return NextResponse.json({ status: 500, error: error.message }, { status: 500 })
+    return NextResponse.json({ status: 500, error: safeErrorMessage(error) }, { status: 500 })
   }
 }

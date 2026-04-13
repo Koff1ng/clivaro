@@ -6,6 +6,7 @@ import { requireAnyPermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
 
 export const dynamic = 'force-dynamic'
+import { safeErrorMessage } from '@/lib/safe-error'
 
 const transferSchema = z.object({
   targetSessionId: z.string().min(1),
@@ -119,6 +120,6 @@ export async function POST(
       amount: transferAmount,
     })
   } catch (error: any) {
-    return apiError(400, error.message || 'Error al transferir items')
+    return apiError(400, safeErrorMessage(error, 'Error al transferir items'))
   }
 }

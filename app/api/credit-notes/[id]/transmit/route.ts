@@ -7,6 +7,7 @@ import { logger } from '@/lib/logger'
 import { FactusClient } from '@/lib/factus/client'
 
 export const dynamic = 'force-dynamic'
+import { safeErrorMessage } from '@/lib/safe-error'
 
 export async function POST(
     request: Request,
@@ -183,7 +184,7 @@ export async function POST(
     } catch (error: any) {
         logger.error('Error transmitting credit note to Factus', error)
         return NextResponse.json(
-            { error: error.message || 'Error al transmitir nota crédito' },
+            { error: safeErrorMessage(error, 'Error al transmitir nota crédito') },
             { status: 500 }
         )
     }

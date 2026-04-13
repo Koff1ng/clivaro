@@ -5,6 +5,7 @@ import { prisma } from '@/lib/db'
 import { generateReference, createPaymentSession } from '@/lib/wompi'
 
 export const dynamic = 'force-dynamic'
+import { safeErrorMessage } from '@/lib/safe-error'
 
 /**
  * POST /api/subscriptions/wompi/create-session
@@ -97,6 +98,6 @@ export async function POST(request: Request) {
     })
   } catch (error: any) {
     logger.error('[Wompi] Error creating session:', error)
-    return NextResponse.json({ error: error.message || 'Error interno' }, { status: 500 })
+    return NextResponse.json({ error: safeErrorMessage(error, 'Error interno') }, { status: 500 })
   }
 }

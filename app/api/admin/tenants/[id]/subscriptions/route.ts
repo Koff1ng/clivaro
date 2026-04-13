@@ -4,6 +4,7 @@ import { requireAuth } from '@/lib/api-middleware'
 import { prisma } from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
+import { safeErrorMessage } from '@/lib/safe-error'
 
 export async function GET(
   request: Request,
@@ -47,7 +48,7 @@ export async function GET(
   } catch (error: any) {
     logger.error('Error fetching subscriptions:', error)
     return NextResponse.json(
-      { error: error.message || 'Error al obtener suscripciones' },
+      { error: safeErrorMessage(error, 'Error al obtener suscripciones') },
       { status: 500 }
     )
   }
@@ -130,7 +131,7 @@ export async function POST(
   } catch (error: any) {
     logger.error('Error creating subscription:', error)
     return NextResponse.json(
-      { error: error.message || 'Error al crear suscripción' },
+      { error: safeErrorMessage(error, 'Error al crear suscripción') },
       { status: 500 }
     )
   }
@@ -212,7 +213,7 @@ export async function PUT(
   } catch (error: any) {
     logger.error('Error updating subscription:', error)
     return NextResponse.json(
-      { error: error.message || 'Error al actualizar suscripción' },
+      { error: safeErrorMessage(error, 'Error al actualizar suscripción') },
       { status: 500 }
     )
   }

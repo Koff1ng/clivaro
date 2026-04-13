@@ -5,6 +5,7 @@ import { PERMISSIONS } from '@/lib/permissions';
 import { getTenantIdFromSession, withTenantTx, withTenantRead } from '@/lib/tenancy';
 
 export const dynamic = 'force-dynamic'
+import { safeErrorMessage } from '@/lib/safe-error'
 
 export async function GET(
     req: Request,
@@ -34,7 +35,7 @@ export async function GET(
     } catch (error: any) {
         logger.error('Error fetching employee:', error);
         return NextResponse.json(
-            { error: 'Error al obtener empleado', details: error.message },
+            { error: 'Error al obtener empleado', details: safeErrorMessage(error) },
             { status: 500 }
         );
     }
@@ -111,7 +112,7 @@ export async function PUT(
             );
         }
         return NextResponse.json(
-            { error: 'Error al actualizar empleado', details: error.message },
+            { error: 'Error al actualizar empleado', details: safeErrorMessage(error) },
             { status: 500 }
         );
     }
@@ -157,7 +158,7 @@ export async function DELETE(
     } catch (error: any) {
         logger.error('Error deleting employee:', error);
         return NextResponse.json(
-            { error: 'Error al eliminar empleado', details: error.message },
+            { error: 'Error al eliminar empleado', details: safeErrorMessage(error) },
             { status: 500 }
         );
     }

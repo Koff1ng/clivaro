@@ -7,6 +7,7 @@ import { requireAnyPermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
 
 export const dynamic = 'force-dynamic'
+import { safeErrorMessage } from '@/lib/safe-error'
 
 const createSessionSchema = z.object({
   tableId: z.string().optional(),
@@ -118,7 +119,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json(session)
   } catch (error: any) {
-    return apiError(400, error.message || 'Failed to fetch table session')
+    return apiError(400, safeErrorMessage(error, 'Failed to fetch table session'))
   }
 }
 
@@ -191,6 +192,6 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(session)
   } catch (error: any) {
-    return apiError(400, error.message || 'Failed to open table session')
+    return apiError(400, safeErrorMessage(error, 'Failed to open table session'))
   }
 }

@@ -7,6 +7,7 @@ import { z } from 'zod'
 import bcrypt from 'bcryptjs'
 
 export const dynamic = 'force-dynamic'
+import { safeErrorMessage } from '@/lib/safe-error'
 
 const createUserSchema = z.object({
   username: z.string().min(3, 'El nombre de usuario debe tener al menos 3 caracteres').max(50, 'El nombre de usuario no puede exceder 50 caracteres'),
@@ -170,7 +171,7 @@ export async function POST(request: Request) {
     }
 
     if (error.message === 'El nombre de usuario ya está en uso' || error.message === 'El email ya está en uso') {
-      return NextResponse.json({ error: error.message }, { status: 400 })
+      return NextResponse.json({ error: safeErrorMessage(error) }, { status: 400 })
     }
 
     logger.error('Error creating user:', error)

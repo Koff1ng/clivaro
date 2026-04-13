@@ -5,6 +5,7 @@ import { PERMISSIONS } from '@/lib/permissions'
 import { createClient } from '@supabase/supabase-js'
 
 export const dynamic = 'force-dynamic'
+import { safeErrorMessage } from '@/lib/safe-error'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || ''
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
@@ -78,6 +79,6 @@ export async function POST(request: Request) {
     })
   } catch (error: any) {
     logger.error('Error uploading file:', error)
-    return NextResponse.json({ error: error.message || 'Upload failed' }, { status: 500 })
+    return NextResponse.json({ error: safeErrorMessage(error, 'Upload failed') }, { status: 500 })
   }
 }

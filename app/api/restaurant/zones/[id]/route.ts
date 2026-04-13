@@ -6,6 +6,7 @@ import { logger } from '@/lib/logger'
 import { ensureRestaurantMode } from '@/lib/restaurant'
 
 export const dynamic = 'force-dynamic'
+import { safeErrorMessage } from '@/lib/safe-error'
 
 /**
  * PATCH: Actualiza una zona de restaurante.
@@ -39,7 +40,7 @@ export async function PATCH(
         return NextResponse.json(zone)
     } catch (error: any) {
         logger.error(`Error in api/restaurant/zones/${id} PATCH`, error)
-        return NextResponse.json({ error: error.message }, { status: 500 })
+        return NextResponse.json({ error: safeErrorMessage(error) }, { status: 500 })
     }
 }
 
@@ -78,6 +79,6 @@ export async function DELETE(
         return NextResponse.json({ success: true })
     } catch (error: any) {
         logger.error(`Error in api/restaurant/zones/${id} DELETE`, error)
-        return NextResponse.json({ error: error.message }, { status: 500 })
+        return NextResponse.json({ error: safeErrorMessage(error) }, { status: 500 })
     }
 }

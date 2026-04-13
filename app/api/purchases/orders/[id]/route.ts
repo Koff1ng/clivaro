@@ -9,6 +9,7 @@ import { toDecimal } from '@/lib/numbers'
 import { logActivity } from '@/lib/activity'
 
 export const dynamic = 'force-dynamic'
+import { safeErrorMessage } from '@/lib/safe-error'
 
 const updatePurchaseOrderSchema = z.object({
   supplierId: z.string().min(1).optional(),
@@ -219,10 +220,10 @@ export async function PUT(
       return NextResponse.json({ error: 'Validation error', details: error.errors }, { status: 400 })
     }
     if (error.message === 'Purchase order not found') {
-      return NextResponse.json({ error: error.message }, { status: 404 })
+      return NextResponse.json({ error: safeErrorMessage(error) }, { status: 404 })
     }
     if (error.message === 'Cannot edit a received order with receipts') {
-      return NextResponse.json({ error: error.message }, { status: 400 })
+      return NextResponse.json({ error: safeErrorMessage(error) }, { status: 400 })
     }
     logger.error('Error updating purchase order:', error)
     return NextResponse.json({ error: 'Failed to update purchase order' }, { status: 500 })
@@ -259,10 +260,10 @@ export async function DELETE(
     return NextResponse.json({ success: true })
   } catch (error: any) {
     if (error.message === 'Purchase order not found') {
-      return NextResponse.json({ error: error.message }, { status: 404 })
+      return NextResponse.json({ error: safeErrorMessage(error) }, { status: 404 })
     }
     if (error.message === 'Cannot delete a received order') {
-      return NextResponse.json({ error: error.message }, { status: 400 })
+      return NextResponse.json({ error: safeErrorMessage(error) }, { status: 400 })
     }
     logger.error('Error deleting purchase order:', error)
     return NextResponse.json({ error: 'Failed to delete purchase order' }, { status: 500 })

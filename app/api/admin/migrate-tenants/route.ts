@@ -7,6 +7,7 @@ import { Client } from 'pg'
 import { getSchemaName } from '@/lib/tenant-utils'
 
 export const dynamic = 'force-dynamic'
+import { safeErrorMessage } from '@/lib/safe-error'
 
 // Helper to get direct DB URL
 function getDirectPostgresUrl(): string {
@@ -129,6 +130,6 @@ export async function POST(req: Request) {
         })
     } catch (error: any) {
         logger.error('[ADMIN_TENANT_MIGRATE] Error:', error)
-        return NextResponse.json({ error: 'Internal Server Error', details: error.message }, { status: 500 })
+        return NextResponse.json({ error: 'Internal Server Error', details: safeErrorMessage(error) }, { status: 500 })
     }
 }

@@ -7,6 +7,7 @@ import { PERMISSIONS } from '@/lib/permissions'
 import { withTenantTx } from '@/lib/tenancy'
 
 export const dynamic = 'force-dynamic'
+import { safeErrorMessage } from '@/lib/safe-error'
 
 const schema = z.object({
   username: z.string().min(1),
@@ -102,7 +103,7 @@ export async function POST(request: Request) {
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: 'Error de validación', details: error.errors }, { status: 400 })
     }
-    return NextResponse.json({ error: error.message || 'Error al autorizar descuento' }, { status: 500 })
+    return NextResponse.json({ error: safeErrorMessage(error, 'Error al autorizar descuento') }, { status: 500 })
   }
 }
 

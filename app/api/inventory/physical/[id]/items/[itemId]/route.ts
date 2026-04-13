@@ -6,6 +6,7 @@ import { withTenantTx, getTenantIdFromSession } from '@/lib/tenancy'
 import { z } from 'zod'
 
 export const dynamic = 'force-dynamic'
+import { safeErrorMessage } from '@/lib/safe-error'
 
 const updateItemSchema = z.object({
   countedQuantity: z.number().min(0),
@@ -103,7 +104,7 @@ export async function PUT(
       )
     }
     if (error.message === 'Item no encontrado') {
-      return NextResponse.json({ error: error.message }, { status: 404 })
+      return NextResponse.json({ error: safeErrorMessage(error) }, { status: 404 })
     }
     logger.error('Error updating item:', error)
     return NextResponse.json(

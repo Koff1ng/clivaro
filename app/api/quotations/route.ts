@@ -10,6 +10,7 @@ import { parseDateOnlyToDate } from '@/lib/date-only'
 import { logActivity } from '@/lib/activity'
 
 export const dynamic = 'force-dynamic'
+import { safeErrorMessage } from '@/lib/safe-error'
 
 const createQuotationSchema = z.object({
   customerId: z.string().optional(),
@@ -97,7 +98,7 @@ export async function GET(request: Request) {
     return NextResponse.json(result)
   } catch (error: any) {
     logger.error('Error fetching quotations:', error)
-    return NextResponse.json({ error: error.message || 'Failed to fetch quotations' }, { status: 500 })
+    return NextResponse.json({ error: safeErrorMessage(error, 'Failed to fetch quotations') }, { status: 500 })
   }
 }
 
@@ -226,7 +227,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Validation error', details: error.errors }, { status: 400 })
     }
     logger.error('Error creating quotation:', error)
-    return NextResponse.json({ error: error.message || 'Failed to create quotation' }, { status: 500 })
+    return NextResponse.json({ error: safeErrorMessage(error, 'Failed to create quotation') }, { status: 500 })
   }
 }
 

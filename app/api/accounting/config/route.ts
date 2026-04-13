@@ -10,6 +10,7 @@ import {
     updateAccountingConfig,
     validateConfig
 } from '@/lib/accounting/config-service'
+import { safeErrorMessage } from '@/lib/safe-error'
 
 export async function GET(request: Request) {
     const session = await requirePermission(request as any, PERMISSIONS.MANAGE_ACCOUNTING)
@@ -44,7 +45,7 @@ export async function POST(request: Request) {
         })
     } catch (error: any) {
         return NextResponse.json(
-            { error: error.message },
+            { error: safeErrorMessage(error) },
             { status: 400 }
         )
     }

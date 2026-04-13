@@ -6,6 +6,7 @@ import { withTenantTx, getTenantIdFromSession } from '@/lib/tenancy'
 import { z } from 'zod'
 
 export const dynamic = 'force-dynamic'
+import { safeErrorMessage } from '@/lib/safe-error'
 
 const createRoleSchema = z.object({
   name: z.string().min(2, 'El nombre debe tener al menos 2 caracteres'),
@@ -99,7 +100,7 @@ export async function POST(request: Request) {
     }
 
     if (error.message === 'Ya existe un rol con ese nombre') {
-      return NextResponse.json({ error: error.message }, { status: 400 })
+      return NextResponse.json({ error: safeErrorMessage(error) }, { status: 400 })
     }
 
     logger.error('Error creating role:', error)

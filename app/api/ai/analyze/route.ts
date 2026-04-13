@@ -8,6 +8,7 @@ import { crmAI } from '@/lib/ai/modules/crm';
 import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic'
+import { safeErrorMessage } from '@/lib/safe-error'
 
 export async function POST(req: NextRequest) {
     const session = await getServerSession(authOptions);
@@ -36,6 +37,6 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ result });
     } catch (error: any) {
         logger.error(`[AI_API_ERROR] ${module}:${action}`, error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return NextResponse.json({ error: safeErrorMessage(error) }, { status: 500 });
     }
 }

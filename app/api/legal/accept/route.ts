@@ -7,6 +7,7 @@ import { Client } from 'pg'
 import { getSchemaNameAsync } from '@/lib/tenant-utils'
 
 export const dynamic = 'force-dynamic'
+import { safeErrorMessage } from '@/lib/safe-error'
 
 /**
  * Gets a direct Postgres URL suitable for raw SQL (no pgbouncer, no schema param).
@@ -84,6 +85,6 @@ export async function POST(req: Request) {
         return NextResponse.json({ success: true })
     } catch (error: any) {
         logger.error('[LEGAL_API] Error saving acceptance:', error)
-        return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 })
+        return NextResponse.json({ error: safeErrorMessage(error, 'Internal Server Error') }, { status: 500 })
     }
 }

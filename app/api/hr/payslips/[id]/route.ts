@@ -4,6 +4,7 @@ import { PERMISSIONS } from '@/lib/permissions';
 import { getTenantIdFromSession, withTenantTx, withTenantRead } from '@/lib/tenancy';
 
 export const dynamic = 'force-dynamic'
+import { safeErrorMessage } from '@/lib/safe-error'
 
 export async function GET(
     req: Request,
@@ -26,7 +27,7 @@ export async function GET(
         if (!payslip) return NextResponse.json({ error: 'Recibo de nómina no encontrado' }, { status: 404 });
         return NextResponse.json(payslip);
     } catch (error: any) {
-        return NextResponse.json({ error: 'Error al obtener recibo', details: error.message }, { status: 500 });
+        return NextResponse.json({ error: 'Error al obtener recibo', details: safeErrorMessage(error) }, { status: 500 });
     }
 }
 
@@ -106,6 +107,6 @@ export async function PATCH(
 
         return NextResponse.json((result as any).updatedPayslip);
     } catch (error: any) {
-        return NextResponse.json({ error: 'Error al actualizar recibo', details: error.message }, { status: 500 });
+        return NextResponse.json({ error: 'Error al actualizar recibo', details: safeErrorMessage(error) }, { status: 500 });
     }
 }

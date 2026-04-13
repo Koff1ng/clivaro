@@ -5,6 +5,7 @@ import { withTenantRead, getTenantIdFromSession, TenancyError } from '@/lib/tena
 import { prisma as masterPrisma } from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
+import { safeErrorMessage } from '@/lib/safe-error'
 
 export async function GET(request: Request) {
     try {
@@ -89,6 +90,6 @@ export async function GET(request: Request) {
             analysis,
         })
     } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 })
+        return NextResponse.json({ error: safeErrorMessage(error) }, { status: 500 })
     }
 }

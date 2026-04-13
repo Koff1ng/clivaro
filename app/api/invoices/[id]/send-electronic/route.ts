@@ -12,6 +12,7 @@ import {
 } from '@/lib/electronic-billing'
 
 export const dynamic = 'force-dynamic'
+import { safeErrorMessage } from '@/lib/safe-error'
 
 export async function POST(
   request: Request,
@@ -169,7 +170,7 @@ export async function POST(
   } catch (error: any) {
     logger.error('Error sending invoice to electronic billing:', error)
     return NextResponse.json(
-      { error: error.message || 'Error al enviar factura' },
+      { error: safeErrorMessage(error, 'Error al enviar factura') },
       { status: 500 }
     )
   }

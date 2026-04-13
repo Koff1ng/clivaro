@@ -5,6 +5,7 @@ import { logger } from '@/lib/logger'
 import { getSchemaName } from '@/lib/tenant-utils'
 
 export const dynamic = 'force-dynamic'
+import { safeErrorMessage } from '@/lib/safe-error'
 
 // Función helper para ejecutar consultas con retry y manejo de errores de conexión
 async function executeWithRetry<T>(
@@ -90,7 +91,7 @@ export async function GET(
   } catch (error: any) {
     logger.error('Error fetching tenant:', error)
     return NextResponse.json(
-      { error: error.message || 'Error al obtener tenant' },
+      { error: safeErrorMessage(error, 'Error al obtener tenant') },
       { status: 500 }
     )
   }
@@ -150,7 +151,7 @@ export async function PUT(
   } catch (error: any) {
     logger.error('Error updating tenant:', error)
     return NextResponse.json(
-      { error: error.message || 'Error al actualizar tenant' },
+      { error: safeErrorMessage(error, 'Error al actualizar tenant') },
       { status: 500 }
     )
   }
@@ -263,7 +264,7 @@ export async function DELETE(
   } catch (error: any) {
     logger.error('Error deleting tenant:', error)
     return NextResponse.json(
-      { error: error.message || 'Error al eliminar tenant' },
+      { error: safeErrorMessage(error, 'Error al eliminar tenant') },
       { status: 500 }
     )
   }

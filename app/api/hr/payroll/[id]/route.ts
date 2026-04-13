@@ -5,6 +5,7 @@ import { PERMISSIONS } from '@/lib/permissions';
 import { getTenantIdFromSession, withTenantTx, withTenantRead } from '@/lib/tenancy';
 
 export const dynamic = 'force-dynamic'
+import { safeErrorMessage } from '@/lib/safe-error'
 
 /**
  * GET /api/hr/payroll/[id]
@@ -36,7 +37,7 @@ export async function GET(
         if (!period) return NextResponse.json({ error: 'Período no encontrado' }, { status: 404 });
         return NextResponse.json(period);
     } catch (error: any) {
-        return NextResponse.json({ error: 'Error al obtener período', details: error.message }, { status: 500 });
+        return NextResponse.json({ error: 'Error al obtener período', details: safeErrorMessage(error) }, { status: 500 });
     }
 }
 
@@ -96,7 +97,7 @@ export async function PATCH(
 
         return NextResponse.json(updated);
     } catch (error: any) {
-        return NextResponse.json({ error: 'Error al actualizar período', details: error.message }, { status: 500 });
+        return NextResponse.json({ error: 'Error al actualizar período', details: safeErrorMessage(error) }, { status: 500 });
     }
 }
 
@@ -129,6 +130,6 @@ export async function DELETE(
 
         return NextResponse.json({ success: true });
     } catch (error: any) {
-        return NextResponse.json({ error: 'Error al eliminar período', details: error.message }, { status: 500 });
+        return NextResponse.json({ error: 'Error al eliminar período', details: safeErrorMessage(error) }, { status: 500 });
     }
 }

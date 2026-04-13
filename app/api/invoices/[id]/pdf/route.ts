@@ -6,6 +6,7 @@ import { generateInvoicePDF } from '@/lib/pdf'
 import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
+import { safeErrorMessage } from '@/lib/safe-error'
 
 export async function GET(
   request: Request,
@@ -103,7 +104,7 @@ export async function GET(
     })
   } catch (error: any) {
     logger.error('Error generating invoice PDF', error)
-    return NextResponse.json({ error: 'Error al generar PDF', details: error.message }, { status: 500 })
+    return NextResponse.json({ error: 'Error al generar PDF', details: safeErrorMessage(error) }, { status: 500 })
   }
 }
 

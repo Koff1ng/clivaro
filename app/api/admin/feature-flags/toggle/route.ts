@@ -5,6 +5,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
+import { safeErrorMessage } from '@/lib/safe-error'
 
 export async function POST(request: Request) {
   try {
@@ -50,6 +51,6 @@ export async function POST(request: Request) {
     return NextResponse.json(result)
   } catch (error: any) {
     logger.error('Error toggling feature flag:', error)
-    return NextResponse.json({ error: error.message || 'Error interno' }, { status: 500 })
+    return NextResponse.json({ error: safeErrorMessage(error, 'Error interno') }, { status: 500 })
   }
 }

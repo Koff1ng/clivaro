@@ -5,6 +5,7 @@ import { getTenantIdFromSession, withTenantRead, withTenantTx } from '@/lib/tena
 import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
+import { safeErrorMessage } from '@/lib/safe-error'
 
 export async function GET(request: Request) {
     const session = await requirePermission(request as any, PERMISSIONS.MANAGE_USERS)
@@ -89,6 +90,6 @@ export async function PUT(request: Request) {
         return NextResponse.json({ success: true })
     } catch (error: any) {
         logger.error('Error saving Alegra config', error)
-        return NextResponse.json({ error: error.message || 'Error al guardar la configuración' }, { status: 500 })
+        return NextResponse.json({ error: safeErrorMessage(error, 'Error al guardar la configuración') }, { status: 500 })
     }
 }

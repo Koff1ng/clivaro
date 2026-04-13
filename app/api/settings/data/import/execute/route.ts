@@ -3,6 +3,7 @@ import { requirePermission } from '@/lib/api-middleware'
 import { getTenantIdFromSession, withTenantTx } from '@/lib/tenancy'
 
 export const dynamic = 'force-dynamic'
+import { safeErrorMessage } from '@/lib/safe-error'
 
 export async function POST(req: Request) {
     try {
@@ -240,6 +241,6 @@ export async function POST(req: Request) {
 
         return NextResponse.json(results)
     } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 })
+        return NextResponse.json({ error: safeErrorMessage(error) }, { status: 500 })
     }
 }

@@ -4,6 +4,7 @@ import { prisma } from '@/lib/db'
 import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
+import { safeErrorMessage } from '@/lib/safe-error'
 
 // Función helper para ejecutar consultas con retry y manejo de errores de conexión
 async function executeWithRetry<T>(
@@ -274,7 +275,7 @@ export async function GET(request: Request) {
     logger.error('Error fetching tenant plan:', error)
     return NextResponse.json(
       {
-        error: error.message || 'Error al obtener el plan',
+        error: safeErrorMessage(error, 'Error al obtener el plan'),
         details: error?.message || String(error),
         code: error?.code || 'UNKNOWN_ERROR',
       },

@@ -6,6 +6,7 @@ import { withTenantRead, withTenantTx } from '@/lib/tenancy'
 import { z } from 'zod'
 
 export const dynamic = 'force-dynamic'
+import { safeErrorMessage } from '@/lib/safe-error'
 
 const createMovementSchema = z.object({
   cashShiftId: z.string(),
@@ -137,7 +138,7 @@ export async function POST(request: Request) {
     }
     logger.error('Error creating cash movement:', error)
     return NextResponse.json(
-      { error: error.message || 'Failed to create cash movement' },
+      { error: safeErrorMessage(error, 'Failed to create cash movement') },
       { status: 500 }
     )
   }

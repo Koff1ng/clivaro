@@ -6,6 +6,7 @@ import { requirePermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
 import { getTenantIdFromSession } from '@/lib/tenancy'
 import { closePeriod, reopenPeriod, getPeriods } from '@/lib/accounting/period-service'
+import { safeErrorMessage } from '@/lib/safe-error'
 
 export async function GET(request: Request) {
     const session = await requirePermission(request as any, PERMISSIONS.MANAGE_ACCOUNTING)
@@ -56,7 +57,7 @@ export async function POST(request: Request) {
         }
     } catch (error: any) {
         return NextResponse.json(
-            { error: error.message },
+            { error: safeErrorMessage(error) },
             { status: 400 }
         )
     }

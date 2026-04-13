@@ -7,6 +7,7 @@ import { calculateRecipeCost } from '@/lib/recipes'
 import { z } from 'zod'
 
 export const dynamic = 'force-dynamic'
+import { safeErrorMessage } from '@/lib/safe-error'
 
 const recipeSchema = z.object({
     productId: z.string(),
@@ -115,6 +116,6 @@ export async function POST(request: Request) {
         return NextResponse.json(result)
     } catch (error: any) {
         logger.error('[Recipe API] Error:', error)
-        return NextResponse.json({ error: error.message || 'Failed to save recipe' }, { status: 500 })
+        return NextResponse.json({ error: safeErrorMessage(error, 'Failed to save recipe') }, { status: 500 })
     }
 }

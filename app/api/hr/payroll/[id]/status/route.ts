@@ -7,6 +7,7 @@ import { isYabiConfigured } from '@/lib/yabi/client'
 import { checkDocumentStatus } from '@/lib/yabi/payroll-service'
 
 export const dynamic = 'force-dynamic'
+import { safeErrorMessage } from '@/lib/safe-error'
 
 /**
  * GET /api/hr/payroll/[id]/status
@@ -122,7 +123,7 @@ export async function GET(
   } catch (error: any) {
     logger.error('Error consultando estado DIAN:', error)
     return NextResponse.json(
-      { error: 'Error al consultar estado DIAN', details: error.message },
+      { error: 'Error al consultar estado DIAN', details: safeErrorMessage(error) },
       { status: 500 }
     )
   }

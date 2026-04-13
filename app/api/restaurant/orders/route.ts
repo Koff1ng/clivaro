@@ -7,6 +7,7 @@ import { requireAnyPermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
 
 export const dynamic = 'force-dynamic'
+import { safeErrorMessage } from '@/lib/safe-error'
 
 const createOrderSchema = z.object({
   sessionId: z.string().min(1),
@@ -126,6 +127,6 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(order)
   } catch (error: any) {
-    return apiError(400, error.message || 'Failed to create order')
+    return apiError(400, safeErrorMessage(error, 'Failed to create order'))
   }
 }

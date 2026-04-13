@@ -7,6 +7,7 @@ import { z } from 'zod'
 import { logActivity } from '@/lib/activity'
 
 export const dynamic = 'force-dynamic'
+import { safeErrorMessage } from '@/lib/safe-error'
 
 export async function GET(
   request: Request,
@@ -133,10 +134,10 @@ export async function PUT(
     return NextResponse.json(result)
   } catch (error: any) {
     if (error.message === 'Inventario físico no encontrado') {
-      return NextResponse.json({ error: error.message }, { status: 404 })
+      return NextResponse.json({ error: safeErrorMessage(error) }, { status: 404 })
     }
     if (error.message === 'Invalid action') {
-      return NextResponse.json({ error: error.message }, { status: 400 })
+      return NextResponse.json({ error: safeErrorMessage(error) }, { status: 400 })
     }
     logger.error('Error updating physical inventory:', error)
     return NextResponse.json({ error: 'Failed to update physical inventory' }, { status: 500 })

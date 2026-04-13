@@ -6,6 +6,7 @@ import { withTenantRead, withTenantTx } from '@/lib/tenancy'
 import { z } from 'zod'
 
 export const dynamic = 'force-dynamic'
+import { safeErrorMessage } from '@/lib/safe-error'
 
 const createCustomerSchema = z.object({
   name: z.string().min(1),
@@ -128,7 +129,7 @@ export async function POST(request: Request) {
   } catch (error: any) {
     if (error?.code === 'CUSTOMER_DUPLICATE') {
       return NextResponse.json(
-        { error: error.message, code: 'CUSTOMER_DUPLICATE' },
+        { error: safeErrorMessage(error), code: 'CUSTOMER_DUPLICATE' },
         { status: 409 }
       )
     }

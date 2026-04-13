@@ -5,6 +5,7 @@ import { withTenantRead, getTenantIdFromSession } from '@/lib/tenancy'
 import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
+import { safeErrorMessage } from '@/lib/safe-error'
 
 export async function GET(
     request: Request,
@@ -47,6 +48,6 @@ export async function GET(
         return NextResponse.json(creditNote)
     } catch (error: any) {
         logger.error('Error fetching credit note', error)
-        return NextResponse.json({ error: error.message || 'Error al obtener nota crédito' }, { status: 500 })
+        return NextResponse.json({ error: safeErrorMessage(error, 'Error al obtener nota crédito') }, { status: 500 })
     }
 }

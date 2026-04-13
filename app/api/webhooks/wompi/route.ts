@@ -5,6 +5,7 @@ import { verifyEventSignature, calculateEndDate } from '@/lib/wompi'
 import type { WompiEvent } from '@/lib/wompi'
 
 export const dynamic = 'force-dynamic'
+import { safeErrorMessage } from '@/lib/safe-error'
 
 /**
  * POST /api/webhooks/wompi
@@ -129,6 +130,6 @@ export async function POST(request: Request) {
   } catch (error: any) {
     logger.error('[Wompi Webhook] Error:', error)
     // Always return 200 to prevent Wompi from retrying indefinitely
-    return NextResponse.json({ received: true, error: error.message })
+    return NextResponse.json({ received: true, error: safeErrorMessage(error) })
   }
 }

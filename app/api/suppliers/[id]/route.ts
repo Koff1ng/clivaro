@@ -85,8 +85,7 @@ export async function GET(
     logger.error('Error fetching supplier:', error)
     return NextResponse.json(
       {
-        error: error.message || 'Failed to fetch supplier',
-        details: process.env.NODE_ENV === 'development' ? error.stack : undefined,
+        error: 'Failed to fetch supplier',
       },
       { status: 500 }
     )

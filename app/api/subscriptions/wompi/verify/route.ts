@@ -6,6 +6,7 @@ import { getTransaction, getTransactionByReference, calculateEndDate } from '@/l
 import type { WompiTransaction } from '@/lib/wompi'
 
 export const dynamic = 'force-dynamic'
+import { safeErrorMessage } from '@/lib/safe-error'
 
 /**
  * GET /api/subscriptions/wompi/verify?ref=REFERENCE&id=TRANSACTION_ID&planId=PLAN_ID
@@ -192,6 +193,6 @@ export async function GET(request: Request) {
     })
   } catch (error: any) {
     logger.error('[Wompi Verify] Error:', error)
-    return NextResponse.json({ error: error.message || 'Error interno' }, { status: 500 })
+    return NextResponse.json({ error: safeErrorMessage(error, 'Error interno') }, { status: 500 })
   }
 }

@@ -5,6 +5,7 @@ import { PERMISSIONS } from "@/lib/permissions";
 import { ensureRestaurantMode, hashPin } from "@/lib/restaurant";
 
 export const dynamic = 'force-dynamic';
+import { safeErrorMessage } from '@/lib/safe-error'
 
 export async function PATCH(
   req: NextRequest,
@@ -36,7 +37,7 @@ export async function PATCH(
 
     return NextResponse.json({ waiter });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: safeErrorMessage(error) }, { status: 500 });
   }
 }
 
@@ -62,6 +63,6 @@ export async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: safeErrorMessage(error) }, { status: 500 });
   }
 }

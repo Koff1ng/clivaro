@@ -4,6 +4,7 @@ import { PERMISSIONS } from '@/lib/permissions'
 import { withTenantRead, getTenantIdFromSession } from '@/lib/tenancy'
 
 export const dynamic = 'force-dynamic'
+import { safeErrorMessage } from '@/lib/safe-error'
 
 /**
  * GET /api/credit-notes
@@ -73,6 +74,6 @@ export async function GET(request: Request) {
 
         return NextResponse.json(creditNotes)
     } catch (error: any) {
-        return NextResponse.json({ error: error.message || 'Error al listar notas crédito' }, { status: 500 })
+        return NextResponse.json({ error: safeErrorMessage(error, 'Error al listar notas crédito') }, { status: 500 })
     }
 }

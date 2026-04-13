@@ -6,6 +6,7 @@ import { logger } from '@/lib/logger'
 import { ensureRestaurantMode, hashPin } from '@/lib/restaurant'
 
 export const dynamic = 'force-dynamic'
+import { safeErrorMessage } from '@/lib/safe-error'
 
 /**
  * GET: Lista todos los meseros.
@@ -41,7 +42,7 @@ export async function GET(request: Request) {
         return NextResponse.json(waiters)
     } catch (error: any) {
         logger.error('Error in api/restaurant/waiters GET', error)
-        return NextResponse.json({ error: error.message }, { status: 500 })
+        return NextResponse.json({ error: safeErrorMessage(error) }, { status: 500 })
     }
 }
 
@@ -79,6 +80,6 @@ export async function POST(request: Request) {
         return NextResponse.json(waiterWithoutPin)
     } catch (error: any) {
         logger.error('Error in api/restaurant/waiters POST', error)
-        return NextResponse.json({ error: error.message }, { status: 500 })
+        return NextResponse.json({ error: safeErrorMessage(error) }, { status: 500 })
     }
 }

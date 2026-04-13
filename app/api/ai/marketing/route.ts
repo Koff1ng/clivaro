@@ -11,6 +11,7 @@ import {
 } from '@/lib/gemini'
 
 export const dynamic = 'force-dynamic'
+import { safeErrorMessage } from '@/lib/safe-error'
 export const maxDuration = 30 // Gemini can take a few seconds
 
 export async function POST(request: Request) {
@@ -71,7 +72,7 @@ export async function POST(request: Request) {
   } catch (error: any) {
     logger.error('[AI Marketing] Error:', error)
     return NextResponse.json(
-      { error: error.message || 'AI request failed' },
+      { error: safeErrorMessage(error, 'AI request failed') },
       { status: 500 }
     )
   }

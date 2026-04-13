@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import * as XLSX from 'xlsx'
 
 export const dynamic = 'force-dynamic'
+import { safeErrorMessage } from '@/lib/safe-error'
 
 export async function POST(req: Request) {
     try {
@@ -88,6 +89,6 @@ export async function POST(req: Request) {
         })
 
     } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 })
+        return NextResponse.json({ error: safeErrorMessage(error) }, { status: 500 })
     }
 }

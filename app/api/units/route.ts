@@ -5,6 +5,7 @@ import { withTenantRead, withTenantTx } from '@/lib/tenancy'
 import { z } from 'zod'
 
 export const dynamic = 'force-dynamic'
+import { safeErrorMessage } from '@/lib/safe-error'
 
 const unitSchema = z.object({
     name: z.string().min(1),
@@ -52,6 +53,6 @@ export async function POST(request: Request) {
         if (error.code === 'P2002') {
             return NextResponse.json({ error: 'Ya existe una unidad con ese nombre' }, { status: 400 })
         }
-        return NextResponse.json({ error: error.message || 'Failed to create unit' }, { status: 500 })
+        return NextResponse.json({ error: safeErrorMessage(error, 'Failed to create unit') }, { status: 500 })
     }
 }

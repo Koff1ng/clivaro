@@ -7,6 +7,7 @@ import { getRestaurantConfig, updateRestaurantConfig } from '@/lib/restaurant'
 import { prisma as masterPrisma } from '@/lib/db'
 
 export const dynamic = 'force-dynamic';
+import { safeErrorMessage } from '@/lib/safe-error'
 
 /**
  * GET: Obtiene la configuracion del restaurante para el tenant actual.
@@ -32,7 +33,7 @@ export async function GET(request: Request) {
         })
     } catch (error: any) {
         logger.error('Error in api/restaurant/config GET', error)
-        return NextResponse.json({ error: error.message }, { status: 500 })
+        return NextResponse.json({ error: safeErrorMessage(error) }, { status: 500 })
     }
 }
 
@@ -80,6 +81,6 @@ export async function POST(request: Request) {
         })
     } catch (error: any) {
         logger.error('Error in api/restaurant/config POST', error)
-        return NextResponse.json({ error: error.message }, { status: 500 })
+        return NextResponse.json({ error: safeErrorMessage(error) }, { status: 500 })
     }
 }

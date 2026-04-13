@@ -5,6 +5,7 @@ import { getPaymentInfo } from '@/lib/mercadopago'
 import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
+import { safeErrorMessage } from '@/lib/safe-error'
 
 export async function GET(
   request: Request,
@@ -86,7 +87,7 @@ export async function GET(
     })
   } catch (error: any) {
     logger.error('Error getting Mercado Pago payment status', error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ error: safeErrorMessage(error) }, { status: 500 })
   }
 }
 

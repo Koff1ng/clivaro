@@ -8,6 +8,7 @@ import { prisma } from '@/lib/db'
 import { withTenantRead } from '@/lib/tenancy'
 
 export const dynamic = 'force-dynamic'
+import { safeErrorMessage } from '@/lib/safe-error'
 export const maxDuration = 30
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '')
@@ -317,7 +318,7 @@ export async function POST(request: Request) {
   } catch (error: any) {
     logger.error('[Clivi] Error:', error)
     return NextResponse.json(
-      { error: error.message || 'Clivi tuvo un error 🐙' },
+      { error: safeErrorMessage(error, 'Clivi tuvo un error 🐙') },
       { status: 500 }
     )
   }

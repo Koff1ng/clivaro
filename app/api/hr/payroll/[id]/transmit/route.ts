@@ -7,6 +7,7 @@ import { isYabiConfigured } from '@/lib/yabi/client'
 import { transmitPayslip, type EmployerInfo, type PayslipWithEmployee, type TransmitResult } from '@/lib/yabi/payroll-service'
 
 export const dynamic = 'force-dynamic'
+import { safeErrorMessage } from '@/lib/safe-error'
 
 /**
  * POST /api/hr/payroll/[id]/transmit
@@ -157,7 +158,7 @@ export async function POST(
   } catch (error: any) {
     logger.error('Error transmitiendo nómina:', error)
     return NextResponse.json(
-      { error: 'Error al transmitir nómina electrónica', details: error.message },
+      { error: 'Error al transmitir nómina electrónica', details: safeErrorMessage(error) },
       { status: 500 }
     )
   }

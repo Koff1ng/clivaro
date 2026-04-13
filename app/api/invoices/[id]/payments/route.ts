@@ -7,6 +7,7 @@ import { logActivity } from '@/lib/activity'
 import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
+import { safeErrorMessage } from '@/lib/safe-error'
 
 const createPaymentSchema = z.object({
   amount: z.number().min(0.01, "El monto debe ser mayor a 0"),
@@ -157,7 +158,7 @@ export async function POST(
   } catch (error: any) {
     if (error instanceof z.ZodError) return NextResponse.json({ error: 'Error de validación', details: error.errors }, { status: 400 })
     logger.error('Error creating payment', error)
-    return NextResponse.json({ error: error.message || 'Error al registrar el pago' }, { status: 500 })
+    return NextResponse.json({ error: safeErrorMessage(error, 'Error al registrar el pago') }, { status: 500 })
   }
 }
 

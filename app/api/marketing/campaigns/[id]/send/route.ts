@@ -13,6 +13,7 @@ import {
 } from '@/lib/marketing/email-assets'
 
 export const dynamic = 'force-dynamic'
+import { safeErrorMessage } from '@/lib/safe-error'
 
 export async function POST(
   request: Request,
@@ -125,6 +126,6 @@ export async function POST(
     return NextResponse.json({ success: true, ...result })
   } catch (error: any) {
     logger.error('Error sending campaign', error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ error: safeErrorMessage(error) }, { status: 500 })
   }
 }

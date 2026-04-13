@@ -7,6 +7,7 @@ import { z } from 'zod'
 import { parseDateOnlyToDate } from '@/lib/date-only'
 
 export const dynamic = 'force-dynamic'
+import { safeErrorMessage } from '@/lib/safe-error'
 
 const updateLeadSchema = z.object({
   name: z.string().min(1).optional(),
@@ -155,7 +156,7 @@ export async function PUT(
       return NextResponse.json({ error: 'Validation error', details: error.errors }, { status: 400 })
     }
     if (error.message === 'Lead not found') {
-      return NextResponse.json({ error: error.message }, { status: 404 })
+      return NextResponse.json({ error: safeErrorMessage(error) }, { status: 404 })
     }
     logger.error('Error updating lead:', error)
     return NextResponse.json({ error: 'Failed to update lead' }, { status: 500 })

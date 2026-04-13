@@ -8,6 +8,7 @@ import { generateQuotationPDF } from '@/lib/pdf'
 import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
+import { safeErrorMessage } from '@/lib/safe-error'
 
 export async function POST(
   request: Request,
@@ -126,7 +127,7 @@ export async function POST(
     })
   } catch (error: any) {
     logger.error('Error sending quotation', error)
-    return NextResponse.json({ error: error.message || 'Error al enviar la cotización' }, { status: 500 })
+    return NextResponse.json({ error: safeErrorMessage(error, 'Error al enviar la cotización') }, { status: 500 })
   }
 }
 
@@ -364,7 +365,7 @@ function generateQuotationHTML(quotation: any): string {
   `
   } catch (error: any) {
     logger.error('Error in generateQuotationHTML', error)
-    throw new Error(`Error al generar HTML: ${error.message}`)
+    throw new Error(`Error al generar HTML: ${safeErrorMessage(error)}`)
   }
 }
 

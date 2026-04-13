@@ -5,6 +5,7 @@ import { logger } from '@/lib/logger'
 import { z } from 'zod'
 
 export const dynamic = 'force-dynamic'
+import { safeErrorMessage } from '@/lib/safe-error'
 
 const changePlanSchema = z.object({
   newPlanId: z.string().min(1, 'Plan ID es requerido'),
@@ -206,7 +207,7 @@ export async function PUT(
 
     return NextResponse.json(
       { 
-        error: error.message || 'Error al cambiar el plan',
+        error: safeErrorMessage(error, 'Error al cambiar el plan'),
         details: process.env.NODE_ENV === 'development' ? error.message : undefined,
       },
       { status: 500 }

@@ -7,6 +7,7 @@ import { z } from 'zod'
 import { Prisma } from '@prisma/client'
 
 export const dynamic = 'force-dynamic'
+import { safeErrorMessage } from '@/lib/safe-error'
 
 const updateInvoiceSchema = z.object({
   status: z.enum(['EMITIDA', 'PAGADA', 'ANULADA', 'EN_COBRANZA', 'ISSUED', 'PAID', 'VOID', 'PARCIAL', 'PARTIAL']).optional(), // Compatibilidad con estados antiguos
@@ -116,10 +117,10 @@ export async function GET(
 
     return NextResponse.json(
       {
-        error: error.message === 'Invoice not found' ? 'Invoice not found' : 'Failed to fetch invoice',
-        message: error.message || 'Unknown error',
+        error: safeErrorMessage(error) === 'Invoice not found' ? 'Invoice not found' : 'Failed to fetch invoice',
+        message: safeErrorMessage(error, 'Unknown error'),
       },
-      { status: error.message === 'Invoice not found' ? 404 : 500 }
+      { status: safeErrorMessage(error) === 'Invoice not found' ? 404 : 500 }
     )
   }
 }
@@ -337,8 +338,8 @@ export async function DELETE(
   } catch (error: any) {
     logger.error('Error deleting invoice', error, { endpoint: '/api/invoices/[id]', method: 'DELETE', invoiceId })
     return NextResponse.json(
-      { error: error.message || 'Failed to delete invoice' },
-      { status: error.message === 'Invoice not found' ? 404 : 400 }
+      { error: safeErrorMessage(error, 'Failed to delete invoice') },
+      { status: safeErrorMessage(error) === 'Invoice not found' ? 404 : 400 }
     )
   }
 }

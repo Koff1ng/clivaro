@@ -7,6 +7,7 @@ import * as path from 'path'
 import { prisma as masterPrisma } from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
+import { safeErrorMessage } from '@/lib/safe-error'
 
 // Función helper para ejecutar consultas con retry y manejo de errores de conexión
 async function executeWithRetry<T>(
@@ -82,7 +83,7 @@ export async function GET(request: Request) {
   } catch (error: any) {
     logger.error('Error fetching tenants', error, { endpoint: '/api/admin/tenants', method: 'GET' })
     return NextResponse.json(
-      { error: error.message || 'Error al obtener tenants' },
+      { error: safeErrorMessage(error, 'Error al obtener tenants') },
       { status: 500 }
     )
   }
@@ -315,7 +316,7 @@ export async function POST(request: Request) {
   } catch (error: any) {
     logger.error('Error creating tenant', error, { endpoint: '/api/admin/tenants', method: 'POST' })
     return NextResponse.json(
-      { error: error.message || 'Error al crear tenant' },
+      { error: safeErrorMessage(error, 'Error al crear tenant') },
       { status: 500 }
     )
   }

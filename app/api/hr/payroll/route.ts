@@ -6,6 +6,7 @@ import { getTenantIdFromSession, withTenantTx, withTenantRead } from '@/lib/tena
 import { calculatePayroll, type PayrollEmployeeInput } from '@/lib/payroll/calculations';
 
 export const dynamic = 'force-dynamic'
+import { safeErrorMessage } from '@/lib/safe-error'
 
 /**
  * GET /api/hr/payroll
@@ -34,7 +35,7 @@ export async function GET(req: Request) {
     } catch (error: any) {
         logger.error('Error fetching payroll periods:', error);
         return NextResponse.json(
-            { error: 'Error al obtener períodos de nómina', details: error.message },
+            { error: 'Error al obtener períodos de nómina', details: safeErrorMessage(error) },
             { status: 500 }
         );
     }
@@ -181,7 +182,7 @@ export async function POST(req: Request) {
     } catch (error: any) {
         logger.error('Error creating payroll period:', error);
         return NextResponse.json(
-            { error: 'Error al generar la nómina', details: error.message },
+            { error: 'Error al generar la nómina', details: safeErrorMessage(error) },
             { status: 500 }
         );
     }

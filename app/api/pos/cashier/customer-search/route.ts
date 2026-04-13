@@ -4,6 +4,7 @@ import { PERMISSIONS } from '@/lib/permissions'
 import { withTenantRead } from '@/lib/tenancy'
 
 export const dynamic = 'force-dynamic'
+import { safeErrorMessage } from '@/lib/safe-error'
 
 export async function GET(request: Request) {
   const session = await requireAnyPermission(request as any, [
@@ -36,6 +37,6 @@ export async function GET(request: Request) {
 
     return NextResponse.json(customers)
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ error: safeErrorMessage(error) }, { status: 500 })
   }
 }

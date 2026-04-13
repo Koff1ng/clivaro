@@ -6,6 +6,7 @@ import { z } from 'zod'
 import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
+import { safeErrorMessage } from '@/lib/safe-error'
 
 const updateCampaignSchema = z.object({
   name: z.string().min(1).optional(),
@@ -46,7 +47,7 @@ export async function GET(
     return NextResponse.json(campaign)
   } catch (error: any) {
     logger.error('Error fetching campaign', error)
-    return NextResponse.json({ error: 'Failed to fetch campaign', details: error.message }, { status: 500 })
+    return NextResponse.json({ error: 'Failed to fetch campaign', details: safeErrorMessage(error) }, { status: 500 })
   }
 }
 
@@ -87,7 +88,7 @@ export async function PUT(
   } catch (error: any) {
     if (error instanceof z.ZodError) return NextResponse.json({ error: 'Validation error', details: error.errors }, { status: 400 })
     logger.error('Error updating campaign', error)
-    return NextResponse.json({ error: 'Failed to update campaign', details: error.message }, { status: 500 })
+    return NextResponse.json({ error: 'Failed to update campaign', details: safeErrorMessage(error) }, { status: 500 })
   }
 }
 
@@ -111,6 +112,6 @@ export async function DELETE(
     return NextResponse.json({ success: true })
   } catch (error: any) {
     logger.error('Error deleting campaign', error)
-    return NextResponse.json({ error: 'Failed to delete campaign', details: error.message }, { status: 500 })
+    return NextResponse.json({ error: 'Failed to delete campaign', details: safeErrorMessage(error) }, { status: 500 })
   }
 }

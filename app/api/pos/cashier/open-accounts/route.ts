@@ -5,6 +5,7 @@ import { PERMISSIONS } from '@/lib/permissions'
 import { getTenantIdFromSession, withTenantRead } from '@/lib/tenancy'
 
 export const dynamic = 'force-dynamic'
+import { safeErrorMessage } from '@/lib/safe-error'
 
 /**
  * GET: Lists all open table sessions for the cashier view.
@@ -93,6 +94,6 @@ export async function GET(request: Request) {
         })
     } catch (error: any) {
         logger.error('Error in open-accounts GET:', error)
-        return NextResponse.json({ error: error.message }, { status: 500 })
+        return NextResponse.json({ error: safeErrorMessage(error) }, { status: 500 })
     }
 }

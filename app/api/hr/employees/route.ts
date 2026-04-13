@@ -5,6 +5,7 @@ import { PERMISSIONS } from '@/lib/permissions';
 import { getTenantIdFromSession, withTenantTx, withTenantRead } from '@/lib/tenancy';
 
 export const dynamic = 'force-dynamic'
+import { safeErrorMessage } from '@/lib/safe-error'
 
 export async function GET(req: Request) {
     try {
@@ -47,7 +48,7 @@ export async function GET(req: Request) {
     } catch (error: any) {
         logger.error('Error fetching employees:', error);
         return NextResponse.json(
-            { error: 'Error al obtener empleados', details: error.message },
+            { error: 'Error al obtener empleados', details: safeErrorMessage(error) },
             { status: 500 }
         );
     }
@@ -123,7 +124,7 @@ export async function POST(req: Request) {
             );
         }
         return NextResponse.json(
-            { error: 'Error al crear empleado', details: error.message },
+            { error: 'Error al crear empleado', details: safeErrorMessage(error) },
             { status: 500 }
         );
     }

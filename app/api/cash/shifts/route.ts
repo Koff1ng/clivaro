@@ -7,6 +7,7 @@ import { z } from 'zod'
 import { logActivity } from '@/lib/activity'
 
 export const dynamic = 'force-dynamic'
+import { safeErrorMessage } from '@/lib/safe-error'
 
 // Helper function to safely serialize dates
 function serializeDate(date: Date | null | undefined): string | null {
@@ -109,7 +110,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ shifts: serializedShifts })
   } catch (error: any) {
     logger.error('Error fetching cash shifts:', error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ error: safeErrorMessage(error) }, { status: 500 })
   }
 }
 
@@ -240,6 +241,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
   } catch (error: any) {
     logger.error('Error managing cash shift:', error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ error: safeErrorMessage(error) }, { status: 500 })
   }
 }

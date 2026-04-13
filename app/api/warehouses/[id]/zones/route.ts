@@ -6,6 +6,7 @@ import { withTenantTx, getTenantIdFromSession } from '@/lib/tenancy'
 import { z } from 'zod'
 
 export const dynamic = 'force-dynamic'
+import { safeErrorMessage } from '@/lib/safe-error'
 
 const zoneSchema = z.object({
     name: z.string().min(1, 'El nombre es obligatorio'),
@@ -79,6 +80,6 @@ export async function POST(
         if (error.code === 'P2002' || error.message?.includes('Unique constraint')) {
             return NextResponse.json({ error: 'Ya existe una zona con este nombre en este almacén' }, { status: 400 })
         }
-        return NextResponse.json({ error: error.message || 'Failed to create zone' }, { status: 500 })
+        return NextResponse.json({ error: safeErrorMessage(error, 'Failed to create zone') }, { status: 500 })
     }
 }
