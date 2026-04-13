@@ -54,6 +54,16 @@ export const FOOTER_TEMPLATES: Record<FooterTemplate, { label: string; descripti
     },
 }
 
+export interface BoldSections {
+    companyName: boolean
+    documentTitle: boolean
+    customerName: boolean
+    itemNames: boolean
+    totals: boolean
+    footer: boolean
+    legalText: boolean
+}
+
 export interface TicketDesignSettings {
     templateStyle: 'classic' | 'modern' | 'minimal'
     headerAlignment: 'left' | 'center' | 'right'
@@ -81,6 +91,8 @@ export interface TicketDesignSettings {
     fontWeight: 'normal' | 'bold'
     headerFontSize: 'medium' | 'large' | 'xlarge'
     lineSpacing: 'compact' | 'normal' | 'relaxed'
+    // Per-section bold configuration
+    boldSections?: BoldSections
 }
 
 interface TicketEditorProps {
@@ -96,6 +108,16 @@ interface TicketEditorProps {
     }
     onChange: (settings: TicketDesignSettings) => void
     onClose?: () => void
+}
+
+const defaultBoldSections: BoldSections = {
+    companyName: true,
+    documentTitle: true,
+    customerName: true,
+    itemNames: false,
+    totals: true,
+    footer: true,
+    legalText: false,
 }
 
 const defaultSettings: TicketDesignSettings = {
@@ -122,7 +144,8 @@ const defaultSettings: TicketDesignSettings = {
     fontSize: 'medium',
     fontWeight: 'bold',
     headerFontSize: 'large',
-    lineSpacing: 'normal'
+    lineSpacing: 'normal',
+    boldSections: defaultBoldSections,
 }
 
 // Sample invoice data for preview
@@ -466,6 +489,42 @@ export function TicketEditor({ settings: initialSettings, companyInfo, onChange,
                     </div>
                 </div>
 
+                {/* Per-Section Bold Configuration */}
+                <div className="space-y-3 pt-4 border-t">
+                    <Label className="font-medium">Textos en negrita por sección</Label>
+                    <p className="text-xs text-muted-foreground">
+                        Elige qué secciones del ticket se imprimen en negrita. Permite resaltar elementos clave sin aplicar negrita a todo el documento.
+                    </p>
+                    <div className="grid grid-cols-1 gap-2.5 mt-2">
+                        {[
+                            { key: 'companyName' as const, label: 'Nombre de empresa', desc: 'El nombre comercial en el encabezado' },
+                            { key: 'documentTitle' as const, label: 'Título del documento', desc: 'FACTURA ELECTRÓNICA y número' },
+                            { key: 'customerName' as const, label: 'Nombre del cliente', desc: 'Resalta el nombre del cliente' },
+                            { key: 'itemNames' as const, label: 'Nombres de productos', desc: 'Los nombres en la lista de ítems' },
+                            { key: 'totals' as const, label: 'Totales y subtotales', desc: 'Subtotal, impuestos y TOTAL' },
+                            { key: 'footer' as const, label: 'Frase de agradecimiento', desc: '"Gracias por su compra" y similar' },
+                            { key: 'legalText' as const, label: 'Texto legal', desc: 'Aviso de letra de cambio y condiciones' },
+                        ].map(({ key, label, desc }) => {
+                            const bs = settings.boldSections || defaultBoldSections
+                            return (
+                                <div key={key} className="flex items-center justify-between p-3 rounded-xl border bg-white hover:bg-slate-50 transition-colors">
+                                    <div className="flex-1">
+                                        <div className="text-sm font-medium">{label}</div>
+                                        <div className="text-[10px] text-muted-foreground">{desc}</div>
+                                    </div>
+                                    <Switch
+                                        checked={bs[key]}
+                                        onCheckedChange={(checked) => {
+                                            const currentBs = settings.boldSections || { ...defaultBoldSections }
+                                            updateSetting('boldSections' as any, { ...currentBs, [key]: checked })
+                                        }}
+                                    />
+                                </div>
+                            )
+                        })}
+                    </div>
+                </div>
+
                 {/* Footer Template */}
                 <div className="space-y-3 pt-4 border-t">
                     <Label className="font-medium">Plantilla legal de pie de página</Label>
@@ -600,7 +659,8 @@ export function TicketEditor({ settings: initialSettings, companyInfo, onChange,
                                 </div>
                             )}
                             <div className={cn(
-                                "font-bold uppercase",
+                                "uppercase",
+                                (settings.boldSections?.companyName ?? true) && "font-bold",
                                 settings.headerFontSize === 'medium' && "text-sm",
                                 settings.headerFontSize === 'large' && "text-base",
                                 settings.headerFontSize === 'xlarge' && "text-lg"
@@ -618,16 +678,16 @@ export function TicketEditor({ settings: initialSettings, companyInfo, onChange,
 
                         {/* ═══ TITLE ═══ */}
                         {settings.templateStyle === 'modern' ? (
-                            <div className="text-center font-bold py-2 border-y-2 border-black my-2 bg-black text-white">
+                            <div className={cn("text-center py-2 border-y-2 border-black my-2 bg-black text-white", (settings.boldSections?.documentTitle ?? true) && 'font-bold')}>
                                 FACTURA ELECTRÓNICA<br />
                                 N° {sampleInvoice.number}
                             </div>
                         ) : settings.templateStyle === 'minimal' ? (
-                            <div className="text-center font-bold py-2 border-y border-gray-300 my-2 text-[11px]">
+                            <div className={cn("text-center py-2 border-y border-gray-300 my-2 text-[11px]", (settings.boldSections?.documentTitle ?? true) && 'font-bold')}>
                                 FE N° {sampleInvoice.number}
                             </div>
                         ) : (
-                            <div className="text-center font-bold py-2 border-y border-dashed my-2">
+                            <div className={cn("text-center py-2 border-y border-dashed my-2", (settings.boldSections?.documentTitle ?? true) && 'font-bold')}>
                                 Factura electrónica de venta<br />
                                 N° {sampleInvoice.number}
                             </div>
@@ -651,7 +711,7 @@ export function TicketEditor({ settings: initialSettings, companyInfo, onChange,
                             settings.templateStyle === 'modern' && 'border-t-2 border-gray-200 px-2',
                             settings.templateStyle === 'minimal' && 'border-t border-gray-200'
                         )}>
-                            <div className="font-bold">{sampleInvoice.customer.name}</div>
+                            <div className={cn((settings.boldSections?.customerName ?? true) && 'font-bold')}>{sampleInvoice.customer.name}</div>
                             <div className="text-[10px]">Tel: {sampleInvoice.customer.phone}</div>
                             {settings.templateStyle !== 'minimal' && <div className="text-[10px]">{sampleInvoice.customer.id}</div>}
                         </div>
@@ -667,7 +727,7 @@ export function TicketEditor({ settings: initialSettings, companyInfo, onChange,
                                 )}>
                                     {settings.groupData ? (
                                         <div>
-                                            <div>{idx + 1}. {item.name}</div>
+                                            <div className={cn(settings.boldSections?.itemNames && 'font-bold')}>{idx + 1}. {item.name}</div>
                                             <div className="pl-3">
                                                 {item.qty} x {settings.showUnitPrice && formatCurrency(item.price)} = {formatCurrency(item.qty * item.price)}
                                                 {item.discount && <span className="text-red-500"> (-{formatCurrency(item.discount)})</span>}
@@ -677,7 +737,7 @@ export function TicketEditor({ settings: initialSettings, companyInfo, onChange,
                                         <div className="flex justify-between">
                                             <div className="flex-1">
                                                 <span>{settings.templateStyle !== 'minimal' ? `${idx + 1}. ` : ''}</span>
-                                                <span>{item.name}</span>
+                                                <span className={cn(settings.boldSections?.itemNames && 'font-bold')}>{item.name}</span>
                                                 {settings.showUnitOfMeasure && <span className="text-gray-500"> (UN)</span>}
                                                 {settings.showDescription && <div className="pl-3 text-gray-500 text-[9px]">Producto de alta calidad</div>}
                                                 {settings.templateStyle === 'classic' && <div className="pl-3 text-gray-600">{item.sku}</div>}
@@ -721,7 +781,8 @@ export function TicketEditor({ settings: initialSettings, companyInfo, onChange,
                                     </div>
                                 ))}
                                 <div className={cn(
-                                    "flex justify-between font-bold pt-1",
+                                    "flex justify-between pt-1",
+                                    (settings.boldSections?.totals ?? true) && 'font-bold',
                                     settings.templateStyle === 'modern' ? 'text-base border-t-2 border-black' : 'text-sm border-t'
                                 )}>
                                     <span>TOTAL:</span>
@@ -795,13 +856,14 @@ export function TicketEditor({ settings: initialSettings, companyInfo, onChange,
                         )}>
                             {settings.footerText && (
                                 <div className={cn(
-                                    "font-bold pt-1",
+                                    "pt-1",
+                                    (settings.boldSections?.footer ?? true) && 'font-bold',
                                     settings.templateStyle === 'modern' ? 'text-sm' : ''
                                 )}>
                                     {settings.footerText}
                                 </div>
                             )}
-                            <p className="text-[8px] text-gray-600 leading-tight">
+                            <p className={cn("text-[8px] text-gray-600 leading-tight", settings.boldSections?.legalText && 'font-bold')}>
                                 {settings.footerTemplate === 'custom'
                                     ? (settings.customFooterText || 'Tu texto legal personalizado aparecerá aquí')
                                     : FOOTER_TEMPLATES[settings.footerTemplate || 'general'].text}

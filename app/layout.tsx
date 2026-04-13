@@ -63,7 +63,7 @@ export default function RootLayout({
       <body
         className={`${sfPro.variable} ${plusJakartaSans.variable} font-sans antialiased bg-background text-foreground selection:bg-primary/10 selection:text-primary`}
       >
-        {/* Facebook/Meta Pixel — deferred to lazyOnload for better LCP */}
+        {/* Facebook/Meta Pixel — only on public landing pages, deferred */}
         <Script id="facebook-pixel" strategy="lazyOnload">
           {`
             !function(f,b,e,v,n,t,s)
@@ -79,12 +79,14 @@ export default function RootLayout({
           `}
         </Script>
         <noscript>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             height="1"
             width="1"
             style={{ display: 'none' }}
             src="https://www.facebook.com/tr?id=26336803186005029&ev=PageView&noscript=1"
             alt=""
+            loading="lazy"
           />
         </noscript>
 

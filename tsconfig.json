@@ -43,6 +43,7 @@
     "prisma/seed-demo.ts",
     "supabase/functions",
     "whatsapp-bridge",
-    "tmp"
+    "tmp",
+    "_archive"
   ]
 }
