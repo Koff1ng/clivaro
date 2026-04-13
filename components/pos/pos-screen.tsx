@@ -7,6 +7,8 @@ import { useDebounce } from '@/lib/hooks/use-debounce'
 import { formatCurrency } from '@/lib/utils'
 import { useToast } from '@/components/ui/toast'
 import { useThermalPrint } from '@/lib/hooks/use-thermal-print'
+import { useEscPosPrint } from '@/lib/hooks/use-escpos-print'
+import type { InvoiceData, CompanyData } from '@/lib/escpos/invoice-builder'
 import { useSession } from 'next-auth/react'
 import { Search, Plus, Minus, User, ShoppingCart, X, DollarSign, CreditCard, ArrowLeftRight, Check, Printer, Copy, Bookmark, FolderOpen, Keyboard, UserPlus, Phone, MessageSquare, Smartphone, Wallet, Landmark, Coins, Receipt, LayoutGrid } from 'lucide-react'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -860,6 +862,80 @@ export function POSScreen({ mode = 'retail', waiterData, waiterToken, preselecte
   const [voiding, setVoiding] = useState(false)
   const { print: printThermal } = useThermalPrint({ targetId: 'pos-thermal-print', widthMm: 80 })
 
+  // ESC/POS silent printing — connects via WebSerial, no browser dialog
+  const printingConfig = settings?.customSettings?.printing
+  const boldSections = printingConfig?.ticketDesign?.boldSections
+  const {
+    status: escposStatus,
+    printInvoice: printEscPos,
+    isPrinting: escposPrinting,
+  } = useEscPosPrint({
+    useGlobal: true,
+    autoConnect: true,
+    paperWidth: printingConfig?.ticketDesign?.paperWidth === '58mm' ? 32 : 48,
+    openDrawer: printingConfig?.openDrawer ?? false,
+    printQR: printingConfig?.ticketDesign?.showQR ?? true,
+    boldSections,
+  })
+  const isEscPosReady = escposStatus === 'connected'
+
+  // Auto-print via ESC/POS after sale — silent, no dialog
+  useEffect(() => {
+    if (!autoPrintPending || !saleResult) return
+    setAutoPrintPending(false)
+
+    // Only auto-print if ESC/POS printer is connected
+    if (!isEscPosReady) return
+
+    // Build InvoiceData from saleResult
+    const invoiceData: InvoiceData = {
+      number: saleResult.invoiceNumber || saleResult.number || '',
+      prefix: saleResult.prefix || 'FV',
+      customer: {
+        name: saleResult.customer?.name || 'CONSUMIDOR FINAL',
+        taxId: saleResult.customer?.taxId || saleResult.customer?.nit || undefined,
+        address: saleResult.customer?.address || undefined,
+      },
+      items: (saleResult.items || []).map((item: any) => ({
+        product: { name: item.productName || item.product?.name || '', sku: item.sku || '' },
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+        discount: item.discount || 0,
+        taxRate: item.taxRate || 0,
+        subtotal: item.subtotal,
+      })),
+      subtotal: saleResult.subtotal || 0,
+      discount: saleResult.discount || 0,
+      tax: saleResult.tax || 0,
+      total: saleResult.total || 0,
+      issuedAt: saleResult.issuedAt || new Date(),
+      payments: saleResult.payments?.map((p: any) => ({
+        method: p.method || p.paymentMethod || 'CASH',
+        amount: p.amount,
+      })),
+      cufe: saleResult.cufe || null,
+      electronicStatus: saleResult.electronicStatus || undefined,
+      notes: saleResult.notes || null,
+    }
+
+    const companyData: CompanyData = {
+      name: settings?.companyName || 'Mi Empresa',
+      taxId: settings?.companyNit || '',
+      address: settings?.companyAddress || undefined,
+      city: settings?.companyCity || undefined,
+      phone: settings?.companyPhone || undefined,
+      regime: settings?.companyRegime || undefined,
+    }
+
+    printEscPos(invoiceData, companyData).then(ok => {
+      if (ok) {
+        toast('Ticket impreso \u2714', 'success')
+      }
+    }).catch(() => {
+      // Silent fail — user can still print manually
+    })
+  }, [autoPrintPending, saleResult, isEscPosReady, printEscPos, settings, toast, boldSections])
+
   const computeTotalsFromCart = useCallback((items: CartItem[]) => {
     const subtotal = items.reduce((sum, item) => sum + (item.quantity * item.unitPrice * (1 - (item.discount || 0) / 100)), 0)
 
@@ -948,8 +1024,8 @@ export function POSScreen({ mode = 'retail', waiterData, waiterToken, preselecte
       cashReceived: paymentMode === 'SINGLE' && selectedMethod?.type === 'CASH' ? parseFloat(cashReceived || '0') : null,
     })
     setShowReceipt(true)
-    // Auto-print disabled - user must click print button manually
-    // setAutoPrintPending(true)
+    // Auto-print: if ESC/POS printer is connected, print silently
+    if (isEscPosReady) setAutoPrintPending(true)
 
     setCart([])
     setSearchQuery('')
@@ -2638,12 +2714,19 @@ export function POSScreen({ mode = 'retail', waiterData, waiterToken, preselecte
                   <Button
                     variant="outline"
                     className="w-full"
+                    disabled={escposPrinting}
                     onClick={() => {
-                      printThermal()
+                      if (isEscPosReady) {
+                        // Silent ESC/POS print
+                        setAutoPrintPending(true)
+                      } else {
+                        // Fallback: browser print dialog
+                        printThermal()
+                      }
                     }}
                   >
                     <Printer className="h-4 w-4 mr-2" />
-                    Imprimir
+                    {escposPrinting ? 'Imprimiendo...' : isEscPosReady ? 'Imprimir' : 'Imprimir (navegador)'}
                   </Button>
                   <Button
                     variant="destructive"
