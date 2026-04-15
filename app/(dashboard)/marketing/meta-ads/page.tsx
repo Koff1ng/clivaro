@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -18,6 +18,7 @@ import {
 } from 'lucide-react'
 import { useToast } from '@/components/ui/toast'
 import { PageHeader } from '@/components/ui/page-header'
+import { cn } from '@/lib/utils'
 
 // ── Helpers ──
 
@@ -570,23 +571,26 @@ export default function MetaAdsPage() {
   }
 
   // Connected → show full module
-  const activeCampaigns = Array.isArray(campaigns) ? campaigns.filter((c: any) => c.status === 'ACTIVE') : []
+  const allCampaigns = Array.isArray(campaigns) ? campaigns : []
+  const activeCampaigns = allCampaigns.filter((c: any) => c.status === 'ACTIVE')
+  const errorCampaigns = allCampaigns.filter((c: any) => c.status === 'ERROR')
   const totalBudget = activeCampaigns.reduce((sum: number, c: any) => sum + (c.dailyBudget || 0), 0)
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <PageHeader
           title="Meta Ads"
           description="Gestiona tus campañas de Facebook e Instagram directamente desde Clivaro."
           icon={<Radio className="h-5 w-5 text-blue-600" />}
         />
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => refetchCampaigns()}>
-            <RefreshCw className="w-4 h-4 mr-1" />Actualizar
+        <div className="flex gap-2 shrink-0">
+          <Button variant="outline" size="sm" onClick={() => refetchCampaigns()} className="h-9 text-xs">
+            <RefreshCw className="w-3.5 h-3.5 mr-1.5" /> Actualizar
           </Button>
-          <Button size="sm" className="bg-blue-600 hover:bg-blue-700" onClick={() => setShowWizard(true)}>
-            <Plus className="w-4 h-4 mr-1" />Nueva Campaña
+          <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white h-9 text-xs font-semibold" onClick={() => setShowWizard(true)}>
+            <Plus className="w-3.5 h-3.5 mr-1.5" /> Nueva Campaña
           </Button>
         </div>
       </div>
@@ -596,99 +600,188 @@ export default function MetaAdsPage() {
         <PageIdAlert onSaved={() => queryClient.invalidateQueries({ queryKey: ['meta-ads-connection'] })} />
       )}
 
-      {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Campañas</CardTitle>
-            <Target className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{Array.isArray(campaigns) ? campaigns.length : 0}</div>
-            <p className="text-xs text-muted-foreground">{activeCampaigns.length} activas</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Presupuesto Diario</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatCOP(totalBudget)}</div>
-            <p className="text-xs text-muted-foreground">Campañas activas</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Conexión</CardTitle>
-            <CheckCircle2 className="h-4 w-4 text-green-500" />
-          </CardHeader>
-          <CardContent>
-            <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 gap-1"><CheckCircle2 className="w-3 h-3" />Conectado</Badge>
-            <p className="text-xs text-muted-foreground mt-1">{connectionStatus?.adAccountId}</p>
-          </CardContent>
-        </Card>
+      {/* KPIs */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {[
+          { label: 'Total Campañas', value: allCampaigns.length, icon: Target, color: 'text-blue-600', bg: 'bg-blue-50 dark:bg-blue-900/20' },
+          { label: 'Activas', value: activeCampaigns.length, icon: CheckCircle2, color: 'text-emerald-600', bg: 'bg-emerald-50 dark:bg-emerald-900/20' },
+          { label: 'Presupuesto/Día', value: formatCOP(totalBudget), icon: DollarSign, color: 'text-amber-600', bg: 'bg-amber-50 dark:bg-amber-900/20', isText: true },
+          { label: 'Conexión', value: 'Activa', icon: CheckCircle2, color: 'text-emerald-600', bg: 'bg-emerald-50 dark:bg-emerald-900/20', isText: true, sub: connectionStatus?.adAccountId },
+        ].map((s, i) => (
+          <Card key={i} className="border-slate-100 dark:border-slate-800">
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center shrink-0", s.bg)}>
+                <s.icon className={cn("w-5 h-5", s.color)} />
+              </div>
+              <div className="min-w-0">
+                <p className={cn("font-bold text-slate-900 dark:text-white leading-none", (s as any).isText ? 'text-sm' : 'text-xl')}>{s.value}</p>
+                <p className="text-[11px] text-slate-400 font-medium mt-0.5 truncate">{(s as any).sub || s.label}</p>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
-      {/* Campaigns list */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Campañas</CardTitle>
-          <CardDescription>Todas tus campañas creadas desde Clivaro</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {isLoadingCampaigns ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="w-5 h-5 animate-spin text-muted-foreground mr-2" />
-              <span className="text-muted-foreground">Cargando campañas...</span>
-            </div>
-          ) : !Array.isArray(campaigns) || campaigns.length === 0 ? (
-            <div className="text-center py-12">
-              <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-blue-100 to-indigo-100 dark:from-blue-900/30 dark:to-indigo-900/30 flex items-center justify-center">
-                <Megaphone className="w-7 h-7 text-blue-600 dark:text-blue-400" />
-              </div>
-              <h3 className="font-bold text-lg mb-1">No tienes campañas aún</h3>
-              <p className="text-sm text-muted-foreground mb-4">Crea tu primera campaña de Facebook o Instagram en minutos.</p>
-              <Button onClick={() => setShowWizard(true)} className="bg-blue-600 hover:bg-blue-700">
-                <Plus className="w-4 h-4 mr-2" />Crear Primera Campaña
-              </Button>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {campaigns.map((c: any) => (
-                <div key={c.id} className="flex items-center justify-between p-4 border rounded-xl hover:shadow-md transition-shadow group">
-                  <div className="flex items-center gap-4 min-w-0 flex-1">
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center flex-shrink-0">
-                      <Megaphone className="w-5 h-5 text-white" />
-                    </div>
-                    <div className="min-w-0">
-                      <h4 className="font-medium truncate">{c.name}</h4>
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
-                        <span>{OBJECTIVES.find(o => o.value === c.objective)?.label || c.objective}</span>
-                        <span>•</span>
-                        <span>{formatCOP(c.dailyBudget || 0)}/día</span>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    {statusBadge(c.status)}
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="opacity-0 group-hover:opacity-100 transition-opacity text-red-500 hover:text-red-600"
-                      onClick={() => {
-                        if (confirm('¿Eliminar esta campaña?')) deleteMutation.mutate(c.id)
-                      }}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
+      {/* Error campaigns banner */}
+      {errorCampaigns.length > 0 && (
+        <div className="flex items-center justify-between p-3.5 rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/10">
+          <div className="flex items-center gap-2.5">
+            <AlertCircle className="w-4 h-4 text-red-500 shrink-0" />
+            <span className="text-sm font-medium text-red-700 dark:text-red-400">
+              {errorCampaigns.length} campaña(s) con errores
+            </span>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="text-xs h-8 border-red-200 text-red-600 hover:bg-red-100 dark:border-red-800 dark:hover:bg-red-900/30"
+            onClick={() => {
+              if (confirm(`¿Eliminar las ${errorCampaigns.length} campañas con errores?`)) {
+                errorCampaigns.forEach((c: any) => deleteMutation.mutate(c.id))
+              }
+            }}
+          >
+            <Trash2 className="w-3 h-3 mr-1" /> Eliminar errores
+          </Button>
+        </div>
+      )}
+
+      {/* Campaigns */}
+      {isLoadingCampaigns ? (
+        <div className="grid gap-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Card key={i} className="animate-pulse border-slate-100 dark:border-slate-800">
+              <CardContent className="p-4">
+                <div className="flex gap-4">
+                  <div className="w-10 h-10 bg-slate-200 dark:bg-slate-700 rounded-xl shrink-0" />
+                  <div className="flex-1 space-y-2.5">
+                    <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded-lg w-1/3" />
+                    <div className="h-3 bg-slate-100 dark:bg-slate-800 rounded-lg w-2/3" />
                   </div>
                 </div>
-              ))}
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : allCampaigns.length === 0 ? (
+        <Card className="border-dashed border-2 border-slate-200 dark:border-slate-700">
+          <CardContent className="py-16 text-center">
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-100 to-indigo-100 dark:from-blue-900/30 dark:to-indigo-900/30 flex items-center justify-center mx-auto mb-5">
+              <Megaphone className="w-8 h-8 text-blue-600 dark:text-blue-400" />
             </div>
-          )}
-        </CardContent>
-      </Card>
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1.5">Crea tu primera campaña</h3>
+            <p className="text-sm text-slate-500 max-w-sm mx-auto mb-6">
+              Publica anuncios en Facebook e Instagram en minutos — sin salir de Clivaro.
+            </p>
+            <Button onClick={() => setShowWizard(true)} className="bg-blue-600 hover:bg-blue-700 text-white h-10 px-5 text-sm font-semibold">
+              <Plus className="h-4 w-4 mr-2" /> Crear Primera Campaña
+            </Button>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-2">
+          {allCampaigns.map((c: any) => {
+            const obj = OBJECTIVES.find(o => o.value === c.objective)
+            const isError = c.status === 'ERROR'
+            return (
+              <Card
+                key={c.id}
+                className={cn(
+                  "border-slate-100 dark:border-slate-800 transition-all",
+                  isError ? "border-red-200 dark:border-red-800/50 bg-red-50/30 dark:bg-red-900/5" : "hover:border-blue-200 dark:hover:border-blue-800"
+                )}
+              >
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-4">
+                    {/* Icon */}
+                    <div className={cn(
+                      "w-10 h-10 rounded-xl flex items-center justify-center shrink-0",
+                      isError ? "bg-red-100 dark:bg-red-900/20" :
+                      c.status === 'ACTIVE' ? "bg-emerald-50 dark:bg-emerald-900/20" :
+                      c.status === 'PAUSED' ? "bg-slate-100 dark:bg-slate-800" :
+                      "bg-blue-50 dark:bg-blue-900/20"
+                    )}>
+                      <Megaphone className={cn(
+                        "w-5 h-5",
+                        isError ? "text-red-500" :
+                        c.status === 'ACTIVE' ? "text-emerald-600" :
+                        c.status === 'PAUSED' ? "text-slate-400" :
+                        "text-blue-600"
+                      )} />
+                    </div>
+
+                    {/* Content */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <h4 className="font-semibold text-sm text-slate-900 dark:text-white truncate">{c.name}</h4>
+                        {statusBadge(c.status)}
+                      </div>
+                      <div className="flex items-center gap-3 text-[11px] text-slate-400">
+                        <span>{obj?.label || c.objective}</span>
+                        <span>•</span>
+                        <span>{formatCOP(c.dailyBudget || 0)}/día</span>
+                        {c.metaCampaignId && <span className="font-mono text-[10px]">#{c.metaCampaignId.slice(-6)}</span>}
+                      </div>
+                      {isError && c.error && (
+                        <p className="text-[11px] text-red-500 mt-1 truncate">{c.error}</p>
+                      )}
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex items-center gap-1 shrink-0">
+                      {c.status === 'ACTIVE' && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          title="Pausar"
+                          onClick={() => {
+                            fetch(`/api/marketing/meta-ads/${c.id}`, {
+                              method: 'PATCH',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ action: 'pause' }),
+                            }).then(() => refetchCampaigns())
+                          }}
+                        >
+                          <Pause className="h-3.5 w-3.5 text-amber-500" />
+                        </Button>
+                      )}
+                      {c.status === 'PAUSED' && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          title="Reanudar"
+                          onClick={() => {
+                            fetch(`/api/marketing/meta-ads/${c.id}`, {
+                              method: 'PATCH',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ action: 'resume' }),
+                            }).then(() => refetchCampaigns())
+                          }}
+                        >
+                          <Play className="h-3.5 w-3.5 text-emerald-500" />
+                        </Button>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className={cn("h-8 w-8", isError ? "" : "")}
+                        title="Eliminar"
+                        onClick={() => {
+                          if (confirm('¿Eliminar esta campaña?')) deleteMutation.mutate(c.id)
+                        }}
+                      >
+                        <Trash2 className="h-3.5 w-3.5 text-red-400" />
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )
+          })}
+        </div>
+      )}
 
       {/* Campaign Wizard */}
       {showWizard && (
