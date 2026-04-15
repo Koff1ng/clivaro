@@ -5,7 +5,7 @@ import { connectMetaAccount, getMetaConfig } from '@/lib/marketing/meta-ads-serv
 
 export const dynamic = 'force-dynamic'
 
-// GET: Check if Meta Ads is connected for this tenant
+// GET: Check if Meta Ads is connected for this tenant — with live health check
 export async function GET(request: Request) {
   const session = await requirePermission(request as any, PERMISSIONS.MANAGE_CRM)
   if (session instanceof NextResponse) return session
@@ -14,11 +14,45 @@ export async function GET(request: Request) {
 
   try {
     const config = await getMetaConfig(tenantId)
-    return NextResponse.json({
+
+    // Base response (always returned even if live check fails)
+    const response: Record<string, any> = {
       connected: true,
       adAccountId: config.adAccountId,
+      pageId: config.pageId || null,
       hasPageId: !!config.pageId,
-    })
+      tokenPreview: config.accessToken
+        ? `${config.accessToken.slice(0, 6)}...${config.accessToken.slice(-4)}`
+        : null,
+      apiStatus: 'unknown',
+      accountName: null,
+      connectedAt: config.createdAt,
+    }
+
+    // Live health check — verify token is still valid by reading the ad account
+    try {
+      const bizSdk = require('facebook-nodejs-business-sdk')
+      const { FacebookAdsApi, AdAccount } = bizSdk
+      FacebookAdsApi.init(config.accessToken)
+      const account = new AdAccount(config.adAccountId)
+      const data = await account.read(['name', 'account_status', 'currency', 'timezone_name'])
+      response.apiStatus = 'healthy'
+      response.accountName = data.name || config.adAccountId
+      response.currency = data.currency || null
+      response.timezone = data.timezone_name || null
+      response.accountStatus = data.account_status // 1 = active, 2 = disabled, etc.
+    } catch (apiError: any) {
+      // Token expired or API issue
+      const msg = apiError?.message || ''
+      if (msg.includes('expired') || msg.includes('invalid') || msg.includes('OAuthException')) {
+        response.apiStatus = 'token_expired'
+      } else {
+        response.apiStatus = 'error'
+      }
+      response.apiError = msg.slice(0, 200)
+    }
+
+    return NextResponse.json(response)
   } catch {
     return NextResponse.json({ connected: false })
   }

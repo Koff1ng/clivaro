@@ -589,12 +589,11 @@ export default function MetaAdsPage() {
       )}
 
       {/* KPIs */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-3 gap-3">
         {[
           { label: 'Total Campañas', value: allCampaigns.length, icon: Target, color: 'text-blue-600', bg: 'bg-blue-50 dark:bg-blue-900/20' },
           { label: 'Activas', value: activeCampaigns.length, icon: CheckCircle2, color: 'text-emerald-600', bg: 'bg-emerald-50 dark:bg-emerald-900/20' },
           { label: 'Presupuesto/Día', value: formatCOP(totalBudget), icon: DollarSign, color: 'text-amber-600', bg: 'bg-amber-50 dark:bg-amber-900/20', isText: true },
-          { label: 'Conexión', value: 'Activa', icon: CheckCircle2, color: 'text-emerald-600', bg: 'bg-emerald-50 dark:bg-emerald-900/20', isText: true, sub: connectionStatus?.adAccountId },
         ].map((s, i) => (
           <Card key={i} className="border-slate-100 dark:border-slate-800">
             <CardContent className="p-4 flex items-center gap-3">
@@ -603,12 +602,93 @@ export default function MetaAdsPage() {
               </div>
               <div className="min-w-0">
                 <p className={cn("font-bold text-slate-900 dark:text-white leading-none", (s as any).isText ? 'text-sm' : 'text-xl')}>{s.value}</p>
-                <p className="text-[11px] text-slate-400 font-medium mt-0.5 truncate">{(s as any).sub || s.label}</p>
+                <p className="text-[11px] text-slate-400 font-medium mt-0.5 truncate">{s.label}</p>
               </div>
             </CardContent>
           </Card>
         ))}
       </div>
+
+      {/* Connection Status Card */}
+      {connectionStatus?.connected && (
+        <Card className="border-slate-100 dark:border-slate-800">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shrink-0">
+                  <svg viewBox="0 0 24 24" className="w-4 h-4 text-white" fill="currentColor">
+                    <path d="M12 2.04C6.5 2.04 2 6.53 2 12.06C2 17.06 5.66 21.21 10.44 21.96V14.96H7.9V12.06H10.44V9.85C10.44 7.34 11.93 5.96 14.22 5.96C15.31 5.96 16.45 6.15 16.45 6.15V8.62H15.19C13.95 8.62 13.56 9.39 13.56 10.18V12.06H16.34L15.89 14.96H13.56V21.96A10 10 0 0 0 22 12.06C22 6.53 17.5 2.04 12 2.04Z" />
+                  </svg>
+                </div>
+                <div>
+                  <h4 className="text-sm font-semibold text-slate-900 dark:text-white">
+                    {connectionStatus.accountName || 'Meta Ads'}
+                  </h4>
+                  <p className="text-[11px] text-slate-400">Cuenta publicitaria conectada</p>
+                </div>
+              </div>
+              {/* Live API Status */}
+              <div className="flex items-center gap-1.5">
+                <span className={cn(
+                  "w-2 h-2 rounded-full shrink-0",
+                  connectionStatus.apiStatus === 'healthy' ? "bg-emerald-500 animate-pulse" :
+                  connectionStatus.apiStatus === 'token_expired' ? "bg-red-500" :
+                  connectionStatus.apiStatus === 'error' ? "bg-amber-500" :
+                  "bg-slate-300"
+                )} />
+                <span className={cn(
+                  "text-[11px] font-medium",
+                  connectionStatus.apiStatus === 'healthy' ? "text-emerald-600" :
+                  connectionStatus.apiStatus === 'token_expired' ? "text-red-500" :
+                  connectionStatus.apiStatus === 'error' ? "text-amber-500" :
+                  "text-slate-400"
+                )}>
+                  {connectionStatus.apiStatus === 'healthy' ? 'API Conectada' :
+                   connectionStatus.apiStatus === 'token_expired' ? 'Token Expirado' :
+                   connectionStatus.apiStatus === 'error' ? 'Error API' :
+                   'Verificando...'}
+                </span>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-[11px]">
+              <div className="space-y-0.5">
+                <p className="text-slate-400 font-medium">Ad Account</p>
+                <p className="font-mono text-slate-600 dark:text-slate-300 truncate">{connectionStatus.adAccountId}</p>
+              </div>
+              <div className="space-y-0.5">
+                <p className="text-slate-400 font-medium">Page ID</p>
+                <p className="font-mono text-slate-600 dark:text-slate-300 truncate">{connectionStatus.pageId || '—'}</p>
+              </div>
+              <div className="space-y-0.5">
+                <p className="text-slate-400 font-medium">Token</p>
+                <p className="font-mono text-slate-600 dark:text-slate-300 truncate">{connectionStatus.tokenPreview || '***'}</p>
+              </div>
+              <div className="space-y-0.5">
+                <p className="text-slate-400 font-medium">Moneda / Zona</p>
+                <p className="text-slate-600 dark:text-slate-300 truncate">
+                  {connectionStatus.currency || '—'} {connectionStatus.timezone ? `· ${connectionStatus.timezone}` : ''}
+                </p>
+              </div>
+            </div>
+            {connectionStatus.apiStatus === 'token_expired' && (
+              <div className="mt-3 p-2.5 rounded-lg bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800 flex items-center gap-2">
+                <AlertCircle className="w-3.5 h-3.5 text-red-500 shrink-0" />
+                <p className="text-[11px] text-red-600 dark:text-red-400">
+                  Tu token de acceso ha expirado. Reconecta tu cuenta para seguir publicando anuncios.
+                </p>
+              </div>
+            )}
+            {connectionStatus.apiStatus === 'error' && connectionStatus.apiError && (
+              <div className="mt-3 p-2.5 rounded-lg bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800 flex items-center gap-2">
+                <AlertCircle className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                <p className="text-[11px] text-amber-600 dark:text-amber-400 truncate">
+                  {connectionStatus.apiError}
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Error campaigns banner */}
       {errorCampaigns.length > 0 && (
