@@ -31,7 +31,7 @@ type CampaignFormData = z.infer<typeof campaignSchema>
 
 interface CampaignFormProps {
   campaignId?: string
-  aiDefaults?: { name: string; subject: string; htmlContent: string }
+  aiDefaults?: { name: string; subject: string; htmlContent: string; _blocks?: any[] }
   onClose: () => void
   onSuccess: (createdCampaignId?: string) => void
 }
@@ -50,6 +50,7 @@ export default function CampaignForm({ campaignId, aiDefaults, onClose, onSucces
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null)
   const [editorKey, setEditorKey] = useState(0)
   const [activeStep, setActiveStep] = useState(0) // 0=Info, 1=Design, 2=Recipients, 3=Send
+  const [aiBlocks, setAiBlocks] = useState<any[] | undefined>(undefined)
 
   // Inline recipients state
   const [selectedCustomers, setSelectedCustomers] = useState<string[]>([])
@@ -153,6 +154,10 @@ export default function CampaignForm({ campaignId, aiDefaults, onClose, onSucces
       await new Promise(r => setTimeout(r, 300))
       setAiFillingStep('html')
       setValue('htmlContent', aiDefaults.htmlContent, { shouldValidate: true })
+      // Store AI blocks for the editor
+      if (aiDefaults._blocks && Array.isArray(aiDefaults._blocks)) {
+        setAiBlocks(aiDefaults._blocks)
+      }
       setEditorKey(prev => prev + 1)
       await new Promise(r => setTimeout(r, 800))
       setAiFillingStep('done')
@@ -467,6 +472,7 @@ export default function CampaignForm({ campaignId, aiDefaults, onClose, onSucces
                     <EmailBuilder
                       key={editorKey}
                       value={htmlContent || ''}
+                      initialBlocks={aiBlocks}
                       onChange={(value) => {
                         setValue('htmlContent', value, { shouldValidate: true })
                       }}

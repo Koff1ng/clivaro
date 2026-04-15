@@ -32,7 +32,7 @@ export default function CampaignsClient() {
   const [searchQuery, setSearchQuery] = useState('')
   const [aiPrompt, setAiPrompt] = useState('')
   const [isAiCreating, setIsAiCreating] = useState(false)
-  const [aiCampaignData, setAiCampaignData] = useState<{ name: string; subject: string; htmlContent: string } | null>(null)
+  const [aiCampaignData, setAiCampaignData] = useState<{ name: string; subject: string; htmlContent: string; _blocks?: any[] } | null>(null)
 
   const queryClient = useQueryClient()
   const { toast } = useToast()
@@ -41,7 +41,7 @@ export default function CampaignsClient() {
   useEffect(() => {
     const handler = (e: Event) => {
       const detail = (e as CustomEvent).detail
-      if (detail?.name && detail?.subject && detail?.htmlContent) {
+      if (detail?.name && detail?.subject && (detail?.htmlContent || detail?._blocks)) {
         setAiCampaignData(detail)
         setShowForm(true)
         toast('🐙 Clivi generó tu campaña — ¡revísala!', 'success')

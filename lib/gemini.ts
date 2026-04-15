@@ -54,22 +54,102 @@ Genera una campaña de email marketing con base en esta petición: "${prompt}"
 ${productContext}
 
 REGLAS IMPORTANTES:
-- NUNCA incluyas "Clivi", "Clivaro" ni nombres de la plataforma en el contenido.
+- NUNCA incluyas "Clivi", "Clivaro" ni nombres de la plataforma en el contenido del email.
 - La campaña debe verse como si viniera del negocio del usuario, no de un software.
-- En el footer pon "Enviado con ❤️" o algo genérico, NO "Enviado con Clivaro".
 - Usa {{name}} para personalizar el nombre del destinatario.
 
 Responde ÚNICAMENTE con un JSON válido (sin markdown, sin backticks) con esta estructura exacta:
 {
   "name": "nombre interno de la campaña (corto)",
   "subject": "asunto del email (atractivo, max 60 chars)",
-  "htmlContent": "HTML completo del email usando tablas para layout, max-width 600px, fuente Arial, colores profesionales. Incluye header con título, body con contenido, CTA button, y footer genérico. Usa {{name}} donde corresponda."
-}`)
+  "blocks": [
+    { "type": "header", "content": "Título del email", "style": { "fontSize": "28px", "fontWeight": "700", "color": "#ffffff", "textAlign": "center", "padding": "32px 20px", "backgroundColor": "#1e40af" } },
+    { "type": "text", "content": "Párrafo de texto. Usa {{name}} para personalizar.", "style": { "fontSize": "15px", "color": "#374151", "textAlign": "left", "padding": "16px 20px" } },
+    { "type": "button", "content": "Texto del botón", "href": "https://tusitio.com", "style": { "backgroundColor": "#2563eb", "color": "#ffffff", "fontSize": "15px", "fontWeight": "700", "textAlign": "center", "padding": "12px 20px", "borderRadius": "8px" } },
+    { "type": "divider", "content": "", "style": { "padding": "8px 20px" } },
+    { "type": "social", "content": "facebook,instagram,whatsapp", "style": { "textAlign": "center", "padding": "16px 20px" } }
+  ]
+}
+
+Tipos de bloques disponibles: header, text, image, button, divider, spacer, social, two-column.
+Para "image": incluye "src" con URL (puede ser vacío), "alt" con descripción.
+Para "two-column": incluye "leftContent" y "rightContent" en style.
+Para "spacer": incluye "height" en style (ej: "24px").
+Usa colores profesionales y vibrantes. El header debe tener un color de fondo llamativo.
+Genera entre 5-10 bloques para un email atractivo.`)
 
   const text = result.response.text().trim()
-  // Clean potential markdown wrapping
   const clean = text.replace(/^```json?\s*\n?/i, '').replace(/\n?\s*```\s*$/i, '').trim()
-  return JSON.parse(clean)
+  const parsed = JSON.parse(clean)
+
+  // Convert blocks to HTML using the same logic as the frontend builder
+  if (parsed.blocks && Array.isArray(parsed.blocks)) {
+    const rows = parsed.blocks.map((block: any) => blockToEmailHtml(block)).join('\n')
+    parsed.htmlContent = `<div style="font-family:Arial,sans-serif;padding:0;margin:0;">
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;margin:0 auto;background-color:#ffffff;">
+    ${rows}
+    <tr><td style="padding:16px 20px;text-align:center;font-size:11px;color:#9ca3af;font-family:Arial,sans-serif;">
+      Enviado con <a href="https://www.clientumstudio.com" style="color:#6366f1;text-decoration:none;font-weight:600;">Clivaro</a> · Si no deseas recibir estos correos, ignora este mensaje.
+    </td></tr>
+  </table>
+</div>`
+    // Also store the blocks as a JSON-encoded string so the editor can reconstruct them
+    parsed._blocks = parsed.blocks
+  }
+
+  return {
+    name: parsed.name,
+    subject: parsed.subject,
+    htmlContent: parsed.htmlContent,
+    _blocks: parsed._blocks || parsed.blocks,
+  } as any
+}
+
+/**
+ * Server-side block to HTML conversion (mirrors the frontend EmailBuilder logic)
+ */
+function blockToEmailHtml(block: any): string {
+  const pad = block.style?.padding || '12px 20px'
+  const type = block.type || 'text'
+
+  switch (type) {
+    case 'header':
+      return `<tr><td style="padding:${pad};background-color:${block.style?.backgroundColor || '#ffffff'};font-family:Arial,sans-serif;">
+        <h1 style="margin:0;font-size:${block.style?.fontSize || '28px'};font-weight:${block.style?.fontWeight || '700'};color:${block.style?.color || '#111827'};text-align:${block.style?.textAlign || 'center'};">${block.content || ''}</h1>
+      </td></tr>`
+    case 'text':
+      return `<tr><td style="padding:${pad};font-family:Arial,sans-serif;">
+        <p style="margin:0;font-size:${block.style?.fontSize || '15px'};color:${block.style?.color || '#374151'};text-align:${block.style?.textAlign || 'left'};line-height:1.6;">${block.content || ''}</p>
+      </td></tr>`
+    case 'image':
+      if (!block.src) return `<tr><td style="padding:${pad};text-align:center;font-family:Arial,sans-serif;"><div style="background:#f3f4f6;border:2px dashed #d1d5db;border-radius:12px;padding:40px 20px;color:#9ca3af;font-size:13px;">📷 Imagen</div></td></tr>`
+      return `<tr><td style="padding:${pad};text-align:center;font-family:Arial,sans-serif;"><img src="${block.src}" alt="${block.alt || 'Imagen'}" style="max-width:100%;height:auto;border-radius:8px;" /></td></tr>`
+    case 'button':
+      return `<tr><td style="padding:${pad};text-align:center;font-family:Arial,sans-serif;">
+        <a href="${block.href || '#'}" style="display:inline-block;background-color:${block.style?.backgroundColor || '#2563eb'};color:${block.style?.color || '#ffffff'};text-decoration:none;padding:14px 32px;border-radius:${block.style?.borderRadius || '8px'};font-size:${block.style?.fontSize || '15px'};font-weight:700;font-family:Arial,sans-serif;">${block.content || 'Click'}</a>
+      </td></tr>`
+    case 'divider':
+      return `<tr><td style="padding:${pad};font-family:Arial,sans-serif;"><hr style="border:none;border-top:1px solid #e5e7eb;margin:0;" /></td></tr>`
+    case 'spacer':
+      return `<tr><td style="height:${block.style?.height || '24px'};font-size:1px;line-height:1px;">&nbsp;</td></tr>`
+    case 'social': {
+      const networks = (block.content || '').split(',').map((s: string) => s.trim()).filter(Boolean)
+      const colors: Record<string, string> = { facebook: '#1877F2', instagram: '#E4405F', whatsapp: '#25D366', twitter: '#1DA1F2', linkedin: '#0A66C2' }
+      const icons = networks.map((n: string) => {
+        const color = colors[n] || '#6b7280'
+        return `<a href="#" style="display:inline-block;width:36px;height:36px;background-color:${color};border-radius:50%;margin:0 6px;text-align:center;line-height:36px;color:#fff;text-decoration:none;font-size:14px;font-weight:700;font-family:Arial,sans-serif;">${n.charAt(0).toUpperCase()}</a>`
+      }).join('')
+      return `<tr><td style="padding:${pad};text-align:center;font-family:Arial,sans-serif;">${icons}</td></tr>`
+    }
+    case 'two-column':
+      return `<tr><td style="padding:${pad};font-family:Arial,sans-serif;"><table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+        <td width="48%" valign="top" style="padding:8px;font-size:14px;color:#374151;">${block.style?.leftContent || ''}</td>
+        <td width="4%"></td>
+        <td width="48%" valign="top" style="padding:8px;font-size:14px;color:#374151;">${block.style?.rightContent || ''}</td>
+      </tr></table></td></tr>`
+    default:
+      return ''
+  }
 }
 
 export async function improveEmailText(text: string, instruction: string): Promise<string> {
@@ -158,20 +238,30 @@ export async function generateQuickCampaignHtml(
   }
 
   const result = await model.generateContent(`
-Genera el HTML completo de un email tipo "${typeLabels[type]}" con estos detalles: ${details}
+Genera un array JSON de bloques para un email tipo "${typeLabels[type]}" con estos detalles: ${details}
 
-Requisitos del HTML:
-- Usar <table> para layout (compatible con email clients)
-- max-width: 600px, centrado
-- Fuente Arial, sans-serif
-- Header con color de fondo vivo y título blanco
-- Body con contenido claro
-- Botón CTA con color contrastante y border-radius
-- Footer: "Enviado con Clivaro"
-- Variable {{name}} para personalizar
-- Colores profesionales y modernos
+Tipos de bloques: header, text, image, button, divider, spacer, social, two-column.
+Cada bloque: { "type": "...", "content": "...", "style": { ... } }
+Para buttons: incluir "href".
+Para images: incluir "src" (vacío si no hay URL), "alt".
+Para social: content es lista separada por comas (ej: "facebook,instagram,whatsapp").
+Para two-column: style tiene "leftContent" y "rightContent".
+Usa {{name}} para personalizar. Colores profesionales y vibrantes.
 
-Responde ÚNICAMENTE con el HTML, sin explicaciones ni backticks.`)
+Responde ÚNICAMENTE con el JSON array de bloques, sin markdown ni backticks.
+Ejemplo: [{"type":"header","content":"Título","style":{"fontSize":"28px","fontWeight":"700","color":"#ffffff","textAlign":"center","padding":"32px 20px","backgroundColor":"#1e40af"}}]`)
 
-  return result.response.text().trim().replace(/^```html?\n?/i, '').replace(/\n?```$/i, '').trim()
+  const text = result.response.text().trim().replace(/^```json?\n?/i, '').replace(/\n?```$/i, '').trim()
+  const blocks = JSON.parse(text)
+
+  // Convert blocks to HTML
+  const rows = blocks.map((block: any) => blockToEmailHtml(block)).join('\n')
+  return `<div style="font-family:Arial,sans-serif;padding:0;margin:0;">
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;margin:0 auto;background-color:#ffffff;">
+    ${rows}
+    <tr><td style="padding:16px 20px;text-align:center;font-size:11px;color:#9ca3af;font-family:Arial,sans-serif;">
+      Enviado con <a href="https://www.clientumstudio.com" style="color:#6366f1;text-decoration:none;font-weight:600;">Clivaro</a>
+    </td></tr>
+  </table>
+</div>`
 }

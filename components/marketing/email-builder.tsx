@@ -41,6 +41,7 @@ export interface EmailBlock {
 interface EmailBuilderProps {
   value: string // HTML string
   onChange: (html: string) => void
+  initialBlocks?: any[] // AI-generated blocks — skip HTML parsing
 }
 
 // ── Palette ──
@@ -326,21 +327,30 @@ const BLOCK_TYPES: { type: BlockType; label: string; icon: React.ReactNode; desc
 ]
 
 // ── Component ──
-export default function EmailBuilder({ value, onChange }: EmailBuilderProps) {
+export default function EmailBuilder({ value, onChange, initialBlocks }: EmailBuilderProps) {
   const { toast } = useToast()
   const [isRawMode, setIsRawMode] = useState(false)
   const [rawHtml, setRawHtml] = useState(value || '')
   const [blocks, setBlocks] = useState<EmailBlock[]>(() => {
-    const parsed = htmlToBlocks(value)
-    if (!parsed || (parsed.length <= 1 && value && value.length > 200)) {
-      // AI-generated HTML that couldn't be well decomposed — start in raw mode
-      if (value && value.includes('<')) {
-        setIsRawMode(true)
-        setRawHtml(value)
-        return []
-      }
+    // Priority 1: Use AI-generated blocks directly (no HTML parsing needed)
+    if (initialBlocks && Array.isArray(initialBlocks) && initialBlocks.length > 0) {
+      return initialBlocks.map(b => ({
+        ...b,
+        id: b.id || uid(),
+        style: b.style || {},
+      }))
     }
-    return parsed || []
+    // Priority 2: Try to parse HTML into blocks
+    const parsed = htmlToBlocks(value)
+    if (parsed && parsed.length > 0) return parsed
+    // Priority 3: If HTML exists but couldn't be parsed, still try to show something
+    if (value && value.includes('<') && value.length > 100) {
+      // Show in raw mode only as last resort
+      setIsRawMode(true)
+      setRawHtml(value)
+      return []
+    }
+    return []
   })
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [showAddMenu, setShowAddMenu] = useState(false)
