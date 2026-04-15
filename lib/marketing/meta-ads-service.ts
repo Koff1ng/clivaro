@@ -360,19 +360,33 @@ export async function getMetaCampaigns(tenantId: string) {
 }
 
 /**
- * Gets a specific campaign by tracking ID.
+ * Gets a specific campaign by tracking ID or database ID.
  */
-export async function getMetaCampaignByTrackingId(tenantId: string, trackingId: string) {
+export async function getMetaCampaignByTrackingId(tenantId: string, idOrTrackingId: string) {
   return await prisma.metaAdsCampaign.findFirst({
-    where: { tenantId, trackingId },
+    where: {
+      tenantId,
+      OR: [
+        { trackingId: idOrTrackingId },
+        { id: idOrTrackingId },
+      ],
+    },
   })
 }
 
 /**
  * Pauses or resumes a campaign in Meta.
  */
-export async function toggleCampaignStatus(tenantId: string, trackingId: string, action: 'pause' | 'resume') {
-  const record = await prisma.metaAdsCampaign.findFirst({ where: { tenantId, trackingId } })
+export async function toggleCampaignStatus(tenantId: string, idOrTrackingId: string, action: 'pause' | 'resume') {
+  const record = await prisma.metaAdsCampaign.findFirst({
+    where: {
+      tenantId,
+      OR: [
+        { trackingId: idOrTrackingId },
+        { id: idOrTrackingId },
+      ],
+    },
+  })
   if (!record || !record.metaCampaignId) throw new Error('Campaña no encontrada o aún en procesamiento.')
 
   const config = await getMetaConfig(tenantId)
@@ -398,8 +412,16 @@ export async function toggleCampaignStatus(tenantId: string, trackingId: string,
 /**
  * Deletes a campaign from tracking (and optionally from Meta).
  */
-export async function deleteCampaign(tenantId: string, trackingId: string) {
-  const record = await prisma.metaAdsCampaign.findFirst({ where: { tenantId, trackingId } })
+export async function deleteCampaign(tenantId: string, idOrTrackingId: string) {
+  const record = await prisma.metaAdsCampaign.findFirst({
+    where: {
+      tenantId,
+      OR: [
+        { trackingId: idOrTrackingId },
+        { id: idOrTrackingId },
+      ],
+    },
+  })
   if (!record) throw new Error('Campaña no encontrada.')
 
   // Try to delete from Meta if it was created
@@ -411,7 +433,7 @@ export async function deleteCampaign(tenantId: string, trackingId: string) {
       await campaign.update([], { status: 'DELETED' })
     } catch (error) {
       // Non-critical: if Meta deletion fails, still remove from tracking
-      logger.warn(`[META_ADS] Could not delete campaign from Meta: ${trackingId}`)
+      logger.warn(`[META_ADS] Could not delete campaign from Meta: ${idOrTrackingId}`)
     }
   }
 
