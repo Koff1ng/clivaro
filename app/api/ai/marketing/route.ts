@@ -20,7 +20,9 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json()
-    const { action, ...params } = body
+    const { action, params: nestedParams, ...restParams } = body
+    // Support both { action, params: { prompt } } and { action, prompt }
+    const params = nestedParams || restParams
 
     if (!action) {
       return NextResponse.json({ error: 'Action is required' }, { status: 400 })
