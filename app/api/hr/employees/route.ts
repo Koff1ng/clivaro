@@ -33,7 +33,7 @@ export async function GET(req: Request) {
             ];
         }
 
-        if (isActiveStr !== null) {
+        if (isActiveStr !== null && isActiveStr !== undefined) {
             whereClause.isActive = isActiveStr === 'true';
         }
 
@@ -46,7 +46,16 @@ export async function GET(req: Request) {
 
         return NextResponse.json(employees);
     } catch (error: any) {
-        logger.error('Error fetching employees:', error);
+        logger.error('Error fetching employees:', error?.message || error);
+        
+        // Surface specific Prisma errors  
+        if (error?.code === 'P2021') {
+            return NextResponse.json(
+                { error: 'La tabla de empleados no existe en el esquema del tenant. Contacte al administrador.' },
+                { status: 500 }
+            );
+        }
+        
         return NextResponse.json(
             { error: 'Error al obtener empleados', details: safeErrorMessage(error) },
             { status: 500 }

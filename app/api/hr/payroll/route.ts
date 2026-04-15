@@ -33,7 +33,15 @@ export async function GET(req: Request) {
 
         return NextResponse.json(periods);
     } catch (error: any) {
-        logger.error('Error fetching payroll periods:', error);
+        logger.error('Error fetching payroll periods:', error?.message || error);
+        
+        if (error?.code === 'P2021') {
+            return NextResponse.json(
+                { error: 'Las tablas de nómina no existen aún. Contacte al administrador del sistema.' },
+                { status: 500 }
+            );
+        }
+        
         return NextResponse.json(
             { error: 'Error al obtener períodos de nómina', details: safeErrorMessage(error) },
             { status: 500 }
@@ -101,6 +109,12 @@ export async function POST(req: Request) {
                 where: { tenantId, isActive: true },
             });
 
+            if (employees.length === 0) {
+                // Cleanup the empty period
+                await tx.payrollPeriod.delete({ where: { id: period.id } });
+                return { error: 'NO_EMPLOYEES' } as any;
+            }
+
             let grandTotalEarnings = 0;
             let grandTotalDeductions = 0;
             let grandNetPay = 0;
@@ -111,8 +125,8 @@ export async function POST(req: Request) {
                 const input: PayrollEmployeeInput = {
                     baseSalary: emp.baseSalary,
                     salaryType: emp.salaryType,
-                    riskLevel: (emp as any).riskLevel ?? 1,
-                    integralSalary: (emp as any).integralSalary ?? false,
+                    riskLevel: emp.riskLevel ?? 1,
+                    integralSalary: emp.integralSalary ?? false,
                     workedDays: periodDays,
                 };
 
@@ -178,9 +192,16 @@ export async function POST(req: Request) {
             });
         }, { timeout: 30000 })
 
+        if ((newPeriod as any)?.error === 'NO_EMPLOYEES') {
+            return NextResponse.json(
+                { error: 'No hay empleados activos. Registra al menos un empleado antes de generar nómina.' },
+                { status: 400 }
+            );
+        }
+
         return NextResponse.json(newPeriod, { status: 201 });
     } catch (error: any) {
-        logger.error('Error creating payroll period:', error);
+        logger.error('Error creating payroll period:', error?.message || error);
         return NextResponse.json(
             { error: 'Error al generar la nómina', details: safeErrorMessage(error) },
             { status: 500 }

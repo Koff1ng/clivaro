@@ -46,7 +46,7 @@ export async function GET(
             if (settings?.customSettings) {
                 const custom = JSON.parse(settings.customSettings)
                 if (custom.identity?.name) companyName = custom.identity.name
-                if (custom.identity?.nit) companyName = custom.identity.nit
+                if (custom.identity?.nit) companyNit = custom.identity.nit
             }
         } catch (e) {
             // Ignorar fallback parse error
