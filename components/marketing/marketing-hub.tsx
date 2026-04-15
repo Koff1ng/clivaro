@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { usePathname } from 'next/navigation'
 import { Inbox, Megaphone, Sparkles, Target } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import CampaignsClient from '@/components/marketing/campaigns-client'
@@ -16,8 +17,15 @@ const TABS = [
 
 type TabId = typeof TABS[number]['id']
 
+function getInitialTab(pathname: string | null): TabId {
+  if (pathname?.includes('/campaigns')) return 'campaigns'
+  if (pathname?.includes('/inbox')) return 'inbox'
+  return 'leads'
+}
+
 export default function MarketingHub() {
-  const [activeTab, setActiveTab] = useState<TabId>('leads')
+  const pathname = usePathname()
+  const [activeTab, setActiveTab] = useState<TabId>(() => getInitialTab(pathname))
 
   return (
     <div className="space-y-4">
