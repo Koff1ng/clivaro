@@ -170,7 +170,7 @@ export default function CampaignForm({ campaignId, aiDefaults, onClose, onSucces
   // Build preview document
   const previewHtml = useMemo(() => {
     const body = htmlContent || '<div style="font-family:Arial,sans-serif;padding:48px 24px;color:#9ca3af;text-align:center;">Selecciona una plantilla para comenzar</div>'
-    return `<!doctype html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><style>body{margin:0;background:#f3f4f6;padding:16px;font-family:Arial,sans-serif;} *{box-sizing:border-box;}</style></head><body>${body}</body></html>`
+    return `<!doctype html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><base target="_blank"/><style>body{margin:0;background:#f3f4f6;padding:16px;font-family:Arial,sans-serif;} *{box-sizing:border-box;} a{pointer-events:none!important;cursor:default!important;}</style></head><body>${body}</body></html>`
   }, [htmlContent])
 
   const createMutation = useMutation({
@@ -514,7 +514,6 @@ export default function CampaignForm({ campaignId, aiDefaults, onClose, onSucces
                         title="Vista previa campaña"
                         className="w-full bg-white"
                         style={{ height: Math.min(800, 600), border: '0' }}
-                        sandbox="allow-same-origin"
                         srcDoc={previewHtml}
                       />
                     </div>
@@ -809,7 +808,6 @@ export default function CampaignForm({ campaignId, aiDefaults, onClose, onSucces
               <iframe
                 title="Vista previa completa"
                 style={{ width: '100%', height: 700, border: '0', background: '#fff' }}
-                sandbox="allow-same-origin"
                 srcDoc={previewHtml}
               />
             </div>
