@@ -10,7 +10,7 @@ import { LeadList } from '@/components/crm/lead-list'
 import { PageHeader } from '@/components/ui/page-header'
 import dynamic from 'next/dynamic'
 
-const MetaAdsClient = dynamic(() => import('@/app/(dashboard)/marketing/meta-ads/page'), {
+const MetaAdsClient = dynamic(() => import('@/components/marketing/meta-ads-client'), {
   loading: () => (
     <div className="flex items-center justify-center py-20">
       <div className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mr-2" />
