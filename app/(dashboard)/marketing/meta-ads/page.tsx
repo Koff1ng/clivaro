@@ -560,11 +560,6 @@ export default function MetaAdsPage() {
   if (!connectionStatus?.connected) {
     return (
       <div className="space-y-4">
-        <PageHeader
-          title="Meta Ads"
-          description="Gestiona tus campañas de Facebook e Instagram directamente desde Clivaro."
-          icon={<Radio className="h-5 w-5 text-blue-600" />}
-        />
         <MetaConnectCard onConnected={() => queryClient.invalidateQueries({ queryKey: ['meta-ads-connection'] })} />
       </div>
     )
@@ -577,22 +572,15 @@ export default function MetaAdsPage() {
   const totalBudget = activeCampaigns.reduce((sum: number, c: any) => sum + (c.dailyBudget || 0), 0)
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <PageHeader
-          title="Meta Ads"
-          description="Gestiona tus campañas de Facebook e Instagram directamente desde Clivaro."
-          icon={<Radio className="h-5 w-5 text-blue-600" />}
-        />
-        <div className="flex gap-2 shrink-0">
-          <Button variant="outline" size="sm" onClick={() => refetchCampaigns()} className="h-9 text-xs">
-            <RefreshCw className="w-3.5 h-3.5 mr-1.5" /> Actualizar
-          </Button>
-          <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white h-9 text-xs font-semibold" onClick={() => setShowWizard(true)}>
-            <Plus className="w-3.5 h-3.5 mr-1.5" /> Nueva Campaña
-          </Button>
-        </div>
+    <div className="space-y-5">
+      {/* Controls bar */}
+      <div className="flex items-center justify-end gap-2">
+        <Button variant="outline" size="sm" onClick={() => refetchCampaigns()} className="h-9 text-xs">
+          <RefreshCw className="w-3.5 h-3.5 mr-1.5" /> Actualizar
+        </Button>
+        <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white h-9 text-xs font-semibold" onClick={() => setShowWizard(true)}>
+          <Plus className="w-3.5 h-3.5 mr-1.5" /> Nueva Campaña
+        </Button>
       </div>
 
       {/* Page ID Alert */}
