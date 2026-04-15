@@ -514,6 +514,7 @@ export default function CampaignForm({ campaignId, aiDefaults, onClose, onSucces
                         title="Vista previa campaña"
                         className="w-full bg-white"
                         style={{ height: Math.min(800, 600), border: '0' }}
+                        sandbox="allow-same-origin"
                         srcDoc={previewHtml}
                       />
                     </div>
@@ -808,6 +809,7 @@ export default function CampaignForm({ campaignId, aiDefaults, onClose, onSucces
               <iframe
                 title="Vista previa completa"
                 style={{ width: '100%', height: 700, border: '0', background: '#fff' }}
+                sandbox="allow-same-origin"
                 srcDoc={previewHtml}
               />
             </div>

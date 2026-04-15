@@ -286,7 +286,8 @@ export default function CampaignDetails({ campaignId, onBack, onEdit }: Campaign
               <iframe
                 title="Vista previa"
                 style={{ width: '100%', height: 500, border: '0', background: '#fff' }}
-                srcDoc={`<!doctype html><html><head><meta charset="utf-8"/><style>body{margin:0;padding:16px;font-family:Arial,sans-serif;background:#f3f4f6;}</style></head><body>${campaign.htmlContent || ''}</body></html>`}
+                sandbox="allow-same-origin"
+                srcDoc={`<!doctype html><html><head><meta charset="utf-8"/><style>body{margin:0;padding:16px;font-family:Arial,sans-serif;background:#f3f4f6;}a{pointer-events:none;cursor:default;}</style></head><body>${campaign.htmlContent || ''}</body></html>`}
               />
             </div>
           </div>

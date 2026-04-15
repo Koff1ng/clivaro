@@ -5,13 +5,26 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '')
 // Gemini 2.5 Flash — fast and affordable
 const MODEL = 'gemini-2.5-flash-lite'
 
-const SYSTEM_PROMPT = `Eres Clivi 🐙, un asistente de IA amigable y experto para negocios tipo ferretería, tiendas de construcción y retail en Colombia.
-Tu nombre es Clivi y eres un pulpito simpático. Tu personalidad es amigable, proactiva y profesional.
-Tu rol es ayudar a crear campañas de email marketing, sugerir respuestas a clientes, y analizar leads.
-Responde siempre en español colombiano. Sé conciso, directo y profesional pero con un toque amigable.
-Cuando generes HTML para emails, usa tablas para layout (no flexbox/grid), colores profesionales, y fuente Arial.
-Los precios van en pesos colombianos (COP) con formato $XXX.XXX.
-Variables disponibles en emails: {{name}} para el nombre del destinatario.`
+const SYSTEM_PROMPT = `Eres Clivi 🐙, un asistente de IA experto en email marketing y copywriting para negocios de retail, ferreterías, construcción y comercio en Colombia.
+
+IDENTIDAD:
+- Tu nombre es Clivi, un pulpito simpático, proactivo y profesional.
+- Dominas copywriting persuasivo (frameworks AIDA, PAS, BAB), diseño de emails responsive, y psicología de conversión.
+- Conoces el mercado colombiano: temporadas de descuento, festivos, lenguaje coloquial profesional.
+
+ESTILO DE ESCRITURA:
+- Español colombiano profesional pero cercano (tutea al lector, usa "tú"/"te" no "usted").
+- Frases cortas y diámicas. Máximo 2 líneas por párrafo en emails.
+- Emojis con moderación (máx 2-3 por email).
+- Precios en COP: $XXX.XXX.
+- Variable de personalización: {{name}} para el nombre del destinatario.
+
+REGLAS DE ORO:
+- NUNCA menciones "Clivi", "Clivaro" ni ningún nombre de plataforma/software en el contenido del email.
+- El email siempre debe parecer enviado por el negocio del usuario, no por un software.
+- Cuando generes HTML, usa tablas para layout (compatibilidad con Outlook/Gmail), fuente Arial, y colores profesionales.
+- Evita palabras spam: "gratis", "urgente", "oferta increíble", "haz clic aquí", "100%".
+- Los CTAs deben ser específicos: "Ver catálogo completo" > "Haz clic aquí".`
 
 // Clivi general system prompt (for chat on any page)
 export const CLIVI_SYSTEM_PROMPT = `Eres Clivi 🐙, el asistente de IA integrado en Clivaro, un ERP/CRM para ferreterías y negocios de retail en Colombia.
@@ -50,35 +63,59 @@ export async function generateCampaignContent(prompt: string, products?: { name:
     : ''
 
   const result = await model.generateContent(`
-Genera una campaña de email marketing con base en esta petición: "${prompt}"
+CREA UNA CAMPAÑA DE EMAIL MARKETING PROFESIONAL.
+
+PETICIÓN DEL USUARIO: "${prompt}"
 ${productContext}
 
-REGLAS IMPORTANTES:
-- NUNCA incluyas "Clivi", "Clivaro" ni nombres de la plataforma en el contenido del email.
-- La campaña debe verse como si viniera del negocio del usuario, no de un software.
-- Usa {{name}} para personalizar el nombre del destinatario.
-- SIEMPRE incluye al menos un bloque "image" con un "alt" muy descriptivo (será usado para generar la imagen con IA).
+═══ DIRECTRICES DE CONTENIDO ═══
 
-Responde ÚNICAMENTE con un JSON válido (sin markdown, sin backticks) con esta estructura exacta:
+ESTRUCTURA DEL EMAIL (sigue este orden):
+1. HEADER: Título llamativo y corto (máx 8 palabras). Usa un color de fondo vibrante y texto blanco.
+2. IMAGEN HERO: Bloque "image" principal justo después del header. El "alt" debe describir una foto profesional, realista y relevante al tema (mín 20 palabras). Nunca pidas imágenes con texto.
+3. SALUDO: "Hola {{name}}," seguido de un párrafo de apertura que enganche (máx 2 líneas). Usa técnica PAS (Problem-Agitate-Solve) o AIDA (Attention-Interest-Desire-Action).
+4. CUERPO: 1-2 párrafos cortos con el valor/oferta/noticia. Sé específico con beneficios, no características.
+5. CTA PRINCIPAL: Botón llamativo (verbo de acción + beneficio). Ej: "Explorar ofertas", "Reservar tu descuento", "Ver catálogo".
+6. CIERRE: Texto breve de despedida cálida (1 línea).
+7. REDES SOCIALES: Bloque "social" con facebook, instagram, whatsapp.
+
+COPYWRITING:
+- Asunto del email: 35-55 caracteres. Usa curiosidad, urgencia suave o beneficio directo. Incluye 1 emoji al inicio.
+- Tono: Profesional pero cercano. Como un vendedor experto que es tu amigo.
+- Cada párrafo máx 2 líneas. Usa saltos entre ideas.
+- El CTA debe crear acción inmediata sin sonar spam.
+
+DISEÑO VISUAL:
+- Paleta: Usa colores armónicos (ej: azul oscuro #1e3a5f con acento naranja #f97316, o verde #059669 con azul #2563eb).
+- Header: Siempre con backgroundColor vibrante (nunca blanco) y texto blanco.
+- Espaciado: padding generoso (16-24px) entre bloques. Usa "spacer" entre secciones.
+- Tipografía: Títulos 24-28px bold, cuerpo 15px regular, CTA 15px bold.
+
+═══ FORMATO DE RESPUESTA ═══
+
+Responde ÚNICAMENTE con JSON válido (sin markdown, sin backticks):
 {
-  "name": "nombre interno de la campaña (corto)",
-  "subject": "asunto del email (atractivo, max 60 chars)",
+  "name": "nombre-interno-corto",
+  "subject": "🔥 Asunto atractivo con emoji (35-55 chars)",
   "blocks": [
-    { "type": "header", "content": "Título del email", "style": { "fontSize": "28px", "fontWeight": "700", "color": "#ffffff", "textAlign": "center", "padding": "32px 20px", "backgroundColor": "#1e40af" } },
-    { "type": "image", "content": "", "src": "", "alt": "Descripción visual detallada de la imagen ideal para este email (ej: foto profesional de herramientas organizadas sobre mesa de madera con fondo difuminado)", "style": { "padding": "0px 0px", "textAlign": "center" } },
-    { "type": "text", "content": "Párrafo de texto. Usa {{name}} para personalizar.", "style": { "fontSize": "15px", "color": "#374151", "textAlign": "left", "padding": "16px 20px" } },
-    { "type": "button", "content": "Texto del botón", "href": "https://tusitio.com", "style": { "backgroundColor": "#2563eb", "color": "#ffffff", "fontSize": "15px", "fontWeight": "700", "textAlign": "center", "padding": "12px 20px", "borderRadius": "8px" } },
-    { "type": "divider", "content": "", "style": { "padding": "8px 20px" } },
-    { "type": "social", "content": "facebook,instagram,whatsapp", "style": { "textAlign": "center", "padding": "16px 20px" } }
+    { "type": "header", "content": "Título Corto e Impactante", "style": { "fontSize": "28px", "fontWeight": "700", "color": "#ffffff", "textAlign": "center", "padding": "32px 20px", "backgroundColor": "#1e3a5f" } },
+    { "type": "image", "content": "", "src": "", "alt": "Foto profesional de alta calidad mostrando [descripción detallada de la escena, objetos, iluminación, ambiente, ángulo de cámara - mínimo 20 palabras]", "style": { "padding": "0px 0px", "textAlign": "center" } },
+    { "type": "spacer", "content": "", "style": { "height": "16px" } },
+    { "type": "text", "content": "Hola {{name}},\n\nTexto de apertura que enganche al lector en 1-2 líneas.", "style": { "fontSize": "15px", "color": "#374151", "textAlign": "left", "padding": "0px 24px" } },
+    { "type": "text", "content": "Cuerpo con el valor principal. Beneficios concretos, no características.", "style": { "fontSize": "15px", "color": "#374151", "textAlign": "left", "padding": "8px 24px" } },
+    { "type": "spacer", "content": "", "style": { "height": "8px" } },
+    { "type": "button", "content": "Verbo + Beneficio", "href": "https://tusitio.com", "style": { "backgroundColor": "#2563eb", "color": "#ffffff", "fontSize": "15px", "fontWeight": "700", "textAlign": "center", "padding": "12px 20px", "borderRadius": "8px" } },
+    { "type": "spacer", "content": "", "style": { "height": "12px" } },
+    { "type": "text", "content": "Despedida cálida y breve.", "style": { "fontSize": "14px", "color": "#6b7280", "textAlign": "center", "padding": "8px 24px" } },
+    { "type": "divider", "content": "", "style": { "padding": "8px 24px" } },
+    { "type": "social", "content": "facebook,instagram,whatsapp", "style": { "textAlign": "center", "padding": "12px 20px" } }
   ]
 }
 
-Tipos de bloques disponibles: header, text, image, button, divider, spacer, social, two-column.
-Para "image": SIEMPRE incluye "src": "" (vacío) y "alt" con una descripción DETALLADA y visual de la imagen ideal (mínimo 15 palabras). Esta descripción se usará para generar la imagen con IA.
-Para "two-column": incluye "leftContent" y "rightContent" en style.
-Para "spacer": incluye "height" en style (ej: "24px").
-Usa colores profesionales y vibrantes. El header debe tener un color de fondo llamativo.
-Genera entre 6-10 bloques para un email atractivo. Incluye 1-2 bloques "image".`)
+Bloques disponibles: header, text, image, button, divider, spacer, social, two-column.
+Para "image": src SIEMPRE vacío, alt con descripción VISUAL detallada (escena realista, sin texto en la imagen).
+Para "two-column": incluye leftContent y rightContent en style.
+Genera 8-12 bloques. Incluye 1-2 bloques "image" con alt descriptivo.`)
 
   const text = result.response.text().trim()
   const clean = text.replace(/^```json?\s*\n?/i, '').replace(/\n?\s*```\s*$/i, '').trim()
