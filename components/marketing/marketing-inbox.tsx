@@ -15,17 +15,16 @@ import { formatDateTime } from '@/lib/utils'
 import { useToast } from '@/components/ui/toast'
 
 const stageColors: Record<string, string> = {
-  new: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
-  contacted: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
-  qualified: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
-  proposal: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
-  won: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
-  lost: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
+  NEW: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
+  CONTACTED: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
+  QUOTED: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
+  WON: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
+  LOST: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
 }
 
 const stageLabels: Record<string, string> = {
-  new: 'Nuevo', contacted: 'Contactado', qualified: 'Calificado',
-  proposal: 'Propuesta', won: 'Ganado', lost: 'Perdido',
+  NEW: 'Nuevo', CONTACTED: 'Contactado', QUOTED: 'Cotizado',
+  WON: 'Ganado', LOST: 'Perdido',
 }
 
 export default function MarketingInbox() {
@@ -162,7 +161,7 @@ export default function MarketingInbox() {
           name: lead.name, email: lead.email || '', phone: lead.phone || '',
           source: 'email-inbox',
           notes: `Interés: ${lead.interest || 'N/A'}\nFuente: correo electrónico`,
-          stage: 'new',
+          stage: 'NEW',
         }),
       })
       if (!res.ok) throw new Error('Error')
@@ -342,7 +341,7 @@ export default function MarketingInbox() {
                     </div>
                     {lead.email && <div className="text-[10px] text-slate-400 truncate mt-0.5">{lead.email}</div>}
                     <div className="flex items-center gap-1 mt-1">
-                      <span className={cn("text-[9px] px-1.5 py-0.5 rounded-full font-medium", stageColors[lead.stage] || stageColors.new)}>
+                      <span className={cn("text-[9px] px-1.5 py-0.5 rounded-full font-medium", stageColors[lead.stage] || stageColors.NEW)}>
                         {stageLabels[lead.stage] || lead.stage || 'Nuevo'}
                       </span>
                       {lead.source && (
@@ -389,9 +388,9 @@ export default function MarketingInbox() {
                 </div>
               </div>
               <select
-                value={selectedLead?.stage || 'new'}
+                value={selectedLead?.stage || 'NEW'}
                 onChange={(e) => selectedId && updateStageMutation.mutate({ id: selectedId, stage: e.target.value })}
-                className={cn("text-[10px] px-2 py-1 rounded-full font-medium border-0 cursor-pointer appearance-none", stageColors[selectedLead?.stage || 'new'])}
+                className={cn("text-[10px] px-2 py-1 rounded-full font-medium border-0 cursor-pointer appearance-none", stageColors[selectedLead?.stage || 'NEW'])}
               >
                 {Object.entries(stageLabels).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
               </select>

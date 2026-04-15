@@ -52,7 +52,8 @@ export function PageHeader({
         )}
 
         <div className="min-w-0 flex flex-col gap-1">
-          <h1 className="text-2xl font-bold tracking-tight text-foreground truncate md:text-3xl">
+          <h1 className="text-2xl font-bold tracking-tight text-foreground truncate md:text-3xl flex items-center gap-2">
+            {icon}
             {title}
           </h1>
           {description && (
