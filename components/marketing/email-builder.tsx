@@ -5,6 +5,7 @@ import {
   Plus, Trash2, MoveUp, MoveDown, Type, Image as ImageIcon,
   Square, Minus, MousePointer2, Link2, Copy, Palette, Bold,
   Italic, AlignLeft, AlignCenter, AlignRight, Share2, Sparkles,
+  Loader2, Wand2, Upload,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -591,8 +592,55 @@ function BlockRow({
   onDuplicate: () => void; onUpdate: (u: Partial<EmailBlock>) => void;
   onUpdateStyle: (s: Partial<EmailBlock['style']>) => void; onUploadImage: () => void;
 }) {
+  const { toast } = useToast()
+  const [aiPrompt, setAiPrompt] = useState('')
+  const [isGenerating, setIsGenerating] = useState(false)
+  const [isDragOver, setIsDragOver] = useState(false)
   const typeLabel = BLOCK_TYPES.find(bt => bt.type === block.type)?.label || block.type
   const typeIcon = BLOCK_TYPES.find(bt => bt.type === block.type)?.icon
+
+  const handleAiGenerate = async () => {
+    if (!aiPrompt.trim()) return
+    setIsGenerating(true)
+    try {
+      const res = await fetch('/api/ai/generate-image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: aiPrompt }),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.error || 'Error al generar imagen')
+      }
+      const data = await res.json()
+      onUpdate({ src: data.url, alt: aiPrompt })
+      setAiPrompt('')
+      toast('🎨 Imagen generada con IA', 'success')
+    } catch (err: any) {
+      toast(err.message || 'Error al generar imagen', 'error')
+    } finally {
+      setIsGenerating(false)
+    }
+  }
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragOver(false)
+    const file = e.dataTransfer.files?.[0]
+    if (!file || !file.type.startsWith('image/')) { toast('Solo se permiten imágenes', 'error'); return }
+    if (file.size > 5 * 1024 * 1024) { toast('Máximo 5MB', 'error'); return }
+    try {
+      const formData = new FormData()
+      formData.append('image', file)
+      const res = await fetch('/api/marketing/upload-image', { method: 'POST', body: formData })
+      if (!res.ok) throw new Error((await res.json()).error || 'Error')
+      const data = await res.json()
+      onUpdate({ src: data.url, alt: file.name.replace(/\.[^.]+$/, '') })
+      toast('Imagen subida', 'success')
+    } catch (err: any) {
+      toast(err.message || 'Error al subir', 'error')
+    }
+  }
 
   return (
     <div
@@ -714,7 +762,7 @@ function BlockRow({
                   <img src={block.src} alt={block.alt || ''} className="w-full rounded-lg border" />
                   <div className="absolute inset-0 bg-black/40 rounded-lg opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center gap-2">
                     <button type="button" onClick={onUploadImage} className="px-3 py-1.5 bg-white rounded-lg text-xs font-bold text-slate-800 hover:bg-slate-100 transition-colors">
-                      📁 Cambiar archivo
+                      📁 Cambiar
                     </button>
                     <button type="button" onClick={() => onUpdate({ src: '' })} className="px-3 py-1.5 bg-red-500 rounded-lg text-xs font-bold text-white hover:bg-red-600 transition-colors">
                       ✕ Quitar
@@ -722,11 +770,62 @@ function BlockRow({
                   </div>
                 </div>
               ) : (
-                <div className="space-y-2">
-                  <button type="button" onClick={onUploadImage} className="w-full py-6 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl text-slate-400 hover:text-blue-500 hover:border-blue-300 transition-all flex flex-col items-center gap-2">
-                    <ImageIcon className="w-7 h-7" />
-                    <span className="text-xs font-medium">Subir imagen (JPG, PNG, WebP · Máx 5MB)</span>
-                  </button>
+                <div className="space-y-3">
+                  {/* Drop zone + Upload */}
+                  <div
+                    onDragOver={(e) => { e.preventDefault(); setIsDragOver(true) }}
+                    onDragLeave={() => setIsDragOver(false)}
+                    onDrop={handleDrop}
+                    onClick={onUploadImage}
+                    className={cn(
+                      'w-full py-6 border-2 border-dashed rounded-xl transition-all flex flex-col items-center gap-2 cursor-pointer',
+                      isDragOver
+                        ? 'border-blue-400 bg-blue-50 dark:bg-blue-900/20 text-blue-500'
+                        : 'border-slate-300 dark:border-slate-600 text-slate-400 hover:text-blue-500 hover:border-blue-300'
+                    )}
+                  >
+                    <Upload className="w-6 h-6" />
+                    <span className="text-xs font-medium">
+                      {isDragOver ? 'Suelta la imagen aquí' : 'Arrastra o haz clic para subir (JPG, PNG, WebP · Máx 5MB)'}
+                    </span>
+                  </div>
+
+                  {/* AI Image Generation */}
+                  <div className="rounded-xl border border-purple-200 dark:border-purple-800/50 bg-gradient-to-br from-purple-50/80 to-indigo-50/60 dark:from-purple-900/10 dark:to-indigo-900/5 p-3 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center">
+                        <Wand2 className="w-3 h-3 text-white" />
+                      </div>
+                      <span className="text-[11px] font-bold text-purple-700 dark:text-purple-300">Generar con Clivi IA</span>
+                    </div>
+                    <div className="flex gap-1.5">
+                      <Input
+                        value={aiPrompt}
+                        onChange={e => setAiPrompt(e.target.value)}
+                        onKeyDown={e => { if (e.key === 'Enter') handleAiGenerate() }}
+                        placeholder='Ej: "Banner de promoción de herramientas"'
+                        className="text-xs h-8 bg-white/80 dark:bg-slate-800/50 border-purple-200 dark:border-purple-700/50 placeholder:text-slate-400"
+                        disabled={isGenerating}
+                      />
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={handleAiGenerate}
+                        disabled={isGenerating || !aiPrompt.trim()}
+                        className="h-8 px-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white text-[10px] font-bold shrink-0"
+                      >
+                        {isGenerating ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                      </Button>
+                    </div>
+                    {isGenerating && (
+                      <div className="flex items-center gap-2 text-[10px] text-purple-600 dark:text-purple-400">
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                        <span>Generando imagen con IA... esto puede tomar unos segundos</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* URL fallback */}
                   <div className="flex items-center gap-2 text-[10px] text-slate-400">
                     <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
                     <span>o pega una URL</span>
@@ -748,7 +847,6 @@ function BlockRow({
                   placeholder="https://ejemplo.com/imagen.jpg"
                   className="text-xs font-mono"
                 />
-                <p className="text-[10px] text-slate-400 mt-1">Pega la URL de cualquier imagen pública o sube un archivo arriba.</p>
               </div>
               <div>
                 <Label className="text-[10px] font-bold text-slate-400 uppercase mb-1">Texto alternativo</Label>

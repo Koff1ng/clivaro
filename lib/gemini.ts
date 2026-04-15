@@ -57,6 +57,7 @@ REGLAS IMPORTANTES:
 - NUNCA incluyas "Clivi", "Clivaro" ni nombres de la plataforma en el contenido del email.
 - La campaña debe verse como si viniera del negocio del usuario, no de un software.
 - Usa {{name}} para personalizar el nombre del destinatario.
+- SIEMPRE incluye al menos un bloque "image" con un "alt" muy descriptivo (será usado para generar la imagen con IA).
 
 Responde ÚNICAMENTE con un JSON válido (sin markdown, sin backticks) con esta estructura exacta:
 {
@@ -64,6 +65,7 @@ Responde ÚNICAMENTE con un JSON válido (sin markdown, sin backticks) con esta 
   "subject": "asunto del email (atractivo, max 60 chars)",
   "blocks": [
     { "type": "header", "content": "Título del email", "style": { "fontSize": "28px", "fontWeight": "700", "color": "#ffffff", "textAlign": "center", "padding": "32px 20px", "backgroundColor": "#1e40af" } },
+    { "type": "image", "content": "", "src": "", "alt": "Descripción visual detallada de la imagen ideal para este email (ej: foto profesional de herramientas organizadas sobre mesa de madera con fondo difuminado)", "style": { "padding": "0px 0px", "textAlign": "center" } },
     { "type": "text", "content": "Párrafo de texto. Usa {{name}} para personalizar.", "style": { "fontSize": "15px", "color": "#374151", "textAlign": "left", "padding": "16px 20px" } },
     { "type": "button", "content": "Texto del botón", "href": "https://tusitio.com", "style": { "backgroundColor": "#2563eb", "color": "#ffffff", "fontSize": "15px", "fontWeight": "700", "textAlign": "center", "padding": "12px 20px", "borderRadius": "8px" } },
     { "type": "divider", "content": "", "style": { "padding": "8px 20px" } },
@@ -72,11 +74,11 @@ Responde ÚNICAMENTE con un JSON válido (sin markdown, sin backticks) con esta 
 }
 
 Tipos de bloques disponibles: header, text, image, button, divider, spacer, social, two-column.
-Para "image": incluye "src" con URL (puede ser vacío), "alt" con descripción.
+Para "image": SIEMPRE incluye "src": "" (vacío) y "alt" con una descripción DETALLADA y visual de la imagen ideal (mínimo 15 palabras). Esta descripción se usará para generar la imagen con IA.
 Para "two-column": incluye "leftContent" y "rightContent" en style.
 Para "spacer": incluye "height" en style (ej: "24px").
 Usa colores profesionales y vibrantes. El header debe tener un color de fondo llamativo.
-Genera entre 5-10 bloques para un email atractivo.`)
+Genera entre 6-10 bloques para un email atractivo. Incluye 1-2 bloques "image".`)
 
   const text = result.response.text().trim()
   const clean = text.replace(/^```json?\s*\n?/i, '').replace(/\n?\s*```\s*$/i, '').trim()
