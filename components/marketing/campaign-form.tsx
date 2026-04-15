@@ -336,24 +336,24 @@ export default function CampaignForm({ campaignId, aiDefaults, onClose, onSucces
 
   return (
     <div className="space-y-4">
-      <Card className="border-0 shadow-xl shadow-slate-200/50 dark:shadow-none">
+      <Card className="border-0 shadow-lg shadow-slate-200/40 dark:shadow-none rounded-2xl">
         <CardHeader className="pb-3 border-b">
           <div className="flex justify-between items-start">
-            <div className="space-y-1">
-              <CardTitle className="text-lg font-black tracking-tight">
-                {effectiveId ? '✏️ Editar Campaña' : '✨ Nueva Campaña'}
+            <div className="space-y-0.5">
+              <CardTitle className="text-base font-bold tracking-tight">
+                {effectiveId ? 'Editar Campaña' : 'Nueva Campaña'}
               </CardTitle>
-              <CardDescription className="text-xs">
-                Diseña, agrega destinatarios y envía — todo desde aquí.
+              <CardDescription className="text-[11px]">
+                Diseña, agrega destinatarios y envía — todo desde aquí
               </CardDescription>
             </div>
-            <Button variant="ghost" size="sm" onClick={onClose} className="rounded-full w-8 h-8 p-0">
+            <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8">
               <X className="h-4 w-4" />
             </Button>
           </div>
 
           {/* Clickable Step Indicator */}
-          <div className="flex items-center justify-center gap-1 mt-3 overflow-x-auto">
+          <div className="flex items-center justify-center gap-0.5 mt-4 overflow-x-auto">
             {steps.map((step, i) => {
               const Icon = step.icon
               const isClickable = i <= 1 || (i === 2 && hasSaved) || (i === 3 && hasSaved && hasRecipients)
@@ -364,22 +364,22 @@ export default function CampaignForm({ campaignId, aiDefaults, onClose, onSucces
                     disabled={!isClickable}
                     onClick={() => isClickable && setActiveStep(i)}
                     className={cn(
-                      "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all",
+                      "flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all",
                       activeStep === i
-                        ? "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 ring-2 ring-blue-300 dark:ring-blue-700"
+                        ? "bg-blue-600 text-white shadow-sm shadow-blue-200 dark:shadow-blue-900/30"
                         : step.done
-                        ? "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400"
-                        : "bg-slate-100 dark:bg-slate-800 text-slate-500",
-                      isClickable ? "cursor-pointer hover:scale-105" : "opacity-50 cursor-not-allowed"
+                        ? "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400"
+                        : "bg-slate-50 dark:bg-slate-800 text-slate-400",
+                      isClickable ? "cursor-pointer hover:scale-[1.03]" : "opacity-40 cursor-not-allowed"
                     )}>
-                    {step.done
+                    {step.done && activeStep !== i
                       ? <Check className="w-3.5 h-3.5" />
                       : <Icon className="w-3.5 h-3.5" />
                     }
                     <span className="hidden sm:inline">{step.label}</span>
                   </button>
                   {i < steps.length - 1 && (
-                    <div className={cn("w-6 h-px mx-1", step.done ? "bg-emerald-300" : "bg-slate-200 dark:bg-slate-700")} />
+                    <div className={cn("w-8 h-px mx-0.5", step.done ? "bg-emerald-300 dark:bg-emerald-700" : "bg-slate-200 dark:bg-slate-700")} />
                   )}
                 </div>
               )
@@ -410,24 +410,24 @@ export default function CampaignForm({ campaignId, aiDefaults, onClose, onSucces
             )}
 
             {/* Status bar */}
-            <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border p-3 bg-slate-50/50 dark:bg-slate-800/30">
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-100 dark:border-slate-800 p-2.5 bg-slate-50/50 dark:bg-slate-800/30">
+              <div className="flex items-center gap-2 text-[11px] text-muted-foreground pl-1">
                 <span className={cn(
                   "w-2 h-2 rounded-full",
                   isDirtySinceSave ? "bg-amber-500 animate-pulse" : lastSavedAt ? "bg-emerald-500" : "bg-slate-300"
                 )} />
                 {isDirtySinceSave ? 'Cambios sin guardar' : lastSavedAt ? `Guardado ${lastSavedAt.toLocaleTimeString('es-CO')}` : 'Sin cambios'}
               </div>
-              <div className="flex flex-wrap gap-1.5">
-                <Button type="button" variant="outline" size="sm" onClick={() => setShowPreview(true)} className="text-xs rounded-lg h-8">
-                  <Eye className="h-3.5 w-3.5 mr-1.5" /> Vista previa
+              <div className="flex gap-1.5">
+                <Button type="button" variant="outline" size="sm" onClick={() => setShowPreview(true)} className="text-[11px] h-8 px-3">
+                  <Eye className="h-3.5 w-3.5 mr-1.5" /> Preview
                 </Button>
-                <Button type="button" variant="outline" size="sm" onClick={() => setShowSendTest(true)} className="text-xs rounded-lg h-8">
-                  <Send className="h-3.5 w-3.5 mr-1.5" /> Prueba
+                <Button type="button" variant="outline" size="sm" onClick={() => setShowSendTest(true)} className="text-[11px] h-8 px-3">
+                  <Send className="h-3.5 w-3.5 mr-1.5" /> Test
                 </Button>
-                <Button type="submit" size="sm" disabled={createMutation.isPending || updateMutation.isPending} className="text-xs rounded-lg h-8 bg-blue-600 hover:bg-blue-700">
+                <Button type="submit" size="sm" disabled={createMutation.isPending || updateMutation.isPending} className="text-[11px] h-8 px-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold">
                   <Save className="h-3.5 w-3.5 mr-1.5" />
-                  {createMutation.isPending || updateMutation.isPending ? 'Guardando…' : effectiveId ? 'Guardar' : 'Guardar y continuar'}
+                  {createMutation.isPending || updateMutation.isPending ? 'Guardando…' : effectiveId ? 'Guardar' : 'Guardar'}
                 </Button>
               </div>
             </div>
