@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { useToast } from '@/components/ui/toast'
-import { Loader2, Plus, Calendar, FileText, CheckCircle, ArrowRight } from 'lucide-react'
+import { Loader2, Plus, Calendar, FileText, CheckCircle, ArrowRight, Trash2 } from 'lucide-react'
 import {
     Dialog,
     DialogContent,
@@ -151,7 +151,7 @@ export default function PayrollDashboard() {
                     </Card>
                 </div>
 
-                <div className="bg-white rounded-lg border shadow-sm overflow-hidden mt-6">
+                <div className="bg-background rounded-lg border shadow-sm overflow-hidden mt-6">
                     <Table>
                         <TableHeader>
                             <TableRow>
@@ -213,9 +213,33 @@ export default function PayrollDashboard() {
                                             )}
                                         </TableCell>
                                         <TableCell className="text-right">
-                                            <Button variant="ghost" size="sm" onClick={() => router.push(`/hr/payroll/${period.id}`)}>
-                                                Ver Detalles <ArrowRight className="ml-2 h-4 w-4" />
-                                            </Button>
+                                            <div className="flex items-center justify-end gap-1">
+                                                <Button variant="ghost" size="sm" onClick={() => router.push(`/hr/payroll/${period.id}`)}>
+                                                    Ver Detalles <ArrowRight className="ml-2 h-4 w-4" />
+                                                </Button>
+                                                {period.status === 'DRAFT' && (
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="h-8 w-8 text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+                                                        onClick={async () => {
+                                                            if (!confirm('¿Eliminar este borrador de nómina?')) return
+                                                            try {
+                                                                const res = await fetch(`/api/hr/payroll/${period.id}`, { method: 'DELETE' })
+                                                                if (res.ok) {
+                                                                    toast('Borrador eliminado', 'success')
+                                                                    fetchPeriods()
+                                                                } else {
+                                                                    const data = await res.json()
+                                                                    toast(data.error || 'Error al eliminar', 'error')
+                                                                }
+                                                            } catch { toast('Error de conexión', 'error') }
+                                                        }}
+                                                    >
+                                                        <Trash2 className="h-3.5 w-3.5" />
+                                                    </Button>
+                                                )}
+                                            </div>
                                         </TableCell>
                                     </TableRow>
                                 ))
@@ -262,7 +286,10 @@ export default function PayrollDashboard() {
                             </div>
                         </div>
                         <DialogFooter>
-                            <Button variant="outline" onClick={() => setIsModalOpen(false)}>Cancelar</Button>
+                            <Button variant="outline" onClick={() => {
+                                setIsModalOpen(false)
+                                setNewPeriodData({ periodName: '', startDate: '', endDate: '' })
+                            }}>Cancelar</Button>
                             <Button onClick={handleGeneratePayroll} disabled={generating || !newPeriodData.periodName || !newPeriodData.startDate || !newPeriodData.endDate}>
                                 {generating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                 Generar Recibos

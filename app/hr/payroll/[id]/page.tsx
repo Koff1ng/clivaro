@@ -309,34 +309,29 @@ export default function PayrollDetailPage({ params }: { params: { id: string } }
                                 </div>
                                 <div className="p-0">
                                     <Table>
-                                        <TableHeader className="bg-white">
+                                        <TableHeader className="bg-white dark:bg-slate-900">
                                             <TableRow>
                                                 <TableHead className="w-[100px]">Tipo</TableHead>
                                                 <TableHead>Concepto</TableHead>
                                                 <TableHead className="w-[150px] text-right">Devengo (+)</TableHead>
                                                 <TableHead className="w-[150px] text-right">Deducción (-)</TableHead>
+                                                <TableHead className="w-[150px] text-right">Patronal</TableHead>
                                                 {period.status === 'DRAFT' && <TableHead className="w-[50px]"></TableHead>}
                                             </TableRow>
                                         </TableHeader>
                                         <TableBody>
-                                            {payslip.items?.map((item: any) => (
+                                            {payslip.items?.filter((item: any) => item.type === 'EARNING').map((item: any) => (
                                                 <TableRow key={item.id} className="text-sm border-b-0 h-10">
-                                                    <TableCell className="py-1 line-clamp-1">
-                                                        {item.type === 'EARNING' ?
-                                                            <span className="text-green-600 text-xs font-semibold">D</span> :
-                                                            <span className="text-red-500 text-xs font-semibold">DED</span>
-                                                        }
+                                                    <TableCell className="py-1">
+                                                        <span className="text-green-600 text-xs font-semibold">D</span>
                                                     </TableCell>
                                                     <TableCell className="py-1">
                                                         {item.concept}
-                                                        {item.isAutomatic && <span className="ml-2 text-[10px] bg-slate-100 px-1 rounded text-slate-500">Auto</span>}
+                                                        {item.isAutomatic && <span className="ml-2 text-[10px] bg-slate-100 dark:bg-slate-800 px-1 rounded text-slate-500">Auto</span>}
                                                     </TableCell>
-                                                    <TableCell className="py-1 text-right text-slate-700">
-                                                        {item.type === 'EARNING' ? formatCurrency(item.amount) : ''}
-                                                    </TableCell>
-                                                    <TableCell className="py-1 text-right text-red-600">
-                                                        {item.type === 'DEDUCTION' ? formatCurrency(item.amount) : ''}
-                                                    </TableCell>
+                                                    <TableCell className="py-1 text-right text-slate-700 dark:text-slate-300">{formatCurrency(item.amount)}</TableCell>
+                                                    <TableCell className="py-1 text-right"></TableCell>
+                                                    <TableCell className="py-1 text-right"></TableCell>
                                                     {period.status === 'DRAFT' && (
                                                         <TableCell className="py-1 text-right">
                                                             {!item.isAutomatic && (
@@ -348,10 +343,59 @@ export default function PayrollDetailPage({ params }: { params: { id: string } }
                                                     )}
                                                 </TableRow>
                                             ))}
-                                            <TableRow className="bg-slate-50 font-medium">
+                                            {payslip.items?.filter((item: any) => item.type === 'DEDUCTION').map((item: any) => (
+                                                <TableRow key={item.id} className="text-sm border-b-0 h-10">
+                                                    <TableCell className="py-1">
+                                                        <span className="text-red-500 text-xs font-semibold">DED</span>
+                                                    </TableCell>
+                                                    <TableCell className="py-1">
+                                                        {item.concept}
+                                                        {item.isAutomatic && <span className="ml-2 text-[10px] bg-slate-100 dark:bg-slate-800 px-1 rounded text-slate-500">Auto</span>}
+                                                    </TableCell>
+                                                    <TableCell className="py-1 text-right"></TableCell>
+                                                    <TableCell className="py-1 text-right text-red-600">{formatCurrency(item.amount)}</TableCell>
+                                                    <TableCell className="py-1 text-right"></TableCell>
+                                                    {period.status === 'DRAFT' && (
+                                                        <TableCell className="py-1 text-right">
+                                                            {!item.isAutomatic && (
+                                                                <Button variant="ghost" size="sm" className="h-6 w-6 p-0 hover:bg-red-50 hover:text-red-500" onClick={() => handleRemoveItem(payslip.id, item.id)}>
+                                                                    <Trash2 className="h-3 w-3" />
+                                                                </Button>
+                                                            )}
+                                                        </TableCell>
+                                                    )}
+                                                </TableRow>
+                                            ))}
+                                            {/* Aportes patronales — section separator */}
+                                            {payslip.items?.some((item: any) => item.type === 'EMPLOYER') && (
+                                                <TableRow className="bg-blue-50/50 dark:bg-blue-900/10">
+                                                    <TableCell colSpan={period.status === 'DRAFT' ? 6 : 5} className="py-1.5 text-[11px] font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider">
+                                                        Aportes Patronales (no se descuentan)
+                                                    </TableCell>
+                                                </TableRow>
+                                            )}
+                                            {payslip.items?.filter((item: any) => item.type === 'EMPLOYER').map((item: any) => (
+                                                <TableRow key={item.id} className="text-sm border-b-0 h-10 bg-blue-50/30 dark:bg-blue-900/5">
+                                                    <TableCell className="py-1">
+                                                        <span className="text-blue-500 text-xs font-semibold">EMP</span>
+                                                    </TableCell>
+                                                    <TableCell className="py-1 text-slate-500 dark:text-slate-400">
+                                                        {item.concept}
+                                                        <span className="ml-2 text-[10px] bg-blue-100 dark:bg-blue-900/30 px-1 rounded text-blue-500">Patronal</span>
+                                                    </TableCell>
+                                                    <TableCell className="py-1 text-right"></TableCell>
+                                                    <TableCell className="py-1 text-right"></TableCell>
+                                                    <TableCell className="py-1 text-right text-blue-600 dark:text-blue-400">{formatCurrency(item.amount)}</TableCell>
+                                                    {period.status === 'DRAFT' && <TableCell className="py-1"></TableCell>}
+                                                </TableRow>
+                                            ))}
+                                            <TableRow className="bg-slate-50 dark:bg-slate-800 font-medium">
                                                 <TableCell colSpan={2} className="text-right py-2">Totales Individuales</TableCell>
-                                                <TableCell className="text-right py-2 text-slate-800">{formatCurrency(payslip.totalEarnings)}</TableCell>
+                                                <TableCell className="text-right py-2 text-slate-800 dark:text-slate-200">{formatCurrency(payslip.totalEarnings)}</TableCell>
                                                 <TableCell className="text-right py-2 text-red-600">{formatCurrency(payslip.totalDeductions)}</TableCell>
+                                                <TableCell className="text-right py-2 text-blue-600 dark:text-blue-400">
+                                                    {formatCurrency(payslip.items?.filter((i: any) => i.type === 'EMPLOYER').reduce((acc: number, i: any) => acc + i.amount, 0) || 0)}
+                                                </TableCell>
                                                 {period.status === 'DRAFT' && <TableCell></TableCell>}
                                             </TableRow>
                                         </TableBody>

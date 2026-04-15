@@ -77,9 +77,9 @@ export async function POST(req: Request) {
         const startDate = new Date(data.startDate);
         const endDate = new Date(data.endDate);
 
-        // Calcular días del período (máximo 30)
+        // Calcular días del período (ambos extremos inclusivos, máximo 30)
         const diffTime = Math.abs(endDate.getTime() - startDate.getTime());
-        const periodDays = Math.min(Math.ceil(diffTime / (1000 * 60 * 60 * 24)), 30);
+        const periodDays = Math.min(Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1, 30);
 
         const newPeriod = await withTenantTx(tenantId, async (tx) => {
             // 1. Create the base Payroll Period

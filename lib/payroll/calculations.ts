@@ -1,7 +1,7 @@
 /**
  * Motor de Cálculos de Nómina Electrónica — Colombia
  * ===================================================
- * Implementa todas las reglas de nómina colombiana vigentes (2025).
+ * Implementa todas las reglas de nómina colombiana vigentes.
  * 
  * Referencia legal:
  * - Ley 100 de 1993 (Sistema de Seguridad Social)
@@ -9,18 +9,26 @@
  * - Decreto 2616 de 2013 (Cotización por semanas)
  * - Resolución DIAN para Nómina Electrónica
  * 
+ * NOTA: Actualizar SMLMV y AUXILIO_TRANSPORTE cada enero
+ * cuando el gobierno publique los nuevos valores.
+ * 
  * @module lib/payroll/calculations
  */
 
 // =============================================
-// CONSTANTES LEGALES 2025
+// CONSTANTES LEGALES VIGENTES
+// Último ajuste: Enero 2025 (Decreto 2292 de 2024)
 // =============================================
 
-/** Salario Mínimo Legal Mensual Vigente 2025 */
-export const SMLMV_2025 = 1_423_500
+/** Salario Mínimo Legal Mensual Vigente */
+export const SMLMV = 1_423_500
+/** @deprecated Use SMLMV en su lugar */
+export const SMLMV_2025 = SMLMV
 
-/** Auxilio de Transporte 2025 */
-export const AUXILIO_TRANSPORTE_2025 = 200_000
+/** Auxilio de Transporte vigente */
+export const AUXILIO_TRANSPORTE = 200_000
+/** @deprecated Use AUXILIO_TRANSPORTE en su lugar */
+export const AUXILIO_TRANSPORTE_2025 = AUXILIO_TRANSPORTE
 
 /** Tope para auxilio de transporte: 2 SMLMV */
 export const TOPE_AUX_TRANSPORTE = 2
@@ -124,7 +132,7 @@ function roundCOP(value: number): number {
  * Aplica si el salario base es ≤ 2 SMLMV y NO es salario integral.
  */
 export function hasTransportAllowance(baseSalary: number, integralSalary: boolean): boolean {
-  return !integralSalary && baseSalary <= (SMLMV_2025 * TOPE_AUX_TRANSPORTE)
+  return !integralSalary && baseSalary <= (SMLMV * TOPE_AUX_TRANSPORTE)
 }
 
 /**
@@ -185,7 +193,7 @@ export function calculatePayroll(input: PayrollEmployeeInput): PayrollCalculatio
 
   // Auxilio de transporte (si aplica)
   const auxTransporte = hasTransportAllowance(baseSalary, integralSalary)
-    ? roundCOP(AUXILIO_TRANSPORTE_2025 * daysFactor)
+    ? roundCOP(AUXILIO_TRANSPORTE * daysFactor)
     : 0
 
   if (auxTransporte > 0) {
@@ -226,7 +234,7 @@ export function calculatePayroll(input: PayrollEmployeeInput): PayrollCalculatio
   })
 
   // Fondo de Solidaridad Pensional (1%) — Solo si salario > 4 SMLMV
-  if (baseSalary > (SMLMV_2025 * TOPE_FSP)) {
+  if (baseSalary > (SMLMV * TOPE_FSP)) {
     const fsp = roundCOP(ibc * PCT_FSP)
     deductions.push({
       concept: 'Fondo Solidaridad Pensional (1%)',
@@ -314,7 +322,9 @@ export function calculatePayroll(input: PayrollEmployeeInput): PayrollCalculatio
   const totalDeductions = deductions.reduce((acc, d) => acc + d.amount, 0)
   const netPay = totalEarnings - totalDeductions
   const totalEmployerContributions = employerContributions.reduce((acc, c) => acc + c.amount, 0)
-  const totalEmployerCost = netPay + totalDeductions + totalEmployerContributions
+  // Costo total empresa = lo que se paga al empleado (totalEarnings) + aportes patronales
+  // No incluye deducciones porque esas ya están dentro de totalEarnings (se le descuentan al empleado)
+  const totalEmployerCost = totalEarnings + totalEmployerContributions
 
   return {
     earnings,
@@ -346,7 +356,7 @@ export function calculateSocialBenefitsProvision(
   total: number
 } {
   const baseForBenefits = includeAuxTransporte
-    ? baseSalary + AUXILIO_TRANSPORTE_2025
+    ? baseSalary + AUXILIO_TRANSPORTE
     : baseSalary
 
   // Prima de servicios: (Salario + Aux) / 12
@@ -355,8 +365,8 @@ export function calculateSocialBenefitsProvision(
   // Cesantías: (Salario + Aux) / 12
   const cesantias = roundCOP(baseForBenefits / 12)
 
-  // Intereses sobre cesantías: Cesantías × 12% / 12
-  const interesesCesantias = roundCOP((cesantias * 0.12))
+  // Intereses sobre cesantías: Cesantías × 12% anual / 12 meses
+  const interesesCesantias = roundCOP((cesantias * 0.12) / 12)
 
   // Vacaciones: Salario base / 24 (NO incluye aux transporte)
   const vacaciones = roundCOP(baseSalary / 24)
