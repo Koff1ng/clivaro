@@ -1,20 +1,23 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Eye, Send, Save, Users, X, Check, FileText, Palette, Megaphone, Monitor, Smartphone, MailOpen, Sparkles, Loader2, Wand2 } from 'lucide-react'
+import {
+  Eye, Send, Save, Users, X, Check, FileText, Palette, Megaphone, Monitor, Smartphone,
+  MailOpen, Sparkles, Loader2, ArrowRight, CheckCircle, XCircle, Clock, Trash2, Plus
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Checkbox } from '@/components/ui/checkbox'
 import EmailBuilder from '@/components/marketing/email-builder'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { useToast } from '@/components/ui/toast'
-import AddRecipientsDialog from '@/components/marketing/add-recipients-dialog'
 import { useSession } from 'next-auth/react'
 
 const campaignSchema = z.object({
@@ -40,15 +43,20 @@ export default function CampaignForm({ campaignId, aiDefaults, onClose, onSucces
   const [currentCampaignId, setCurrentCampaignId] = useState<string | null>(campaignId || null)
   const [showPreview, setShowPreview] = useState(false)
   const [previewMode, setPreviewMode] = useState<'desktop' | 'mobile'>('desktop')
-  const [showRecipients, setShowRecipients] = useState(false)
   const [showSendTest, setShowSendTest] = useState(false)
   const [testEmail, setTestEmail] = useState<string>(((session?.user as any)?.email as string) || '')
   const [testName, setTestName] = useState<string>(((session?.user as any)?.name as string) || '')
   const [isDirtySinceSave, setIsDirtySinceSave] = useState(false)
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null)
   const [editorKey, setEditorKey] = useState(0)
-  const [aiGeneratePrompt, setAiGeneratePrompt] = useState('')
-  const [isAiGenerating, setIsAiGenerating] = useState(false)
+  const [activeStep, setActiveStep] = useState(0) // 0=Info, 1=Design, 2=Recipients, 3=Send
+
+  // Inline recipients state
+  const [selectedCustomers, setSelectedCustomers] = useState<string[]>([])
+  const [manualEmails, setManualEmails] = useState<string[]>([''])
+  const [customerSearch, setCustomerSearch] = useState('')
+
+  const effectiveId = currentCampaignId || campaignId
 
   const { register, handleSubmit, control, watch, setValue, formState: { errors } } = useForm<CampaignFormData>({
     resolver: zodResolver(campaignSchema),
@@ -78,13 +86,48 @@ export default function CampaignForm({ campaignId, aiDefaults, onClose, onSucces
     setIsDirtySinceSave(true)
   }, [htmlContent, name, subject, scheduledAt])
 
+  // Fetch customers for inline recipients
+  const { data: customers } = useQuery({
+    queryKey: ['customers-for-campaign'],
+    queryFn: async () => {
+      const res = await fetch('/api/customers?active=true')
+      if (!res.ok) return []
+      const data = await res.json()
+      return data.customers?.filter((c: any) => c.email) || []
+    },
+    enabled: !!effectiveId, // Only fetch when campaign is saved
+  })
+
+  // Fetch campaign recipients when saved
+  const { data: campaignData, refetch: refetchCampaign } = useQuery({
+    queryKey: ['marketing-campaign', effectiveId],
+    queryFn: async () => {
+      const res = await fetch(`/api/marketing/campaigns/${effectiveId}`)
+      if (!res.ok) return null
+      return res.json()
+    },
+    enabled: !!effectiveId,
+  })
+
+  const recipients = campaignData?.recipients || []
+  const pendingCount = recipients.filter((r: any) => r.status === 'PENDING').length
+  const sentCount = recipients.filter((r: any) => r.status === 'SENT').length
+
+  const filteredCustomers = useMemo(() => {
+    if (!customers) return []
+    if (!customerSearch) return customers
+    const q = customerSearch.toLowerCase()
+    return customers.filter((c: any) =>
+      c.name?.toLowerCase().includes(q) || c.email?.toLowerCase().includes(q)
+    )
+  }, [customers, customerSearch])
+
   // ── Smooth AI fill animation ──
   const [isAiFilling, setIsAiFilling] = useState(false)
   const [aiFillingStep, setAiFillingStep] = useState<'name' | 'subject' | 'html' | 'done'>('done')
 
   useEffect(() => {
     if (!aiDefaults) return
-
     let cancelled = false
     setIsAiFilling(true)
     setAiFillingStep('name')
@@ -96,33 +139,21 @@ export default function CampaignForm({ campaignId, aiDefaults, onClose, onSucces
           if (cancelled) { clearInterval(interval); return }
           i++
           setValue(field, text.slice(0, i), { shouldValidate: false })
-          if (i >= text.length) {
-            clearInterval(interval)
-            resolve()
-          }
-        }, 25) // 25ms per character = fast but visible
+          if (i >= text.length) { clearInterval(interval); resolve() }
+        }, 25)
       })
 
     ;(async () => {
-      // Step 1: Type name
       await typeField('name', aiDefaults.name)
       if (cancelled) return
-
-      // Brief pause between fields
       await new Promise(r => setTimeout(r, 300))
-
-      // Step 2: Type subject
       setAiFillingStep('subject')
       await typeField('subject', aiDefaults.subject)
       if (cancelled) return
-
       await new Promise(r => setTimeout(r, 300))
-
-      // Step 3: Fade in HTML content
       setAiFillingStep('html')
       setValue('htmlContent', aiDefaults.htmlContent, { shouldValidate: true })
       setEditorKey(prev => prev + 1)
-
       await new Promise(r => setTimeout(r, 800))
       setAiFillingStep('done')
       setIsAiFilling(false)
@@ -130,29 +161,6 @@ export default function CampaignForm({ campaignId, aiDefaults, onClose, onSucces
 
     return () => { cancelled = true }
   }, [aiDefaults, setValue])
-
-  // AI inline generate
-  const handleAiGenerate = async () => {
-    if (!aiGeneratePrompt.trim()) return
-    setIsAiGenerating(true)
-    try {
-      const res = await fetch('/api/ai/marketing', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'generate-html', type: 'promo', details: aiGeneratePrompt }),
-      })
-      if (!res.ok) throw new Error('Error de IA')
-      const data = await res.json()
-      setValue('htmlContent', data.html, { shouldValidate: true })
-      setEditorKey(prev => prev + 1)
-      setAiGeneratePrompt('')
-      toast('HTML generado con IA ✨', 'success')
-    } catch {
-      toast('Error al generar con IA', 'error')
-    } finally {
-      setIsAiGenerating(false)
-    }
-  }
 
   // Build preview document
   const previewHtml = useMemo(() => {
@@ -178,14 +186,14 @@ export default function CampaignForm({ campaignId, aiDefaults, onClose, onSucces
       setCurrentCampaignId(data.id)
       setIsDirtySinceSave(false)
       setLastSavedAt(new Date())
-      toast('Campaña guardada como borrador', 'success')
-      onSuccess(data.id)
+      toast('✅ Campaña guardada. Ahora agrega destinatarios.', 'success')
+      setActiveStep(2) // Jump to recipients step
     },
   })
 
   const updateMutation = useMutation({
     mutationFn: async (data: CampaignFormData) => {
-      const id = currentCampaignId || campaignId
+      const id = effectiveId
       const res = await fetch(`/api/marketing/campaigns/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -199,12 +207,10 @@ export default function CampaignForm({ campaignId, aiDefaults, onClose, onSucces
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['marketing-campaigns'] })
-      const id = currentCampaignId || campaignId
-      if (id) queryClient.invalidateQueries({ queryKey: ['marketing-campaign', id] })
+      if (effectiveId) queryClient.invalidateQueries({ queryKey: ['marketing-campaign', effectiveId] })
       setIsDirtySinceSave(false)
       setLastSavedAt(new Date())
       toast('Cambios guardados', 'success')
-      onSuccess()
     },
     onError: (error: any) => {
       toast(error.message || 'Error al guardar', 'error')
@@ -212,20 +218,15 @@ export default function CampaignForm({ campaignId, aiDefaults, onClose, onSucces
   })
 
   const onSubmit = (data: CampaignFormData) => {
-    const id = currentCampaignId || campaignId
+    const id = effectiveId
     if (id) updateMutation.mutate(data)
     else createMutation.mutate(data)
   }
 
   const ensureSaved = async (): Promise<string | null> => {
-    const id = currentCampaignId || campaignId
+    const id = effectiveId
     if (id) return id
-    const data: CampaignFormData = {
-      name,
-      subject,
-      htmlContent,
-      scheduledAt: scheduledAt || '',
-    }
+    const data: CampaignFormData = { name, subject, htmlContent, scheduledAt: scheduledAt || '' }
     const parsed = campaignSchema.safeParse(data)
     if (!parsed.success) {
       toast('Completa nombre, asunto y contenido antes de continuar', 'warning')
@@ -234,6 +235,66 @@ export default function CampaignForm({ campaignId, aiDefaults, onClose, onSucces
     const created = await createMutation.mutateAsync(parsed.data)
     return created.id
   }
+
+  // Add recipients mutation
+  const addRecipientsMutation = useMutation({
+    mutationFn: async (payload: { customerIds?: string[]; emails?: string[] }) => {
+      const id = effectiveId
+      if (!id) throw new Error('Guarda la campaña primero')
+      const res = await fetch(`/api/marketing/campaigns/${id}/recipients`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      if (!res.ok) {
+        const error = await res.json()
+        throw new Error(error.error || 'Error al agregar destinatarios')
+      }
+      return res.json()
+    },
+    onSuccess: (data) => {
+      refetchCampaign()
+      setSelectedCustomers([])
+      setManualEmails([''])
+      toast(`${data.added} destinatario(s) agregados`, 'success')
+    },
+    onError: (err: any) => toast(err.message, 'error'),
+  })
+
+  const handleAddRecipients = () => {
+    const customerIds = selectedCustomers.length > 0 ? selectedCustomers : undefined
+    const emails = manualEmails.filter(e => e.trim() && e.includes('@'))
+    const validEmails = emails.length > 0 ? emails : undefined
+    if (!customerIds && !validEmails) {
+      toast('Selecciona al menos un cliente o agrega un email', 'warning')
+      return
+    }
+    addRecipientsMutation.mutate({ customerIds, emails: validEmails })
+  }
+
+  // Send campaign mutation
+  const sendMutation = useMutation({
+    mutationFn: async () => {
+      const id = effectiveId
+      if (!id) throw new Error('No campaign ID')
+      const res = await fetch(`/api/marketing/campaigns/${id}/send`, { method: 'POST' })
+      if (!res.ok) {
+        const error = await res.json()
+        throw new Error(error.error || 'Error al enviar')
+      }
+      return res.json()
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['marketing-campaigns'] })
+      refetchCampaign()
+      if (data.failed > 0) {
+        toast(`Enviada: ${data.sent} exitosos, ${data.failed} fallidos`, 'warning')
+      } else {
+        toast(`🎉 Campaña enviada a ${data.sent} destinatarios`, 'success')
+      }
+    },
+    onError: (err: any) => toast(err.message, 'error'),
+  })
 
   const sendTestMutation = useMutation({
     mutationFn: async () => {
@@ -249,7 +310,7 @@ export default function CampaignForm({ campaignId, aiDefaults, onClose, onSucces
       return data
     },
     onSuccess: () => {
-      toast('Email de prueba enviado', 'success')
+      toast('Email de prueba enviado ✉️', 'success')
       setShowSendTest(false)
     },
     onError: (error: any) => toast(error.message || 'Error al enviar prueba', 'error'),
@@ -258,26 +319,27 @@ export default function CampaignForm({ campaignId, aiDefaults, onClose, onSucces
   // Stepper
   const hasInfo = !!(name && subject)
   const hasDesign = !!(htmlContent && htmlContent.trim().length > 0)
-  const hasSaved = !!(currentCampaignId || campaignId)
+  const hasSaved = !!effectiveId
+  const hasRecipients = recipients.length > 0
 
   const steps = [
     { label: 'Info', icon: FileText, done: hasInfo },
     { label: 'Diseño', icon: Palette, done: hasDesign },
-    { label: 'Destinatarios', icon: Users, done: false },
-    { label: 'Enviar', icon: Megaphone, done: false },
+    { label: 'Destinatarios', icon: Users, done: hasRecipients },
+    { label: 'Enviar', icon: Megaphone, done: campaignData?.status === 'SENT' },
   ]
 
   return (
-    <div className="container mx-auto p-4 sm:p-6 max-w-7xl">
+    <div className="space-y-4">
       <Card className="border-0 shadow-xl shadow-slate-200/50 dark:shadow-none">
-        <CardHeader className="pb-4 border-b">
+        <CardHeader className="pb-3 border-b">
           <div className="flex justify-between items-start">
             <div className="space-y-1">
-              <CardTitle className="text-xl font-black tracking-tight">
-                {(currentCampaignId || campaignId) ? 'Editar Campaña' : 'Nueva Campaña'}
+              <CardTitle className="text-lg font-black tracking-tight">
+                {effectiveId ? '✏️ Editar Campaña' : '✨ Nueva Campaña'}
               </CardTitle>
-              <CardDescription>
-                Diseña emails profesionales con plantillas, vista previa y envío de prueba
+              <CardDescription className="text-xs">
+                Diseña, agrega destinatarios y envía — todo desde aquí.
               </CardDescription>
             </div>
             <Button variant="ghost" size="sm" onClick={onClose} className="rounded-full w-8 h-8 p-0">
@@ -285,24 +347,32 @@ export default function CampaignForm({ campaignId, aiDefaults, onClose, onSucces
             </Button>
           </div>
 
-          {/* Step Indicator */}
-          <div className="flex items-center justify-center gap-1 mt-4 overflow-x-auto">
+          {/* Clickable Step Indicator */}
+          <div className="flex items-center justify-center gap-1 mt-3 overflow-x-auto">
             {steps.map((step, i) => {
               const Icon = step.icon
+              const isClickable = i <= 1 || (i === 2 && hasSaved) || (i === 3 && hasSaved && hasRecipients)
               return (
                 <div key={i} className="flex items-center">
-                  <div className={cn(
-                    "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all",
-                    step.done
-                      ? "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400"
-                      : "bg-slate-100 dark:bg-slate-800 text-slate-500"
-                  )}>
+                  <button
+                    type="button"
+                    disabled={!isClickable}
+                    onClick={() => isClickable && setActiveStep(i)}
+                    className={cn(
+                      "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all",
+                      activeStep === i
+                        ? "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 ring-2 ring-blue-300 dark:ring-blue-700"
+                        : step.done
+                        ? "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400"
+                        : "bg-slate-100 dark:bg-slate-800 text-slate-500",
+                      isClickable ? "cursor-pointer hover:scale-105" : "opacity-50 cursor-not-allowed"
+                    )}>
                     {step.done
                       ? <Check className="w-3.5 h-3.5" />
                       : <Icon className="w-3.5 h-3.5" />
                     }
                     <span className="hidden sm:inline">{step.label}</span>
-                  </div>
+                  </button>
                   {i < steps.length - 1 && (
                     <div className={cn("w-6 h-px mx-1", step.done ? "bg-emerald-300" : "bg-slate-200 dark:bg-slate-700")} />
                   )}
@@ -334,7 +404,7 @@ export default function CampaignForm({ campaignId, aiDefaults, onClose, onSucces
               </div>
             )}
 
-            {/* Top actions bar */}
+            {/* Status bar */}
             <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border p-3 bg-slate-50/50 dark:bg-slate-800/30">
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <span className={cn(
@@ -347,142 +417,372 @@ export default function CampaignForm({ campaignId, aiDefaults, onClose, onSucces
                 <Button type="button" variant="outline" size="sm" onClick={() => setShowPreview(true)} className="text-xs rounded-lg h-8">
                   <Eye className="h-3.5 w-3.5 mr-1.5" /> Vista previa
                 </Button>
-                <Button type="button" variant="outline" size="sm" onClick={async () => { const id = await ensureSaved(); if (id) setShowRecipients(true) }} className="text-xs rounded-lg h-8">
-                  <Users className="h-3.5 w-3.5 mr-1.5" /> Destinatarios
-                </Button>
                 <Button type="button" variant="outline" size="sm" onClick={() => setShowSendTest(true)} className="text-xs rounded-lg h-8">
                   <Send className="h-3.5 w-3.5 mr-1.5" /> Prueba
                 </Button>
                 <Button type="submit" size="sm" disabled={createMutation.isPending || updateMutation.isPending} className="text-xs rounded-lg h-8 bg-blue-600 hover:bg-blue-700">
                   <Save className="h-3.5 w-3.5 mr-1.5" />
-                  {createMutation.isPending || updateMutation.isPending ? 'Guardando…' : 'Guardar'}
+                  {createMutation.isPending || updateMutation.isPending ? 'Guardando…' : effectiveId ? 'Guardar' : 'Guardar y continuar'}
                 </Button>
               </div>
             </div>
 
-            <div className="grid gap-5 lg:grid-cols-2">
-              {/* Left — fields + builder */}
-              <div className="space-y-5">
-                {/* Campaign info */}
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <div>
-                    <Label htmlFor="name" className="text-xs font-bold">Nombre de la Campaña</Label>
-                    <Input id="name" {...register('name')} placeholder="Ej: Promoción de Verano 2026" className="mt-1" />
-                    {errors.name && <p className="text-xs text-red-500 mt-1">{errors.name.message}</p>}
-                  </div>
-                  <div>
-                    <Label htmlFor="subject" className="text-xs font-bold">Asunto del Email</Label>
-                    <Input id="subject" {...register('subject')} placeholder="Ej: ¡Ofertas especiales!" className="mt-1" />
-                    {errors.subject && <p className="text-xs text-red-500 mt-1">{errors.subject.message}</p>}
-                  </div>
-                </div>
-
-                <div>
-                  <Label htmlFor="scheduledAt" className="text-xs font-bold">Programar Envío (Opcional)</Label>
-                  <Controller
-                    name="scheduledAt"
-                    control={control}
-                    render={({ field }) => <Input id="scheduledAt" type="datetime-local" {...field} className="mt-1 max-w-xs" />}
-                  />
-                  <p className="text-[10px] text-muted-foreground mt-1">Deja vacío para guardar como borrador. Usa <code className="text-blue-600">{'{{name}}'}</code> en el asunto para personalizar.</p>
-                </div>
-
-                {/* Email Builder */}
-                <div className="border rounded-xl p-4 bg-white dark:bg-slate-900">
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
-                      <MailOpen className="w-3.5 h-3.5 text-white" />
+            {/* ═══════ STEP 0-1: Info + Design ═══════ */}
+            {activeStep <= 1 && (
+              <div className="grid gap-5 lg:grid-cols-2">
+                {/* Left — fields + builder */}
+                <div className="space-y-5">
+                  {/* Campaign info */}
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div>
+                      <Label htmlFor="name" className="text-xs font-bold">Nombre de la Campaña</Label>
+                      <Input id="name" {...register('name')} placeholder="Ej: Promoción de Verano 2026" className="mt-1" />
+                      {errors.name && <p className="text-xs text-red-500 mt-1">{errors.name.message}</p>}
                     </div>
-                    <span className="text-sm font-bold text-slate-900 dark:text-white">Editor de Email</span>
+                    <div>
+                      <Label htmlFor="subject" className="text-xs font-bold">Asunto del Email</Label>
+                      <Input id="subject" {...register('subject')} placeholder="Ej: ¡Ofertas especiales!" className="mt-1" />
+                      {errors.subject && <p className="text-xs text-red-500 mt-1">{errors.subject.message}</p>}
+                    </div>
                   </div>
-                  {/* AI inline generate */}
-                  <div className="flex gap-1.5 mb-3 p-2 rounded-lg bg-purple-50/80 dark:bg-purple-900/10 border border-purple-200 dark:border-purple-800">
-                    <input
-                      value={aiGeneratePrompt}
-                      onChange={(e) => setAiGeneratePrompt(e.target.value)}
-                      placeholder='Ej: "Email de bienvenida con descuento del 20%"'
-                      className="flex-1 bg-transparent border-0 text-xs text-slate-700 dark:text-slate-300 placeholder:text-purple-400/60 focus:outline-none"
-                      onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAiGenerate() } }}
+
+                  <div>
+                    <Label htmlFor="scheduledAt" className="text-xs font-bold">Programar Envío (Opcional)</Label>
+                    <Controller
+                      name="scheduledAt"
+                      control={control}
+                      render={({ field }) => <Input id="scheduledAt" type="datetime-local" {...field} className="mt-1 max-w-xs" />}
                     />
+                    <p className="text-[10px] text-muted-foreground mt-1">Deja vacío para guardar como borrador. Usa <code className="text-blue-600">{'{{name}}'}</code> en el asunto para personalizar.</p>
+                  </div>
+
+                  {/* Email Builder */}
+                  <div className="border rounded-xl p-4 bg-white dark:bg-slate-900">
+                    <div className="flex items-center gap-2 mb-3">
+                      <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
+                        <MailOpen className="w-3.5 h-3.5 text-white" />
+                      </div>
+                      <span className="text-sm font-bold text-slate-900 dark:text-white">Editor de Email</span>
+                    </div>
+                    <EmailBuilder
+                      key={editorKey}
+                      value={htmlContent || ''}
+                      onChange={(value) => {
+                        setValue('htmlContent', value, { shouldValidate: true })
+                      }}
+                    />
+                    {errors.htmlContent && <p className="text-xs text-red-500 mt-2">{errors.htmlContent.message}</p>}
+                  </div>
+                </div>
+
+                {/* Right — live preview */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm font-bold text-slate-900 dark:text-white">Vista previa</div>
+                    <div className="flex gap-1 bg-slate-100 dark:bg-slate-800 rounded-lg p-0.5">
+                      <Button type="button" size="sm" variant={previewMode === 'desktop' ? 'default' : 'ghost'} onClick={() => setPreviewMode('desktop')} className="text-xs h-7 rounded-md px-2.5">
+                        <Monitor className="w-3.5 h-3.5 mr-1" /> Desktop
+                      </Button>
+                      <Button type="button" size="sm" variant={previewMode === 'mobile' ? 'default' : 'ghost'} onClick={() => setPreviewMode('mobile')} className="text-xs h-7 rounded-md px-2.5">
+                        <Smartphone className="w-3.5 h-3.5 mr-1" /> Móvil
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className={cn(
+                    "rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 p-3 flex justify-center transition-all sticky top-4",
+                    previewMode === 'mobile' ? 'max-w-[400px] mx-auto' : ''
+                  )}>
+                    <div className={cn("bg-white dark:bg-slate-900 rounded-lg shadow-sm overflow-hidden w-full", previewMode === 'mobile' ? 'max-w-[360px]' : '')}>
+                      <div className="px-3 py-2 border-b bg-slate-50 dark:bg-slate-800/50 space-y-1">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[9px] font-bold text-slate-400 uppercase w-10">De:</span>
+                          <span className="text-[10px] text-slate-600 dark:text-slate-400">Tu Empresa &lt;info@tuempresa.com&gt;</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[9px] font-bold text-slate-400 uppercase w-10">Asunto:</span>
+                          <span className="text-[10px] font-bold text-slate-800 dark:text-slate-200">{subject || 'Sin asunto'}</span>
+                        </div>
+                      </div>
+                      <iframe
+                        title="Vista previa campaña"
+                        className="w-full bg-white"
+                        style={{ height: Math.min(800, 600), border: '0' }}
+                        srcDoc={previewHtml}
+                      />
+                    </div>
+                  </div>
+                  <p className="text-[10px] text-slate-400 text-center">
+                    El renderizado puede variar levemente entre Gmail, Outlook y otros clientes.
+                  </p>
+
+                  {/* Next step CTA */}
+                  {hasInfo && hasDesign && (
+                    <Button
+                      type={effectiveId ? 'button' : 'submit'}
+                      onClick={effectiveId ? () => setActiveStep(2) : undefined}
+                      className="w-full rounded-xl bg-blue-600 hover:bg-blue-700 h-11 text-sm font-bold"
+                    >
+                      {effectiveId ? (
+                        <><Users className="w-4 h-4 mr-2" /> Continuar a Destinatarios</>
+                      ) : (
+                        <><Save className="w-4 h-4 mr-2" /> Guardar y agregar destinatarios</>
+                      )}
+                    </Button>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* ═══════ STEP 2: Recipients (inline) ═══════ */}
+            {activeStep === 2 && effectiveId && (
+              <div className="space-y-5">
+                <div className="flex items-center gap-3">
+                  <button type="button" onClick={() => setActiveStep(1)} className="text-slate-400 hover:text-slate-600 transition-colors">
+                    <ArrowRight className="w-4 h-4 rotate-180" />
+                  </button>
+                  <h3 className="text-lg font-bold text-slate-900 dark:text-white">Agregar Destinatarios</h3>
+                  {recipients.length > 0 && (
+                    <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400">
+                      {recipients.length} agregados
+                    </span>
+                  )}
+                </div>
+
+                <div className="grid gap-5 lg:grid-cols-2">
+                  {/* Left: Add new */}
+                  <div className="space-y-4">
+                    {/* Customers list */}
+                    <div className="border rounded-xl p-4 bg-white dark:bg-slate-900">
+                      <div className="flex items-center justify-between mb-3">
+                        <Label className="text-xs font-bold">Clientes con Email</Label>
+                        {filteredCustomers.length > 0 && (
+                          <Button
+                            type="button" variant="ghost" size="sm" className="text-xs h-7"
+                            onClick={() => {
+                              if (selectedCustomers.length === filteredCustomers.length) {
+                                setSelectedCustomers([])
+                              } else {
+                                setSelectedCustomers(filteredCustomers.map((c: any) => c.id))
+                              }
+                            }}
+                          >
+                            {selectedCustomers.length === filteredCustomers.length ? 'Ninguno' : 'Todos'}
+                          </Button>
+                        )}
+                      </div>
+                      <Input
+                        value={customerSearch}
+                        onChange={e => setCustomerSearch(e.target.value)}
+                        placeholder="Buscar cliente..."
+                        className="text-xs mb-2"
+                      />
+                      <div className="max-h-48 overflow-y-auto space-y-0.5">
+                        {filteredCustomers.length === 0 ? (
+                          <p className="text-xs text-slate-400 py-4 text-center">No hay clientes con email</p>
+                        ) : (
+                          filteredCustomers.map((customer: any) => (
+                            <label key={customer.id} className="flex items-center gap-2 p-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer text-sm">
+                              <Checkbox
+                                checked={selectedCustomers.includes(customer.id)}
+                                onCheckedChange={(checked) => {
+                                  if (checked) setSelectedCustomers([...selectedCustomers, customer.id])
+                                  else setSelectedCustomers(selectedCustomers.filter(id => id !== customer.id))
+                                }}
+                              />
+                              <div className="flex-1 min-w-0">
+                                <p className="font-medium text-xs truncate">{customer.name}</p>
+                                <p className="text-[10px] text-slate-400 truncate">{customer.email}</p>
+                              </div>
+                            </label>
+                          ))
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Manual emails */}
+                    <div className="border rounded-xl p-4 bg-white dark:bg-slate-900">
+                      <div className="flex items-center justify-between mb-3">
+                        <Label className="text-xs font-bold">Emails Manuales</Label>
+                        <Button type="button" variant="ghost" size="sm" className="text-xs h-7" onClick={() => setManualEmails([...manualEmails, ''])}>
+                          <Plus className="w-3 h-3 mr-1" /> Agregar
+                        </Button>
+                      </div>
+                      <div className="space-y-1.5">
+                        {manualEmails.map((email, index) => (
+                          <div key={index} className="flex gap-1.5">
+                            <Input
+                              type="email"
+                              placeholder="email@ejemplo.com"
+                              value={email}
+                              onChange={e => {
+                                const newEmails = [...manualEmails]
+                                newEmails[index] = e.target.value
+                                setManualEmails(newEmails)
+                              }}
+                              className="text-xs"
+                            />
+                            {manualEmails.length > 1 && (
+                              <Button type="button" variant="ghost" size="sm" className="h-9 w-9 p-0 shrink-0" onClick={() => setManualEmails(manualEmails.filter((_, i) => i !== index))}>
+                                <Trash2 className="h-3 w-3 text-red-400" />
+                              </Button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
                     <Button
                       type="button"
-                      size="sm"
-                      onClick={handleAiGenerate}
-                      disabled={isAiGenerating || !aiGeneratePrompt.trim()}
-                      className="h-6 px-2.5 text-[10px] rounded-md bg-purple-600 hover:bg-purple-700 text-white"
+                      onClick={handleAddRecipients}
+                      disabled={addRecipientsMutation.isPending}
+                      className="w-full rounded-xl bg-blue-600 hover:bg-blue-700 h-10"
                     >
-                      {isAiGenerating ? <Loader2 className="w-3 h-3 animate-spin" /> : <><Sparkles className="w-3 h-3 mr-1" /> Generar</>}
+                      {addRecipientsMutation.isPending ? (
+                        <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Agregando...</>
+                      ) : (
+                        <><Plus className="w-4 h-4 mr-2" /> Agregar {selectedCustomers.length + manualEmails.filter(e => e.includes('@')).length} destinatario(s)</>
+                      )}
                     </Button>
                   </div>
-                  <EmailBuilder
-                    key={editorKey}
-                    value={htmlContent || ''}
-                    onChange={(value) => {
-                      setValue('htmlContent', value, { shouldValidate: true })
-                    }}
-                  />
-                  {errors.htmlContent && <p className="text-xs text-red-500 mt-2">{errors.htmlContent.message}</p>}
+
+                  {/* Right: Current recipients */}
+                  <div className="space-y-4">
+                    <div className="border rounded-xl p-4 bg-white dark:bg-slate-900">
+                      <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Destinatarios actuales ({recipients.length})</h4>
+                      {recipients.length === 0 ? (
+                        <div className="py-8 text-center">
+                          <Users className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                          <p className="text-sm text-slate-400">Aún no hay destinatarios</p>
+                          <p className="text-[10px] text-slate-400 mt-1">Selecciona clientes o agrega emails a la izquierda</p>
+                        </div>
+                      ) : (
+                        <div className="max-h-64 overflow-y-auto space-y-1">
+                          {recipients.map((r: any) => (
+                            <div key={r.id} className="flex items-center justify-between p-2 rounded-lg bg-slate-50 dark:bg-slate-800">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <div className={cn("w-2 h-2 rounded-full shrink-0",
+                                  r.status === 'SENT' ? 'bg-emerald-500' :
+                                  r.status === 'FAILED' ? 'bg-red-500' : 'bg-amber-400'
+                                )} />
+                                <span className="text-xs truncate">{r.email}</span>
+                              </div>
+                              <span className={cn("text-[10px] font-medium shrink-0",
+                                r.status === 'SENT' ? 'text-emerald-600' :
+                                r.status === 'FAILED' ? 'text-red-500' : 'text-slate-400'
+                              )}>
+                                {r.status === 'SENT' ? 'Enviado' : r.status === 'FAILED' ? 'Fallido' : 'Pendiente'}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Go to send step */}
+                    {pendingCount > 0 && (
+                      <Button
+                        type="button"
+                        onClick={() => setActiveStep(3)}
+                        className="w-full rounded-xl bg-emerald-600 hover:bg-emerald-700 h-11 text-sm font-bold"
+                      >
+                        <Send className="w-4 h-4 mr-2" /> Listo — ir a Enviar ({pendingCount} pendientes)
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </div>
+            )}
 
-              {/* Right — live preview */}
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="text-sm font-bold text-slate-900 dark:text-white">Vista previa</div>
-                  <div className="flex gap-1 bg-slate-100 dark:bg-slate-800 rounded-lg p-0.5">
-                    <Button type="button" size="sm" variant={previewMode === 'desktop' ? 'default' : 'ghost'} onClick={() => setPreviewMode('desktop')} className="text-xs h-7 rounded-md px-2.5">
-                      <Monitor className="w-3.5 h-3.5 mr-1" /> Desktop
-                    </Button>
-                    <Button type="button" size="sm" variant={previewMode === 'mobile' ? 'default' : 'ghost'} onClick={() => setPreviewMode('mobile')} className="text-xs h-7 rounded-md px-2.5">
-                      <Smartphone className="w-3.5 h-3.5 mr-1" /> Móvil
-                    </Button>
-                  </div>
+            {/* ═══════ STEP 3: Send ═══════ */}
+            {activeStep === 3 && effectiveId && (
+              <div className="space-y-5">
+                <div className="flex items-center gap-3">
+                  <button type="button" onClick={() => setActiveStep(2)} className="text-slate-400 hover:text-slate-600 transition-colors">
+                    <ArrowRight className="w-4 h-4 rotate-180" />
+                  </button>
+                  <h3 className="text-lg font-bold text-slate-900 dark:text-white">Enviar Campaña</h3>
                 </div>
 
-                <div className={cn(
-                  "rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 p-3 flex justify-center transition-all",
-                  previewMode === 'mobile' ? 'max-w-[400px] mx-auto' : ''
-                )}>
-                  {/* Email client chrome */}
-                  <div className={cn("bg-white dark:bg-slate-900 rounded-lg shadow-sm overflow-hidden w-full", previewMode === 'mobile' ? 'max-w-[360px]' : '')}>
-                    {/* Fake email header */}
-                    <div className="px-3 py-2 border-b bg-slate-50 dark:bg-slate-800/50 space-y-1">
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-[9px] font-bold text-slate-400 uppercase w-10">De:</span>
-                        <span className="text-[10px] text-slate-600 dark:text-slate-400">Tu Empresa &lt;info@tuempresa.com&gt;</span>
+                {/* Summary card */}
+                <div className="border-2 rounded-2xl p-6 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/10 dark:to-indigo-900/10 border-blue-200 dark:border-blue-800">
+                  <div className="text-center space-y-4">
+                    <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center mx-auto">
+                      <Send className="w-7 h-7 text-white" />
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-bold text-slate-900 dark:text-white">{name || 'Tu campaña'}</h3>
+                      <p className="text-sm text-slate-500 mt-1">Asunto: {subject}</p>
+                    </div>
+
+                    {/* KPIs */}
+                    <div className="grid grid-cols-3 gap-3 max-w-md mx-auto">
+                      <div className="rounded-xl bg-white dark:bg-slate-800 p-3 shadow-sm">
+                        <p className="text-2xl font-bold text-slate-900 dark:text-white">{recipients.length}</p>
+                        <p className="text-[10px] text-slate-400 font-medium">Total</p>
                       </div>
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-[9px] font-bold text-slate-400 uppercase w-10">Asunto:</span>
-                        <span className="text-[10px] font-bold text-slate-800 dark:text-slate-200">{subject || 'Sin asunto'}</span>
+                      <div className="rounded-xl bg-amber-50 dark:bg-amber-900/20 p-3 shadow-sm">
+                        <p className="text-2xl font-bold text-amber-600">{pendingCount}</p>
+                        <p className="text-[10px] text-amber-500 font-medium">Pendientes</p>
+                      </div>
+                      <div className="rounded-xl bg-emerald-50 dark:bg-emerald-900/20 p-3 shadow-sm">
+                        <p className="text-2xl font-bold text-emerald-600">{sentCount}</p>
+                        <p className="text-[10px] text-emerald-500 font-medium">Enviados</p>
                       </div>
                     </div>
-                    {/* Email body */}
-                    <iframe
-                      title="Vista previa campaña"
-                      className="w-full bg-white"
-                      style={{
-                        height: Math.min(800, 600),
-                        border: '0',
-                      }}
-                      srcDoc={previewHtml}
-                    />
+
+                    {pendingCount > 0 ? (
+                      <div className="space-y-3 pt-2">
+                        <Button
+                          type="button"
+                          onClick={() => {
+                            if (confirm(`¿Enviar la campaña "${name}" a ${pendingCount} destinatarios?`)) {
+                              sendMutation.mutate()
+                            }
+                          }}
+                          disabled={sendMutation.isPending}
+                          className="rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 h-12 px-8 text-sm font-bold shadow-lg shadow-blue-200 dark:shadow-blue-900/30"
+                        >
+                          {sendMutation.isPending ? (
+                            <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Enviando...</>
+                          ) : (
+                            <><Send className="w-4 h-4 mr-2" /> Enviar a {pendingCount} destinatarios</>
+                          )}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => setShowSendTest(true)}
+                          className="rounded-xl text-xs"
+                        >
+                          📧 Enviar prueba primero
+                        </Button>
+                      </div>
+                    ) : recipients.length > 0 ? (
+                      <div className="flex items-center justify-center gap-2 text-emerald-600 dark:text-emerald-400">
+                        <CheckCircle className="w-5 h-5" />
+                        <span className="text-sm font-bold">¡Todos los emails fueron enviados!</span>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-slate-400">Agrega destinatarios primero</p>
+                    )}
                   </div>
                 </div>
-                <p className="text-[10px] text-slate-400 text-center">
-                  El renderizado puede variar levemente entre Gmail, Outlook y otros clientes.
-                </p>
               </div>
-            </div>
+            )}
 
-            <div className="flex justify-end gap-2 pt-2 border-t">
-              <Button type="button" variant="outline" onClick={onClose} className="rounded-lg">
-                Volver
-              </Button>
-              <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending} className="rounded-lg bg-blue-600 hover:bg-blue-700">
-                <Save className="h-4 w-4 mr-2" />
-                {createMutation.isPending || updateMutation.isPending ? 'Guardando…' : 'Guardar campaña'}
-              </Button>
-            </div>
+            {/* Bottom actions (only in design step) */}
+            {activeStep <= 1 && (
+              <div className="flex justify-end gap-2 pt-2 border-t">
+                <Button type="button" variant="outline" onClick={onClose} className="rounded-lg">
+                  Volver
+                </Button>
+                <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending} className="rounded-lg bg-blue-600 hover:bg-blue-700">
+                  <Save className="h-4 w-4 mr-2" />
+                  {createMutation.isPending || updateMutation.isPending ? 'Guardando…' : effectiveId ? 'Guardar cambios' : 'Guardar campaña'}
+                </Button>
+              </div>
+            )}
           </form>
         </CardContent>
       </Card>
@@ -538,15 +838,6 @@ export default function CampaignForm({ campaignId, aiDefaults, onClose, onSucces
           </div>
         </DialogContent>
       </Dialog>
-
-      {/* Recipients modal */}
-      {showRecipients && (currentCampaignId || campaignId) && (
-        <AddRecipientsDialog
-          campaignId={(currentCampaignId || campaignId)!}
-          onClose={() => setShowRecipients(false)}
-          onSuccess={() => setShowRecipients(false)}
-        />
-      )}
     </div>
   )
 }

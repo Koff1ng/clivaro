@@ -53,10 +53,12 @@ export async function POST(request: Request) {
     }
 
     if (!supabaseUrl || !supabaseKey) {
-      return NextResponse.json(
-        { error: 'Storage not configured. Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.' },
-        { status: 500 }
-      )
+      // Fallback: Convert to base64 data URL when Supabase Storage isn't configured
+      logger.info('[Upload] Supabase Storage not configured, using base64 fallback')
+      const buffer = Buffer.from(await file.arrayBuffer())
+      const base64 = buffer.toString('base64')
+      const dataUrl = `data:${file.type};base64,${base64}`
+      return NextResponse.json({ url: dataUrl })
     }
 
     const supabase = createClient(supabaseUrl, supabaseKey)

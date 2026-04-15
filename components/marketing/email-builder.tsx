@@ -702,17 +702,44 @@ function BlockRow({
               {block.src ? (
                 <div className="relative group/img">
                   <img src={block.src} alt={block.alt || ''} className="w-full rounded-lg border" />
-                  <button type="button" onClick={onUploadImage} className="absolute inset-0 bg-black/40 rounded-lg opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-bold">
-                    Cambiar imagen
-                  </button>
+                  <div className="absolute inset-0 bg-black/40 rounded-lg opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                    <button type="button" onClick={onUploadImage} className="px-3 py-1.5 bg-white rounded-lg text-xs font-bold text-slate-800 hover:bg-slate-100 transition-colors">
+                      📁 Cambiar archivo
+                    </button>
+                    <button type="button" onClick={() => onUpdate({ src: '' })} className="px-3 py-1.5 bg-red-500 rounded-lg text-xs font-bold text-white hover:bg-red-600 transition-colors">
+                      ✕ Quitar
+                    </button>
+                  </div>
                 </div>
               ) : (
-                <button type="button" onClick={onUploadImage} className="w-full py-8 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl text-slate-400 hover:text-blue-500 hover:border-blue-300 transition-all flex flex-col items-center gap-2">
-                  <ImageIcon className="w-8 h-8" />
-                  <span className="text-xs font-medium">Haz clic para subir imagen</span>
-                  <span className="text-[10px]">JPG, PNG o WebP · Máx 5MB</span>
-                </button>
+                <div className="space-y-2">
+                  <button type="button" onClick={onUploadImage} className="w-full py-6 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl text-slate-400 hover:text-blue-500 hover:border-blue-300 transition-all flex flex-col items-center gap-2">
+                    <ImageIcon className="w-7 h-7" />
+                    <span className="text-xs font-medium">Subir imagen (JPG, PNG, WebP · Máx 5MB)</span>
+                  </button>
+                  <div className="flex items-center gap-2 text-[10px] text-slate-400">
+                    <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
+                    <span>o pega una URL</span>
+                    <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
+                  </div>
+                  <Input
+                    value={block.src || ''}
+                    onChange={e => onUpdate({ src: e.target.value })}
+                    placeholder="https://ejemplo.com/mi-imagen.jpg"
+                    className="text-xs"
+                  />
+                </div>
               )}
+              <div>
+                <Label className="text-[10px] font-bold text-slate-400 uppercase mb-1">URL de la imagen</Label>
+                <Input
+                  value={block.src || ''}
+                  onChange={e => onUpdate({ src: e.target.value })}
+                  placeholder="https://ejemplo.com/imagen.jpg"
+                  className="text-xs font-mono"
+                />
+                <p className="text-[10px] text-slate-400 mt-1">Pega la URL de cualquier imagen pública o sube un archivo arriba.</p>
+              </div>
               <div>
                 <Label className="text-[10px] font-bold text-slate-400 uppercase mb-1">Texto alternativo</Label>
                 <Input value={block.alt || ''} onChange={e => onUpdate({ alt: e.target.value })} placeholder="Descripción de la imagen" className="text-xs" />
