@@ -7,7 +7,7 @@ import dynamic from 'next/dynamic'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useDebounce } from '@/lib/hooks/use-debounce'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { Search, Eye, FileText, QrCode, CheckCircle, XCircle, Clock, Trash2, Loader2, ShieldCheck, Send, Copy, Receipt } from 'lucide-react'
@@ -533,6 +533,7 @@ export function InvoiceList() {
                 <FileText className="h-5 w-5" />
                 Detalles de la Factura
               </DialogTitle>
+              <DialogDescription className="sr-only">Vista detallada de la factura seleccionada con opciones de impresión y gestión</DialogDescription>
             </DialogHeader>
             <InvoiceDetails invoice={viewInvoice} />
           </DialogContent>

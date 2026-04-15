@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { ActivityForm } from './activity-form'
 import { formatCurrency, formatDate, formatDateTime } from '@/lib/utils'
 import { Mail, Phone, Building, User, Calendar, CheckCircle, XCircle, Plus, MessageCircle, Instagram } from 'lucide-react'
@@ -369,6 +369,7 @@ export function LeadDetails({ lead: initialLead }: { lead: any }) {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Nueva Actividad</DialogTitle>
+            <DialogDescription className="sr-only">Crear una nueva actividad asociada a esta oportunidad de venta</DialogDescription>
           </DialogHeader>
           <ActivityForm
             leadId={lead.id}

@@ -6,7 +6,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { LeadForm } from './lead-form'
 import { LeadDetails } from './lead-details'
 import { LeadDashboard } from './lead-dashboard'
@@ -14,6 +14,7 @@ import { LeadKanban } from './lead-kanban'
 import { formatCurrency } from '@/lib/utils'
 import { Search, Plus, Edit, Trash2, Eye, Filter, LayoutGrid, BarChart3, Loader2, Target } from 'lucide-react'
 import { EmptyTableState } from '@/components/ui/empty-table-state'
+import { useToast } from '@/components/ui/toast'
 
 async function fetchLeads(page: number, search: string, stage: string, assignedToId: string) {
   const params = new URLSearchParams({
@@ -77,16 +78,28 @@ export function LeadList() {
     setIsFormOpen(true)
   }
 
+  const { toast } = useToast()
+
   const handleDelete = async (lead: any) => {
     if (confirm(`¿Estás seguro de eliminar la oportunidad "${lead.name}"?`)) {
-      await deleteMutation.mutateAsync(lead.id)
+      try {
+        await deleteMutation.mutateAsync(lead.id)
+        toast('Oportunidad eliminada', 'success')
+      } catch (error: any) {
+        toast(error.message || 'Error al eliminar oportunidad', 'error')
+      }
     }
   }
 
   const handleView = async (lead: any) => {
-    const res = await fetch(`/api/leads/${lead.id}`)
-    const data = await res.json()
-    setViewLead(data)
+    try {
+      const res = await fetch(`/api/leads/${lead.id}`)
+      if (!res.ok) throw new Error('No se pudo cargar la oportunidad')
+      const data = await res.json()
+      setViewLead(data)
+    } catch (error: any) {
+      toast(error.message || 'Error al cargar detalles', 'error')
+    }
   }
 
   const getStageColor = (stage: string) => {
@@ -335,6 +348,9 @@ export function LeadList() {
             <DialogTitle>
               {selectedLead ? 'Editar Oportunidad' : 'Nueva Oportunidad'}
             </DialogTitle>
+            <DialogDescription className="sr-only">
+              {selectedLead ? 'Editar los datos de la oportunidad de venta' : 'Crear una nueva oportunidad de venta'}
+            </DialogDescription>
           </DialogHeader>
           <LeadForm
             lead={selectedLead}
@@ -354,6 +370,7 @@ export function LeadList() {
           <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Detalles de la Oportunidad</DialogTitle>
+              <DialogDescription className="sr-only">Información detallada de la oportunidad de venta con actividades, cotizaciones e historial</DialogDescription>
             </DialogHeader>
             <LeadDetails lead={viewLead} />
           </DialogContent>

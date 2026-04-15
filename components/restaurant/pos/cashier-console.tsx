@@ -1,13 +1,20 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useToast } from "@/components/ui/toast";
+import { useQuery } from '@tanstack/react-query'
+import { useEscPosPrint } from '@/lib/hooks/use-escpos-print'
+import {
+  buildKitchenComanda,
+  buildRestaurantReceipt,
+} from '@/lib/escpos/restaurant-builder'
+import type { ComandaItem, RestaurantReceiptData, RestaurantCompany } from '@/lib/escpos/restaurant-builder'
 import {
   Plus, Pencil, X, DollarSign, Receipt, Printer,
   UserCheck, Ban, RefreshCw, LogOut, Search, Coins,
   Clock, ChefHat, AlertTriangle, CreditCard, Banknote,
   ArrowLeftRight, Check, Percent, Scissors,
-  Merge, ArrowRightLeft, UserCircle, FileText
+  Merge, ArrowRightLeft, UserCircle, FileText, Wifi, WifiOff, MessageSquare
 } from "lucide-react";
 
 /* ======================================================================
@@ -20,6 +27,7 @@ interface AccountLine {
   productName: string;
   quantity: number;
   unitPrice: number;
+  originalPrice?: number;
   notes?: string | null;
   status: string;
 }
@@ -49,7 +57,7 @@ type ModalType =
   | null | "open" | "captura" | "cobrar" | "factura"
   | "propina" | "mesero" | "cancelFolio" | "confirmCancelLine"
   | "cambiarCuenta" | "juntarCuentas" | "desctoGeneral"
-  | "dividirCuenta" | "cliente" | "transferirProd" | "desctoProd";
+  | "dividirCuenta" | "cliente" | "transferirProd" | "desctoProd" | "precuenta";
 
 /* ======================================================================
    HELPERS
@@ -91,10 +99,10 @@ function statusLabel(status: string) {
 }
 
 /* ======================================================================
-   PRINT
+   PRINT — Browser fallback (only when ESC/POS is not available)
    ====================================================================== */
 
-function printReceipt(sel: OpenSession, paymentMethod?: string, discount?: number) {
+function printReceiptBrowser(sel: OpenSession, companyName: string, paymentMethod?: string, discount?: number) {
   const activeLines = sel.lines.filter((l) => l.status !== "CANCELLED");
   const discountAmt = discount || 0;
   const w = window.open("", "_blank", "width=350,height=600");
@@ -107,12 +115,11 @@ function printReceipt(sel: OpenSession, paymentMethod?: string, discount?: numbe
     table{width:100%;border-collapse:collapse} td{padding:2px 0;vertical-align:top}
     .big{font-size:16px} .sm{font-size:9px;color:#555}
   </style></head><body>
-    <div class="c b big">CLIVARO ERP</div>
-    <div class="c sm">Sistema Punto de Venta</div>
+    <div class="c b big">${companyName}</div>
     <div class="line"></div>
     <div class="row"><span class="b">Mesa:</span><span>${sel.tableNumber}</span></div>
     <div class="row"><span class="b">Mesero:</span><span>${sel.waiterName}</span></div>
-    <div class="row"><span class="b">Fecha:</span><span>${new Date().toLocaleString("es-MX")}</span></div>
+    <div class="row"><span class="b">Fecha:</span><span>${new Date().toLocaleString("es-CO")}</span></div>
     ${paymentMethod ? `<div class="row"><span class="b">Pago:</span><span>${paymentMethod}</span></div>` : ""}
     <div class="line"></div>
     <table><tr class="b"><td>Cant</td><td>Descripcion</td><td class="r">Importe</td></tr>
@@ -132,7 +139,7 @@ function printReceipt(sel: OpenSession, paymentMethod?: string, discount?: numbe
   w.document.close();
 }
 
-function printComanda(tableName: string, waiterName: string, items: CartLine[]) {
+function printComandaBrowser(tableName: string, waiterName: string, items: CartLine[]) {
   const w = window.open("", "_blank", "width=320,height=500");
   if (!w) return;
   w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><style>
@@ -147,7 +154,7 @@ function printComanda(tableName: string, waiterName: string, items: CartLine[]) 
     <div class="line"></div>
     <div class="b">Mesa: ${tableName}</div>
     <div>Mesero: ${waiterName}</div>
-    <div style="font-size:10px;color:#555">${new Date().toLocaleString("es-MX")}</div>
+    <div style="font-size:10px;color:#555">${new Date().toLocaleString("es-CO")}</div>
     <div class="line"></div>
     ${items.map((i) => `<div class="item"><span class="b">${i.quantity}x</span> ${i.productName}${i.notes ? `<div class="notes">${i.notes}</div>` : ""}</div>`).join("")}
     <div class="line"></div>
@@ -208,6 +215,83 @@ function ToolBtn({ label, Icon, onClick, disabled, variant = "default" }: {
 export const CashierBillingConsole: React.FC = () => {
   const { toast } = useToast();
 
+  // ── Settings & ESC/POS printer ──
+  const { data: settingsData } = useQuery({
+    queryKey: ['settings'],
+    queryFn: async () => {
+      const res = await fetch('/api/settings')
+      if (!res.ok) return null
+      const d = await res.json()
+      return d.settings
+    },
+    staleTime: 60_000,
+  })
+
+  const parsedCustom = useMemo(() => {
+    try {
+      if (!settingsData?.customSettings) return null
+      return typeof settingsData.customSettings === 'string'
+        ? JSON.parse(settingsData.customSettings)
+        : settingsData.customSettings
+    } catch { return null }
+  }, [settingsData?.customSettings])
+
+  const printingConfig = parsedCustom?.printing
+  const companyName = settingsData?.companyName || 'Mi Restaurante'
+  const companyData: RestaurantCompany = useMemo(() => ({
+    name: companyName,
+    taxId: settingsData?.companyNit || '',
+    address: settingsData?.companyAddress || '',
+    phone: settingsData?.companyPhone || '',
+    regime: parsedCustom?.identity?.regime || '',
+  }), [companyName, settingsData, parsedCustom])
+
+  const {
+    status: escposStatus,
+    printRaw,
+    selectPrinter,
+    isPrinting: escposPrinting,
+  } = useEscPosPrint({
+    useGlobal: true,
+    autoConnect: true,
+    paperWidth: printingConfig?.ticketDesign?.paperWidth === '58mm' ? 32 : 48,
+  })
+  const isEscPosReady = escposStatus === 'connected'
+
+  // Smart print functions — ESC/POS first, browser fallback
+  const printComanda = useCallback((tableName: string, waiterName: string, items: CartLine[]) => {
+    const comandaItems: ComandaItem[] = items.map(i => ({ productName: i.productName, quantity: i.quantity, notes: i.notes || null }))
+    if (isEscPosReady) {
+      const enc = buildKitchenComanda(tableName, waiterName, comandaItems, { width: printingConfig?.ticketDesign?.paperWidth === '58mm' ? 32 : 48 })
+      printRaw(enc).then(ok => { if (ok) toast('Comanda impresa ✔', 'success') })
+    } else {
+      printComandaBrowser(tableName, waiterName, items)
+    }
+  }, [isEscPosReady, printRaw, printingConfig, toast])
+
+  const printReceipt = useCallback((session: OpenSession, paymentMethod?: string, discount?: number) => {
+    if (isEscPosReady) {
+      const receiptData: RestaurantReceiptData = {
+        tableNumber: session.tableNumber,
+        waiterName: session.waiterName,
+        zoneName: session.zoneName,
+        items: session.lines.map(l => ({ productName: l.productName, quantity: l.quantity, unitPrice: l.unitPrice, notes: l.notes, status: l.status })),
+        subtotal: session.subtotal,
+        taxAmount: session.taxAmount || 0,
+        total: session.total,
+        tipAmount: session.tipAmount,
+        discountAmount: discount || 0,
+        paymentMethod,
+        customerName: (session as any).customerName || null,
+        customerTaxId: (session as any).customerTaxId || null,
+      }
+      const enc = buildRestaurantReceipt(receiptData, companyData, { width: printingConfig?.ticketDesign?.paperWidth === '58mm' ? 32 : 48 })
+      printRaw(enc).then(ok => { if (ok) toast('Ticket impreso ✔', 'success') })
+    } else {
+      printReceiptBrowser(session, companyName, paymentMethod, discount)
+    }
+  }, [isEscPosReady, printRaw, companyData, companyName, printingConfig, toast])
+
   // ── Core state ──
   const [sessions, setSessions] = useState<OpenSession[]>([]);
   const [loading, setLoading] = useState(true);
@@ -218,6 +302,9 @@ export const CashierBillingConsole: React.FC = () => {
 
   // ── Selected line (product row) ──
   const [selectedLineId, setSelectedLineId] = useState<string | null>(null);
+
+  // ── Cancel reason ──
+  const [cancelReason, setCancelReason] = useState("");
 
   // ── Abrir Cuenta ──
   const [waiters, setWaiters] = useState<Waiter[]>([]);
@@ -241,6 +328,8 @@ export const CashierBillingConsole: React.FC = () => {
 
   // ── Factura ──
   const [issuingInvoice, setIssuingInvoice] = useState(false);
+  const [lastInvoiceId, setLastInvoiceId] = useState<string | null>(null);
+  const [lastInvoiceNumber, setLastInvoiceNumber] = useState<string | null>(null);
 
   // ── Propina ──
   const [tipInput, setTipInput] = useState("");
@@ -338,7 +427,7 @@ export const CashierBillingConsole: React.FC = () => {
   useEffect(() => {
     fetchSessions();
     checkShift();
-    const iv = setInterval(fetchSessions, 20_000);
+    const iv = setInterval(fetchSessions, 8_000);
     return () => clearInterval(iv);
   }, [fetchSessions, checkShift]);
 
@@ -395,6 +484,7 @@ export const CashierBillingConsole: React.FC = () => {
 
   const handleCancelLineClick = () => {
     if (!selectedLine || !isCancellable) { toast("Seleccione un producto cancelable", "warning"); return; }
+    setCancelReason("");
     setModal("confirmCancelLine");
   };
 
@@ -794,7 +884,13 @@ export const CashierBillingConsole: React.FC = () => {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ customerId: customer?.id || null, discountAmount: discount, payments }),
       });
-      if (!res.ok) { const d = await res.json(); throw new Error(d.error || "Error cerrando cuenta"); }
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error || "Error cerrando cuenta");
+      // Store invoice ID for electronic billing
+      if (d.invoice?.id) {
+        setLastInvoiceId(d.invoice.id);
+        setLastInvoiceNumber(d.invoice.number || null);
+      }
       const methodLabel = payments.map((p) => {
         if (p.method === "CASH") return "Efectivo";
         if (p.method === "CARD") return "Tarjeta";
@@ -811,23 +907,25 @@ export const CashierBillingConsole: React.FC = () => {
   };
 
   /* ====================================================================
-     14. FACTURA (Alegra)
+     14. FACTURA ELECTRÓNICA (Factus / DIAN)
      ==================================================================== */
 
   const handleFacturaClick = () => { if (!sel) return; setModal("factura"); };
 
-  const handleEmitFactura = async () => {
-    if (!sel) return;
+  const handleEmitFactura = async (invoiceId?: string) => {
+    const id = invoiceId || lastInvoiceId;
+    if (!id) { toast("Primero cobre la cuenta para generar la factura", "warning"); return; }
     setIssuingInvoice(true);
     try {
-      const res = await fetch("/api/restaurant/invoices/issue-alegra", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionId: sel.id }),
+      const res = await fetch(`/api/invoices/${id}/send-electronic`, {
+        method: "POST",
       });
       const d = await res.json();
-      if (!res.ok) throw new Error(d.error || "Error emitiendo factura");
-      toast(`Factura ${d.number || d.alegraId} emitida`, "success");
+      if (!res.ok) throw new Error(d.error || "Error emitiendo factura electrónica");
+      toast(`Factura electrónica enviada a la DIAN ✔`, "success");
       setModal(null);
+      setLastInvoiceId(null);
+      setLastInvoiceNumber(null);
     } catch (err: any) { toast(err.message, "error"); }
     finally { setIssuingInvoice(false); }
   };
@@ -842,7 +940,7 @@ export const CashierBillingConsole: React.FC = () => {
      16. CANCELAR FOLIO
      ==================================================================== */
 
-  const handleCancelFolioClick = () => { if (!sel) return; setModal("cancelFolio"); };
+  const handleCancelFolioClick = () => { if (!sel) return; setCancelReason(""); setModal("cancelFolio"); };
 
   const handleConfirmCancelFolio = async () => {
     if (!sel) return;
@@ -913,9 +1011,11 @@ export const CashierBillingConsole: React.FC = () => {
                 <div className={`text-xs font-bold mt-1 ${statusColor(selectedLine.status)}`}>{statusLabel(selectedLine.status)}</div>
               </div>
             </div>
+            <label className="block text-xs font-semibold text-slate-400 mb-1">Motivo de cancelación *</label>
+            <input value={cancelReason} onChange={(e) => setCancelReason(e.target.value)} autoFocus placeholder="Ej: Cliente cambio de opinion, error de captura..." className="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-red-500 mb-3 placeholder:text-slate-600" />
             <div className="flex gap-2">
               <button onClick={() => setModal(null)} className="flex-1 py-2.5 bg-slate-800 border border-slate-600 rounded-lg text-sm font-semibold text-slate-300 hover:bg-slate-700">Volver</button>
-              <button onClick={handleConfirmCancelLine} disabled={cancellingLine} className="flex-1 py-2.5 bg-red-600 rounded-lg text-sm font-bold text-white hover:bg-red-700 disabled:opacity-40">{cancellingLine ? "Cancelando..." : "Cancelar Producto"}</button>
+              <button onClick={handleConfirmCancelLine} disabled={cancellingLine || !cancelReason.trim()} className="flex-1 py-2.5 bg-red-600 rounded-lg text-sm font-bold text-white hover:bg-red-700 disabled:opacity-40">{cancellingLine ? "Cancelando..." : "Cancelar Producto"}</button>
             </div>
           </ModalCard>
         </Backdrop>
@@ -1047,14 +1147,17 @@ export const CashierBillingConsole: React.FC = () => {
                   {capturaCart.length === 0 ? (
                     <div className="p-4 text-center text-slate-500 text-[10px]">Click un producto</div>
                   ) : capturaCart.map((l) => (
-                    <div key={l.productId} className="px-2 py-1.5 border-b border-slate-800 flex items-center gap-1">
-                      <div className="flex items-center gap-1 mr-1">
-                        <button onClick={() => updateCapturaQty(l.productId, -1)} className="w-5 h-5 flex items-center justify-center rounded bg-slate-700 text-slate-300 text-xs font-bold hover:bg-slate-600">-</button>
-                        <span className="text-xs font-bold text-white w-5 text-center">{l.quantity}</span>
-                        <button onClick={() => updateCapturaQty(l.productId, 1)} className="w-5 h-5 flex items-center justify-center rounded bg-slate-700 text-slate-300 text-xs font-bold hover:bg-slate-600">+</button>
+                    <div key={l.productId} className="px-2 py-1.5 border-b border-slate-800">
+                      <div className="flex items-center gap-1">
+                        <div className="flex items-center gap-1 mr-1">
+                          <button onClick={() => updateCapturaQty(l.productId, -1)} className="w-5 h-5 flex items-center justify-center rounded bg-slate-700 text-slate-300 text-xs font-bold hover:bg-slate-600">-</button>
+                          <span className="text-xs font-bold text-white w-5 text-center">{l.quantity}</span>
+                          <button onClick={() => updateCapturaQty(l.productId, 1)} className="w-5 h-5 flex items-center justify-center rounded bg-slate-700 text-slate-300 text-xs font-bold hover:bg-slate-600">+</button>
+                        </div>
+                        <div className="flex-1 min-w-0"><div className="font-semibold text-[11px] text-white truncate">{l.productName}</div><div className="text-[10px] text-slate-500">{fmtCur(l.quantity * l.unitPrice)}</div></div>
+                        <button onClick={() => removeFromCaptura(l.productId)} className="text-red-400 hover:text-red-300 font-bold text-sm leading-none">&times;</button>
                       </div>
-                      <div className="flex-1 min-w-0"><div className="font-semibold text-[11px] text-white truncate">{l.productName}</div><div className="text-[10px] text-slate-500">{fmtCur(l.quantity * l.unitPrice)}</div></div>
-                      <button onClick={() => removeFromCaptura(l.productId)} className="text-red-400 hover:text-red-300 font-bold text-sm leading-none">&times;</button>
+                      <input value={l.notes} onChange={(e) => setCapturaCart(prev => prev.map(c => c.productId === l.productId ? { ...c, notes: e.target.value } : c))} placeholder="Notas: sin cebolla, término medio..." className="mt-1 w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-[10px] text-amber-300 outline-none focus:border-amber-500 placeholder:text-slate-600" />
                     </div>
                   ))}
                 </div>
@@ -1156,7 +1259,15 @@ export const CashierBillingConsole: React.FC = () => {
                 <div className="w-16 h-16 rounded-full bg-emerald-600/20 flex items-center justify-center mx-auto mb-3"><Check className="w-8 h-8 text-emerald-400" /></div>
                 <p className="text-emerald-400 font-bold text-lg mb-1">Cuenta cobrada</p>
                 <p className="text-slate-400 text-sm">Mesa {sel.tableNumber} &middot; {fmtCur(grandTotal)}</p>
-                <button onClick={() => setModal(null)} className="mt-4 w-full py-2.5 bg-slate-800 border border-slate-600 rounded-lg text-sm font-semibold text-slate-300 hover:bg-slate-700">Cerrar</button>
+                {lastInvoiceNumber && <p className="text-slate-500 text-xs mt-1">Factura: {lastInvoiceNumber}</p>}
+                <div className="flex gap-2 mt-4">
+                  {lastInvoiceId && (
+                    <button onClick={() => handleEmitFactura()} disabled={issuingInvoice} className="flex-1 py-2.5 bg-amber-600 rounded-lg text-sm font-bold text-white hover:bg-amber-700 disabled:opacity-40">
+                      {issuingInvoice ? "Enviando a DIAN..." : "Emitir Factura Electrónica"}
+                    </button>
+                  )}
+                  <button onClick={() => { setModal(null); setLastInvoiceId(null); setLastInvoiceNumber(null); }} className="flex-1 py-2.5 bg-slate-800 border border-slate-600 rounded-lg text-sm font-semibold text-slate-300 hover:bg-slate-700">Cerrar</button>
+                </div>
               </div>
             ) : (
               <>
@@ -1262,19 +1373,22 @@ export const CashierBillingConsole: React.FC = () => {
         </Backdrop>
       )}
 
-      {/* FACTURA */}
+      {/* FACTURA ELECTRÓNICA */}
       {modal === "factura" && sel && (
         <Backdrop onClose={() => setModal(null)}>
-          <ModalCard title={`FACTURA \u2014 Mesa ${sel.tableNumber}`} onClose={() => setModal(null)}>
+          <ModalCard title={`FACTURA ELECTR\u00d3NICA \u2014 Mesa ${sel.tableNumber}`} onClose={() => setModal(null)}>
             <div className="text-center mb-4">
               <FileText className="w-10 h-10 text-amber-500 mx-auto mb-2" />
-              <p className="text-slate-400 text-xs mb-1">Emitir factura electronica via Alegra</p>
+              <p className="text-slate-400 text-xs mb-1">Emitir factura electrónica via Factus / DIAN</p>
               <div className="text-2xl font-black text-amber-400 mt-2">{fmtCur(grandTotal)}</div>
               {customer && <div className="text-xs text-sky-400 mt-2">Cliente: {customer.name} ({customer.taxId || "Sin NIT"})</div>}
+              {!lastInvoiceId && <div className="bg-amber-600/10 border border-amber-600/30 rounded-lg p-3 mt-3 text-amber-400 text-xs font-semibold">Primero debe cobrar la cuenta para generar la factura interna. Luego podrá emitirla electrónicamente.</div>}
             </div>
             <div className="flex gap-2">
               <button onClick={() => setModal(null)} className="flex-1 py-2.5 bg-slate-800 border border-slate-600 rounded-lg text-sm font-semibold text-slate-300 hover:bg-slate-700">Cancelar</button>
-              <button onClick={handleEmitFactura} disabled={issuingInvoice} className="flex-1 py-2.5 bg-amber-600 rounded-lg text-sm font-bold text-white hover:bg-amber-700 disabled:opacity-40">{issuingInvoice ? "Emitiendo..." : "Emitir Factura"}</button>
+              <button onClick={() => lastInvoiceId ? handleEmitFactura() : handleCobrarClick()} className="flex-1 py-2.5 bg-amber-600 rounded-lg text-sm font-bold text-white hover:bg-amber-700 disabled:opacity-40">
+                {lastInvoiceId ? (issuingInvoice ? "Enviando..." : "Emitir a DIAN") : "Ir a Cobrar"}
+              </button>
             </div>
           </ModalCard>
         </Backdrop>
@@ -1312,14 +1426,13 @@ export const CashierBillingConsole: React.FC = () => {
         </Backdrop>
       )}
 
-      {/* CANCELAR FOLIO */}
       {modal === "cancelFolio" && sel && (
         <Backdrop onClose={() => setModal(null)}>
           <ModalCard title={`CANCELAR FOLIO \u2014 Mesa ${sel.tableNumber}`} onClose={() => setModal(null)}>
             <div className="text-center mb-4">
               <div className="w-12 h-12 rounded-full bg-red-600/20 flex items-center justify-center mx-auto mb-3"><AlertTriangle className="w-6 h-6 text-red-400" /></div>
               <p className="text-white text-sm font-semibold">Cancelar esta cuenta completamente?</p>
-              <p className="text-slate-500 text-xs mt-1">Se cancelaran todos los productos y se cerrara sin cobro.</p>
+              <p className="text-slate-500 text-xs mt-1">Se cancelarán todos los productos y se cerrará sin cobro.</p>
               <div className="bg-slate-800 rounded-lg p-3 mt-3 text-left">
                 <div className="flex justify-between text-xs"><span className="text-slate-400">Mesa:</span><span className="text-white font-bold">{sel.tableNumber}</span></div>
                 <div className="flex justify-between text-xs mt-1"><span className="text-slate-400">Mesero:</span><span className="text-white">{sel.waiterName}</span></div>
@@ -1327,9 +1440,11 @@ export const CashierBillingConsole: React.FC = () => {
                 <div className="flex justify-between text-xs mt-1"><span className="text-slate-400">Total que se pierde:</span><span className="text-red-400 font-bold">{fmtCur(total)}</span></div>
               </div>
             </div>
+            <label className="block text-xs font-semibold text-slate-400 mb-1">Motivo de cancelación *</label>
+            <input value={cancelReason} onChange={(e) => setCancelReason(e.target.value)} autoFocus placeholder="Ej: Mesa no consumio, error, etc..." className="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-red-500 mb-3 placeholder:text-slate-600" />
             <div className="flex gap-2">
               <button onClick={() => setModal(null)} className="flex-1 py-2.5 bg-slate-800 border border-slate-600 rounded-lg text-sm font-semibold text-slate-300 hover:bg-slate-700">Volver</button>
-              <button onClick={handleConfirmCancelFolio} disabled={cancellingFolio} className="flex-1 py-2.5 bg-red-600 rounded-lg text-sm font-bold text-white hover:bg-red-700 disabled:opacity-40">{cancellingFolio ? "Cancelando..." : "Cancelar Folio"}</button>
+              <button onClick={handleConfirmCancelFolio} disabled={cancellingFolio || !cancelReason.trim()} className="flex-1 py-2.5 bg-red-600 rounded-lg text-sm font-bold text-white hover:bg-red-700 disabled:opacity-40">{cancellingFolio ? "Cancelando..." : "Cancelar Folio"}</button>
             </div>
           </ModalCard>
         </Backdrop>
@@ -1340,9 +1455,14 @@ export const CashierBillingConsole: React.FC = () => {
          ================================================================ */}
       <div className="bg-slate-900 border-b border-slate-800 px-3 py-2 flex-shrink-0">
         <div className="flex items-center gap-2 mb-1.5">
-          <span className="text-amber-500 font-black text-base tracking-wider mr-2">CLIVARO POS</span>
+          <span className="text-amber-500 font-black text-base tracking-wider mr-2">{companyName}</span>
           {hasActiveShift === false && <span className="bg-red-600/20 text-red-400 border border-red-600/30 rounded-full px-2.5 py-0.5 text-[10px] font-bold">SIN TURNO</span>}
           {hasActiveShift === true && <span className="bg-emerald-600/20 text-emerald-400 border border-emerald-600/30 rounded-full px-2.5 py-0.5 text-[10px] font-bold">TURNO ACTIVO</span>}
+          {/* Printer status */}
+          <button onClick={() => !isEscPosReady && selectPrinter()} title={isEscPosReady ? 'Impresora conectada' : 'Click para conectar impresora'} className={`flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-bold ${isEscPosReady ? 'bg-emerald-600/20 text-emerald-400 border-emerald-600/30' : 'bg-red-600/20 text-red-400 border-red-600/30 cursor-pointer hover:bg-red-600/30'}`}>
+            {isEscPosReady ? <Wifi className="w-3 h-3" /> : <WifiOff className="w-3 h-3" />}
+            {isEscPosReady ? 'IMPRESORA' : 'SIN IMPRESORA'}
+          </button>
           <span className="flex-1" />
           {selectedLine && (
             <span className="bg-amber-600/20 text-amber-400 border border-amber-600/30 rounded px-2 py-0.5 text-[10px] font-bold truncate max-w-[200px]">
@@ -1370,7 +1490,8 @@ export const CashierBillingConsole: React.FC = () => {
           <ToolBtn label="Juntar Cuentas" Icon={Merge} onClick={handleJuntarClick} disabled={!sel || sessions.length < 2} />
           <ToolBtn label="Descto. General" Icon={Percent} onClick={handleDesctoGeneralClick} disabled={!sel} />
           <ToolBtn label="Dividir Cuenta" Icon={Scissors} onClick={handleDividirClick} disabled={!sel || activeLines.length < 2} />
-          <ToolBtn label="Imprimir Cuenta" Icon={Printer} onClick={handlePrint} disabled={!sel} />
+          <ToolBtn label="Imprimir Cuenta" Icon={Printer} onClick={handlePrint} disabled={!sel || escposPrinting} />
+          <ToolBtn label="Pre-Cuenta" Icon={Receipt} onClick={() => { if (sel) printReceipt(sel, undefined, discountAmt); }} disabled={!sel || escposPrinting} />
           <ToolBtn label="Cerrar" Icon={LogOut} onClick={() => window.history.back()} />
         </div>
 
@@ -1384,7 +1505,7 @@ export const CashierBillingConsole: React.FC = () => {
           <ToolBtn label="Propina Incluida" Icon={Coins} onClick={handlePropinaClick} disabled={!sel} />
           <ToolBtn label="Pagar Cuenta" Icon={DollarSign} onClick={handleCobrarClick} disabled={!sel} variant="success" />
           <ToolBtn label="Factura" Icon={FileText} onClick={handleFacturaClick} disabled={!sel} />
-        </div>
+          <ToolBtn label="Cancelar Folio" Icon={Ban} onClick={handleCancelFolioClick} disabled={!sel} variant="danger" />        </div>
       </div>
 
       {/* ================================================================
@@ -1464,7 +1585,7 @@ export const CashierBillingConsole: React.FC = () => {
                           {line.notes && <span className="ml-1.5 text-[10px] text-amber-500/70 italic">[{line.notes}]</span>}
                         </td>
                         <td className="px-3 py-2.5 text-right text-slate-400">{fmtCur(line.unitPrice)}</td>
-                        <td className="px-3 py-2.5 text-right text-slate-500">0.00</td>
+                        <td className="px-3 py-2.5 text-right text-slate-500">{line.originalPrice && line.originalPrice !== line.unitPrice ? fmtCur(line.originalPrice - line.unitPrice) : '-'}</td>
                         <td className="px-3 py-2.5 text-right text-white font-semibold">{fmtCur(line.quantity * line.unitPrice)}</td>
                         <td className={`px-3 py-2.5 text-center text-[10px] font-bold ${statusColor(line.status)}`}>{statusLabel(line.status)}</td>
                         <td className="px-2 py-2.5 text-center">

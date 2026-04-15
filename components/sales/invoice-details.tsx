@@ -11,7 +11,7 @@ import { useToast } from '@/components/ui/toast'
 import { FileText, Mail, Phone, MapPin, QrCode, Download, CheckCircle, XCircle, Clock, Printer, Ban, MoreVertical, FileDown, Receipt, Usb, Network, Eye, PackageX, DollarSign, AlertTriangle } from 'lucide-react'
 import { InvoicePrint } from './invoice-print'
 import { InvoicePrintLetter } from './invoice-print-letter'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useThermalPrint, useLetterPrint } from '@/lib/hooks/use-thermal-print'
 import { useEscPosPrint } from '@/lib/hooks/use-escpos-print'
 import { PrinterSetupDialog } from '@/components/ui/printer-setup-dialog'
@@ -243,18 +243,11 @@ export function InvoiceDetails({ invoice }: { invoice: any }) {
     }
   }
 
-  // Guard: validate invoice data exists (placed after all hooks)
-  if (!invoice) {
-    return <div className="p-8 text-center text-red-600">Error: No se pudo cargar la factura</div>
-  }
-
-  const invoiceItems = Array.isArray(invoice?.items) ? invoice.items : []
-  const hasItems = invoiceItems.length > 0
-  const issuedDate = invoice?.issuedAt || invoice?.createdAt
-
+  // === ALL HOOKS MUST BE ABOVE THIS LINE ===
+  // Mutations defined here before any early returns to comply with React hooks rules
   const sendElectronicMutation = useMutation({
     mutationFn: async () => {
-      const res = await fetch(`/api/invoices/${invoice.id}/send-electronic`, {
+      const res = await fetch(`/api/invoices/${invoice?.id}/send-electronic`, {
         method: 'POST',
       })
       if (!res.ok) {
@@ -272,7 +265,7 @@ export function InvoiceDetails({ invoice }: { invoice: any }) {
 
   const voidInvoiceMutation = useMutation({
     mutationFn: async () => {
-      const res = await fetch(`/api/invoices/${invoice.id}/void`, {
+      const res = await fetch(`/api/invoices/${invoice?.id}/void`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ reason: voidReason }),
@@ -283,7 +276,7 @@ export function InvoiceDetails({ invoice }: { invoice: any }) {
       }
       return data
     },
-    onSuccess: (data) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['invoices'] })
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] })
       queryClient.invalidateQueries({ queryKey: ['activity-feed'] })
@@ -292,23 +285,22 @@ export function InvoiceDetails({ invoice }: { invoice: any }) {
       toast('Factura anulada y reversada correctamente', 'success')
       setShowVoidDialog(false)
       setVoidReason('')
-      // Recargar para reflejar status/notes en el dialog actual
       window.location.reload()
     },
   })
 
   const partialReturnMutation = useMutation({
     mutationFn: async () => {
-      const items = invoiceItems
+      const invoiceItemsSafe = Array.isArray(invoice?.items) ? invoice.items : []
+      const items = invoiceItemsSafe
         .map((it: any) => ({ invoiceItemId: it.id, quantity: Number(returnQty[it.id] || 0) }))
         .filter((x: any) => x.quantity > 0)
 
       const normalizedRefund = refundPayments
         .map((p) => ({ method: p.method, amount: parseFloat(p.amount || '0') }))
         .filter((p) => !isNaN(p.amount) && p.amount > 0)
-      const refundTotal = normalizedRefund.reduce((sum, p) => sum + p.amount, 0)
 
-      const res = await fetch(`/api/invoices/${invoice.id}/returns`, {
+      const res = await fetch(`/api/invoices/${invoice?.id}/returns`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -343,7 +335,7 @@ export function InvoiceDetails({ invoice }: { invoice: any }) {
 
   const createPaymentMutation = useMutation({
     mutationFn: async () => {
-      const res = await fetch(`/api/invoices/${invoice.id}/payments`, {
+      const res = await fetch(`/api/invoices/${invoice?.id}/payments`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -359,7 +351,7 @@ export function InvoiceDetails({ invoice }: { invoice: any }) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['invoices'] })
-      queryClient.invalidateQueries({ queryKey: ['invoice', invoice.id] })
+      queryClient.invalidateQueries({ queryKey: ['invoice', invoice?.id] })
       toast('Pago registrado exitosamente', 'success')
       setShowAbonoDialog(false)
       setAbonoAmount('')
@@ -371,6 +363,15 @@ export function InvoiceDetails({ invoice }: { invoice: any }) {
       toast(err.message, 'error')
     }
   })
+
+  // Guard: validate invoice data exists (placed AFTER all hooks)
+  if (!invoice) {
+    return <div className="p-8 text-center text-red-600">Error: No se pudo cargar la factura</div>
+  }
+
+  const invoiceItems = Array.isArray(invoice?.items) ? invoice.items : []
+  const hasItems = invoiceItems.length > 0
+  const issuedDate = invoice?.issuedAt || invoice?.createdAt
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -640,6 +641,7 @@ export function InvoiceDetails({ invoice }: { invoice: any }) {
                 <Eye className="h-5 w-5" />
                 Vista previa (ticket)
               </DialogTitle>
+              <DialogDescription className="sr-only">Vista previa del ticket de impresión para la factura</DialogDescription>
             </DialogHeader>
             <div className="flex justify-center">
               <div className="bg-white p-2 rounded border">
@@ -657,6 +659,7 @@ export function InvoiceDetails({ invoice }: { invoice: any }) {
                 <AlertTriangle className="h-5 w-5" />
                 Anular / Devolver
               </DialogTitle>
+              <DialogDescription className="sr-only">Formulario para anular o devolver esta factura</DialogDescription>
             </DialogHeader>
             <div className="space-y-3">
               {blockedByDian ? (
@@ -711,6 +714,7 @@ export function InvoiceDetails({ invoice }: { invoice: any }) {
                 <PackageX className="h-5 w-5" />
                 Devolución parcial
               </DialogTitle>
+              <DialogDescription className="sr-only">Formulario para registrar una devolución parcial de productos</DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
               {blockedByDian && (
@@ -1158,6 +1162,7 @@ export function InvoiceDetails({ invoice }: { invoice: any }) {
                 <DollarSign className="h-5 w-5" />
                 Registrar Abono / Pago
               </DialogTitle>
+              <DialogDescription className="sr-only">Formulario para registrar un pago parcial o total a esta factura</DialogDescription>
             </DialogHeader>
             <div className="space-y-4 pt-4">
               <div className="bg-gray-50 p-3 rounded-lg flex justify-between items-center">

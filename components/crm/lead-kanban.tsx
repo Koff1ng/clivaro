@@ -5,7 +5,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { dateInputToIso, formatCurrency, toDateInputValue } from '@/lib/utils'
 import { Eye, Edit, User } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/toast'
@@ -450,6 +450,7 @@ export function LeadKanban({
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Editar oportunidad</DialogTitle>
+            <DialogDescription className="sr-only">Editar probabilidad, ingreso esperado y asignación de la oportunidad</DialogDescription>
           </DialogHeader>
           {editingLead && (
             <div className="space-y-4">

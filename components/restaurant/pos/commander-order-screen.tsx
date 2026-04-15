@@ -1,9 +1,12 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
+import { useEscPosPrint } from '@/lib/hooks/use-escpos-print'
+import { buildKitchenComanda } from '@/lib/escpos/restaurant-builder'
+import type { ComandaItem } from '@/lib/escpos/restaurant-builder'
 import {
   ArrowLeft, Send, Trash2, X, Search, ChevronLeft, ChevronRight,
-  Plus, Minus, ShoppingCart, UtensilsCrossed,
+  Plus, Minus, ShoppingCart, UtensilsCrossed, Wifi, WifiOff,
 } from "lucide-react";
 
 /* ======================================================================
@@ -42,10 +45,10 @@ interface CommanderOrderScreenProps {
 const GRID_SIZE = 12;
 
 /* ======================================================================
-   PRINT
+   PRINT — Browser fallback
    ====================================================================== */
 
-function printComanda(tableName: string, waiterName: string, items: OrderLine[]) {
+function printComandaBrowser(tableName: string, waiterName: string, items: OrderLine[]) {
   const w = window.open("", "_blank", "width=320,height=500");
   if (!w) return;
   w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><style>
@@ -60,7 +63,7 @@ function printComanda(tableName: string, waiterName: string, items: OrderLine[])
     <div class="line"></div>
     <div class="b">Mesa: ${tableName}</div>
     <div>Mesero: ${waiterName}</div>
-    <div style="font-size:10px;color:#555">${new Date().toLocaleString("es-MX")}</div>
+    <div style="font-size:10px;color:#555">${new Date().toLocaleString("es-CO")}</div>
     <div class="line"></div>
     ${items.map((i) => `<div class="item"><span class="b">${i.quantity}x</span> ${i.productName}${i.notes ? `<div class="notes">${i.notes}</div>` : ""}</div>`).join("")}
     <div class="line"></div>
@@ -98,6 +101,20 @@ export function CommanderOrderScreen({
   const [showClearConfirm, setShowClearConfirm] = useState(false);
 
   const searchRef = useRef<HTMLInputElement>(null);
+
+  // ── ESC/POS Printer ──
+  const { status: escposStatus, printRaw } = useEscPosPrint({ useGlobal: true, autoConnect: true });
+  const isEscPosReady = escposStatus === 'connected';
+
+  const printComanda = useCallback((items: OrderLine[]) => {
+    const comandaItems: ComandaItem[] = items.map(i => ({ productName: i.productName, quantity: i.quantity, notes: i.notes || null }))
+    if (isEscPosReady) {
+      const enc = buildKitchenComanda(tableName, waiterName, comandaItems)
+      printRaw(enc)
+    } else {
+      printComandaBrowser(tableName, waiterName, items)
+    }
+  }, [isEscPosReady, printRaw, tableName, waiterName]);
 
   /* ====================================================================
      AUTH HEADERS (supports both waiter token and session)
@@ -234,7 +251,7 @@ export function CommanderOrderScreen({
         throw new Error(kd.error || "No se pudo enviar a cocina");
       }
 
-      printComanda(tableName, waiterName, cart);
+      printComanda(cart);
       setCart([]);
       setSelectedCartIdx(-1);
       onOrderSent();
@@ -286,6 +303,9 @@ export function CommanderOrderScreen({
             <div className="text-xs font-black text-amber-400 truncate">Mesa {tableName}</div>
             <div className="text-[10px] text-slate-500 truncate">{waiterName}</div>
           </div>
+          <span className={`flex items-center gap-1 px-1.5 py-0.5 rounded-full border text-[9px] font-bold ${isEscPosReady ? 'bg-emerald-600/20 text-emerald-400 border-emerald-600/30' : 'bg-red-600/20 text-red-400 border-red-600/30'}`}>
+            {isEscPosReady ? <Wifi className="w-2.5 h-2.5" /> : <WifiOff className="w-2.5 h-2.5" />}
+          </span>
         </div>
 
         {/* Quantity controls */}

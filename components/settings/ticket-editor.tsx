@@ -211,11 +211,12 @@ export function TicketEditor({ settings: initialSettings, companyInfo, onChange,
     }
 
     const getSeparator = () => {
+        const charCount = settings.paperSize === 58 ? 32 : 48
         switch (settings.separator) {
-            case 'dashes': return '- '.repeat(24)
-            case 'dots': return '. '.repeat(24)
-            case 'lines': return '─'.repeat(48)
-            default: return '-'.repeat(48)
+            case 'dashes': return '- '.repeat(Math.floor(charCount / 2))
+            case 'dots': return '. '.repeat(Math.floor(charCount / 2))
+            case 'lines': return '─'.repeat(charCount)
+            default: return '-'.repeat(charCount)
         }
     }
 
@@ -351,8 +352,7 @@ export function TicketEditor({ settings: initialSettings, companyInfo, onChange,
                             <Switch
                                 checked={settings.showLineCount && settings.showProductCount}
                                 onCheckedChange={(checked) => {
-                                    updateSetting('showLineCount', checked)
-                                    updateSetting('showProductCount', checked)
+                                    updateSettings({ showLineCount: checked, showProductCount: checked })
                                 }}
                             />
                             <span className="text-sm text-blue-600">{settings.showLineCount ? '✓ Dejar de mostrar información' : 'Mostrar información'}</span>
@@ -474,17 +474,17 @@ export function TicketEditor({ settings: initialSettings, companyInfo, onChange,
                         <div className="flex items-center gap-3">
                             <Input
                                 type="number"
-                                value={(settings as any).customFontSize || 0}
+                                value={settings.customFontSize || 0}
                                 onChange={(e) => {
                                     const val = Math.max(0, Math.min(24, Number(e.target.value)))
-                                    updateSetting('customFontSize' as any, val || undefined)
+                                    updateSetting('customFontSize', val || undefined)
                                 }}
                                 min={0}
                                 max={24}
                                 placeholder="0"
                                 className="h-9 w-24"
                             />
-                            <span className="text-xs text-muted-foreground">{(settings as any).customFontSize ? `${(settings as any).customFontSize}px activo` : 'Usando preset'}</span>
+                            <span className="text-xs text-muted-foreground">{settings.customFontSize ? `${settings.customFontSize}px activo` : 'Usando preset'}</span>
                         </div>
                     </div>
                 </div>
@@ -516,7 +516,7 @@ export function TicketEditor({ settings: initialSettings, companyInfo, onChange,
                                         checked={bs[key]}
                                         onCheckedChange={(checked) => {
                                             const currentBs = settings.boldSections || { ...defaultBoldSections }
-                                            updateSetting('boldSections' as any, { ...currentBs, [key]: checked })
+                                            updateSetting('boldSections', { ...currentBs, [key]: checked })
                                         }}
                                     />
                                 </div>
@@ -549,8 +549,8 @@ export function TicketEditor({ settings: initialSettings, companyInfo, onChange,
                                     className={cn(
                                         "w-full text-left p-3 rounded-lg border-2 transition-all",
                                         isActive
-                                            ? "border-blue-500 bg-blue-50"
-                                            : "border-gray-200 hover:border-gray-300"
+                                            ? "border-blue-500 bg-blue-50 dark:bg-blue-950/30 dark:border-blue-400"
+                                            : "border-gray-200 hover:border-gray-300 dark:border-gray-700 dark:hover:border-gray-600 dark:bg-gray-800/50"
                                     )}
                                 >
                                     <div className="flex items-center justify-between">
@@ -642,7 +642,8 @@ export function TicketEditor({ settings: initialSettings, companyInfo, onChange,
                             paddingLeft: `${settings.marginLeft * 2}px`,
                             paddingRight: `${settings.marginRight * 2}px`,
                             paddingTop: '16px',
-                            paddingBottom: '16px'
+                            paddingBottom: '16px',
+                            ...(settings.customFontSize ? { fontSize: `${settings.customFontSize}px` } : {})
                         }}
                     >
                         {/* ═══ HEADER ═══ */}

@@ -52,11 +52,16 @@ export async function GET(request: Request) {
         // Enrich with computed fields
         const enriched = sessions.map((s: any) => {
             const allItems = s.orders.flatMap((o: any) => o.items)
-            const subtotal = allItems.reduce((sum: number, item: any) => sum + (item.unitPrice * item.quantity), 0)
-            const taxAmount = allItems.reduce((sum: number, item: any) => {
-                const base = (item.unitPrice * item.quantity) / (1 + (item.product?.taxRate || 0) / 100)
-                return sum + ((item.unitPrice * item.quantity) - base)
+            const activeItems = allItems.filter((i: any) => i.status !== 'CANCELLED')
+            const subtotalGross = activeItems.reduce((sum: number, item: any) => sum + (item.unitPrice * item.quantity), 0)
+            const taxAmount = activeItems.reduce((sum: number, item: any) => {
+                const rate = item.product?.taxRate || 0
+                if (rate <= 0) return sum
+                const gross = item.unitPrice * item.quantity
+                const base = gross / (1 + rate / 100)
+                return sum + (gross - base)
             }, 0)
+            const subtotalNet = Math.round((subtotalGross - taxAmount) * 100) / 100
 
             const elapsedMs = Date.now() - new Date(s.openedAt).getTime()
             const elapsedMinutes = Math.floor(elapsedMs / 60000)
@@ -71,17 +76,22 @@ export async function GET(request: Request) {
                 status: s.status,
                 openedAt: s.openedAt,
                 elapsedMinutes,
-                itemsCount: allItems.length,
-                subtotal: Math.round(subtotal),
+                itemsCount: activeItems.length,
+                subtotal: Math.round(subtotalGross),
                 taxAmount: Math.round(taxAmount),
-                total: Math.round(subtotal),
+                total: Math.round(subtotalGross),
                 tipAmount: s.tipAmount || 0,
+                discountAmount: s.discountAmount || 0,
+                customerId: s.customerId || null,
+                customerName: s.customer?.name || null,
+                customerTaxId: s.customer?.taxId || null,
                 lines: allItems.map((item: any) => ({
                     id: item.id,
                     productId: item.productId,
                     productName: item.product?.name || 'N/A',
                     quantity: item.quantity,
                     unitPrice: item.unitPrice,
+                    originalPrice: item.originalPrice ?? item.unitPrice,
                     notes: item.notes,
                     status: item.status,
                 })),
