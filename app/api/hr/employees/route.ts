@@ -46,13 +46,43 @@ export async function GET(req: Request) {
 
         return NextResponse.json(employees);
     } catch (error: any) {
-        logger.error('Error fetching employees:', error?.message || error);
+        // Log FULL error details for server-side debugging (Vercel logs)
+        logger.error('Error fetching employees:', {
+            message: error?.message,
+            code: error?.code,
+            meta: error?.meta,
+            name: error?.name,
+        });
         
         // Surface specific Prisma errors  
         if (error?.code === 'P2021') {
             return NextResponse.json(
                 { error: 'La tabla de empleados no existe en el esquema del tenant. Contacte al administrador.' },
                 { status: 500 }
+            );
+        }
+
+        // Column not found in the table (schema drift)
+        if (error?.code === 'P2022') {
+            return NextResponse.json(
+                { error: `Error de esquema: columna no encontrada (${error?.meta?.column || 'desconocida'}). Reinicialice el tenant.` },
+                { status: 500 }
+            );
+        }
+
+        // Raw query failed (useful for connection/schema issues)
+        if (error?.code === 'P2010') {
+            return NextResponse.json(
+                { error: 'Error en consulta a base de datos. Verifique la conexión y el esquema del tenant.' },
+                { status: 500 }
+            );
+        }
+
+        // TenancyError — pass through the message (it's already safe)
+        if (error?.name === 'TenancyError') {
+            return NextResponse.json(
+                { error: error.message },
+                { status: error.code || 500 }
             );
         }
         
