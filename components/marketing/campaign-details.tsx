@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge'
 import { formatDate, formatDateTime } from '@/lib/utils'
 import { cn } from '@/lib/utils'
 import { useToast } from '@/components/ui/toast'
+import { useConfirm } from '@/components/ui/confirm-dialog'
 import AddRecipientsDialog from '@/components/marketing/add-recipients-dialog'
 
 interface CampaignDetailsProps {
@@ -34,6 +35,7 @@ const CAMPAIGN_STATUS_MAP: Record<string, { label: string; color: string }> = {
 
 export default function CampaignDetails({ campaignId, onBack, onEdit }: CampaignDetailsProps) {
   const { toast } = useToast()
+  const { confirm, ConfirmDialog } = useConfirm()
   const [showAddRecipients, setShowAddRecipients] = useState(false)
   const queryClient = useQueryClient()
 
@@ -216,10 +218,13 @@ export default function CampaignDetails({ campaignId, onBack, onEdit }: Campaign
               {pendingCount > 0 && campaign.status !== 'SENDING' && (
                 <Button
                   size="sm"
-                  onClick={() => {
-                    if (confirm(`¿Enviar campaña a ${pendingCount} destinatarios pendientes?`)) {
-                      sendMutation.mutate()
-                    }
+                  onClick={async () => {
+                    const ok = await confirm({
+                      title: `Enviar a ${pendingCount} destinatarios`,
+                      description: `Vas a enviar la campaña "${campaign.name}" a ${pendingCount} destinatario(s) pendiente(s). Esta acción no se puede deshacer.`,
+                      confirmText: 'Enviar ahora',
+                    })
+                    if (ok) sendMutation.mutate()
                   }}
                   disabled={sendMutation.isPending}
                   className="rounded-lg text-xs h-8 bg-blue-600 hover:bg-blue-700"
@@ -303,6 +308,8 @@ export default function CampaignDetails({ campaignId, onBack, onEdit }: Campaign
           }}
         />
       )}
+
+      <ConfirmDialog />
     </div>
   )
 }

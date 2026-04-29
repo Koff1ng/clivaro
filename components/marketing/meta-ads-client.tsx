@@ -17,6 +17,7 @@ import {
   TrendingUp, X,
 } from 'lucide-react'
 import { useToast } from '@/components/ui/toast'
+import { useConfirm } from '@/components/ui/confirm-dialog'
 import { PageHeader } from '@/components/ui/page-header'
 import { cn } from '@/lib/utils'
 
@@ -509,6 +510,7 @@ function PageIdAlert({ onSaved }: { onSaved: () => void }) {
 export default function MetaAdsPage() {
   const queryClient = useQueryClient()
   const { toast } = useToast()
+  const { confirm, ConfirmDialog } = useConfirm()
   const [showWizard, setShowWizard] = useState(false)
 
   // Check connection status
@@ -703,10 +705,14 @@ export default function MetaAdsPage() {
             variant="outline"
             size="sm"
             className="text-xs h-8 border-red-200 text-red-600 hover:bg-red-100 dark:border-red-800 dark:hover:bg-red-900/30"
-            onClick={() => {
-              if (confirm(`¿Eliminar las ${errorCampaigns.length} campañas con errores?`)) {
-                errorCampaigns.forEach((c: any) => deleteMutation.mutate(c.id))
-              }
+            onClick={async () => {
+              const ok = await confirm({
+                title: `¿Eliminar ${errorCampaigns.length} campaña(s) con errores?`,
+                description: 'Estas campañas no se publicaron correctamente en Meta. Eliminarlas no afectará a las campañas activas.',
+                confirmText: 'Eliminar errores',
+                variant: 'danger',
+              })
+              if (ok) errorCampaigns.forEach((c: any) => deleteMutation.mutate(c.id))
             }}
           >
             <Trash2 className="w-3 h-3 mr-1" /> Eliminar errores
@@ -790,8 +796,8 @@ export default function MetaAdsPage() {
                         <span>{formatCOP(c.dailyBudget || 0)}/día</span>
                         {c.metaCampaignId && <span className="font-mono text-[10px]">#{c.metaCampaignId.slice(-6)}</span>}
                       </div>
-                      {isError && c.error && (
-                        <p className="text-[11px] text-red-500 mt-1 truncate">{c.error}</p>
+                      {isError && c.errorMessage && (
+                        <p className="text-[11px] text-red-500 mt-1 truncate" title={c.errorMessage}>{c.errorMessage}</p>
                       )}
                     </div>
 
@@ -836,8 +842,14 @@ export default function MetaAdsPage() {
                         size="icon"
                         className={cn("h-8 w-8", isError ? "" : "")}
                         title="Eliminar"
-                        onClick={() => {
-                          if (confirm('¿Eliminar esta campaña?')) deleteMutation.mutate(c.id)
+                        onClick={async () => {
+                          const ok = await confirm({
+                            title: '¿Eliminar esta campaña?',
+                            description: `"${c.name}" se eliminará de tu panel y, si aún está activa, se pausará en Meta.`,
+                            confirmText: 'Eliminar',
+                            variant: 'danger',
+                          })
+                          if (ok) deleteMutation.mutate(c.id)
                         }}
                       >
                         <Trash2 className="h-3.5 w-3.5 text-red-400" />
@@ -861,6 +873,8 @@ export default function MetaAdsPage() {
           }}
         />
       )}
+
+      <ConfirmDialog />
     </div>
   )
 }

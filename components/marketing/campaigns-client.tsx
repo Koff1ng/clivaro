@@ -15,6 +15,7 @@ import { Input } from '@/components/ui/input'
 import CampaignForm from '@/components/marketing/campaign-form'
 import CampaignDetails from '@/components/marketing/campaign-details'
 import { useToast } from '@/components/ui/toast'
+import { useConfirm } from '@/components/ui/confirm-dialog'
 
 export default function CampaignsClient() {
   const [showForm, setShowForm] = useState(false)
@@ -28,6 +29,7 @@ export default function CampaignsClient() {
 
   const queryClient = useQueryClient()
   const { toast } = useToast()
+  const { confirm, ConfirmDialog } = useConfirm()
 
   // Listen for Clivi AI campaign creation events
   useEffect(() => {
@@ -82,6 +84,22 @@ export default function CampaignsClient() {
       setAiPrompt('')
       setShowForm(true)
       toast('🐙 ¡Campaña generada! Revísala y personalízala.', 'success')
+
+      // Notify the user when not all image blocks could be auto-generated
+      const meta = data._imageGeneration
+      if (meta) {
+        if (meta.skippedDueToLimit > 0) {
+          toast(
+            `Se generaron ${meta.generated} imágenes; ${meta.skippedDueToLimit} se quedaron sin generar por límite. Puedes crearlas desde el editor.`,
+            'warning',
+          )
+        } else if (meta.failed > 0) {
+          toast(
+            `${meta.failed} imagen(es) no se pudieron generar. Puedes reintentarlas desde el editor.`,
+            'warning',
+          )
+        }
+      }
     } catch {
       toast('Error al generar con IA', 'error')
     } finally {
@@ -377,8 +395,14 @@ export default function CampaignsClient() {
                           }} title="Editar">
                             <Edit className="h-3.5 w-3.5 text-slate-400" />
                           </Button>
-                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => {
-                            if (confirm('¿Eliminar esta campaña?')) deleteMutation.mutate(campaign.id)
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={async () => {
+                            const ok = await confirm({
+                              title: '¿Eliminar esta campaña?',
+                              description: `"${campaign.name}" se eliminará permanentemente, incluyendo sus destinatarios y estadísticas.`,
+                              confirmText: 'Eliminar',
+                              variant: 'danger',
+                            })
+                            if (ok) deleteMutation.mutate(campaign.id)
                           }} title="Eliminar">
                             <Trash2 className="h-3.5 w-3.5 text-red-400" />
                           </Button>
@@ -393,6 +417,8 @@ export default function CampaignsClient() {
           })}
         </div>
       )}
+
+      <ConfirmDialog />
     </div>
   )
 }

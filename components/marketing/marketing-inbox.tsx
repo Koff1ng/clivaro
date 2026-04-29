@@ -167,8 +167,12 @@ export default function MarketingInbox() {
       if (!res.ok) throw new Error('Error')
       return res.json()
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['inbox-leads'] })
+      // Remove the saved lead from the extracted list to avoid duplicates on re-click
+      setExtractedLeads(prev => prev.filter(l =>
+        !(l.name === variables.name && l.email === variables.email)
+      ))
       toast('Lead guardado', 'success')
     },
     onError: () => toast('Error al guardar lead', 'error'),
@@ -236,9 +240,15 @@ export default function MarketingInbox() {
             <div className="flex items-center gap-1.5">
               <Link2 className="w-3.5 h-3.5 text-blue-600" />
               <span className="text-xs font-bold text-blue-700 dark:text-blue-400">Vincular correo electrónico</span>
+              <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+                Próximamente
+              </span>
             </div>
             <p className="text-[10px] text-slate-500">
-              Pega tu dirección de correo para vincularla al inbox. Los correos recibidos aparecerán como contactos.
+              Por ahora puedes guardar tu dirección como referencia. La ingesta automática de correos
+              entrantes estará disponible en una próxima versión —
+              mientras tanto, usa el botón <Sparkles className="w-3 h-3 inline text-purple-400" /> para
+              extraer leads pegando el contenido de un correo.
             </p>
             <div className="flex gap-1.5">
               <Input
@@ -252,13 +262,13 @@ export default function MarketingInbox() {
                 disabled={!emailAddress.trim() || emailSaved}
                 className={cn("h-7 px-2.5 rounded-lg text-xs", emailSaved ? "bg-emerald-600" : "bg-blue-600 hover:bg-blue-700")}
               >
-                {emailSaved ? <><Check className="w-3 h-3 mr-1" /> Vinculado</> : <><Link2 className="w-3 h-3 mr-1" /> Vincular</>}
+                {emailSaved ? <><Check className="w-3 h-3 mr-1" /> Guardado</> : <><Link2 className="w-3 h-3 mr-1" /> Guardar</>}
               </Button>
             </div>
             {emailSaved && (
               <div className="flex items-center gap-1.5 text-[10px] text-emerald-600 dark:text-emerald-400">
                 <Check className="w-3 h-3" />
-                <span>Correo <strong>{emailAddress}</strong> vinculado al inbox</span>
+                <span>Correo <strong>{emailAddress}</strong> guardado localmente</span>
               </div>
             )}
           </div>

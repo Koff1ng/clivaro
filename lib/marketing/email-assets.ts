@@ -2,11 +2,25 @@ import { readFile } from 'fs/promises'
 import { existsSync } from 'fs'
 import { join } from 'path'
 
-export function personalizeEmailHtml(html: string, vars: { name?: string | null; email?: string | null }) {
-  let out = html || ''
-  if (vars.name) out = out.replace(/\{\{name\}\}/g, vars.name)
-  if (vars.email) out = out.replace(/\{\{email\}\}/g, vars.email)
+/**
+ * Replaces {{name}} and {{email}} placeholders in arbitrary text.
+ * Used for both the email body (HTML) and the subject line.
+ *
+ * Falsy values fall back to safe defaults so we never leak literal `{{name}}`
+ * to recipients when a customer record has no name.
+ */
+export function personalizeText(text: string, vars: { name?: string | null; email?: string | null }) {
+  let out = text || ''
+  const safeName = vars.name && vars.name.trim() ? vars.name : 'cliente'
+  const safeEmail = vars.email && vars.email.trim() ? vars.email : ''
+  out = out.replace(/\{\{name\}\}/g, safeName)
+  out = out.replace(/\{\{email\}\}/g, safeEmail)
   return out
+}
+
+/** @deprecated Use `personalizeText` — kept for backwards compatibility. */
+export function personalizeEmailHtml(html: string, vars: { name?: string | null; email?: string | null }) {
+  return personalizeText(html, vars)
 }
 
 export function extractImagePathsFromHtml(html: string): string[] {
@@ -142,6 +156,90 @@ export function replaceImageUrlsWithCid(html: string, imagePaths: string[], atta
   })
 
   return out
+}
+
+/**
+ * Replaces inline `data:image/...;base64,...` URLs in HTML with CID references
+ * and produces the corresponding attachments.
+ *
+ * Why: many email clients (Outlook desktop, Gmail web in some flows) silently
+ * drop inline base64 images, leaving emails missing visuals. CID-attached
+ * images render reliably across Outlook, Gmail, Apple Mail, Yahoo, etc.
+ *
+ * This is a pure HTML transform — no filesystem or network I/O — so it's safe
+ * to call from any request path right before `sendEmail`.
+ */
+export function inlineDataImagesToCid(html: string): {
+  html: string
+  attachments: Array<{
+    filename: string
+    content: Buffer
+    contentType: string
+    cid: string
+  }>
+} {
+  if (!html || !html.includes('data:image/')) {
+    return { html, attachments: [] }
+  }
+
+  const attachments: Array<{
+    filename: string
+    content: Buffer
+    contentType: string
+    cid: string
+  }> = []
+
+  // De-duplicate identical data URLs so we don't attach the same image twice
+  // when it's referenced from multiple <img> tags.
+  const dataUrlToAttachment = new Map<string, { cid: string }>()
+
+  const handleMatch = (mimeType: string, base64: string): { cid: string } | null => {
+    const dataUrlKey = `${mimeType}|${base64}`
+    const existing = dataUrlToAttachment.get(dataUrlKey)
+    if (existing) return existing
+
+    try {
+      const buffer = Buffer.from(base64, 'base64')
+      if (buffer.length === 0) return null
+
+      const ext = mimeType.includes('png') ? 'png'
+        : mimeType.includes('webp') ? 'webp'
+        : mimeType.includes('gif') ? 'gif'
+        : 'jpg'
+      const cid = `inline-${Date.now()}-${Math.random().toString(36).substring(2, 10)}-${attachments.length}`
+      const attachment = {
+        filename: `inline-${attachments.length}.${ext}`,
+        content: buffer,
+        contentType: mimeType,
+        cid,
+      }
+      attachments.push(attachment)
+      dataUrlToAttachment.set(dataUrlKey, { cid })
+      return { cid }
+    } catch {
+      return null
+    }
+  }
+
+  // Replace src="data:image/...;base64,..." in <img> tags
+  let out = html.replace(
+    /src=(["'])data:(image\/[a-zA-Z+.-]+);base64,([^"']+)\1/gi,
+    (match, _quote, mimeType: string, base64: string) => {
+      const result = handleMatch(mimeType, base64)
+      return result ? `src="cid:${result.cid}"` : match
+    },
+  )
+
+  // Replace background-image: url(data:image/...)
+  out = out.replace(
+    /background-image:\s*url\(\s*(["']?)data:(image\/[a-zA-Z+.-]+);base64,([^"')]+)\1\s*\)/gi,
+    (match, _quote, mimeType: string, base64: string) => {
+      const result = handleMatch(mimeType, base64)
+      return result ? `background-image: url('cid:${result.cid}')` : match
+    },
+  )
+
+  return { html: out, attachments }
 }
 
 

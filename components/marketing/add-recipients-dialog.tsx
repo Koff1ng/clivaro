@@ -27,7 +27,7 @@ export default function AddRecipientsDialog({
   const queryClient = useQueryClient()
 
   const { data: customers } = useQuery({
-    queryKey: ['customers'],
+    queryKey: ['customers', { active: true, withEmail: true, scope: 'campaign-recipients' }],
     queryFn: async () => {
       const res = await fetch('/api/customers?active=true')
       if (!res.ok) throw new Error('Failed to fetch customers')

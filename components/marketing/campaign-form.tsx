@@ -18,6 +18,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import EmailBuilder from '@/components/marketing/email-builder'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { useToast } from '@/components/ui/toast'
+import { useConfirm } from '@/components/ui/confirm-dialog'
 import { useSession } from 'next-auth/react'
 
 const campaignSchema = z.object({
@@ -39,6 +40,7 @@ interface CampaignFormProps {
 export default function CampaignForm({ campaignId, aiDefaults, onClose, onSuccess }: CampaignFormProps) {
   const queryClient = useQueryClient()
   const { toast } = useToast()
+  const { confirm, ConfirmDialog } = useConfirm()
   const { data: session } = useSession()
   const [currentCampaignId, setCurrentCampaignId] = useState<string | null>(campaignId || null)
   const [showPreview, setShowPreview] = useState(false)
@@ -193,6 +195,9 @@ export default function CampaignForm({ campaignId, aiDefaults, onClose, onSucces
       setLastSavedAt(new Date())
       toast('✅ Campaña guardada. Ahora agrega destinatarios.', 'success')
       setActiveStep(2) // Jump to recipients step
+    },
+    onError: (error: any) => {
+      toast(error?.message || 'Error al crear la campaña', 'error')
     },
   })
 
@@ -741,10 +746,13 @@ export default function CampaignForm({ campaignId, aiDefaults, onClose, onSucces
                       <div className="space-y-3 pt-2">
                         <Button
                           type="button"
-                          onClick={() => {
-                            if (confirm(`¿Enviar la campaña "${name}" a ${pendingCount} destinatarios?`)) {
-                              sendMutation.mutate()
-                            }
+                          onClick={async () => {
+                            const ok = await confirm({
+                              title: `Enviar a ${pendingCount} destinatarios`,
+                              description: `Vas a enviar la campaña "${name}" a ${pendingCount} destinatario(s) pendiente(s). Esta acción no se puede deshacer.`,
+                              confirmText: 'Enviar ahora',
+                            })
+                            if (ok) sendMutation.mutate()
                           }}
                           disabled={sendMutation.isPending}
                           className="rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 h-12 px-8 text-sm font-bold shadow-lg shadow-blue-200 dark:shadow-blue-900/30"
@@ -844,6 +852,8 @@ export default function CampaignForm({ campaignId, aiDefaults, onClose, onSucces
           </div>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog />
     </div>
   )
 }

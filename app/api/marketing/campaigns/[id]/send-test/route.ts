@@ -8,7 +8,8 @@ import { z } from 'zod'
 import { logger } from '@/lib/logger'
 import {
   extractImagePathsFromHtml,
-  personalizeEmailHtml,
+  inlineDataImagesToCid,
+  personalizeText,
   prepareImageAttachments,
   replaceImageUrlsWithCid,
 } from '@/lib/marketing/email-assets'
@@ -45,24 +46,56 @@ export async function POST(
         select: { id: true, name: true, subject: true, htmlContent: true },
       })
 
-      if (!campaign) throw new Error('Campaign not found')
+      if (!campaign) {
+        return { kind: 'not_found' as const }
+      }
 
-      let html = personalizeEmailHtml(campaign.htmlContent, { name: input.name, email: input.email })
+      // Respect the unsubscribe blacklist even for tests, so we never reach
+      // recipients who explicitly asked not to be contacted.
+      const blacklisted = await prisma.unsubscribe.findUnique({
+        where: { email: input.email },
+        select: { email: true },
+      })
+      if (blacklisted) {
+        return { kind: 'blacklisted' as const }
+      }
+
+      const personalizationVars = { name: input.name, email: input.email }
+      let html = personalizeText(campaign.htmlContent, personalizationVars)
+
+      // Local /uploads/* assets → CID
       const imagePaths = extractImagePathsFromHtml(html)
-      const attachments = await prepareImageAttachments(imagePaths)
-      html = replaceImageUrlsWithCid(html, imagePaths, attachments)
+      const fileAttachments = await prepareImageAttachments(imagePaths)
+      html = replaceImageUrlsWithCid(html, imagePaths, fileAttachments)
+
+      // Inline data:image/* → CID (Outlook drops base64 images otherwise)
+      const inlineResult = inlineDataImagesToCid(html)
+      html = inlineResult.html
+
+      const personalizedSubject = personalizeText(campaign.subject, personalizationVars)
 
       const emailResult = await sendEmail({
         to: input.email,
-        subject: `[PRUEBA] ${campaign.subject}`,
+        subject: `[PRUEBA] ${personalizedSubject}`,
         html,
-        attachments,
+        attachments: [...fileAttachments, ...inlineResult.attachments],
       })
 
-      return emailResult
+      return { kind: 'sent' as const, emailResult }
     })
 
-    if (!result.success) return NextResponse.json({ error: result.message }, { status: 500 })
+    if (result.kind === 'not_found') {
+      return NextResponse.json({ error: 'Campaña no encontrada' }, { status: 404 })
+    }
+    if (result.kind === 'blacklisted') {
+      return NextResponse.json(
+        { error: 'Este correo está en la lista de bajas y no puede recibir mensajes de prueba.' },
+        { status: 422 },
+      )
+    }
+    if (!result.emailResult.success) {
+      return NextResponse.json({ error: result.emailResult.message }, { status: 500 })
+    }
 
     return NextResponse.json({ success: true })
   } catch (error: any) {

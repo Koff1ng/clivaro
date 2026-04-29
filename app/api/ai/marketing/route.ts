@@ -100,20 +100,40 @@ export async function POST(request: Request) {
         const result = await generateCampaignContent(prompt) as any
         const tenantId = (session.user as any).tenantId
 
-        // Auto-generate images for blocks with empty src and descriptive alt
+        // Auto-generate images for blocks with empty src and descriptive alt.
+        // We cap concurrent generations to keep within the 60s maxDuration; any
+        // remaining image blocks are returned with `src=''` and the user can
+        // generate them on demand from the editor's "Generar con Clivi IA" button.
+        const MAX_AUTO_IMAGES = 3
         const blocks = result._blocks || []
         const imageBlocks = blocks.filter((b: any) => b.type === 'image' && !b.src && b.alt && b.alt.length > 10)
 
         if (imageBlocks.length > 0) {
-          logger.info(`[AI Marketing] Auto-generating ${imageBlocks.length} image(s) for campaign`, { tenantId })
+          const toGenerate = imageBlocks.slice(0, MAX_AUTO_IMAGES)
+          const skipped = Math.max(0, imageBlocks.length - toGenerate.length)
+          logger.info(
+            `[AI Marketing] Auto-generating ${toGenerate.length}/${imageBlocks.length} image(s) for campaign`,
+            { tenantId, skipped },
+          )
 
-          const imagePromises = imageBlocks.slice(0, 2).map(async (block: any) => {
-            const url = await generateAndUploadImage(block.alt, tenantId)
-            if (url) block.src = url
-          })
+          const imageResults = await Promise.allSettled(
+            toGenerate.map(async (block: any) => {
+              const url = await generateAndUploadImage(block.alt, tenantId)
+              if (url) block.src = url
+              return !!url
+            }),
+          )
 
-          await Promise.allSettled(imagePromises)
+          const generated = imageResults.filter(r => r.status === 'fulfilled' && r.value === true).length
+          const failed = toGenerate.length - generated
+
           result._blocks = blocks
+          result._imageGeneration = {
+            requested: imageBlocks.length,
+            generated,
+            failed,
+            skippedDueToLimit: skipped,
+          }
         }
 
         return NextResponse.json(result)

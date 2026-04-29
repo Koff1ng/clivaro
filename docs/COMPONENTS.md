@@ -90,18 +90,20 @@ Displays paginated list of products.
 - Category filtering
 - Stock level indicators
 
-### Canva Editor (`components/marketing/canva-editor.tsx`)
+### Email Builder (`components/marketing/email-builder.tsx`)
 
-Visual drag-and-drop email campaign editor.
+Block-based email campaign editor used by Marketing → Campañas.
 
 **Features:**
-- Drag and drop elements
-- Text editing (double-click)
-- Image upload
-- Background images
-- Z-index management
-- Link insertion
-- Templates
+- Block library (header, text, image, button, divider, spacer, social, two-column)
+- Inline AI image generation
+- Image upload with drag & drop
+- HTML / blocks dual-mode toggle
+- Template gallery
+
+> Note: the legacy `canva-editor.tsx` was archived to `_archive/marketing/` along
+> with `visual-editor.tsx`, `custom-icons.tsx`, `business-types.tsx` and
+> `testimonials.tsx` since none of them are wired into the active app.
 
 ## Performance Optimizations
 

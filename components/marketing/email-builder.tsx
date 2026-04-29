@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
 import { useToast } from '@/components/ui/toast'
+import { useConfirm } from '@/components/ui/confirm-dialog'
 
 // ── Types ──
 export type BlockType = 'header' | 'text' | 'image' | 'button' | 'divider' | 'spacer' | 'social' | 'two-column'
@@ -330,29 +331,38 @@ const BLOCK_TYPES: { type: BlockType; label: string; icon: React.ReactNode; desc
 // ── Component ──
 export default function EmailBuilder({ value, onChange, initialBlocks }: EmailBuilderProps) {
   const { toast } = useToast()
-  const [isRawMode, setIsRawMode] = useState(false)
-  const [rawHtml, setRawHtml] = useState(value || '')
-  const [blocks, setBlocks] = useState<EmailBlock[]>(() => {
-    // Priority 1: Use AI-generated blocks directly (no HTML parsing needed)
+  const { confirm, ConfirmDialog } = useConfirm()
+
+  // Compute the initial state in a single pass to avoid calling setState() inside
+  // a useState initializer (anti-pattern that triggers React strict-mode warnings).
+  const initialState = useMemo(() => {
     if (initialBlocks && Array.isArray(initialBlocks) && initialBlocks.length > 0) {
-      return initialBlocks.map(b => ({
-        ...b,
-        id: b.id || uid(),
-        style: b.style || {},
-      }))
+      return {
+        blocks: initialBlocks.map(b => ({
+          ...b,
+          id: b.id || uid(),
+          style: b.style || {},
+        })) as EmailBlock[],
+        isRawMode: false,
+        rawHtml: value || '',
+      }
     }
-    // Priority 2: Try to parse HTML into blocks
     const parsed = htmlToBlocks(value)
-    if (parsed && parsed.length > 0) return parsed
-    // Priority 3: If HTML exists but couldn't be parsed, still try to show something
-    if (value && value.includes('<') && value.length > 100) {
-      // Show in raw mode only as last resort
-      setIsRawMode(true)
-      setRawHtml(value)
-      return []
+    if (parsed && parsed.length > 0) {
+      return { blocks: parsed, isRawMode: false, rawHtml: value || '' }
     }
-    return []
-  })
+    // Fallback: HTML present but unparseable → start in raw mode.
+    if (value && value.includes('<') && value.length > 100) {
+      return { blocks: [] as EmailBlock[], isRawMode: true, rawHtml: value }
+    }
+    return { blocks: [] as EmailBlock[], isRawMode: false, rawHtml: value || '' }
+    // We intentionally compute this once on mount (initial value props).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const [isRawMode, setIsRawMode] = useState(initialState.isRawMode)
+  const [rawHtml, setRawHtml] = useState(initialState.rawHtml)
+  const [blocks, setBlocks] = useState<EmailBlock[]>(initialState.blocks)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [showAddMenu, setShowAddMenu] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -525,7 +535,21 @@ export default function EmailBuilder({ value, onChange, initialBlocks }: EmailBu
             <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Bloques ({blocks.length})</span>
             <div className="flex gap-1">
               {blocks.length > 0 && (
-                <Button type="button" variant="ghost" size="sm" className="text-xs text-slate-400 h-7" onClick={() => { if (confirm('¿Borrar todo el contenido?')) syncHtml([]) }}>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="text-xs text-slate-400 h-7"
+                  onClick={async () => {
+                    const ok = await confirm({
+                      title: '¿Borrar todo el contenido?',
+                      description: 'Se eliminarán todos los bloques del email. Esta acción no se puede deshacer.',
+                      confirmText: 'Borrar todo',
+                      variant: 'danger',
+                    })
+                    if (ok) syncHtml([])
+                  }}
+                >
                   <Trash2 className="w-3 h-3 mr-1" /> Limpiar
                 </Button>
               )}
@@ -578,6 +602,8 @@ export default function EmailBuilder({ value, onChange, initialBlocks }: EmailBu
           </div>
         </div>
       )}
+
+      <ConfirmDialog />
     </div>
   )
 }

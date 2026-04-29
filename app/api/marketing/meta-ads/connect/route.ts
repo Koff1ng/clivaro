@@ -70,6 +70,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'accessToken y adAccountId son requeridos' }, { status: 400 })
   }
 
+  // pageId is required to publish ads — enforce it at connect time so we never
+  // end up with a "connected" but unpublishable account.
+  if (!body.pageId || typeof body.pageId !== 'string' || !body.pageId.trim()) {
+    return NextResponse.json({ error: 'pageId es requerido para publicar anuncios.' }, { status: 400 })
+  }
+
   // Validate adAccountId format
   if (!body.adAccountId.startsWith('act_')) {
     return NextResponse.json({ error: 'adAccountId debe empezar con act_' }, { status: 400 })

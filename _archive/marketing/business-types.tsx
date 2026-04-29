@@ -7,7 +7,7 @@ import {
     ElectricalIcon,
     LocksmithIcon,
     PlumbingIcon
-} from '@/components/marketing/custom-icons'
+} from './custom-icons'
 
 const features = [
     {

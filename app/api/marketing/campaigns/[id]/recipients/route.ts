@@ -28,7 +28,29 @@ export async function POST(
     const body = await request.json()
     const data = addRecipientsSchema.parse(body)
 
+    // Statuses that should not accept new recipients (already finished or cancelled).
+    const LOCKED_STATUSES = new Set(['SENT', 'CANCELLED', 'SENDING'])
+
     const result = await withTenantTx(tenantId, async (prisma) => {
+      const campaign = await prisma.marketingCampaign.findUnique({
+        where: { id: campaignId },
+        select: { id: true, status: true },
+      })
+      if (!campaign) {
+        return { error: 'Campaña no encontrada', status: 404 as const }
+      }
+      if (LOCKED_STATUSES.has(campaign.status)) {
+        return {
+          error:
+            campaign.status === 'SENT'
+              ? 'No se pueden agregar destinatarios: la campaña ya fue enviada.'
+              : campaign.status === 'CANCELLED'
+                ? 'No se pueden agregar destinatarios: la campaña fue cancelada.'
+                : 'La campaña se está enviando. Espera a que termine para agregar más destinatarios.',
+          status: 409 as const,
+        }
+      }
+
       let emailsToAdd: string[] = []
 
       if (data.customerIds && data.customerIds.length > 0) {
@@ -67,10 +89,18 @@ export async function POST(
         })),
       })
 
-      return recipients.count
+      const total = await prisma.marketingCampaignRecipient.count({
+        where: { campaignId },
+      })
+
+      return { added: recipients.count, total }
     })
 
-    return NextResponse.json({ added: result, total: result })
+    if ('error' in result) {
+      return NextResponse.json({ error: result.error }, { status: result.status })
+    }
+
+    return NextResponse.json(result)
   } catch (error: any) {
     if (error instanceof z.ZodError) return NextResponse.json({ error: 'Validation error', details: error.errors }, { status: 400 })
     logger.error('Error adding recipients', error)
