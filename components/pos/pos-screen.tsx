@@ -206,6 +206,42 @@ interface RestaurantTable {
   y: number
 }
 
+// ── Money helpers ───────────────────────────────────────────────────────────
+// Centralized so frontend totals match `calculateGranularTaxes` on the backend
+// and we never compare floats with hidden centimo drift.
+const ROUND_MONEY = (n: number): number => Math.round(n * 100) / 100
+
+type AppliedTax = { id: string; name: string; rate: number; type: string }
+
+function isRetention(taxType: string | undefined | null): boolean {
+  return !!taxType && (taxType.startsWith('RETE') || taxType === 'RETENTION')
+}
+
+/** Net rate used by the UI to display "what the customer pays" per line. */
+function calcLineNetTaxRate(appliedTaxes: AppliedTax[] | undefined, fallbackTaxRate?: number): number {
+  if (appliedTaxes && appliedTaxes.length > 0) {
+    return appliedTaxes.reduce((sum, t) => isRetention(t.type) ? sum - (t.rate || 0) : sum + (t.rate || 0), 0)
+  }
+  return fallbackTaxRate ?? 0
+}
+
+/**
+ * Single source of truth for the displayed line subtotal
+ * (gross of tax, net of retention, including discount).
+ */
+function calcLineSubtotal(item: {
+  quantity: number
+  unitPrice: number
+  discount?: number
+  appliedTaxes?: AppliedTax[]
+  taxRate?: number
+}): number {
+  const qty = Math.max(0, item.quantity || 0)
+  const base = qty * (item.unitPrice || 0) * (1 - (item.discount || 0) / 100)
+  const netRate = calcLineNetTaxRate(item.appliedTaxes, item.taxRate)
+  return ROUND_MONEY(base * (1 + netRate / 100))
+}
+
 interface POSScreenProps {
   mode?: 'retail' | 'commander'
   waiterData?: any
@@ -459,38 +495,62 @@ export function POSScreen({ mode = 'retail', waiterData, waiterToken, preselecte
     const availableStock = warehouseStock?.quantity ?? 0
     const key = keyOfStock(line.productId, line.variantId || null)
 
-    const existing = cart.find((item) => keyOfStock(item.productId, (item.variantId as any) || null) === key)
-    if (existing) {
-      const newQty = existing.quantity + 1
-      if (line.trackStock && warehouseStock && newQty > availableStock) {
-        toast(`Stock insuficiente. Disponible: ${availableStock}`, 'warning')
-        return
+    // C6 FIX: Block the very first unit when there is no stock — previously we
+    // only validated stock when incrementing an existing line, so scanning a
+    // sold-out item still added it to the cart.
+    if (line.trackStock && warehouseStock && availableStock < 1) {
+      toast(`Sin stock disponible para ${line.productName}`, 'warning')
+      return
+    }
+
+    // C2 FIX: Use functional setCart so two scans inside the same React batch
+    // (e.g. wedge scanner bursts) cannot overwrite each other's snapshot.
+    let exceeded = false
+    setCart((prev) => {
+      const existing = prev.find((item) => keyOfStock(item.productId, (item.variantId as any) || null) === key)
+      if (existing) {
+        const newQty = existing.quantity + 1
+        if (line.trackStock && warehouseStock && newQty > availableStock) {
+          exceeded = true
+          return prev
+        }
+        return prev.map((item) => {
+          if (keyOfStock(item.productId, (item.variantId as any) || null) !== key) return item
+          const next = { ...item, quantity: newQty }
+          return { ...next, subtotal: calcLineSubtotal(next) }
+        })
       }
-      updateCartItemQuantity(existing.productId, newQty, existing.variantId || null)
-    } else {
-      const subtotal = line.unitPrice * (1 + (line.taxRate || 0) / 100)
-      setCart([
-        ...cart,
-        {
-          productId: line.productId,
-          variantId: line.variantId || null,
-          productName: line.productName,
-          sku: line.sku,
-          quantity: 1,
-          unitPrice: line.unitPrice,
-          discount: 0,
-          taxRate: line.taxRate || 0,
-          appliedTaxes: line.appliedTaxes,
-          subtotal,
-          saleUnits: line.saleUnits,
-          originalPrice: line.unitPrice,
-        },
-      ])
+
+      // C4 FIX: Compute the initial subtotal with the same formula as
+      // `updateCartItemQuantity`/`updateCartItemDiscount`, so the cart total
+      // doesn't visibly jump when the user first taps + or − on a freshly
+      // added line.
+      const newItem: CartItem = {
+        productId: line.productId,
+        variantId: line.variantId || null,
+        productName: line.productName,
+        sku: line.sku,
+        quantity: 1,
+        unitPrice: line.unitPrice,
+        discount: 0,
+        taxRate: line.taxRate || 0,
+        appliedTaxes: line.appliedTaxes,
+        subtotal: 0,
+        saleUnits: line.saleUnits,
+        originalPrice: line.unitPrice,
+      }
+      newItem.subtotal = calcLineSubtotal(newItem)
+      return [...prev, newItem]
+    })
+
+    if (exceeded) {
+      toast(`Stock insuficiente. Disponible: ${availableStock}`, 'warning')
+      return
     }
 
     setSearchQuery('')
     searchInputRef.current?.focus()
-  }, [cart, keyOfStock, selectedWarehouse, toast])
+  }, [keyOfStock, selectedWarehouse, toast])
 
   const scanLookup = useCallback(async (raw: string) => {
     const code = String(raw || '').trim()
@@ -947,29 +1007,33 @@ export function POSScreen({ mode = 'retail', waiterData, waiterToken, preselecte
   }, [autoPrintPending, saleResult, isEscPosReady, printEscPos, settings, toast, boldSections])
 
   const computeTotalsFromCart = useCallback((items: CartItem[]) => {
-    const subtotal = items.reduce((sum, item) => sum + (item.quantity * item.unitPrice * (1 - (item.discount || 0) / 100)), 0)
-
+    let subtotal = 0
     let tax = 0
     let retention = 0
 
     items.forEach((item) => {
-      const base = item.quantity * item.unitPrice * (1 - (item.discount || 0) / 100)
-      if (item.appliedTaxes) {
+      const base = (item.quantity || 0) * (item.unitPrice || 0) * (1 - (item.discount || 0) / 100)
+      subtotal += base
+
+      if (item.appliedTaxes && item.appliedTaxes.length > 0) {
         item.appliedTaxes.forEach(t => {
           const amount = base * (t.rate || 0) / 100
-          if (t.type && (t.type.startsWith('RETE') || t.type === 'RETENTION')) {
-            retention += amount
-          } else {
-            tax += amount
-          }
+          if (isRetention(t.type)) retention += amount
+          else tax += amount
         })
       } else if (item.taxRate) {
-        // Fallback for legacy items without appliedTaxes array
+        // Fallback for legacy items without an appliedTaxes array
+        // (e.g. parked tickets or offline-queued sales from earlier versions).
         tax += base * item.taxRate / 100
       }
     })
 
-    return { subtotal, tax, retention, total: subtotal + tax - retention }
+    // C7 FIX: Round once at the boundary so the UI never displays
+    // 123456.7800000003 nor compares totals at sub-centimo precision.
+    subtotal = ROUND_MONEY(subtotal)
+    tax = ROUND_MONEY(tax)
+    retention = ROUND_MONEY(retention)
+    return { subtotal, tax, retention, total: ROUND_MONEY(subtotal + tax - retention) }
   }, [])
 
   const enqueueOfflineSale = useCallback((payload: any) => {
@@ -1247,66 +1311,51 @@ export function POSScreen({ mode = 'retail', waiterData, waiterToken, preselecte
   }
 
   // Handler to change the sale unit for a cart item (e.g., Docena -> Unidad)
+  // C2 FIX: all cart mutations use functional setState below.
   const changeCartUnit = (productId: string, variantId: string | null, unitSymbol: string | null) => {
-    setCart(cart.map(item => {
+    setCart((prev) => prev.map(item => {
       if (item.productId !== productId || (item.variantId || null) !== (variantId || null)) return item
       if (!unitSymbol) {
-        // Revert to original bulk unit
         const newPrice = item.originalPrice || item.unitPrice
-        const subtotal = item.quantity * newPrice * (1 - (item.discount || 0) / 100) * (1 + (item.taxRate || 0) / 100)
-        return { ...item, unitPrice: newPrice, saleUnitSymbol: undefined, conversionMultiplier: undefined, subtotal }
+        const next = { ...item, unitPrice: newPrice, saleUnitSymbol: undefined, conversionMultiplier: undefined }
+        return { ...next, subtotal: calcLineSubtotal(next) }
       }
       const su = item.saleUnits?.find(u => u.unitSymbol === unitSymbol)
       if (!su) return item
-      const newPrice = su.unitPrice
-      const subtotal = item.quantity * newPrice * (1 - (item.discount || 0) / 100) * (1 + (item.taxRate || 0) / 100)
-      return { ...item, unitPrice: newPrice, saleUnitSymbol: su.unitSymbol, conversionMultiplier: su.multiplier, subtotal }
+      const next = { ...item, unitPrice: su.unitPrice, saleUnitSymbol: su.unitSymbol, conversionMultiplier: su.multiplier }
+      return { ...next, subtotal: calcLineSubtotal(next) }
     }))
   }
 
-  const updateCartItemTaxes = (productId: string, taxes: any[], variantId?: string | null) => {
-    setCart(cart.map(item => {
-      if (item.productId === productId && (item.variantId || null) === (variantId || null)) {
-        const totalTaxRate = taxes.reduce((sum, t) => {
-          if (t.type && (t.type.startsWith('RETE') || t.type === 'RETENTION')) {
-            return sum - t.rate
-          }
-          return sum + t.rate
-        }, 0)
-
-        // Recalculate subtotal (Payable) with new net rate
-        const subtotal = item.quantity * item.unitPrice * (1 - (item.discount || 0) / 100) * (1 + totalTaxRate / 100)
-
-        return { ...item, appliedTaxes: taxes, taxRate: totalTaxRate, subtotal }
-      }
-      return item
+  const updateCartItemTaxes = (productId: string, taxes: AppliedTax[], variantId?: string | null) => {
+    setCart((prev) => prev.map(item => {
+      if (item.productId !== productId || (item.variantId || null) !== (variantId || null)) return item
+      const netRate = calcLineNetTaxRate(taxes)
+      const next = { ...item, appliedTaxes: taxes, taxRate: netRate }
+      return { ...next, subtotal: calcLineSubtotal(next) }
     }))
   }
 
   const updateCartItemQuantity = (productId: string, quantity: number, variantId?: string | null) => {
-    setCart(cart.map(item => {
-      if (item.productId === productId && (item.variantId || null) === (variantId || null)) {
-        const newQty = Math.max(1, quantity)
-        const subtotal = newQty * item.unitPrice * (1 - item.discount / 100) * (1 + item.taxRate / 100)
-        return { ...item, quantity: newQty, subtotal }
-      }
-      return item
+    setCart((prev) => prev.map(item => {
+      if (item.productId !== productId || (item.variantId || null) !== (variantId || null)) return item
+      const newQty = Math.max(1, quantity)
+      const next = { ...item, quantity: newQty }
+      return { ...next, subtotal: calcLineSubtotal(next) }
     }))
   }
 
   const updateCartItemDiscount = (productId: string, discount: number, variantId?: string | null) => {
-    setCart(cart.map(item => {
-      if (item.productId === productId && (item.variantId || null) === (variantId || null)) {
-        const clamped = Math.max(0, Math.min(100, discount))
-        const subtotal = item.quantity * item.unitPrice * (1 - clamped / 100) * (1 + item.taxRate / 100)
-        return { ...item, discount: clamped, subtotal }
-      }
-      return item
+    setCart((prev) => prev.map(item => {
+      if (item.productId !== productId || (item.variantId || null) !== (variantId || null)) return item
+      const clamped = Math.max(0, Math.min(100, discount))
+      const next = { ...item, discount: clamped }
+      return { ...next, subtotal: calcLineSubtotal(next) }
     }))
   }
 
   const removeFromCart = (productId: string, variantId?: string | null) => {
-    setCart(cart.filter(item => !(item.productId === productId && (item.variantId || null) === (variantId || null))))
+    setCart((prev) => prev.filter(item => !(item.productId === productId && (item.variantId || null) === (variantId || null))))
   }
 
   const updateCartItemNotes = useCallback((productId: string, preparationNotes: string, variantId?: string | null) => {
@@ -1333,46 +1382,21 @@ export function POSScreen({ mode = 'retail', waiterData, waiterToken, preselecte
     toast('Notas guardadas', 'success')
   }, [preparationNotesItem, preparationNotesInput, updateCartItemNotes, toast])
 
-  const updateAllItemsTaxes = useCallback((taxes: any[]) => {
+  const updateAllItemsTaxes = useCallback((taxes: AppliedTax[]) => {
+    const netRate = calcLineNetTaxRate(taxes)
     setCart((prev) => prev.map((item) => {
-      // Recalculate subtotal with new taxes
-      const totalTaxRate = taxes.reduce((sum, t) => {
-        if (t.type && (t.type.startsWith('RETE') || t.type === 'RETENTION')) {
-          return sum - t.rate
-        }
-        return sum + t.rate
-      }, 0)
-      const subtotal = item.quantity * item.unitPrice * (1 - (item.discount || 0) / 100) * (1 + totalTaxRate / 100)
-      return { ...item, appliedTaxes: taxes, taxRate: totalTaxRate, subtotal }
+      const next = { ...item, appliedTaxes: taxes, taxRate: netRate }
+      return { ...next, subtotal: calcLineSubtotal(next) }
     }))
     toast('Impuestos aplicados a todos los items', 'success')
   }, [toast])
 
-  const calculateTotals = () => {
-    const subtotal = cart.reduce((sum, item) => {
-      const itemSubtotal = item.quantity * item.unitPrice * (1 - (item.discount || 0) / 100)
-      return sum + itemSubtotal
-    }, 0)
-
-    let tax = 0
-    let retention = 0
-
-    cart.forEach((item) => {
-      const base = item.quantity * item.unitPrice * (1 - (item.discount || 0) / 100)
-      if (item.appliedTaxes) {
-        item.appliedTaxes.forEach(t => {
-          const amount = base * (t.rate || 0) / 100
-          if (t.type && (t.type.startsWith('RETE') || t.type === 'RETENTION')) {
-            retention += amount
-          } else {
-            tax += amount
-          }
-        })
-      }
-    })
-
-    return { subtotal, tax, retention, total: subtotal + tax - retention }
-  }
+  // C5/C7 FIX: Delegate to `computeTotalsFromCart` so subtotal, tax, retention
+  // and total all share the same rounding and the same legacy-`taxRate`
+  // fallback. Without it, items loaded from a parked ticket or an offline
+  // sale (which only have `taxRate`, no `appliedTaxes`) showed 0 tax in the
+  // visible totals while the backend silently charged it.
+  const calculateTotals = () => computeTotalsFromCart(cart)
 
   const handleCheckout = () => {
     // Validations
@@ -1405,12 +1429,14 @@ export function POSScreen({ mode = 'retail', waiterData, waiterToken, preselecte
           const missing = total - actualReceived
           const wantCredit = window.confirm(`Monto incompleto. Faltan ${formatCurrency(missing)}.\n\n¿Deseas ${actualReceived > 0 ? `registrar un pago de ${formatCurrency(actualReceived)} y ` : ''}enviar ${actualReceived > 0 ? 'el saldo restante' : 'el total'} a la cuenta por cobrar de ${selectedCustomer.name}?`)
           if (!wantCredit) return
-          
-          // Send only actual cash received. Backend auto-detects underpayment
-          // with customerId and creates credit balance automatically.
+
+          // C3 FIX: Send only the actual cash received. If the customer pays
+          // nothing in cash and fiar's the entire total, send `payments: []`
+          // and let the backend auto-detect the credit balance. Inventing a
+          // ghost 0.01 payment polluted the cash drawer and the shift report.
           saleData.payments = actualReceived > 0
             ? [{ paymentMethodId: paymentMethodId, amount: actualReceived }]
-            : [{ paymentMethodId: paymentMethodId, amount: 0.01 }] // Minimal to pass validation
+            : []
         } else {
           toast(`El efectivo recibido debe ser mayor o igual al total. Selecciona un cliente para fiar.`, 'warning')
           return
@@ -1448,8 +1474,17 @@ export function POSScreen({ mode = 'retail', waiterData, waiterToken, preselecte
     saleData.items = validItems
     saleData.discount = 0
 
+    // C8 FIX: If the cart already has line discounts but the cashier no longer
+    // has permission and the manager override has expired, do NOT proceed —
+    // the backend would just throw "No tienes permiso para aplicar descuentos"
+    // and we'd lose the tender feedback. Reopen the override dialog instead.
     const hasDiscounts = validItems.some((it: any) => (it.discount || 0) > 0)
-    if (hasDiscounts && !canApplyDiscounts && isOverrideValid && discountOverride?.token) {
+    if (hasDiscounts && !canApplyDiscounts) {
+      if (!isOverrideValid || !discountOverride?.token) {
+        toast('Necesitas autorización de un supervisor para aplicar descuentos', 'warning')
+        setShowDiscountOverrideDialog(true)
+        return
+      }
       saleData.discountOverrideToken = discountOverride.token
     }
 

@@ -81,10 +81,20 @@ const createPOSSaleSchema = z.object({
 
   // Token para override de manager
   discountOverrideToken: z.string().optional().nullable(),
-}).refine(data => !!(data.paymentMethod || (data.payments && data.payments.length > 0)), {
-  message: "Debe indicar al menos un método de pago (paymentMethod o payments)",
-  path: ["payments"]
-});
+}).refine(
+  // C3 FIX: Allow `payments: []` when there is a customer to fiar the entire
+  // total. The backend auto-creates the credit balance below and never needs
+  // a phantom 0.01 payment to "pass validation".
+  data => !!(
+    data.paymentMethod ||
+    (data.payments && data.payments.length > 0) ||
+    data.customerId
+  ),
+  {
+    message: "Debe indicar al menos un método de pago, o seleccionar un cliente para fiar la venta",
+    path: ["payments"]
+  }
+);
 
 type POSSaleInput = z.infer<typeof createPOSSaleSchema>;
 
@@ -405,7 +415,21 @@ export async function POST(request: Request) {
 
       // Logic for Immediate (Paid) portion
       if (data.payments?.length) {
-        change = Math.max(0, tenderedTotal - finalTotal)
+        // C3 FIX: Change is the surplus *of cash* against the cash share of the
+        // total — never the surplus across the entire tender. Otherwise, when
+        // the customer overpays with CARD/TRANSFER + a small CASH bill, we
+        // would deduct fictitious change from the cash drawer and leave the
+        // shift summary out of balance.
+        const cashTendered = data.payments.reduce((sum, p) => {
+          const m = paymentMethodMap.get(p.paymentMethodId) as any
+          return m?.type === 'CASH' ? sum + p.amount : sum
+        }, 0)
+        const nonCashTendered = data.payments.reduce((sum, p) => {
+          const m = paymentMethodMap.get(p.paymentMethodId) as any
+          return m && m.type !== 'CASH' && m.type !== 'CREDIT' ? sum + p.amount : sum
+        }, 0)
+        const cashOwed = Math.max(0, finalTotal - nonCashTendered)
+        change = Math.max(0, cashTendered - cashOwed)
         let remainingChange = change // M2 FIX: track remaining change to deduct across multiple CASH payments
         for (const p of data.payments) {
           const methodInfo = paymentMethodMap.get(p.paymentMethodId) as any
