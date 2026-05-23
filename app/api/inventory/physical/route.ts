@@ -110,28 +110,79 @@ export async function POST(request: Request) {
         },
       })
 
-      const stockLevels = await prisma.stockLevel.findMany({
-        where: { 
-          warehouseId: data.warehouseId, 
-          product: {
-            trackStock: true,
-            ...(data.categoryIds && data.categoryIds.length > 0 ? { categoryId: { in: data.categoryIds } } : {}),
-            ...(data.brandIds && data.brandIds.length > 0 ? { brandId: { in: data.brandIds } } : {}),
-          }
-        },
-        include: {
-          product: { select: { id: true, name: true, sku: true, unitOfMeasure: true } },
-          variant: { select: { id: true, name: true } },
+      // Build product filter
+      const productFilter: any = {
+        trackStock: true,
+        active: true,
+        ...(data.categoryIds && data.categoryIds.length > 0 ? { categoryId: { in: data.categoryIds } } : {}),
+        ...(data.brandIds && data.brandIds.length > 0 ? { brandId: { in: data.brandIds } } : {}),
+      }
+
+      // Get ALL products matching the filter (not just those with stock levels)
+      const products = await prisma.product.findMany({
+        where: productFilter,
+        select: {
+          id: true,
+          variants: { where: { active: true }, select: { id: true } },
         },
       })
 
-      const itemsData = stockLevels.map(sl => ({
-        physicalInventoryId: inventory.id,
-        productId: sl.productId,
-        variantId: sl.variantId,
-        zoneId: sl.zoneId,
-        systemQuantity: sl.quantity,
-      }))
+      // Get existing stock levels for this warehouse
+      const stockLevels = await prisma.stockLevel.findMany({
+        where: {
+          warehouseId: data.warehouseId,
+          product: productFilter,
+        },
+      })
+
+      // Track which product+variant combos already have stock levels
+      const coveredKeys = new Set<string>()
+      const itemsData: Array<{
+        physicalInventoryId: string
+        productId: string | null
+        variantId: string | null
+        zoneId: string | null
+        systemQuantity: number
+      }> = []
+
+      // First: add items from existing stock levels (preserves zone-level detail)
+      for (const sl of stockLevels) {
+        coveredKeys.add(`${sl.productId || ''}_${sl.variantId || ''}`)
+        itemsData.push({
+          physicalInventoryId: inventory.id,
+          productId: sl.productId,
+          variantId: sl.variantId,
+          zoneId: sl.zoneId,
+          systemQuantity: sl.quantity,
+        })
+      }
+
+      // Second: add products/variants that DON'T have stock levels yet (systemQuantity = 0)
+      for (const product of products) {
+        if (product.variants.length > 0) {
+          for (const variant of product.variants) {
+            if (!coveredKeys.has(`${product.id}_${variant.id}`)) {
+              itemsData.push({
+                physicalInventoryId: inventory.id,
+                productId: product.id,
+                variantId: variant.id,
+                zoneId: null,
+                systemQuantity: 0,
+              })
+            }
+          }
+        } else {
+          if (!coveredKeys.has(`${product.id}_`)) {
+            itemsData.push({
+              physicalInventoryId: inventory.id,
+              productId: product.id,
+              variantId: null,
+              zoneId: null,
+              systemQuantity: 0,
+            })
+          }
+        }
+      }
 
       if (itemsData.length > 0) {
         await prisma.physicalInventoryItem.createMany({ data: itemsData })
