@@ -214,40 +214,43 @@ export function SettingsScreen() {
 
   return (
     <>
-    <div className="flex flex-col h-full overflow-hidden bg-[#F8FAFC]">
+    <div className="flex flex-col h-full overflow-hidden bg-muted/50">
       {/* Header Premium con Glassmorphism */}
-      <header className="h-20 border-b bg-white/80 backdrop-blur-md sticky top-0 z-50 flex items-center justify-between px-8">
-        <div className="flex items-center gap-4">
-          <div className="h-10 w-10 rounded-xl bg-primary flex items-center justify-center text-white shadow-lg shadow-primary/20">
-            <SettingsIcon size={24} />
+      <header className="h-14 sm:h-20 border-b bg-card/80 backdrop-blur-md sticky top-0 z-50 flex items-center justify-between px-4 sm:px-8">
+        <div className="flex items-center gap-3 sm:gap-4">
+          <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-xl bg-primary flex items-center justify-center text-white shadow-lg shadow-primary/20 flex-shrink-0">
+            <SettingsIcon size={18} className="sm:size-6" />
           </div>
           <div>
-            <h1 className="text-xl font-black text-slate-800 tracking-tight">Configuración del Sistema</h1>
-            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Centro de Control • {session?.user?.name}</p>
+            <h1 className="text-base sm:text-xl font-black text-card-foreground tracking-tight">Configuración</h1>
+            <p className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wider hidden sm:block">Centro de Control • {session?.user?.name}</p>
           </div>
         </div>
-        <div className="flex items-center gap-3">
-          <Button variant="outline" className="rounded-xl font-bold text-xs px-5 border-indigo-200 text-indigo-600 hover:bg-indigo-50 transition-all" onClick={() => { resetTour(); router.push('/dashboard'); setTimeout(() => setShowTutorial(true), 500) }}>
-             <GraduationCap size={14} className="mr-1.5" />
-             Ver Tutorial
+        <div className="flex items-center gap-2 sm:gap-3">
+          <Button variant="outline" className="rounded-xl font-bold text-[10px] sm:text-xs px-3 sm:px-5 border-indigo-200 text-indigo-600 hover:bg-indigo-50 transition-all hidden sm:flex" onClick={() => { resetTour(); router.push('/dashboard'); setTimeout(() => setShowTutorial(true), 500) }}>
+             <GraduationCap size={14} className="sm:mr-1.5" />
+             <span className="hidden sm:inline">Ver Tutorial</span>
            </Button>
-          <Button variant="outline" className="rounded-xl font-bold text-xs px-5 border-orange-200 text-orange-600 hover:bg-orange-50 transition-all" onClick={() => setShowDemoOnboarding(true)}>
-             <Play size={14} className="mr-1.5" />
-             Onboarding Demo
-          </Button>
-          <Button variant="outline" className="rounded-xl font-bold text-xs px-6 border-slate-200 hover:bg-slate-50 transition-all" onClick={() => router.push('/dashboard')}>
+          <Button variant="outline" className="rounded-xl font-bold text-[10px] sm:text-xs px-3 sm:px-5 border-orange-200 text-orange-600 hover:bg-orange-50 transition-all hidden sm:flex" onClick={() => setShowDemoOnboarding(true)}>
+             <Play size={14} className="sm:mr-1.5" />
+             <span className="hidden sm:inline">Onboarding</span>
+           </Button>
+          <Button variant="outline" size="icon" className="rounded-xl border-border hover:bg-accent transition-all sm:hidden" onClick={() => router.push('/dashboard')}>
+             <LayoutDashboard size={18} />
+           </Button>
+          <Button variant="outline" className="rounded-xl font-bold text-xs px-4 sm:px-6 border-border hover:bg-accent transition-all hidden sm:flex" onClick={() => router.push('/dashboard')}>
              <LayoutDashboard size={14} className="mr-2" />
              Ir al Dashboard
-          </Button>
+           </Button>
         </div>
       </header>
 
-      <div className="flex flex-1 overflow-hidden h-[calc(100vh-80px)]">
-        {/* Sidebar Lateral Premium */}
-        <aside className="w-80 h-full border-r bg-white overflow-y-auto py-8 px-4 flex flex-col gap-8 scrollbar-hide">
+      <div className="flex flex-1 overflow-hidden h-[calc(100vh-56px)] sm:h-[calc(100vh-80px)]">
+        {/* Sidebar Lateral Premium — oculto en mobile */}
+        <aside className="hidden md:flex md:w-80 h-full border-r bg-card overflow-y-auto py-8 px-4 flex-col gap-8">
           {navigationGroups.map((group) => (
             <div key={group.title} className="flex flex-col gap-2">
-              <h3 className="px-4 text-[11px] font-black uppercase text-slate-400 tracking-[0.15em] mb-2 leading-none">
+              <h3 className="px-4 text-[11px] font-black uppercase text-muted-foreground tracking-[0.15em] mb-2 leading-none">
                 {group.title}
               </h3>
               <div className="flex flex-col gap-1">
@@ -258,15 +261,15 @@ export function SettingsScreen() {
                     className={cn(
                       "group flex items-center gap-4 px-4 py-3 rounded-2xl transition-all duration-300 relative",
                       activeSection === item.id 
-                        ? "bg-slate-900 text-white shadow-xl shadow-slate-200" 
-                        : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
+                        ? "bg-slate-900 text-white shadow-xl" 
+                        : "text-muted-foreground hover:bg-accent hover:text-foreground"
                     )}
                   >
                     <div className={cn(
                       "p-2 rounded-xl transition-all duration-300",
                       activeSection === item.id 
                         ? "bg-white/10 text-white scale-110" 
-                        : "bg-slate-100 text-slate-400 group-hover:bg-white group-hover:text-primary"
+                        : "bg-muted text-muted-foreground group-hover:bg-card group-hover:text-primary"
                     )}>
                       <item.icon size={18} strokeWidth={2.5} />
                     </div>
@@ -274,7 +277,7 @@ export function SettingsScreen() {
                       <span className="text-sm font-bold leading-tight tracking-tight">{item.label}</span>
                       <span className={cn(
                         "text-[10px] font-medium leading-none transition-colors",
-                        activeSection === item.id ? "text-slate-400" : "text-slate-400"
+                        activeSection === item.id ? "text-muted-foreground" : "text-muted-foreground"
                       )}>{item.desc}</span>
                     </div>
                     {activeSection === item.id && (
@@ -291,22 +294,22 @@ export function SettingsScreen() {
         </aside>
 
         {/* Content Area con Scroll Suave */}
-        <main className="flex-1 overflow-y-auto bg-slate-50 relative p-8 lg:p-12 scroll-smooth">
-          <div className="max-w-4xl mx-auto pb-20">
+        <main className="flex-1 overflow-y-auto bg-muted/50 relative p-4 sm:p-6 lg:p-12 scroll-smooth">
+          <div className="max-w-4xl mx-auto pb-24">
             {renderContent()}
           </div>
         </main>
       </div>
 
       {/* Nav Móvil Refactorizado */}
-      <nav className="md:hidden h-16 border-t bg-white flex items-center px-4 overflow-x-auto gap-2 scrollbar-hide shadow-[0_-4px_20px_-5px_rgba(0,0,0,0.1)]">
+      <nav className="md:hidden h-16 border-t bg-card flex items-center px-4 overflow-x-auto gap-2 scrollbar-hide shadow-[0_-4px_20px_-5px_rgba(0,0,0,0.1)]">
          {navigationGroups.flatMap(g => g.items).map(item => (
             <button
               key={item.id}
               onClick={() => setActiveSection(item.id)}
               className={cn(
                 "flex items-center gap-2 px-4 py-2 rounded-full whitespace-nowrap text-sm font-bold transition-all",
-                activeSection === item.id ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-500"
+                activeSection === item.id ? "bg-slate-900 text-white" : "bg-muted text-muted-foreground"
               )}
             >
               <item.icon size={14} />

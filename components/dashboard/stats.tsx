@@ -107,7 +107,7 @@ export function DashboardStats({ period, onPeriodChange }: DashboardStatsProps) 
               <div className={`absolute -top-12 -right-12 w-32 h-32 rounded-full ${card.bgGlow} blur-2xl opacity-60 group-hover:opacity-100 transition-opacity`} />
               <div className="relative">
                 <div className="flex items-center justify-between mb-3">
-                  <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.15em]">{card.label}</span>
+                  <span className="text-[11px] sm:text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.15em]">{card.label}</span>
                   <div className={`h-8 w-8 rounded-xl ${card.iconBg} flex items-center justify-center`}>
                     <Icon size={16} />
                   </div>
@@ -131,10 +131,10 @@ export function DashboardStats({ period, onPeriodChange }: DashboardStatsProps) 
                     </span>
                   )}
                   {card.subtitle && (
-                    <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">{card.subtitle}</span>
+                    <span className="text-[11px] sm:text-xs text-slate-400 dark:text-slate-500 font-medium">{card.subtitle}</span>
                   )}
                   {card.isWarning && !isLoading && inCollection > 0 && (
-                    <span className="text-[10px] text-amber-500 font-bold">Pendiente</span>
+                    <span className="text-[11px] sm:text-xs text-amber-500 font-bold">Pendiente</span>
                   )}
                 </div>
               </div>

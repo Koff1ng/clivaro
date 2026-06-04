@@ -3,6 +3,7 @@ import { logger } from '@/lib/logger'
 import { requirePermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
 import { withTenantTx, getTenantIdFromSession } from '@/lib/tenancy'
+import { prisma as masterPrisma } from '@/lib/db'
 import {
   ElectronicBillingConfig,
   sendToElectronicBilling,
@@ -27,6 +28,37 @@ export async function POST(
   try {
     const tenantId = getTenantIdFromSession(session)
 
+    // Fetch TenantSettings from MASTER database (TenantSettings lives in public schema)
+    const settings = await masterPrisma.tenantSettings.findUnique({
+      where: { tenantId },
+    })
+
+    if (!(settings as any)?.factusClientId || !(settings as any)?.factusClientSecret) {
+      throw new Error('Las credenciales de Factus no están configuradas. Ve a Configuración > Facturación Electrónica e ingresa tus credenciales.')
+    }
+
+    const s = settings as any
+    const config: ElectronicBillingConfig = {
+      provider: 'FACTUS',
+      companyNit: s.companyNit || '900000000-1',
+      companyName: s.companyName || 'Mi Empresa',
+      companyAddress: s.companyAddress || '',
+      companyPhone: s.companyPhone || '',
+      companyEmail: s.companyEmail || '',
+      resolutionNumber: s.billingResolutionNumber || '',
+      resolutionPrefix: s.billingResolutionPrefix || 'FV',
+      resolutionFrom: s.billingResolutionFrom || '1',
+      resolutionTo: s.billingResolutionTo || '999999',
+      resolutionValidFrom: s.billingResolutionValidFrom?.toISOString() || new Date().toISOString(),
+      resolutionValidTo: s.billingResolutionValidTo?.toISOString() || new Date().toISOString(),
+      environment: (process.env.DIAN_ENVIRONMENT as any) || '2',
+      factusClientId: s.factusClientId,
+      factusClientSecret: s.factusClientSecret,
+      factusUsername: s.factusUsername || '',
+      factusPassword: s.factusPassword || '',
+      factusSandbox: s.factusSandbox ?? true,
+    }
+
     const result = await withTenantTx(tenantId, async (tx) => {
       // 1. Fetch invoice with all granular tax details
       const invoice = await tx.invoice.findUnique({
@@ -49,37 +81,6 @@ export async function POST(
 
       if (invoice.electronicStatus === 'SENT' || invoice.electronicStatus === 'ACCEPTED') {
         throw new Error('La factura ya fue enviada o aceptada por la DIAN')
-      }
-
-      // 2. Fetch Tenant Settings for config
-      const settings = await tx.tenantSettings.findUnique({
-        where: { tenantId },
-      })
-
-      if (!(settings as any)?.factusClientId || !(settings as any)?.factusClientSecret) {
-        throw new Error('Las credenciales de Factus no están configuradas. Ve a Configuración > Facturación Electrónica e ingresa tus credenciales.')
-      }
-
-      const s = settings as any
-      const config: ElectronicBillingConfig = {
-        provider: 'FACTUS',
-        companyNit: s.companyNit || '900000000-1',
-        companyName: s.companyName || 'Mi Empresa',
-        companyAddress: s.companyAddress || '',
-        companyPhone: s.companyPhone || '',
-        companyEmail: s.companyEmail || '',
-        resolutionNumber: s.billingResolutionNumber || '',
-        resolutionPrefix: s.billingResolutionPrefix || 'FV',
-        resolutionFrom: s.billingResolutionFrom || '1',
-        resolutionTo: s.billingResolutionTo || '999999',
-        resolutionValidFrom: s.billingResolutionValidFrom?.toISOString() || new Date().toISOString(),
-        resolutionValidTo: s.billingResolutionValidTo?.toISOString() || new Date().toISOString(),
-        environment: (process.env.DIAN_ENVIRONMENT as any) || '2',
-        factusClientId: s.factusClientId,
-        factusClientSecret: s.factusClientSecret,
-        factusUsername: s.factusUsername || '',
-        factusPassword: s.factusPassword || '',
-        factusSandbox: s.factusSandbox ?? true,
       }
 
       // 3. Prepare data in the new format

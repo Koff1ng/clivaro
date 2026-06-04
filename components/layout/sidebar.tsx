@@ -320,7 +320,7 @@ export function Sidebar() {
                               <AppIcon icon={Icon} className={cn("flex-shrink-0 transition-all", isOpen ? "w-[18px] h-[18px]" : "w-5 h-5 mb-0.5")} />
                               <span className={cn(
                                 'transition-all duration-200',
-                                isOpen ? 'whitespace-nowrap' : 'text-[10px] font-medium tracking-tight w-full truncate text-center px-0.5 opacity-90 block'
+                                isOpen ? 'whitespace-nowrap' : 'text-[11px] font-medium tracking-tight w-full truncate text-center px-0.5 opacity-90 block'
                               )}>
                                 {item.label}
                               </span>
@@ -401,7 +401,7 @@ export function Sidebar() {
                               <AppIcon icon={Icon} className={cn("flex-shrink-0 transition-all", isOpen ? "w-[18px] h-[18px]" : "w-5 h-5 mb-0.5")} />
                               <span className={cn(
                                 'transition-all duration-200',
-                                isOpen ? 'flex items-center gap-1.5 whitespace-nowrap' : 'text-[10px] font-medium tracking-tight w-full truncate text-center px-0.5 opacity-90 block'
+                                isOpen ? 'flex items-center gap-1.5 whitespace-nowrap' : 'text-[11px] font-medium tracking-tight w-full truncate text-center px-0.5 opacity-90 block'
                               )}>
                                 {item.label}
                                 {item.planFeature && shouldShowNewBadge(item.planFeature) && isOpen && (
@@ -441,7 +441,7 @@ export function Sidebar() {
                     <HelpCircle className={cn("flex-shrink-0 transition-all", isOpen ? "w-5 h-5" : "w-[22px] h-[22px] mb-0.5")} />
                     <span className={cn(
                       'transition-all duration-300',
-                      isOpen ? 'text-sm whitespace-nowrap' : 'text-[10px] font-medium tracking-tight w-full truncate text-center px-0.5 opacity-90 block'
+                      isOpen ? 'text-sm whitespace-nowrap' : 'text-[11px] font-medium tracking-tight w-full truncate text-center px-0.5 opacity-90 block'
                     )}>
                       Ayuda
                     </span>
@@ -467,7 +467,7 @@ export function Sidebar() {
                       <LuShieldCheck className={cn("flex-shrink-0 transition-all", isOpen ? "w-5 h-5" : "w-[22px] h-[22px] mb-0.5")} />
                       <span className={cn(
                         'transition-all duration-300',
-                        isOpen ? 'text-sm whitespace-nowrap' : 'text-[10px] font-medium tracking-tight w-full truncate text-center px-0.5 opacity-90 block'
+                        isOpen ? 'text-sm whitespace-nowrap' : 'text-[11px] font-medium tracking-tight w-full truncate text-center px-0.5 opacity-90 block'
                       )}>
                         Panel Admin
                       </span>

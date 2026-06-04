@@ -161,7 +161,7 @@ export function Header() {
             variant="ghost"
             size="icon"
             onClick={toggle}
-            className="h-8 w-8 sm:h-9 sm:w-9 text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+            className="h-10 w-10 sm:h-9 sm:w-9 text-muted-foreground hover:bg-accent hover:text-accent-foreground"
           >
             <Menu className="h-4 w-4 sm:h-5 sm:w-5" />
           </Button>

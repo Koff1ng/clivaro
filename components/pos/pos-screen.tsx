@@ -2171,7 +2171,7 @@ export function POSScreen({ mode = 'retail', waiterData, waiterToken, preselecte
                             variant="ghost"
                             size="sm"
                             onClick={() => removeFromCart(item.productId, item.variantId || null)}
-                            className="h-7 w-7 p-0 flex-shrink-0 hover:bg-red-50 hover:text-red-600"
+                            className="h-10 w-10 p-0 flex-shrink-0 hover:bg-red-50 hover:text-red-600"
                             title="Eliminar del carrito"
                           >
                             <X className="h-3.5 w-3.5" />
@@ -2182,7 +2182,7 @@ export function POSScreen({ mode = 'retail', waiterData, waiterToken, preselecte
                             <Button
                               variant="outline"
                               size="sm"
-                              className="h-7 w-7 p-0"
+                              className="h-10 w-10 p-0"
                               onClick={() => updateCartItemQuantity(item.productId, item.quantity - 1, item.variantId || null)}
                               disabled={item.quantity <= 1}
                               title="Disminuir cantidad"
@@ -2195,7 +2195,7 @@ export function POSScreen({ mode = 'retail', waiterData, waiterToken, preselecte
                             <Button
                               variant="outline"
                               size="sm"
-                              className="h-7 w-7 p-0"
+                              className="h-10 w-10 p-0"
                               onClick={() => updateCartItemQuantity(item.productId, item.quantity + 1, item.variantId || null)}
                               title="Aumentar cantidad"
                             >

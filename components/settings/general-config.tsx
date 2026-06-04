@@ -312,7 +312,7 @@ export function GeneralConfig({ settings, onSave, isLoading, initialTab = 'ident
   }
 
   const renderSectionHeader = (title: string, Icon: any, description: string) => (
-    <div className="mb-8 p-8 rounded-[2rem] bg-slate-900 text-white shadow-2xl shadow-slate-200 animate-in fade-in zoom-in-95 duration-500">
+    <div className="mb-8 p-6 sm:p-8 rounded-[2rem] bg-slate-900 text-white shadow-2xl animate-in fade-in zoom-in-95 duration-500">
       <div className="flex items-center gap-6">
         <div className="p-4 bg-white/10 rounded-2xl shadow-inner">
           <Icon size={32} strokeWidth={2.5} />
@@ -335,24 +335,24 @@ export function GeneralConfig({ settings, onSave, isLoading, initialTab = 'ident
             {renderSectionHeader('Identidad de Marca', Building2, 'DATOS CORPORATIVOS Y FISCALES')}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div className="space-y-2.5">
-                <Label className="text-[11px] font-black uppercase tracking-[0.1em] text-slate-400 ml-1">Nombre Comercial</Label>
-                <Input {...register('companyName')} className="rounded-2xl h-14 border-slate-200 bg-white focus:ring-slate-900 px-6 font-semibold" placeholder="Nombre de tu negocio" />
+                <Label className="text-[11px] font-black uppercase tracking-[0.1em] text-muted-foreground ml-1">Nombre Comercial</Label>
+                <Input {...register('companyName')} className="rounded-2xl h-14 border-border bg-card focus:ring-slate-900 px-6 font-semibold" placeholder="Nombre de tu negocio" />
               </div>
               <div className="space-y-2.5">
-                <Label className="text-[11px] font-black uppercase tracking-[0.1em] text-slate-400 ml-1">NIT / ID Tributario</Label>
-                <Input {...register('companyNit')} className="rounded-2xl h-14 border-slate-200 bg-white font-mono" placeholder="900.000.000-0" />
+                <Label className="text-[11px] font-black uppercase tracking-[0.1em] text-muted-foreground ml-1">NIT / ID Tributario</Label>
+                <Input {...register('companyNit')} className="rounded-2xl h-14 border-border bg-card font-mono" placeholder="900.000.000-0" />
               </div>
               <div className="space-y-2.5">
-                <Label className="text-[11px] font-black uppercase tracking-[0.1em] text-slate-400 ml-1">Régimen</Label>
+                <Label className="text-[11px] font-black uppercase tracking-[0.1em] text-muted-foreground ml-1">Régimen</Label>
                 <Select value={watch('companyRegime')} onValueChange={(val) => setValue('companyRegime', val)}>
-                  <SelectTrigger className="rounded-2xl h-14 border-slate-200 bg-white px-6 font-semibold"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="rounded-2xl h-14 border-border bg-card px-6 font-semibold"><SelectValue /></SelectTrigger>
                   <SelectContent className="rounded-2xl">{regimes.map(r => <SelectItem key={r} value={r} className="rounded-xl">{r}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2.5"><Label className="text-[11px] font-black uppercase tracking-[0.1em] text-slate-400 ml-1">Ciudad</Label><Input {...register('companyCity')} className="rounded-2xl h-14 border-slate-200" /></div>
-              <div className="space-y-2.5 md:col-span-2"><Label className="text-[11px] font-black uppercase tracking-[0.1em] text-slate-400 ml-1">Dirección Física</Label><Input {...register('companyAddress')} className="rounded-2xl h-14 border-slate-200" /></div>
-              <div className="space-y-3"><Label className="text-[11px] font-black uppercase tracking-[0.1em] text-slate-400 ml-1">Teléfono</Label><Input {...register('companyPhone')} className="rounded-2xl h-14 border-slate-200" /></div>
-              <div className="space-y-3"><Label className="text-[11px] font-black uppercase tracking-[0.1em] text-slate-400 ml-1">Email de Contacto</Label><Input {...register('companyEmail')} className="rounded-2xl h-14 border-slate-200" /></div>
+              <div className="space-y-2.5"><Label className="text-[11px] font-black uppercase tracking-[0.1em] text-muted-foreground ml-1">Ciudad</Label><Input {...register('companyCity')} className="rounded-2xl h-14 border-border" /></div>
+              <div className="space-y-2.5 md:col-span-2"><Label className="text-[11px] font-black uppercase tracking-[0.1em] text-muted-foreground ml-1">Dirección Física</Label><Input {...register('companyAddress')} className="rounded-2xl h-14 border-border" /></div>
+              <div className="space-y-3"><Label className="text-[11px] font-black uppercase tracking-[0.1em] text-muted-foreground ml-1">Teléfono</Label><Input {...register('companyPhone')} className="rounded-2xl h-14 border-border" /></div>
+              <div className="space-y-3"><Label className="text-[11px] font-black uppercase tracking-[0.1em] text-muted-foreground ml-1">Email de Contacto</Label><Input {...register('companyEmail')} className="rounded-2xl h-14 border-border" /></div>
             </div>
           </div>
         )}
@@ -362,35 +362,35 @@ export function GeneralConfig({ settings, onSave, isLoading, initialTab = 'ident
           <div className="space-y-8 animate-in fade-in slide-in-from-right-8 duration-700">
             {renderSectionHeader('Regional y Moneda', Globe, 'CONFIGURACIÓN DE ENTORNO')}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <div className="p-8 border rounded-[2rem] bg-white shadow-sm space-y-4">
+              <div className="p-8 border rounded-[2rem] bg-card shadow-sm space-y-4">
                  <h3 className="font-bold flex items-center gap-2"><MapPin size={18} className="text-primary" /> Ubicación Tiempo</h3>
                  <div className="space-y-2">
-                    <Label className="text-[10px] font-bold text-slate-400 uppercase">Zona Horaria</Label>
+                    <Label className="text-[10px] font-bold text-muted-foreground uppercase">Zona Horaria</Label>
                     <Select value={watch('timezone')} onValueChange={(val) => setValue('timezone', val)}>
-                      <SelectTrigger className="rounded-xl h-12 bg-slate-50 border-transparent shadow-inner"><SelectValue /></SelectTrigger>
+                      <SelectTrigger className="rounded-xl h-12 bg-muted border-transparent shadow-inner"><SelectValue /></SelectTrigger>
                       <SelectContent className="rounded-xl">{timezones.map(tz => <SelectItem key={tz.value} value={tz.value}>{tz.label}</SelectItem>)}</SelectContent>
                     </Select>
                  </div>
               </div>
-              <div className="p-8 border rounded-[2rem] bg-white shadow-sm space-y-4">
+              <div className="p-8 border rounded-[2rem] bg-card shadow-sm space-y-4">
                  <h3 className="font-bold flex items-center gap-2"><Globe size={18} className="text-primary" /> Divisa Principal</h3>
                  <div className="space-y-2">
-                    <Label className="text-[10px] font-bold text-slate-400 uppercase">Moneda del Sistema</Label>
+                    <Label className="text-[10px] font-bold text-muted-foreground uppercase">Moneda del Sistema</Label>
                     <Select value={watch('currency')} onValueChange={(val) => setValue('currency', val)}>
-                      <SelectTrigger className="rounded-xl h-12 bg-slate-50 border-transparent shadow-inner"><SelectValue /></SelectTrigger>
+                      <SelectTrigger className="rounded-xl h-12 bg-muted border-transparent shadow-inner"><SelectValue /></SelectTrigger>
                       <SelectContent className="rounded-xl">{currencies.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}</SelectContent>
                     </Select>
                  </div>
               </div>
             </div>
-            <div className="mt-8 p-8 border rounded-[2rem] bg-white shadow-sm">
+            <div className="mt-8 p-8 border rounded-[2rem] bg-card shadow-sm">
               <h3 className="font-bold flex items-center gap-2 mb-4">
                 <Settings size={18} className="text-primary" /> Apariencia
               </h3>
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="font-semibold text-slate-800">Modo Oscuro</p>
-                  <p className="text-xs text-slate-500 mt-0.5">Activa el tema oscuro para reducir la fatiga visual</p>
+                  <p className="font-semibold text-card-foreground">Modo Oscuro</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Activa el tema oscuro para reducir la fatiga visual</p>
                 </div>
                 <Switch
                   checked={theme === 'dark'}
@@ -411,21 +411,21 @@ export function GeneralConfig({ settings, onSave, isLoading, initialTab = 'ident
                 { label: 'Cotizaciones', icon: FileText, prefix: 'quotationPrefix', format: 'quotationNumberFormat', clr: 'bg-indigo-50 text-indigo-600' },
                 { label: 'Orden de Compra', icon: ShoppingCart, prefix: 'purchaseOrderPrefix', format: 'purchaseOrderNumberFormat', clr: 'bg-amber-50 text-amber-600' }
               ].map((item) => (
-                <div key={item.prefix} className="p-8 border rounded-[2.5rem] bg-white shadow-sm group hover:shadow-xl hover:shadow-slate-100 transition-all duration-300">
+                <div key={item.prefix} className="p-8 border rounded-[2.5rem] bg-card shadow-sm group hover:shadow-xl transition-all duration-300">
                   <div className="flex items-center gap-4 mb-6">
                     <div className={cn("p-3 rounded-2xl", item.clr)}>
                       <item.icon size={22} />
                     </div>
-                    <h3 className="font-black text-slate-800 tracking-tight">{item.label}</h3>
+                    <h3 className="font-black text-card-foreground tracking-tight">{item.label}</h3>
                   </div>
                   <div className="grid md:grid-cols-2 gap-6">
                     <div className="space-y-2">
-                      <Label className="text-[10px] font-black text-slate-400 uppercase ml-1">Prefijo Alpha</Label>
-                      <Input {...register(item.prefix as any)} className="rounded-xl h-12 bg-slate-50 border-transparent focus:bg-white transition-all font-bold text-lg" />
+                      <Label className="text-[10px] font-black text-muted-foreground uppercase ml-1">Prefijo Alpha</Label>
+                      <Input {...register(item.prefix as any)} className="rounded-xl h-12 bg-muted border-transparent focus:bg-card transition-all font-bold text-lg" />
                     </div>
                     <div className="space-y-2">
-                      <Label className="text-[10px] font-black text-slate-400 uppercase ml-1">Siguiente Número</Label>
-                      <Input {...register(item.format as any)} className="rounded-xl h-12 bg-slate-50 border-transparent focus:bg-white transition-all font-mono text-lg" />
+                      <Label className="text-[10px] font-black text-muted-foreground uppercase ml-1">Siguiente Número</Label>
+                      <Input {...register(item.format as any)} className="rounded-xl h-12 bg-muted border-transparent focus:bg-card transition-all font-mono text-lg" />
                     </div>
                   </div>
                 </div>
@@ -449,7 +449,7 @@ export function GeneralConfig({ settings, onSave, isLoading, initialTab = 'ident
                 </div>
               </div>
               <Switch 
-                className="scale-125 data-[state=checked]:bg-white data-[state=checked]:text-indigo-600 border-indigo-400"
+                className="scale-125 data-[state=checked]:bg-card data-[state=checked]:text-indigo-600 border-indigo-400"
                 checked={initialCustomSettings.printing?.enabled}
                 onCheckedChange={(c) => handlePrintingChange('enabled', c)}
               />
@@ -457,44 +457,44 @@ export function GeneralConfig({ settings, onSave, isLoading, initialTab = 'ident
 
             <div className="space-y-4">
               <div className="flex justify-between items-center px-4">
-                <h4 className="text-[11px] font-black uppercase text-slate-400 tracking-widest">Estaciones Configuradas</h4>
+                <h4 className="text-[11px] font-black uppercase text-muted-foreground tracking-widest">Estaciones Configuradas</h4>
                 <div className="flex gap-2">
-                   <Button type="button" variant="outline" size="sm" className="rounded-full border-slate-200" onClick={scanNetwork}>Escanear Red</Button>
+                   <Button type="button" variant="outline" size="sm" className="rounded-full border-border" onClick={scanNetwork}>Escanear Red</Button>
                    <Button type="button" size="sm" className="rounded-full bg-slate-900 h-9 font-bold px-6" onClick={addPrinter}>+ Agregar</Button>
                 </div>
               </div>
 
               {printers.map((p) => (
-                <div key={p.id} className="border rounded-3xl bg-white shadow-sm group hover:border-indigo-200 transition-all overflow-hidden">
+                <div key={p.id} className="border rounded-3xl bg-card shadow-sm group hover:border-indigo-200 transition-all overflow-hidden">
                   <div className="p-6 flex items-center justify-between">
                     <div className="flex items-center gap-5">
-                       <div className={cn("h-14 w-14 rounded-2xl flex items-center justify-center transition-colors", p.active ? "bg-indigo-50 text-indigo-600" : "bg-slate-50 text-slate-400")}>
+                       <div className={cn("h-14 w-14 rounded-2xl flex items-center justify-center transition-colors", p.active ? "bg-indigo-50 text-indigo-600" : "bg-muted text-muted-foreground")}>
                           <Printer size={24} />
                        </div>
                        <div>
-                          <div className="font-black text-slate-800">{p.name}</div>
-                          <div className="text-xs font-bold text-slate-400 uppercase tracking-tighter">
+                          <div className="font-black text-card-foreground">{p.name}</div>
+                          <div className="text-xs font-bold text-muted-foreground uppercase tracking-tighter">
                             {p.interfaceType === 'usb' ? 'USB' : p.interfaceType === 'lan' ? 'LAN' : 'Bluetooth'} · {p.width}mm
                             {p.default && <span className="ml-2 text-indigo-500">★ Principal</span>}
                           </div>
-                          <div className="text-xs text-slate-400 mt-0.5">{p.interfaceConfig || 'Sin IP configurada'}</div>
+                          <div className="text-xs text-muted-foreground mt-0.5">{p.interfaceConfig || 'Sin IP configurada'}</div>
                        </div>
                     </div>
                     <div className="flex items-center gap-2">
-                       <Button type="button" variant="ghost" size="icon" className="h-10 w-10 text-slate-400 hover:bg-slate-50" onClick={() => setEditingPrinterId(editingPrinterId === p.id ? null : p.id)}><Edit size={16} /></Button>
+                       <Button type="button" variant="ghost" size="icon" className="h-10 w-10 text-muted-foreground hover:bg-accent" onClick={() => setEditingPrinterId(editingPrinterId === p.id ? null : p.id)}><Edit size={16} /></Button>
                        <Button type="button" variant="ghost" size="icon" className="h-10 w-10 text-red-400 hover:bg-red-50" onClick={() => removePrinter(p.id)}><Trash2 size={16} /></Button>
                     </div>
                   </div>
                   {/* Inline edit panel */}
                   {editingPrinterId === p.id && (
-                    <div className="px-6 pb-6 pt-2 border-t bg-slate-50/50 space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                    <div className="px-6 pb-6 pt-2 border-t bg-muted/50 space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-1.5">
-                          <Label className="text-[10px] font-bold uppercase text-slate-400">Nombre</Label>
+                          <Label className="text-[10px] font-bold uppercase text-muted-foreground">Nombre</Label>
                           <Input value={p.name} onChange={(e) => updatePrinter(p.id, 'name', e.target.value)} className="rounded-xl h-10" />
                         </div>
                         <div className="space-y-1.5">
-                          <Label className="text-[10px] font-bold uppercase text-slate-400">Tipo</Label>
+                          <Label className="text-[10px] font-bold uppercase text-muted-foreground">Tipo</Label>
                           <Select value={p.type} onValueChange={(v) => updatePrinter(p.id, 'type', v)}>
                             <SelectTrigger className="rounded-xl h-10"><SelectValue /></SelectTrigger>
                             <SelectContent className="rounded-xl">
@@ -504,7 +504,7 @@ export function GeneralConfig({ settings, onSave, isLoading, initialTab = 'ident
                           </Select>
                         </div>
                         <div className="space-y-1.5">
-                          <Label className="text-[10px] font-bold uppercase text-slate-400">Interfaz</Label>
+                          <Label className="text-[10px] font-bold uppercase text-muted-foreground">Interfaz</Label>
                           <Select value={p.interfaceType} onValueChange={(v) => updatePrinter(p.id, 'interfaceType', v)}>
                             <SelectTrigger className="rounded-xl h-10"><SelectValue /></SelectTrigger>
                             <SelectContent className="rounded-xl">
@@ -515,11 +515,11 @@ export function GeneralConfig({ settings, onSave, isLoading, initialTab = 'ident
                           </Select>
                         </div>
                         <div className="space-y-1.5">
-                          <Label className="text-[10px] font-bold uppercase text-slate-400">IP / Config</Label>
+                          <Label className="text-[10px] font-bold uppercase text-muted-foreground">IP / Config</Label>
                           <Input value={p.interfaceConfig} onChange={(e) => updatePrinter(p.id, 'interfaceConfig', e.target.value)} placeholder="192.168.1.50:9100" className="rounded-xl h-10 font-mono text-sm" />
                         </div>
                         <div className="space-y-1.5">
-                          <Label className="text-[10px] font-bold uppercase text-slate-400">Ancho papel</Label>
+                          <Label className="text-[10px] font-bold uppercase text-muted-foreground">Ancho papel</Label>
                           <Select value={String(p.width)} onValueChange={(v) => updatePrinter(p.id, 'width', Number(v))}>
                             <SelectTrigger className="rounded-xl h-10"><SelectValue /></SelectTrigger>
                             <SelectContent className="rounded-xl">
@@ -529,7 +529,7 @@ export function GeneralConfig({ settings, onSave, isLoading, initialTab = 'ident
                           </Select>
                         </div>
                         <div className="space-y-1.5">
-                          <Label className="text-[10px] font-bold uppercase text-slate-400">Columnas</Label>
+                          <Label className="text-[10px] font-bold uppercase text-muted-foreground">Columnas</Label>
                           <Select value={String(p.columns)} onValueChange={(v) => updatePrinter(p.id, 'columns', Number(v))}>
                             <SelectTrigger className="rounded-xl h-10"><SelectValue /></SelectTrigger>
                             <SelectContent className="rounded-xl">
@@ -544,11 +544,11 @@ export function GeneralConfig({ settings, onSave, isLoading, initialTab = 'ident
                         <div className="flex items-center gap-4">
                           <div className="flex items-center gap-2">
                             <Switch checked={p.active} onCheckedChange={(c) => updatePrinter(p.id, 'active', c)} />
-                            <span className="text-sm text-slate-600">Activa</span>
+                            <span className="text-sm text-muted-foreground">Activa</span>
                           </div>
                           <div className="flex items-center gap-2">
                             <Switch checked={p.default} onCheckedChange={(c) => updatePrinter(p.id, 'default', c)} />
-                            <span className="text-sm text-slate-600">Principal</span>
+                            <span className="text-sm text-muted-foreground">Principal</span>
                           </div>
                         </div>
                         <Button type="button" size="sm" className="rounded-full px-6" onClick={() => setEditingPrinterId(null)}>
@@ -560,7 +560,7 @@ export function GeneralConfig({ settings, onSave, isLoading, initialTab = 'ident
                 </div>
               ))}
               {printers.length === 0 && (
-                <div className="h-40 border-2 border-dashed rounded-[2.5rem] flex flex-col items-center justify-center text-slate-400 gap-2">
+                <div className="h-40 border-2 border-dashed rounded-[2.5rem] flex flex-col items-center justify-center text-muted-foreground gap-2">
                    <Printer size={32} opacity={0.2} />
                    <span className="text-xs font-bold uppercase tracking-widest">No hay impresoras añadidas</span>
                 </div>
@@ -570,15 +570,15 @@ export function GeneralConfig({ settings, onSave, isLoading, initialTab = 'ident
             {/* Document Design Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Tirilla Design Card */}
-              <div className="p-6 border rounded-[2rem] bg-white shadow-sm hover:shadow-xl transition-all duration-300 group">
+              <div className="p-6 border rounded-[2rem] bg-card shadow-sm hover:shadow-xl transition-all duration-300 group">
                 <div className="flex flex-col items-center text-center gap-4">
                   <div className="p-4 bg-amber-50 rounded-2xl text-amber-600 group-hover:bg-amber-100 transition-colors">
                     <Receipt size={32} />
                   </div>
                   <div>
-                    <h3 className="font-black text-slate-800 text-lg tracking-tight">Tirilla / Recibo</h3>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Impresión térmica POS</p>
-                    <p className="text-xs text-slate-500 mt-2">Configura plantilla (Clásica, Moderna, Minimalista), logo, CUFE, QR, footer legal, tipografía y márgenes.</p>
+                    <h3 className="font-black text-card-foreground text-lg tracking-tight">Tirilla / Recibo</h3>
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">Impresión térmica POS</p>
+                    <p className="text-xs text-muted-foreground mt-2">Configura plantilla (Clásica, Moderna, Minimalista), logo, CUFE, QR, footer legal, tipografía y márgenes.</p>
                   </div>
                   <Button
                     type="button"
@@ -591,15 +591,15 @@ export function GeneralConfig({ settings, onSave, isLoading, initialTab = 'ident
               </div>
 
               {/* PDF / Letter Design Card */}
-              <div className="p-6 border rounded-[2rem] bg-white shadow-sm hover:shadow-xl transition-all duration-300 group">
+              <div className="p-6 border rounded-[2rem] bg-card shadow-sm hover:shadow-xl transition-all duration-300 group">
                 <div className="flex flex-col items-center text-center gap-4">
                   <div className="p-4 bg-indigo-50 rounded-2xl text-indigo-600 group-hover:bg-indigo-100 transition-colors">
                     <FileText size={32} />
                   </div>
                   <div>
-                    <h3 className="font-black text-slate-800 text-lg tracking-tight">PDF / Carta</h3>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Formato de impresión en carta</p>
-                    <p className="text-xs text-slate-500 mt-2">El formato PDF utiliza logo, pie de página legal, CUFE y frase de agradecimiento configurados en el editor de tirilla.</p>
+                    <h3 className="font-black text-card-foreground text-lg tracking-tight">PDF / Carta</h3>
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">Formato de impresión en carta</p>
+                    <p className="text-xs text-muted-foreground mt-2">El formato PDF utiliza logo, pie de página legal, CUFE y frase de agradecimiento configurados en el editor de tirilla.</p>
                   </div>
                   <Button
                     type="button"
@@ -622,7 +622,7 @@ export function GeneralConfig({ settings, onSave, isLoading, initialTab = 'ident
                 <DialogTitle className="text-xl font-black flex items-center gap-3">
                   <Receipt size={24} /> Editor de Tirilla / Factura
                 </DialogTitle>
-                <DialogDescription className="text-slate-400 uppercase text-[10px] font-bold tracking-widest">
+                <DialogDescription className="text-muted-foreground uppercase text-[10px] font-bold tracking-widest">
                   Personaliza la apariencia de tus facturas impresas
                 </DialogDescription>
               </DialogHeader>
@@ -669,7 +669,7 @@ export function GeneralConfig({ settings, onSave, isLoading, initialTab = 'ident
                 />
               </div>
               {/* Save Button Footer */}
-              <div className="sticky bottom-0 bg-white border-t p-4 flex items-center justify-between rounded-b-[2rem] shadow-[0_-4px_12px_rgba(0,0,0,0.05)]">
+              <div className="sticky bottom-0 bg-card border-t p-4 flex items-center justify-between rounded-b-[2rem] shadow-[0_-4px_12px_rgba(0,0,0,0.05)]">
                 <p className="text-xs text-muted-foreground">
                   Los cambios se aplican a la tirilla y al formato PDF.
                 </p>
@@ -756,7 +756,7 @@ export function GeneralConfig({ settings, onSave, isLoading, initialTab = 'ident
                 />
               </div>
               {/* Save Button Footer */}
-              <div className="sticky bottom-0 bg-white border-t p-4 flex items-center justify-between rounded-b-[2rem] shadow-[0_-4px_12px_rgba(0,0,0,0.05)]">
+              <div className="sticky bottom-0 bg-card border-t p-4 flex items-center justify-between rounded-b-[2rem] shadow-[0_-4px_12px_rgba(0,0,0,0.05)]">
                 <p className="text-xs text-muted-foreground">
                   Los cambios también se aplican al formato tirilla.
                 </p>
@@ -798,22 +798,22 @@ export function GeneralConfig({ settings, onSave, isLoading, initialTab = 'ident
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {warehouses.map((w: any) => (
-                <div key={w.id} className="p-8 border rounded-[2.5rem] bg-white shadow-sm hover:shadow-xl transition-all duration-500">
+                <div key={w.id} className="p-8 border rounded-[2.5rem] bg-card shadow-sm hover:shadow-xl transition-all duration-500">
                   <div className="flex justify-between items-start mb-6">
                      <div className="flex items-center gap-4">
-                        <div className="p-3 bg-slate-100 rounded-2xl text-slate-600">
+                        <div className="p-3 bg-muted rounded-2xl text-muted-foreground">
                            <Warehouse size={22} />
                         </div>
                         <div>
-                           <h3 className="font-black text-slate-800 text-lg tracking-tight">{w.name}</h3>
-                           <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">{w.location || w.address || 'Sin dirección'}</p>
+                           <h3 className="font-black text-card-foreground text-lg tracking-tight">{w.name}</h3>
+                           <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">{w.location || w.address || 'Sin dirección'}</p>
                         </div>
                      </div>
                      <Badge className={cn("rounded-full px-3", w.active ? "bg-emerald-500" : "bg-slate-400")}>{w.active ? 'Activo' : 'Off'}</Badge>
                   </div>
                   
                   <div className="pt-4 border-t flex justify-between items-center">
-                     <Button variant="ghost" size="sm" className="rounded-full text-xs font-black uppercase text-slate-400" onClick={() => setExpandedWarehouseId(expandedWarehouseId === w.id ? null : w.id)}>
+                     <Button variant="ghost" size="sm" className="rounded-full text-xs font-black uppercase text-muted-foreground" onClick={() => setExpandedWarehouseId(expandedWarehouseId === w.id ? null : w.id)}>
                         {expandedWarehouseId === w.id ? 'Cerrar Zonas' : 'Administrar Zonas'}
                      </Button>
                      <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full"><Edit size={16} /></Button>
@@ -831,7 +831,7 @@ export function GeneralConfig({ settings, onSave, isLoading, initialTab = 'ident
         )}
 
         {/* Floating Save Button */}
-        <div className="fixed bottom-12 right-12 z-[100] animate-in slide-in-from-bottom-10 duration-700">
+        <div className="fixed bottom-24 sm:bottom-12 right-4 sm:right-12 z-[100] animate-in slide-in-from-bottom-10 duration-700">
           <Button type="submit" disabled={isLoading} className="h-16 px-10 rounded-full shadow-[0_20px_40px_-10px_rgba(0,0,0,0.3)] bg-slate-900 border-2 border-slate-800 hover:bg-black transition-all group overflow-hidden">
             <div className="flex items-center gap-3 relative z-10 font-black text-sm uppercase tracking-[0.1em]">
                {isLoading ? <Loader2 className="animate-spin" size={20} /> : <Save size={20} />}
@@ -851,10 +851,10 @@ export function GeneralConfig({ settings, onSave, isLoading, initialTab = 'ident
             </div>
             <div className="p-8 space-y-3">
                {scannedDevices.map(d => (
-                  <button key={d.ip} className="w-full flex items-center justify-between p-5 border rounded-2xl hover:bg-slate-50 transition-all text-left group">
+                  <button key={d.ip} className="w-full flex items-center justify-between p-5 border rounded-2xl hover:bg-accent transition-all text-left group">
                      <div className="flex items-center gap-4">
-                        <div className="h-10 w-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-400 group-hover:bg-primary/10 group-hover:text-primary transition-colors"><Printer size={20} /></div>
-                        <div><div className="font-bold text-slate-800">{d.name}</div><div className="text-[10px] font-bold text-slate-400">{d.ip}</div></div>
+                        <div className="h-10 w-10 rounded-xl bg-muted flex items-center justify-center text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary transition-colors"><Printer size={20} /></div>
+                        <div><div className="font-bold text-card-foreground">{d.name}</div><div className="text-[10px] font-bold text-muted-foreground">{d.ip}</div></div>
                      </div>
                      <Plus className="text-slate-300 group-hover:text-primary" />
                   </button>
@@ -872,21 +872,21 @@ export function GeneralConfig({ settings, onSave, isLoading, initialTab = 'ident
             </div>
             <div className="p-8 space-y-6">
                <div className="space-y-2">
-                  <Label className="text-[10px] font-black text-slate-400 uppercase ml-1">Nombre del Almacén</Label>
+                  <Label className="text-[10px] font-black text-muted-foreground uppercase ml-1">Nombre del Almacén</Label>
                   <Input 
                      placeholder="Ej: Bodega Principal" 
                      value={newWarehouse.name} 
                      onChange={(e) => setNewWarehouse(prev => ({ ...prev, name: e.target.value }))} 
-                     className="rounded-xl h-12 bg-slate-50 border-transparent focus:bg-white transition-all font-semibold"
+                     className="rounded-xl h-12 bg-muted border-transparent focus:bg-background transition-all font-semibold"
                   />
                </div>
                <div className="space-y-2">
-                  <Label className="text-[10px] font-black text-slate-400 uppercase ml-1">Ubicación / Dirección</Label>
+                  <Label className="text-[10px] font-black text-muted-foreground uppercase ml-1">Ubicación / Dirección</Label>
                   <Input 
                      placeholder="Ej: Calle 50 #30-20, Medellín" 
                      value={newWarehouse.location} 
                      onChange={(e) => setNewWarehouse(prev => ({ ...prev, location: e.target.value }))} 
-                     className="rounded-xl h-12 bg-slate-50 border-transparent focus:bg-white transition-all"
+                     className="rounded-xl h-12 bg-muted border-transparent focus:bg-background transition-all"
                   />
                </div>
                <div className="flex justify-end gap-3 pt-4">

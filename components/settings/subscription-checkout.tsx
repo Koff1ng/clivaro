@@ -369,8 +369,8 @@ export function SubscriptionCheckout() {
           <CreditCard className="w-6 h-6 text-indigo-500 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
         </div>
         <div className="text-center">
-          <p className="text-base font-bold text-slate-800">Verificando tu pago...</p>
-          <p className="text-xs text-slate-400 mt-1">Consultando el estado de la transacción</p>
+          <p className="text-base font-bold text-card-foreground">Verificando tu pago...</p>
+          <p className="text-xs text-muted-foreground mt-1">Consultando el estado de la transacción</p>
         </div>
       </div>
     )
@@ -407,8 +407,8 @@ export function SubscriptionCheckout() {
           <Check className="w-10 h-10 text-white" strokeWidth={3} />
         </motion.div>
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="text-center space-y-2">
-          <h2 className="text-2xl font-black text-slate-900 tracking-tight">¡Bienvenido a {activatedPlan}!</h2>
-          <p className="text-sm text-slate-500">Tu suscripción ha sido activada exitosamente</p>
+          <h2 className="text-2xl font-black text-foreground tracking-tight">¡Bienvenido a {activatedPlan}!</h2>
+          <p className="text-sm text-muted-foreground">Tu suscripción ha sido activada exitosamente</p>
         </motion.div>
         <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.5 }}
           className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-indigo-50 to-violet-50 border border-indigo-200 rounded-2xl"
@@ -434,7 +434,7 @@ export function SubscriptionCheckout() {
   if (loadingPlans) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
+        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
       </div>
     )
   }
@@ -449,16 +449,16 @@ export function SubscriptionCheckout() {
       {shouldShowBilling && (
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-black text-slate-900 tracking-tight">Tu Plan Actual</h2>
+            <h2 className="text-lg font-black text-foreground tracking-tight">Tu Plan Actual</h2>
             <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider border ${
               subscription?.status === 'active' ? 'text-emerald-600 bg-emerald-50 border-emerald-200'
               : subscription?.status === 'pending_payment' ? 'text-amber-600 bg-amber-50 border-amber-200'
               : subscription?.status === 'trial' ? 'text-blue-600 bg-blue-50 border-blue-200'
-              : 'text-slate-600 bg-slate-50 border-slate-200'
+              : 'text-muted-foreground bg-muted border-border'
             }`}>{subscription?.status === 'active' ? 'Activo' : subscription?.status === 'pending_payment' ? 'Pendiente' : subscription?.status === 'trial' ? 'Prueba' : subscription?.status || 'Activo'}</span>
           </div>
 
-          <div className="bg-gradient-to-br from-slate-50 to-white border border-slate-200 rounded-2xl p-5 space-y-4">
+          <div className="bg-gradient-to-br from-muted to-card border border-border rounded-2xl p-5 space-y-4">
             {/* Plan info row */}
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-3">
@@ -466,33 +466,33 @@ export function SubscriptionCheckout() {
                   {getPlanTier(plan.name).icon}
                 </div>
                 <div>
-                  <h3 className="text-base font-black text-slate-900">{plan.name}</h3>
-                  {plan.description && <p className="text-[11px] text-slate-400">{plan.description}</p>}
+                  <h3 className="text-base font-black text-foreground">{plan.name}</h3>
+                  {plan.description && <p className="text-[11px] text-muted-foreground">{plan.description}</p>}
                 </div>
               </div>
               <div className="text-right">
-                <span className="text-xl font-black text-slate-900">{formatPrice(plan.price)}</span>
-                <span className="text-xs text-slate-400 ml-1">/{plan.interval === 'annual' ? 'año' : 'mes'}</span>
+                <span className="text-xl font-black text-foreground">{formatPrice(plan.price)}</span>
+                <span className="text-xs text-muted-foreground ml-1">/{plan.interval === 'annual' ? 'año' : 'mes'}</span>
               </div>
             </div>
 
             {/* Subscription details */}
             <div className="grid grid-cols-2 gap-3">
               {subscription.startDate && (
-                <div className="flex items-center gap-2 bg-slate-50 rounded-xl p-2.5">
-                  <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                <div className="flex items-center gap-2 bg-muted rounded-xl p-2.5">
+                  <Calendar className="w-3.5 h-3.5 text-muted-foreground" />
                   <div>
-                    <p className="text-[10px] text-slate-400 uppercase font-bold">Inicio</p>
-                    <p className="text-xs font-bold text-slate-700">{new Date(subscription.startDate).toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+                    <p className="text-[10px] text-muted-foreground uppercase font-bold">Inicio</p>
+                    <p className="text-xs font-bold text-foreground">{new Date(subscription.startDate).toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
                   </div>
                 </div>
               )}
               {subscription.endDate && (
-                <div className="flex items-center gap-2 bg-slate-50 rounded-xl p-2.5">
-                  <RefreshCw className="w-3.5 h-3.5 text-slate-400" />
+                <div className="flex items-center gap-2 bg-muted rounded-xl p-2.5">
+                  <RefreshCw className="w-3.5 h-3.5 text-muted-foreground" />
                   <div>
-                    <p className="text-[10px] text-slate-400 uppercase font-bold">Renovación</p>
-                    <p className="text-xs font-bold text-slate-700">{new Date(subscription.endDate).toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+                    <p className="text-[10px] text-muted-foreground uppercase font-bold">Renovación</p>
+                    <p className="text-xs font-bold text-foreground">{new Date(subscription.endDate).toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
                   </div>
                 </div>
               )}
@@ -501,10 +501,10 @@ export function SubscriptionCheckout() {
             {/* Features */}
             {currentFeatures.length > 0 && (
               <div>
-                <p className="text-[10px] text-slate-400 uppercase font-bold mb-2">Incluido en tu plan</p>
+                <p className="text-[10px] text-muted-foreground uppercase font-bold mb-2">Incluido en tu plan</p>
                 <div className="grid grid-cols-2 gap-1.5">
                   {currentFeatures.map((f, i) => (
-                    <div key={i} className="flex items-center gap-2 text-[11px] text-slate-600">
+                    <div key={i} className="flex items-center gap-2 text-[11px] text-muted-foreground">
                       <Check className="w-3 h-3 text-emerald-500 flex-shrink-0" />
                       <span>{f}</span>
                     </div>
@@ -516,7 +516,7 @@ export function SubscriptionCheckout() {
 
           {/* ── Billing Details Section ── */}
           <div className="space-y-3">
-            <h3 className="text-sm font-black text-slate-900 tracking-tight flex items-center gap-2">
+            <h3 className="text-sm font-black text-foreground tracking-tight flex items-center gap-2">
               <CreditCard className="w-4 h-4 text-indigo-500" />
               Detalles de Facturación
             </h3>
@@ -568,9 +568,9 @@ export function SubscriptionCheckout() {
 
             {/* Last Payment Details */}
             {currentPlan?.billing && (
-              <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
-                <div className="px-4 py-2.5 bg-slate-50 border-b border-slate-100">
-                  <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Último Pago Realizado</p>
+              <div className="bg-card border border-border rounded-2xl overflow-hidden">
+                <div className="px-4 py-2.5 bg-muted border-b border-border">
+                  <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Último Pago Realizado</p>
                 </div>
                 <div className="p-4 space-y-2.5">
                   <div className="flex items-center justify-between">
@@ -579,8 +579,8 @@ export function SubscriptionCheckout() {
                         <Check className="w-3.5 h-3.5 text-emerald-500" />
                       </div>
                       <div>
-                        <p className="text-xs font-bold text-slate-800">{formatPrice(currentPlan.billing.amount)}</p>
-                        <p className="text-[10px] text-slate-400">
+                        <p className="text-xs font-bold text-card-foreground">{formatPrice(currentPlan.billing.amount)}</p>
+                        <p className="text-[10px] text-muted-foreground">
                           {currentPlan.billing.paidAt
                             ? new Date(currentPlan.billing.paidAt).toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
                             : 'Fecha no disponible'}
@@ -591,12 +591,12 @@ export function SubscriptionCheckout() {
                       {currentPlan.billing.status || 'Aprobado'}
                     </span>
                   </div>
-                  <div className="h-px bg-slate-100" />
+                  <div className="h-px bg-muted/50" />
                   <div className="grid grid-cols-2 gap-3 text-[10px]">
                     {currentPlan.billing.paymentMethod && (
                       <div>
-                        <p className="text-slate-400 uppercase font-bold">Método</p>
-                        <p className="text-slate-700 font-bold mt-0.5">
+                        <p className="text-muted-foreground uppercase font-bold">Método</p>
+                        <p className="text-foreground font-bold mt-0.5">
                           {currentPlan.billing.paymentMethod === 'CARD' ? '💳 Tarjeta'
                             : currentPlan.billing.paymentMethod === 'NEQUI' ? '📱 Nequi'
                             : currentPlan.billing.paymentMethod === 'PSE' ? '🏦 PSE'
@@ -607,16 +607,16 @@ export function SubscriptionCheckout() {
                     )}
                     {currentPlan.billing.reference && (
                       <div>
-                        <p className="text-slate-400 uppercase font-bold">Referencia</p>
-                        <p className="text-slate-700 font-mono font-bold mt-0.5 truncate" title={currentPlan.billing.reference}>
+                        <p className="text-muted-foreground uppercase font-bold">Referencia</p>
+                        <p className="text-foreground font-mono font-bold mt-0.5 truncate" title={currentPlan.billing.reference}>
                           {currentPlan.billing.reference}
                         </p>
                       </div>
                     )}
                     {currentPlan.billing.transactionId && (
                       <div className="col-span-2">
-                        <p className="text-slate-400 uppercase font-bold">ID de Transacción</p>
-                        <p className="text-slate-700 font-mono font-bold mt-0.5 truncate" title={currentPlan.billing.transactionId}>
+                        <p className="text-muted-foreground uppercase font-bold">ID de Transacción</p>
+                        <p className="text-foreground font-mono font-bold mt-0.5 truncate" title={currentPlan.billing.transactionId}>
                           {currentPlan.billing.transactionId}
                         </p>
                       </div>
@@ -627,17 +627,17 @@ export function SubscriptionCheckout() {
             )}
 
             {/* Subscription Timeline */}
-            <div className="bg-white border border-slate-200 rounded-2xl p-4">
-              <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-3">Línea de Tiempo</p>
+            <div className="bg-card border border-border rounded-2xl p-4">
+              <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider mb-3">Línea de Tiempo</p>
               <div className="relative pl-5 space-y-3">
-                <div className="absolute left-[7px] top-1 bottom-1 w-0.5 bg-gradient-to-b from-indigo-300 via-emerald-300 to-slate-200" />
+                <div className="absolute left-[7px] top-1 bottom-1 w-0.5 bg-gradient-to-b from-indigo-300 via-emerald-300 to-muted" />
 
                 {subscription.startDate && (
                   <div className="relative flex items-start gap-3">
                     <div className="absolute -left-5 top-0.5 w-3.5 h-3.5 rounded-full bg-indigo-500 border-2 border-white shadow-sm" />
                     <div>
-                      <p className="text-[11px] font-bold text-slate-800">Suscripción activada</p>
-                      <p className="text-[10px] text-slate-400">
+                      <p className="text-[11px] font-bold text-card-foreground">Suscripción activada</p>
+                      <p className="text-[10px] text-muted-foreground">
                         {new Date(subscription.startDate).toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' })}
                       </p>
                     </div>
@@ -648,8 +648,8 @@ export function SubscriptionCheckout() {
                   <div className="relative flex items-start gap-3">
                     <div className="absolute -left-5 top-0.5 w-3.5 h-3.5 rounded-full bg-emerald-500 border-2 border-white shadow-sm" />
                     <div>
-                      <p className="text-[11px] font-bold text-slate-800">Último pago procesado</p>
-                      <p className="text-[10px] text-slate-400">
+                      <p className="text-[11px] font-bold text-card-foreground">Último pago procesado</p>
+                      <p className="text-[10px] text-muted-foreground">
                         {new Date(currentPlan.billing.paidAt).toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' })}
                         {' · '}{formatPrice(currentPlan.billing.amount)}
                       </p>
@@ -659,10 +659,10 @@ export function SubscriptionCheckout() {
 
                 {subscription.endDate && (
                   <div className="relative flex items-start gap-3">
-                    <div className="absolute -left-5 top-0.5 w-3.5 h-3.5 rounded-full bg-slate-300 border-2 border-white shadow-sm" />
+                    <div className="absolute -left-5 top-0.5 w-3.5 h-3.5 rounded-full bg-muted border-2 border-white shadow-sm" />
                     <div>
-                      <p className="text-[11px] font-bold text-slate-500">Próxima renovación</p>
-                      <p className="text-[10px] text-slate-400">
+                      <p className="text-[11px] font-bold text-muted-foreground">Próxima renovación</p>
+                      <p className="text-[10px] text-muted-foreground">
                         {new Date(subscription.endDate).toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' })}
                       </p>
                     </div>
@@ -673,12 +673,12 @@ export function SubscriptionCheckout() {
           </div>
 
           {/* Change plan button */}
-          <Button onClick={() => setShowPlans(true)} variant="outline" className="w-full rounded-xl h-9 text-xs font-bold border-slate-300 hover:bg-slate-50">
+          <Button onClick={() => setShowPlans(true)} variant="outline" className="w-full rounded-xl h-9 text-xs font-bold border-border hover:bg-accent">
             Cambiar Plan
           </Button>
 
           {/* Security footer */}
-          <div className="flex items-center justify-center gap-2 text-slate-300 text-[10px]">
+          <div className="flex items-center justify-center gap-2 text-muted-foreground text-[10px]">
             <Shield className="w-3 h-3" />
             Pagos procesados de forma segura con Wompi
           </div>
@@ -690,15 +690,15 @@ export function SubscriptionCheckout() {
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-lg font-black tracking-tight text-slate-900">
+              <h2 className="text-lg font-black tracking-tight text-foreground">
                 {plan ? 'Cambiar Plan' : 'Elige tu Plan'}
               </h2>
-              <p className="text-slate-400 text-[11px] mt-0.5">
+              <p className="text-muted-foreground text-[11px] mt-0.5">
                 {plan ? 'Selecciona un nuevo plan. El cambio solo se aplica al confirmar el pago.' : 'Selecciona el plan ideal para tu negocio.'}
               </p>
             </div>
             {plan && subscription?.status === 'active' && (
-              <Button onClick={() => setShowPlans(false)} variant="ghost" className="text-xs text-slate-400">
+              <Button onClick={() => setShowPlans(false)} variant="ghost" className="text-xs text-muted-foreground">
                 ← Volver
               </Button>
             )}
@@ -723,8 +723,8 @@ export function SubscriptionCheckout() {
                     tier.popular
                       ? 'border-indigo-400 shadow-lg shadow-indigo-50 scale-[1.02]'
                       : isSelected
-                        ? 'border-slate-400 shadow-md'
-                        : 'border-slate-200 hover:border-slate-300 hover:shadow-sm'
+                        ? 'border-ring shadow-md'
+                        : 'border-border hover:border-ring hover:shadow-sm'
                   }`}
                 >
                   {tier.badge && (
@@ -739,19 +739,19 @@ export function SubscriptionCheckout() {
                         {tier.icon}
                       </div>
                       <div>
-                        <h3 className="text-base font-black text-slate-900 tracking-tight">{p.name}</h3>
-                        {p.description && <p className="text-[11px] text-slate-400 mt-0.5">{p.description}</p>}
+                        <h3 className="text-base font-black text-foreground tracking-tight">{p.name}</h3>
+                        {p.description && <p className="text-[11px] text-muted-foreground mt-0.5">{p.description}</p>}
                       </div>
                     </div>
 
                     <div className="flex items-baseline gap-1">
-                      <span className="text-2xl font-black text-slate-900">{formatPrice(p.price)}</span>
-                      <span className="text-xs text-slate-400 font-medium">/{p.interval === 'annual' ? 'año' : 'mes'}</span>
+                      <span className="text-2xl font-black text-foreground">{formatPrice(p.price)}</span>
+                      <span className="text-xs text-muted-foreground font-medium">/{p.interval === 'annual' ? 'año' : 'mes'}</span>
                     </div>
 
                     <ul className="space-y-1.5">
                       {features.map((feature, fi) => (
-                        <li key={fi} className="flex items-start gap-2 text-[11px] text-slate-600">
+                        <li key={fi} className="flex items-start gap-2 text-[11px] text-muted-foreground">
                           <Check className="w-3.5 h-3.5 text-emerald-500 mt-0.5 flex-shrink-0" />
                           <span>{feature}</span>
                         </li>
@@ -768,7 +768,7 @@ export function SubscriptionCheckout() {
                             ? 'bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100'
                             : tier.popular
                               ? `bg-gradient-to-r ${tier.gradient} text-white hover:opacity-90`
-                              : 'bg-slate-900 text-white hover:bg-slate-800'
+                              : 'bg-primary text-primary-foreground hover:bg-primary/90'
                       }`}
                     >
                       {isLoading ? (
@@ -788,7 +788,7 @@ export function SubscriptionCheckout() {
           </div>
 
           <div className="flex items-center justify-center gap-4 py-2">
-            <div className="flex items-center gap-2 text-slate-400 text-[10px] font-medium">
+            <div className="flex items-center gap-2 text-muted-foreground text-[10px] font-medium">
               <Shield className="w-3.5 h-3.5" />
               Pago seguro con Wompi
             </div>
@@ -809,7 +809,7 @@ export function SubscriptionCheckout() {
               initial={{ scale: 0.95, y: 10 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.95, y: 10 }}
-              className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-5"
+              className="bg-card rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-5"
             >
               {/* Header */}
               <div className="flex items-start gap-3">
@@ -817,8 +817,8 @@ export function SubscriptionCheckout() {
                   <AlertTriangle className="w-5 h-5 text-amber-500" />
                 </div>
                 <div>
-                  <h3 className="text-base font-black text-slate-900">¿Cambiar a {downgradeTarget.name}?</h3>
-                  <p className="text-xs text-slate-400 mt-1">Estás cambiando a un plan con menos beneficios</p>
+                  <h3 className="text-base font-black text-foreground">¿Cambiar a {downgradeTarget.name}?</h3>
+                  <p className="text-xs text-muted-foreground mt-1">Estás cambiando a un plan con menos beneficios</p>
                 </div>
               </div>
 
@@ -843,14 +843,14 @@ export function SubscriptionCheckout() {
               })()}
 
               {/* Price comparison */}
-              <div className="flex items-center justify-between bg-slate-50 rounded-xl p-3">
+              <div className="flex items-center justify-between bg-muted rounded-xl p-3">
                 <div>
-                  <p className="text-[10px] text-slate-400 uppercase font-bold">Plan actual</p>
-                  <p className="text-sm font-bold text-slate-700">{plan?.name} — {formatPrice(plan?.price || 0)}/mes</p>
+                  <p className="text-[10px] text-muted-foreground uppercase font-bold">Plan actual</p>
+                  <p className="text-sm font-bold text-foreground">{plan?.name} — {formatPrice(plan?.price || 0)}/mes</p>
                 </div>
-                <ArrowRight className="w-4 h-4 text-slate-300" />
+                <ArrowRight className="w-4 h-4 text-muted-foreground" />
                 <div className="text-right">
-                  <p className="text-[10px] text-slate-400 uppercase font-bold">Nuevo plan</p>
+                  <p className="text-[10px] text-muted-foreground uppercase font-bold">Nuevo plan</p>
                   <p className="text-sm font-bold text-amber-700">{downgradeTarget.name} — {formatPrice(downgradeTarget.price)}/mes</p>
                 </div>
               </div>
