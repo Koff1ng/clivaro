@@ -113,7 +113,7 @@ export async function updateStockLevel(
     reason?: string
     reasonCode?: string
     reference?: string
-    createdById?: string
+    createdById: string
   }
 ) {
   const client = prismaTx || prisma
@@ -159,6 +159,14 @@ export async function updateStockLevel(
 
   // Create movement if details provided
   if (movementDetails) {
+    if (!movementDetails.createdById) {
+      logger.warn('[updateStockLevel] stockMovement created without createdById — audit trail lost', {
+        warehouseId,
+        productId,
+        variantId,
+        type: movementDetails.type,
+      })
+    }
     await client.stockMovement.create({
       data: {
         warehouseId,
@@ -170,7 +178,7 @@ export async function updateStockLevel(
         reason: movementDetails.reason,
         reasonCode: movementDetails.reasonCode,
         reference: movementDetails.reference,
-        createdById: movementDetails.createdById || undefined, // L1 FIX: undefined instead of 'SYSTEM' to avoid FK violation
+        createdById: movementDetails.createdById,
       }
     })
   }

@@ -164,9 +164,13 @@ export async function POST(request: Request) {
       const totalTax = itemsData.reduce((sum: number, item: any) => sum + (item.quantity * item.unitCost * item.taxRate / 100), 0)
       const total = subtotalAfterDiscount + totalTax
 
-      // Generate order number
-      const orderCount = await prisma.purchaseOrder.count()
-      const orderNumber = `PO-${String(orderCount + 1).padStart(6, '0')}`
+      // Generate order number (findFirst desc avoids count() race condition)
+      const lastOrder = await prisma.purchaseOrder.findFirst({
+        orderBy: { createdAt: 'desc' },
+        select: { number: true },
+      })
+      const lastNum = lastOrder?.number ? parseInt(lastOrder.number.replace('PO-', ''), 10) : 0
+      const orderNumber = `PO-${String(lastNum + 1).padStart(6, '0')}`
 
       const createdOrder = await prisma.purchaseOrder.create({
         data: {
