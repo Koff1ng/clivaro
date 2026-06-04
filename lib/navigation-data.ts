@@ -76,7 +76,6 @@ export const menuGroups: MenuGroup[] = [
             { href: '/sales/orders', label: 'Órdenes', icon: ClipboardList, permission: 'manage_sales', planFeature: 'manageSales' },
             { href: '/sales/invoices', label: 'Facturas', icon: Receipt, permission: 'manage_sales', planFeature: 'invoices' },
             { href: '/credit-notes', label: 'Notas Crédito', icon: FileMinus, permission: 'manage_sales', planFeature: 'invoices' },
-            { href: '/pos/commander', label: 'Comandero', icon: UtensilsCrossed, permission: 'manage_sales' },
         ]
     },
     {
