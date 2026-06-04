@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useForm } from 'react-hook-form'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -29,7 +29,9 @@ import {
   Save,
   Check,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Upload,
+  Image as ImageIcon
 } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useToast } from '@/components/ui/toast'
@@ -137,6 +139,8 @@ export function GeneralConfig({ settings, onSave, isLoading, initialTab = 'ident
   
   // Custom states
   const [activeTab, setActiveTab] = useState(initialTab)
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   
   useEffect(() => {
     setActiveTab(initialTab)
@@ -311,6 +315,63 @@ export function GeneralConfig({ settings, onSave, isLoading, initialTab = 'ident
     onSave(payload)
   }
 
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    if (!file.type.startsWith('image/')) {
+      toast('El archivo debe ser una imagen', 'error')
+      return
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast('La imagen no debe superar los 5MB', 'error')
+      return
+    }
+
+    try {
+      setIsUploadingLogo(true)
+      const formData = new FormData()
+      formData.append('image', file)
+
+      const res = await fetch('/api/settings/upload-logo', {
+        method: 'POST',
+        body: formData,
+      })
+
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.error || 'Error al subir la imagen')
+      }
+
+      const { url } = await res.json()
+      
+      updateCustomSettings(prev => ({
+        ...prev,
+        identity: {
+          ...prev.identity,
+          logo: url
+        }
+      }))
+      
+      toast('Logo subido exitosamente', 'success')
+    } catch (error: any) {
+      toast(error.message || 'Error al subir el logo', 'error')
+    } finally {
+      setIsUploadingLogo(false)
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
+    }
+  }
+
+  const currentLogo = (() => {
+    try {
+      const cs = JSON.parse(watch('customSettings') || '{}')
+      return cs?.identity?.logo
+    } catch { return undefined }
+  })()
+
   const renderSectionHeader = (title: string, Icon: any, description: string) => (
     <div className="mb-8 p-6 sm:p-8 rounded-[2rem] bg-slate-900 text-white shadow-2xl animate-in fade-in zoom-in-95 duration-500">
       <div className="flex items-center gap-6">
@@ -333,6 +394,37 @@ export function GeneralConfig({ settings, onSave, isLoading, initialTab = 'ident
         {activeTab === 'identity' && (
           <div className="space-y-8 animate-in fade-in slide-in-from-right-8 duration-700">
             {renderSectionHeader('Identidad de Marca', Building2, 'DATOS CORPORATIVOS Y FISCALES')}
+            
+            <div className="mb-6">
+              <Label className="text-[11px] font-black uppercase tracking-[0.1em] text-muted-foreground ml-1 mb-2 block">Logo de la Empresa</Label>
+              <div className="flex items-center gap-6">
+                <div className="h-24 w-24 rounded-2xl border-2 border-dashed border-border bg-muted flex items-center justify-center overflow-hidden flex-shrink-0 relative group">
+                  {currentLogo ? (
+                    <>
+                      <img src={currentLogo} alt="Logo" className="w-full h-full object-contain" />
+                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <Button type="button" variant="ghost" size="icon" className="text-white hover:text-red-400 hover:bg-transparent" onClick={(e) => { e.stopPropagation(); updateCustomSettings(prev => ({...prev, identity: {...prev.identity, logo: undefined}})) }}>
+                          <Trash2 size={18} />
+                        </Button>
+                      </div>
+                    </>
+                  ) : (
+                    <ImageIcon className="text-muted-foreground opacity-50" size={32} />
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-3">
+                    <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleLogoUpload} />
+                    <Button type="button" variant="outline" className="rounded-xl h-10 px-6 font-bold" disabled={isUploadingLogo} onClick={() => fileInputRef.current?.click()}>
+                      {isUploadingLogo ? <Loader2 className="animate-spin h-4 w-4 mr-2" /> : <Upload size={16} className="mr-2" />}
+                      {currentLogo ? 'Cambiar Logo' : 'Subir Logo'}
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground font-medium">Recomendado: 512x512px. Máx 5MB (PNG, JPG).</p>
+                </div>
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div className="space-y-2.5">
                 <Label className="text-[11px] font-black uppercase tracking-[0.1em] text-muted-foreground ml-1">Nombre Comercial</Label>

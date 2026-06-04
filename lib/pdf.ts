@@ -504,6 +504,17 @@ export interface InvoicePDFData {
     email?: string
     nit?: string
     regime?: string
+    logo?: string
+    commercialName?: string
+    verificationDigit?: string
+    fiscalResponsibilities?: string
+    economicActivity?: string
+    department?: string
+    resolutionNumber?: string
+    resolutionDate?: string
+    resolutionRangeFrom?: string
+    resolutionRangeTo?: string
+    resolutionValidUntil?: string
   }
 }
 
@@ -569,13 +580,19 @@ export async function generateInvoicePDF(invoice: InvoicePDFData): Promise<Buffe
   const companyEmail = invoice.company?.email || process.env.COMPANY_EMAIL || process.env.NEXT_PUBLIC_COMPANY_EMAIL || ''
   const companyNit = invoice.company?.nit || process.env.COMPANY_NIT || process.env.NEXT_PUBLIC_COMPANY_TAX_ID || ''
   const companyRegime = invoice.company?.regime || process.env.COMPANY_REGIME || 'Responsable de IVA'
+  const companyLogo = invoice.company?.logo || ''
+  const companyCommercialName = invoice.company?.commercialName || companyName
+  const companyVerificationDigit = invoice.company?.verificationDigit || ''
+  const companyFiscalResponsibilities = invoice.company?.fiscalResponsibilities || 'NO SOMOS GRANDES CONTRIBUYENTES. NO SOMOS AUTORRETENEDORES.'
+  const companyEconomicActivity = invoice.company?.economicActivity || ''
+  const companyDepartment = invoice.company?.department || ''
 
-  // DIAN Resolution info (should come from environment or database)
-  const resolutionNumber = process.env.DIAN_RESOLUTION_NUMBER || ''
-  const resolutionDate = process.env.DIAN_RESOLUTION_DATE || ''
-  const resolutionRangeFrom = process.env.DIAN_RANGE_FROM || ''
-  const resolutionRangeTo = process.env.DIAN_RANGE_TO || ''
-  const resolutionValidUntil = process.env.DIAN_VALID_UNTIL || ''
+  // DIAN Resolution info
+  const resolutionNumber = invoice.company?.resolutionNumber || process.env.DIAN_RESOLUTION_NUMBER || ''
+  const resolutionDate = invoice.company?.resolutionDate || process.env.DIAN_RESOLUTION_DATE || ''
+  const resolutionRangeFrom = invoice.company?.resolutionRangeFrom || process.env.DIAN_RANGE_FROM || ''
+  const resolutionRangeTo = invoice.company?.resolutionRangeTo || process.env.DIAN_RANGE_TO || ''
+  const resolutionValidUntil = invoice.company?.resolutionValidUntil || process.env.DIAN_VALID_UNTIL || ''
 
   // Calculate payment form and method
   const isCredit = invoice.dueDate && invoice.issuedAt &&
@@ -598,7 +615,18 @@ export async function generateInvoicePDF(invoice: InvoicePDFData): Promise<Buffe
     taxByRate.set(rate, { base: prev.base + base, tax: prev.tax + itemTax })
   }
 
-  // Format date with time
+  const formatDateOnly = (date: Date | string | null | undefined) => {
+    if (!date) return ''
+    const d = new Date(date)
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  }
+
+  const formatTimeOnly = (date: Date | string | null | undefined) => {
+    if (!date) return ''
+    const d = new Date(date)
+    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}-05:00`
+  }
+
   const formatDateTime = (date: Date | string | null | undefined) => {
     if (!date) return ''
     const d = new Date(date)
@@ -607,7 +635,8 @@ export async function generateInvoicePDF(invoice: InvoicePDFData): Promise<Buffe
     const year = d.getFullYear()
     const hours = String(d.getHours()).padStart(2, '0')
     const minutes = String(d.getMinutes()).padStart(2, '0')
-    return `${day}/${month}/${year} ${hours}:${minutes}`
+    const seconds = String(d.getSeconds()).padStart(2, '0')
+    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
   }
 
   const isElectronic = !!invoice.cufe
@@ -618,9 +647,9 @@ export async function generateInvoicePDF(invoice: InvoicePDFData): Promise<Buffe
     try {
       const dianUrl = `https://catalogo-vpfe.dian.gov.co/document/searchqr?documentkey=${invoice.cufe}`
       qrDataUri = await QRCode.toDataURL(dianUrl, {
-        width: 150,
+        width: 120,
         margin: 1,
-        color: { dark: '#1e3a8a', light: '#ffffff' },
+        color: { dark: '#000000', light: '#ffffff' },
       })
     } catch (e) {
       // Fallback: no QR if generation fails
@@ -636,394 +665,158 @@ export async function generateInvoicePDF(invoice: InvoicePDFData): Promise<Buffe
       <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { 
-          font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, 'Helvetica Neue', Arial, sans-serif;
-          line-height: 1.5;
-          color: #1e293b;
-          font-size: 11px;
+          font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+          line-height: 1.2;
+          color: #000;
+          font-size: 8px;
         }
         .page {
-          padding: 20px 30px;
+          padding: 15px 25px;
           max-width: 210mm;
           margin: 0 auto;
         }
         
-        /* Header */
-        .header {
-          display: flex;
-          justify-content: space-between;
-          align-items: flex-start;
-          border-bottom: 3px solid #1e40af;
-          padding-bottom: 12px;
-          margin-bottom: 12px;
-        }
-        .company-info {
-          flex: 1;
-        }
-        .company-name {
-          font-size: 18px;
-          font-weight: 700;
-          color: #1e40af;
-          margin-bottom: 4px;
-        }
-        .company-details {
-          font-size: 9px;
-          color: #475569;
-          line-height: 1.5;
-        }
-        .company-details div {
-          margin: 1px 0;
-        }
-        .invoice-type {
-          text-align: right;
-          min-width: 200px;
-        }
-        .invoice-type-label {
-          font-size: 12px;
-          font-weight: 700;
-          color: #1e40af;
-          text-transform: uppercase;
-          margin-bottom: 3px;
-        }
-        .invoice-number {
-          font-size: 20px;
-          font-weight: 700;
-          color: #0f172a;
-        }
-        .resolution-info {
-          font-size: 9px;
-          color: #64748b;
-          margin-top: 10px;
-          text-align: right;
-          line-height: 1.5;
-        }
-        
-        /* Info Grid */
-        .info-grid {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 12px;
-          margin-bottom: 12px;
-        }
-        .info-box {
-          background: #f8fafc;
-          border: 1px solid #e2e8f0;
-          border-radius: 6px;
-          padding: 10px;
-        }
-        .info-box-title {
-          font-size: 9px;
-          font-weight: 700;
-          color: #1e40af;
-          text-transform: uppercase;
-          margin-bottom: 6px;
-          padding-bottom: 4px;
-          border-bottom: 2px solid #1e40af;
-        }
-        .info-row {
-          display: flex;
-          justify-content: space-between;
-          margin: 3px 0;
-          font-size: 9px;
-        }
-        .info-label {
-          color: #64748b;
-          font-weight: 500;
-        }
-        .info-value {
-          color: #0f172a;
-          font-weight: 600;
-          text-align: right;
-        }
-        .customer-name {
-          font-size: 11px;
-          font-weight: 700;
-          color: #0f172a;
-          margin-bottom: 4px;
-        }
-        
-        /* Table */
-        table {
-          width: 100%;
-          border-collapse: collapse;
-          margin: 10px 0;
-          font-size: 9px;
-        }
-        thead tr {
-          background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
-        }
-        th {
-          color: white;
-          padding: 6px 8px;
-          text-align: left;
-          font-weight: 600;
-          font-size: 8px;
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
-        }
-        th.right { text-align: right; }
-        th.center { text-align: center; }
-        td {
-          padding: 6px 8px;
-          border-bottom: 1px solid #e2e8f0;
-          vertical-align: top;
-          font-size: 9px;
-        }
-        td.right { text-align: right; }
-        td.center { text-align: center; }
-        tr:nth-child(even) {
-          background-color: #f8fafc;
-        }
-        .product-name {
-          font-weight: 600;
-          color: #0f172a;
-        }
-        .product-sku {
-          font-size: 9px;
-          color: #64748b;
-          margin-top: 2px;
-        }
-        
-        /* Totals */
-        .totals-section {
-          display: flex;
-          justify-content: flex-end;
-          margin-top: 6px;
-        }
-        .totals-box {
-          width: 260px;
-          background: #f8fafc;
-          border: 1px solid #e2e8f0;
-          border-radius: 6px;
-          padding: 10px;
-        }
-        .totals-row {
-          display: flex;
-          justify-content: space-between;
-          padding: 3px 0;
-          font-size: 10px;
-        }
-        .totals-row.subtotal {
-          border-bottom: 1px solid #e2e8f0;
-          padding-bottom: 5px;
-          margin-bottom: 3px;
-        }
-        .tax-breakdown {
-          background: #eff6ff;
-          border-radius: 4px;
-          padding: 6px;
-          margin: 4px 0;
-        }
-        .tax-row {
-          display: flex;
-          justify-content: space-between;
-          font-size: 8px;
-          color: #475569;
-          padding: 1px 0;
-        }
-        .totals-row.total {
-          font-size: 14px;
-          font-weight: 700;
-          color: #1e40af;
-          border-top: 2px solid #1e40af;
-          padding-top: 6px;
-          margin-top: 4px;
-        }
-        
-        /* Electronic Invoice Info */
-        .electronic-section {
-          background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
-          border: 1px solid #93c5fd;
-          border-radius: 6px;
-          padding: 10px;
-          margin-top: 12px;
-        }
-        .electronic-title {
-          font-size: 11px;
-          font-weight: 700;
-          color: #1e40af;
-          margin-bottom: 10px;
-          display: flex;
-          align-items: center;
-          gap: 5px;
-        }
-        .cufe-code {
-          font-family: 'Courier New', monospace;
-          font-size: 8px;
-          word-break: break-all;
-          background: white;
-          padding: 8px;
-          border-radius: 4px;
-          border: 1px solid #bfdbfe;
-          color: #1e3a8a;
-        }
-        .qr-section {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          margin-top: 10px;
-        }
-        
-        /* Footer */
-        .footer {
-          margin-top: 14px;
-          padding-top: 8px;
-          border-top: 1px solid #e2e8f0;
-        }
-        .legal-text {
-          font-size: 7px;
-          color: #64748b;
+        .info-table { width: 100%; border-collapse: collapse; }
+        .info-table td { padding: 2px 6px; border: none; vertical-align: top; }
+        .info-table .lbl { font-weight: 700; width: 80px; }
+        .info-table .val { text-transform: uppercase; }
+
+        .grid-table { width: 100%; border-collapse: collapse; border: 2px solid #000; }
+        .grid-table th { 
+          border: 1px solid #000; 
+          background: #e5e7eb; 
+          font-weight: 700; 
+          padding: 3px 2px; 
           text-align: center;
-          line-height: 1.4;
+          font-size: 7.5px;
         }
-        .legal-text p {
-          margin: 2px 0;
+        .grid-table td { 
+          border: 1px solid #000; 
+          padding: 3px 4px; 
+          font-size: 8px;
         }
-        .thank-you {
-          text-align: center;
-          margin-top: 8px;
-          font-size: 11px;
-          font-weight: 600;
-          color: #1e40af;
-        }
-        
-        /* Notes */
-        .notes-section {
-          background: #fefce8;
-          border-left: 4px solid #eab308;
-          border-radius: 0 8px 8px 0;
-          padding: 12px 15px;
-          margin-top: 15px;
-        }
-        .notes-title {
-          font-size: 10px;
-          font-weight: 700;
-          color: #854d0e;
-          margin-bottom: 5px;
-        }
-        .notes-content {
-          font-size: 10px;
-          color: #713f12;
-        }
-        
-        /* Status Badge */
-        .status-badge {
-          display: inline-block;
-          padding: 4px 12px;
-          border-radius: 20px;
-          font-size: 10px;
-          font-weight: 600;
-          text-transform: uppercase;
-        }
-        .status-paid { background: #dcfce7; color: #166534; }
-        .status-pending { background: #fef3c7; color: #92400e; }
-        .status-void { background: #fee2e2; color: #991b1b; }
+        .grid-table td.center { text-align: center; }
+        .grid-table td.right { text-align: right; }
+
+        .totals-table { width: 100%; border-collapse: collapse; border: 2px solid #000; }
+        .totals-table td { padding: 3px 6px; border: 1px solid #000; }
+        .totals-table .lbl { font-weight: 700; background: #e5e7eb; width: 50%; }
+        .totals-table .val { text-align: right; }
       </style>
     </head>
     <body>
       <div class="page">
-        <!-- Header -->
-        <div class="header">
-          <div class="company-info">
-            <div class="company-name">${companyName}</div>
-            <div class="company-details">
-              <div><strong>NIT:</strong> ${companyNit}</div>
-              <div>${companyRegime}</div>
-              ${companyAddress ? `<div>${companyAddress}</div>` : ''}
-              ${companyCity ? `<div>${companyCity}</div>` : ''}
-              ${companyPhone ? `<div>Tel: ${companyPhone}</div>` : ''}
-              ${companyEmail ? `<div>${companyEmail}</div>` : ''}
-            </div>
-          </div>
-          <div class="invoice-type">
-            <div class="invoice-type-label">${isElectronic ? 'Factura Electrónica de Venta' : 'Factura de Venta'}</div>
-            <div class="invoice-number">${invoice.number}</div>
-            ${resolutionNumber ? `
-            <div class="resolution-info">
-              <div>Res. DIAN No. ${resolutionNumber}</div>
-              ${resolutionDate ? `<div>Fecha: ${resolutionDate}</div>` : ''}
-              ${resolutionRangeFrom && resolutionRangeTo ? `<div>Rango: ${resolutionRangeFrom} - ${resolutionRangeTo}</div>` : ''}
-              ${resolutionValidUntil ? `<div>Vigente hasta: ${resolutionValidUntil}</div>` : ''}
-            </div>
-            ` : ''}
-          </div>
-        </div>
-        
-        <!-- Info Grid -->
-        <div class="info-grid">
-          <!-- Customer Info -->
-          <div class="info-box">
-            <div class="info-box-title">Adquirente / Cliente</div>
-            <div class="customer-name">${invoice.customer.name}</div>
-            ${invoice.customer.taxId ? `
-            <div class="info-row">
-              <span class="info-label">NIT/CC:</span>
-              <span class="info-value">${invoice.customer.taxId}</span>
-            </div>` : `
-            <div class="info-row">
-              <span class="info-label">Identificación:</span>
-              <span class="info-value">CONSUMIDOR FINAL</span>
-            </div>`}
-            ${invoice.customer.address ? `
-            <div class="info-row">
-              <span class="info-label">Dirección:</span>
-              <span class="info-value">${invoice.customer.address}</span>
-            </div>` : ''}
-            ${invoice.customer.phone ? `
-            <div class="info-row">
-              <span class="info-label">Teléfono:</span>
-              <span class="info-value">${invoice.customer.phone}</span>
-            </div>` : ''}
-            ${invoice.customer.email ? `
-            <div class="info-row">
-              <span class="info-label">Email:</span>
-              <span class="info-value">${invoice.customer.email}</span>
-            </div>` : ''}
+        <!-- HEADER -->
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
+          <!-- Left: Logo & Company Name -->
+          <div style="width: 45%; text-align: center; padding-top: 10px;">
+            ${companyLogo ? `<img src="${companyLogo}" style="max-width: 140px; max-height: 50px; object-fit: contain; margin-bottom: 8px;" />` : ''}
+            <div style="font-size: 14px; font-weight: 700; letter-spacing: 0.5px;">${companyCommercialName.toUpperCase()}</div>
           </div>
           
-          <!-- Document Info -->
-          <div class="info-box">
-            <div class="info-box-title">Información del Documento</div>
-            <div class="info-row">
-              <span class="info-label">Fecha Emisión:</span>
-              <span class="info-value">${formatDateTime(invoice.issuedAt)}</span>
+          <!-- Right: Invoice Info -->
+          <div style="width: 50%; font-size: 8px; text-align: left; padding-left: 20px;">
+            <div style="font-size: 11px; font-weight: 700; margin-bottom: 8px;">
+              ${isElectronic ? 'FACTURA ELECTRÓNICA DE VENTA' : 'FACTURA DE VENTA'} ${invoice.prefix || ''}${invoice.number}
             </div>
-            ${invoice.dueDate ? `
-            <div class="info-row">
-              <span class="info-label">Fecha Vencimiento:</span>
-              <span class="info-value">${formatDateTime(invoice.dueDate)}</span>
-            </div>` : ''}
-            <div class="info-row">
-              <span class="info-label">Moneda:</span>
-              <span class="info-value">COP - Pesos Colombianos</span>
-            </div>
-            <div class="info-row">
-              <span class="info-label">Forma de Pago:</span>
-              <span class="info-value">${paymentForm}</span>
-            </div>
-            <div class="info-row">
-              <span class="info-label">Medio de Pago:</span>
-              <span class="info-value">${medioPago}</span>
-            </div>
-            <div class="info-row">
-              <span class="info-label">Total de Líneas:</span>
-              <span class="info-value">${invoice.items.length}</span>
-            </div>
+            <table style="width: 100%; border: none; margin: 0; padding: 0;">
+              <tr><td style="border: none; padding: 1px 0; font-weight: 700;">Fecha de Exp.:</td><td style="border: none; padding: 1px 0;">${formatDateOnly(invoice.issuedAt)}</td></tr>
+              <tr><td style="border: none; padding: 1px 0; font-weight: 700;">Hora de Exp.:</td><td style="border: none; padding: 1px 0;">${formatTimeOnly(invoice.issuedAt)}</td></tr>
+              <tr><td style="border: none; padding: 1px 0; font-weight: 700;">Fecha de Ven.:</td><td style="border: none; padding: 1px 0;">${formatDateOnly(invoice.dueDate) || formatDateOnly(invoice.issuedAt)}</td></tr>
+              <tr><td style="border: none; padding: 1px 0; font-weight: 700;">Fecha y hora de validación.:</td><td style="border: none; padding: 1px 0;">${formatDateTime(invoice.issuedAt)}</td></tr>
+            </table>
           </div>
         </div>
-        
-        <!-- Items Table -->
-        <table>
+
+        <!-- RESOLUTION & LEGAL TEXT -->
+        <div style="font-size: 6.5px; line-height: 1.3; margin-bottom: 8px; display: flex; text-transform: uppercase;">
+           <div style="width: 50%; text-align: center; font-weight: 600; padding-right: 10px;">
+             ${companyFiscalResponsibilities}
+           </div>
+           <div style="width: 50%; padding-left: 10px;">
+             ${resolutionNumber ? `N°. Resolución: ${resolutionNumber} válida desde el ${resolutionDate} hasta el ${resolutionValidUntil} rango desde ${resolutionRangeFrom} hasta ${resolutionRangeTo}` : ''}
+           </div>
+        </div>
+
+        <!-- DATOS EMISOR / ADQUIRENTE -->
+        <div style="display: flex; gap: 0; border: 2px solid #000; margin-bottom: 8px;">
+           <div style="width: 50%; border-right: 2px solid #000;">
+              <div style="background: #e5e7eb; border-bottom: 1px solid #000; padding: 2px 6px; font-weight: 700; font-size: 8px;">DATOS EMISOR</div>
+              <table class="info-table">
+                <tr><td class="lbl">Razón Social:</td><td class="val">${companyName}</td></tr>
+                <tr><td class="lbl">NIT:</td><td class="val">${companyNit}${companyVerificationDigit ? ` - ${companyVerificationDigit}` : ''}</td></tr>
+                <tr><td class="lbl">Actividad:</td><td class="val">${companyEconomicActivity}</td></tr>
+                <tr><td class="lbl">Dirección:</td><td class="val">Colombia${companyDepartment ? ` - ${companyDepartment}` : ''}${companyCity ? ` - ${companyCity}` : ''} - ${companyAddress}</td></tr>
+                <tr><td class="lbl">Teléfono:</td><td class="val">${companyPhone}</td></tr>
+                <tr><td class="lbl">E-mail:</td><td class="val" style="text-transform: none;">${companyEmail}</td></tr>
+              </table>
+           </div>
+           <div style="width: 50%;">
+              <div style="background: #e5e7eb; border-bottom: 1px solid #000; padding: 2px 6px; font-weight: 700; font-size: 8px;">DATOS ADQUIRENTE</div>
+              <table class="info-table">
+                <tr><td class="lbl">Razón Social:</td><td class="val">${invoice.customer.name}</td></tr>
+                <tr><td class="lbl">NIT:</td><td class="val">${invoice.customer.taxId || '222222222222'}</td></tr>
+                <tr><td class="lbl">Contacto:</td><td class="val"></td></tr>
+                <tr><td class="lbl">Dirección:</td><td class="val">Colombia - ${invoice.customer.address || ''}</td></tr>
+                <tr><td class="lbl">Teléfono:</td><td class="val">${invoice.customer.phone || ''}</td></tr>
+                <tr><td class="lbl">E-mail:</td><td class="val" style="text-transform: none;">${invoice.customer.email || ''}</td></tr>
+              </table>
+           </div>
+        </div>
+
+        <!-- ORDEN ROW -->
+        <table class="grid-table" style="margin-bottom: 8px;">
           <thead>
             <tr>
-              <th style="width: 5%;">#</th>
-              <th style="width: 12%;">Código</th>
-              <th style="width: 25%;">Descripción</th>
-              <th class="center" style="width: 8%;">Cant.</th>
-              <th class="right" style="width: 12%;">Precio U.</th>
-              <th class="center" style="width: 8%;">Imp %</th>
-              <th class="right" style="width: 10%;">Imp $</th>
-              <th class="center" style="width: 8%;">Dcto.</th>
-              <th class="right" style="width: 12%;">Total</th>
+              <th style="width: 10%;">MONEDA</th>
+              <th style="width: 10%;">No. LÍNEAS</th>
+              <th style="width: 20%;">ORDEN DE COMPRA</th>
+              <th style="width: 15%;">FECHA DE ORDEN</th>
+              <th style="width: 15%;">MEDIO DE PAGO</th>
+              <th style="width: 15%;">FORMA DE PAGO</th>
+              <th style="width: 15%;">VALOR</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="center">COP</td>
+              <td class="center">${invoice.items.length}</td>
+              <td class="center"></td>
+              <td class="center"></td>
+              <td class="center">${medioPago}</td>
+              <td class="center">${paymentForm}</td>
+              <td class="right" style="font-weight: 700;">$ ${invoice.total || 0}</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- NOTAS -->
+        <div style="border: 2px solid #000; margin-bottom: 8px;">
+          <div style="background: #e5e7eb; border-bottom: 1px solid #000; padding: 2px 6px; font-weight: 700; font-size: 8px; text-align: center;">NOTAS</div>
+          <div style="padding: 6px 10px; font-size: 8px; min-height: 18px;">
+            ${invoice.notes || ''}
+          </div>
+        </div>
+
+        <!-- ITEMS TABLE -->
+        <table class="grid-table" style="margin-bottom: 8px;">
+          <thead>
+            <tr>
+              <th rowspan="2" style="width: 3%;">#</th>
+              <th rowspan="2" style="width: 6%;">CANT.</th>
+              <th rowspan="2" style="width: 8%;">COD.</th>
+              <th rowspan="2" style="width: 5%;">U.M</th>
+              <th rowspan="2" style="width: 25%;">DESCRIPCIÓN</th>
+              <th rowspan="2" style="width: 10%;">VALOR UNIT.</th>
+              <th rowspan="2" style="width: 10%;">VALOR SIN IMP.</th>
+              <th colspan="3" style="border-bottom: 1px solid #000;">IMPUESTOS</th>
+              <th rowspan="2" style="width: 6%;">DCTO.</th>
+              <th rowspan="2" style="width: 10%;">VALOR</th>
+            </tr>
+            <tr>
+              <th style="font-size: 6px; width: 5%;">NOM.</th>
+              <th style="font-size: 6px; width: 4%;">%</th>
+              <th style="font-size: 6px; width: 8%;">VALOR IMP.</th>
             </tr>
           </thead>
           <tbody>
@@ -1031,99 +824,99 @@ export async function generateInvoicePDF(invoice: InvoicePDFData): Promise<Buffe
               const lineBase = item.unitPrice * item.quantity * (1 - (item.discount || 0) / 100)
               const lineTaxAmt = lineBase * ((item.taxRate || 0) / 100)
               const lineTotal = item.subtotal + lineTaxAmt
+              const taxName = item.taxRate === 8 ? 'INC' : (item.taxRate > 0 ? 'IVA' : '')
               return `
               <tr>
                 <td class="center">${idx + 1}</td>
-                <td><span style="font-family: monospace; font-size: 9px;">${item.product.sku || '-'}</span></td>
-                <td>
-                  <div class="product-name">${item.product.name}</div>
-                  ${item.variant ? `<div class="product-sku">Variante: ${item.variant.name}</div>` : ''}
-                </td>
-                <td class="center">${item.quantity}</td>
-                <td class="right">${formatCurrency(item.unitPrice)}</td>
-                <td class="center">${item.taxRate || 0}%</td>
-                <td class="right">${formatCurrency(lineTaxAmt)}</td>
-                <td class="center">${item.discount > 0 ? item.discount + '%' : '-'}</td>
-                <td class="right" style="font-weight: 600;">${formatCurrency(lineTotal)}</td>
-              </tr>
-            `}).join('')}
+                <td class="center">${item.quantity.toFixed(1)}</td>
+                <td class="center">${item.product.sku || ''}</td>
+                <td class="center">94</td>
+                <td>${item.product.name.toUpperCase()}</td>
+                <td class="right">${item.unitPrice.toFixed(2)}</td>
+                <td class="right">${lineBase.toFixed(2)}</td>
+                <td class="center">${taxName}</td>
+                <td class="center">${item.taxRate || 0}</td>
+                <td class="right">$ ${lineTaxAmt.toFixed(2)}</td>
+                <td class="right">${item.discount > 0 ? item.discount.toFixed(2) : '0.00'}</td>
+                <td class="right">${lineTotal.toFixed(2)}</td>
+              </tr>`
+            }).join('')}
           </tbody>
         </table>
-        
-            <!-- Notes + Totals side by side -->
-            <div style="display: flex; gap: 12px; margin-top: 8px;">
-              <div style="flex: 1;">
-                ${invoice.notes ? `
-                <div style="background: #fefce8; border-left: 4px solid #eab308; border-radius: 0 6px 6px 0; padding: 8px 10px; margin-bottom: 8px;">
-                  <div style="font-size: 9px; font-weight: 700; color: #854d0e; margin-bottom: 3px;">Notas:</div>
-                  <div style="font-size: 9px; color: #713f12;">${invoice.notes}</div>
-                </div>` : ''}
-                <!-- SON (Total en letras) -->
-                <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; padding: 8px 10px;">
-                  <div style="font-size: 8px; font-weight: 700; color: #166534; margin-bottom: 2px;">SON:</div>
-                  <div style="font-size: 9px; color: #15803d; font-style: italic;">${totalInWords}</div>
-                </div>
-              </div>
-              <div class="totals-box" style="width: 280px; flex-shrink: 0;">
-                <div class="totals-row subtotal">
-                  <span>Subtotal:</span>
-                  <span>${formatCurrency((invoice.items || []).reduce((sum, it) => sum + (it.unitPrice * it.quantity), 0))}</span>
-                </div>
-                ${(invoice.items || []).reduce((sum, it) => sum + ((it.unitPrice * it.quantity) - it.subtotal), 0) + (invoice.discount || 0) > 0 ? `
-                <div class="totals-row" style="color: #dc2626;">
-                  <span>Descuento:</span>
-                  <span>${formatCurrency((invoice.items || []).reduce((sum, it) => sum + ((it.unitPrice * it.quantity) - it.subtotal), 0) + (invoice.discount || 0))}</span>
-                </div>` : ''}
-                <div class="totals-row">
-                  <span>IVA:</span>
-                  <span>${formatCurrency(invoice.tax || 0)}</span>
-                </div>
-                <div class="totals-row total">
-                  <span>Total:</span>
-                  <span>${formatCurrency(invoice.total || 0)}</span>
-                </div>
-              </div>
-            </div>
-        
-            <!-- Tax Summary Table (DIAN standard) -->
-            ${taxByRate.size > 0 ? `
-            <table style="margin-top: 10px;">
-              <thead>
-                <tr>
-                  <th style="width: 30%;">IMPUESTO</th>
-                  <th class="right" style="width: 25%;">BASE</th>
-                  <th class="center" style="width: 20%;">TARIFA / VALOR NOMINAL</th>
-                  <th class="right" style="width: 25%;">IMPORTE</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${Array.from(taxByRate.entries()).sort((a, b) => a[0] - b[0]).map(([rate, v]) => `
-                <tr>
-                  <td style="font-weight: 600;">01 IVA</td>
-                  <td class="right">${formatCurrency(v.base)}</td>
-                  <td class="center">${rate}%</td>
-                  <td class="right" style="font-weight: 600;">${formatCurrency(v.tax)}</td>
-                </tr>`).join('')}
-              </tbody>
-            </table>` : ''}
 
-            <!-- CUFE + QR Section -->
-            ${isElectronic ? `
-            <div style="display: flex; gap: 12px; align-items: flex-start; margin-top: 10px; padding: 10px; background: #eff6ff; border: 1px solid #93c5fd; border-radius: 6px;">
-              ${qrDataUri ? `<img src="${qrDataUri}" alt="QR DIAN" style="width: 90px; height: 90px; flex-shrink: 0; border: 1px solid #bfdbfe; border-radius: 4px;" />` : ''}
-              <div style="flex: 1; min-width: 0;">
-                <div style="font-size: 8px; font-weight: 700; color: #1e3a8a; margin-bottom: 4px;">CUFE:</div>
-                <div style="font-family: 'Courier New', monospace; font-size: 7px; word-break: break-all; background: white; padding: 6px; border-radius: 4px; border: 1px solid #bfdbfe; color: #1e3a8a;">${invoice.cufe}</div>
-              </div>
-            </div>` : ''}
-        
-            <!-- Footer -->
-            <div style="margin-top: 10px; padding-top: 6px; border-top: 1px solid #e2e8f0;">
-              <div style="font-size: 7px; color: #64748b; text-align: center; line-height: 1.4;">
-                <p>Esta factura es título valor de acuerdo al art. 774 del C.C. y una vez aceptada declara haber recibido los bienes y servicios a satisfacción.</p>
-                <p style="margin-top: 4px; font-weight: 700; font-size: 8px; color: #1e40af;">Representación Gráfica de la Factura de Venta Electrónica.</p>
-              </div>
+        <!-- TOTALES -->
+        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+           <div style="width: 45%;">
+             <table class="grid-table">
+               <thead>
+                 <tr><th style="width: 30%;">TIPO</th><th style="width: 50%;">DESCRIPCION</th><th style="width: 20%;">VALOR</th></tr>
+               </thead>
+               <tbody>
+                 <tr>
+                   <td class="center" style="height: 15px;"></td>
+                   <td class="center"></td>
+                   <td class="right"></td>
+                 </tr>
+               </tbody>
+             </table>
+           </div>
+           <div style="width: 35%;">
+             <table class="totals-table">
+               <tr><td class="lbl">SubTotal</td><td class="val">$ ${(invoice.subtotal || 0).toFixed(2)}</td></tr>
+               <tr><td class="lbl">Total Imp.</td><td class="val">$ ${(invoice.tax || 0).toFixed(2)}</td></tr>
+               <tr><td class="lbl" style="font-weight: normal;">Retiva</td><td class="val">$ 0.00</td></tr>
+               <tr><td class="lbl" style="font-weight: normal;">Reteica</td><td class="val">$ 0.00</td></tr>
+               <tr><td class="lbl" style="font-weight: normal;">ReteRenta</td><td class="val">$ 0.00</td></tr>
+               <tr><td class="lbl">Cargos</td><td class="val">$ 0.00</td></tr>
+               <tr><td class="lbl">Descuentos</td><td class="val">$ ${(invoice.discount || 0).toFixed(2)}</td></tr>
+               <tr><td class="lbl">Valor Total</td><td class="val" style="font-weight: 700;">$ ${(invoice.total || 0).toFixed(2)}</td></tr>
+             </table>
+           </div>
+        </div>
+
+        <!-- TASA REPRESENTATIVA (Optional footer) -->
+        <table class="grid-table" style="margin-bottom: 12px; width: 60%;">
+          <thead>
+            <tr>
+              <th>MONEDA</th>
+              <th>TASA REPRESENTATIVA</th>
+              <th>VALOR FACTURA</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="center" style="height: 12px;"></td>
+              <td class="center"></td>
+              <td class="center"></td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- FIRMA / CUFE Section -->
+        ${isElectronic ? `
+        <div style="display: flex; gap: 10px; align-items: flex-end;">
+          <div style="flex-shrink: 0;">
+            ${qrDataUri ? `<img src="${qrDataUri}" alt="QR DIAN" style="width: 90px; height: 90px;" />` : ''}
+          </div>
+          <div style="flex: 1; padding-bottom: 5px;">
+            <div style="font-size: 6px; color: #4b5563; word-break: break-all; margin-bottom: 8px; line-height: 1.2;">
+              <strong>FIRMA:</strong> (HASH DE LA FIRMA DIGITAL DEL PROVEEDOR TECNOLÓGICO)
             </div>
+            <div style="font-size: 7.5px;">
+              <strong>CUFE</strong> <span style="font-family: monospace;">${invoice.cufe}</span>
+            </div>
+          </div>
+          <div style="font-size: 7px; padding-bottom: 5px;">
+            1/1
+          </div>
+        </div>
+        ` : ''}
+
+        <!-- LEGAL FOOTER -->
+        <div style="text-align: center; margin-top: 15px; font-size: 7px; color: #374151;">
+          Factura elaborada y enviada por el proveedor tecnológico a través del software de facturación electrónica.
+        </div>
+
       </div>
     </body>
     </html>

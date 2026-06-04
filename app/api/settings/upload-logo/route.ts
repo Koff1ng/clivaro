@@ -1,0 +1,101 @@
+import { NextResponse } from 'next/server'
+import { logger } from '@/lib/logger'
+import { requirePermission } from '@/lib/api-middleware'
+import { PERMISSIONS } from '@/lib/permissions'
+import { createClient } from '@supabase/supabase-js'
+import { safeErrorMessage } from '@/lib/safe-error'
+
+export const dynamic = 'force-dynamic'
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || ''
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+const BUCKET = 'tenant-assets'
+
+async function ensureBucket(supabase: any) {
+  const { data: buckets } = await supabase.storage.listBuckets()
+  const exists = buckets?.some((b: any) => b.name === BUCKET)
+  if (!exists) {
+    logger.info(`[Upload] Creating bucket "${BUCKET}"...`)
+    const { error } = await supabase.storage.createBucket(BUCKET, {
+      public: true,
+      fileSizeLimit: 5 * 1024 * 1024,
+    })
+    if (error && !error.message?.includes('already exists')) {
+      logger.error('[Upload] Failed to create bucket:', error)
+      throw new Error(`No se pudo crear el bucket de almacenamiento: ${safeErrorMessage(error)}`)
+    }
+  }
+}
+
+export async function POST(request: Request) {
+  const session = await requirePermission(request as any, PERMISSIONS.MANAGE_SETTINGS)
+  
+  if (session instanceof NextResponse) {
+    return session
+  }
+
+  const tenantId = (session.user as any).tenantId
+
+  try {
+    const formData = await request.formData()
+    const file = formData.get('image') as File
+
+    if (!file) {
+      return NextResponse.json({ error: 'No image file provided' }, { status: 400 })
+    }
+
+    if (!file.type.startsWith('image/')) {
+      return NextResponse.json({ error: 'File must be an image' }, { status: 400 })
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      return NextResponse.json({ error: 'Image size must be less than 5MB' }, { status: 400 })
+    }
+
+    if (!supabaseUrl || !supabaseKey) {
+      // Fallback: Convert to base64 data URL when Supabase Storage isn't configured
+      logger.info('[Upload] Supabase Storage not configured, using base64 fallback')
+      const buffer = Buffer.from(await file.arrayBuffer())
+      const base64 = buffer.toString('base64')
+      const dataUrl = `data:${file.type};base64,${base64}`
+      return NextResponse.json({ url: dataUrl })
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseKey)
+
+    // Ensure bucket exists before uploading
+    await ensureBucket(supabase)
+
+    // Generate unique path
+    const timestamp = Date.now()
+    const randomStr = Math.random().toString(36).substring(2, 10)
+    const ext = (file.name.split('.').pop() || 'png').toLowerCase().replace(/[^a-z0-9]/g, '')
+    const path = `${tenantId}/logo-${timestamp}-${randomStr}.${ext}`
+
+    const buffer = Buffer.from(await file.arrayBuffer())
+
+    // Upload to Supabase Storage
+    const { error } = await supabase.storage
+      .from(BUCKET)
+      .upload(path, buffer, {
+        contentType: file.type,
+        upsert: false,
+      })
+
+    if (error) {
+      logger.error('[Upload Logo] Upload failed:', error)
+      throw error
+    }
+
+    // Get public URL
+    const { data: urlData } = supabase.storage.from(BUCKET).getPublicUrl(path)
+
+    return NextResponse.json({ url: urlData.publicUrl })
+  } catch (error: any) {
+    logger.error('Error uploading logo image:', error)
+    return NextResponse.json(
+      { error: safeErrorMessage(error, 'Failed to upload image') },
+      { status: 500 }
+    )
+  }
+}

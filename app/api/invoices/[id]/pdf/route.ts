@@ -46,10 +46,14 @@ export async function GET(
     const { invoice, settings } = result
 
     let regime = 'Responsable de IVA'
+    let customIdentity: any = {}
     try {
       if (settings?.customSettings) {
         const custom = JSON.parse(settings.customSettings)
-        if (custom.identity?.regime) regime = custom.identity.regime
+        if (custom.identity) {
+          customIdentity = custom.identity
+          if (customIdentity.regime) regime = customIdentity.regime
+        }
       }
     } catch (e) { /* ignore */ }
 
@@ -92,7 +96,14 @@ export async function GET(
         phone: settings?.companyPhone || undefined,
         email: settings?.companyEmail || undefined,
         nit: settings?.companyNit || undefined,
-        regime
+        regime,
+        logo: customIdentity.logo,
+        commercialName: customIdentity.companyName || settings?.companyName,
+        verificationDigit: customIdentity.verificationDigit,
+        fiscalResponsibilities: customIdentity.fiscalResponsibilities,
+        economicActivity: customIdentity.economicActivity,
+        department: customIdentity.department,
+        city: customIdentity.city,
       }
     })
 
