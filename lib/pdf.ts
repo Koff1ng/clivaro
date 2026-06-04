@@ -717,7 +717,7 @@ export async function generateInvoicePDF(invoice: InvoicePDFData): Promise<Buffe
           <!-- Right: Invoice Info -->
           <div style="width: 50%; font-size: 8px; text-align: left; padding-left: 20px;">
             <div style="font-size: 11px; font-weight: 700; margin-bottom: 8px;">
-              ${isElectronic ? 'FACTURA ELECTRÓNICA DE VENTA' : 'FACTURA DE VENTA'} ${invoice.prefix || ''}${invoice.number}
+              ${isElectronic ? 'FACTURA ELECTRÓNICA DE VENTA' : 'FACTURA DE VENTA'} ${invoice.number}
             </div>
             <table style="width: 100%; border: none; margin: 0; padding: 0;">
               <tr><td style="border: none; padding: 1px 0; font-weight: 700;">Fecha de Exp.:</td><td style="border: none; padding: 1px 0;">${formatDateOnly(invoice.issuedAt)}</td></tr>
