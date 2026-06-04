@@ -1,7 +1,6 @@
 'use client'
 
 import { createContext, useContext, useEffect, useState } from 'react'
-import { usePathname } from 'next/navigation'
 
 type Theme = 'dark' | 'light'
 
@@ -14,56 +13,46 @@ interface ThemeContextType {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined)
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setTheme] = useState<Theme>('light')
+  const [theme, setThemeState] = useState<Theme>('light')
   const [mounted, setMounted] = useState(false)
-  const pathname = usePathname()
 
+  // Initialize theme from localStorage on mount
   useEffect(() => {
-    // Force light theme for ERP routes (not the landing page)
-    const isLandingPage = pathname === '/'
-    
-    if (!isLandingPage) {
-      applyTheme('light')
-      setTheme('light')
-      setMounted(true)
-      return
-    }
-
-    // Standard logic for landing page
     const savedTheme = localStorage.getItem('theme') as Theme | null
-    const initialTheme = savedTheme || 'dark' // Landing stays dark by default if not set
+    const initialTheme = savedTheme || 'light'
     applyTheme(initialTheme)
-    setTheme(initialTheme)
+    setThemeState(initialTheme)
     setMounted(true)
-  }, [pathname])
+  }, [])
 
   const applyTheme = (newTheme: Theme) => {
     const root = document.documentElement
     if (newTheme === 'dark') {
       root.classList.add('dark')
+      root.setAttribute('data-theme', 'dark')
     } else {
       root.classList.remove('dark')
+      root.setAttribute('data-theme', 'light')
     }
   }
 
-  const handleSetTheme = (newTheme: Theme) => {
-    setTheme(newTheme)
+  const setTheme = (newTheme: Theme) => {
+    setThemeState(newTheme)
     localStorage.setItem('theme', newTheme)
     applyTheme(newTheme)
   }
 
   const toggleTheme = () => {
-    const newTheme = theme === 'dark' ? 'light' : 'dark'
-    handleSetTheme(newTheme)
+    setTheme(theme === 'dark' ? 'light' : 'dark')
   }
 
-  // Prevent flash of wrong theme
+  // Prevent flash of wrong theme during SSR
   if (!mounted) {
     return <>{children}</>
   }
 
   return (
-    <ThemeContext.Provider value={{ theme, setTheme: handleSetTheme, toggleTheme }}>
+    <ThemeContext.Provider value={{ theme, setTheme, toggleTheme }}>
       {children}
     </ThemeContext.Provider>
   )
@@ -76,4 +65,3 @@ export function useTheme() {
   }
   return context
 }
-

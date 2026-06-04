@@ -4,7 +4,7 @@ import { useSession } from 'next-auth/react'
 import { useSidebar } from '@/lib/sidebar-context'
 import { Button } from '@/components/ui/button'
 import { Menu, Bell, User, HelpCircle } from 'lucide-react'
-// import { ThemeToggle } from '@/components/theme/theme-toggle'
+import { ThemeToggle } from '@/components/theme/theme-toggle'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -153,7 +153,7 @@ export function Header() {
   }
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-slate-100 bg-white/80 text-slate-900 backdrop-blur-xl supports-[backdrop-filter]:bg-white/70 print:hidden shadow-sm shadow-slate-200/50">
+    <header className="sticky top-0 z-40 w-full border-b border-border bg-background/80 text-foreground backdrop-blur-xl supports-[backdrop-filter]:bg-background/70 print:hidden shadow-sm">
       <div className="flex h-12 sm:h-14 items-center justify-between px-3 sm:px-4 md:px-5">
         {/* Left side: Menu */}
         <div className="flex items-center gap-2 sm:gap-4">
@@ -161,30 +161,32 @@ export function Header() {
             variant="ghost"
             size="icon"
             onClick={toggle}
-            className="h-8 w-8 sm:h-9 sm:w-9 text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+            className="h-8 w-8 sm:h-9 sm:w-9 text-muted-foreground hover:bg-accent hover:text-accent-foreground"
           >
             <Menu className="h-4 w-4 sm:h-5 sm:w-5" />
           </Button>
           <GlobalSearch />
         </div>
 
-        {/* Right side: Help, Notifications and User */}
+        {/* Right side: Help, Theme, Notifications and User */}
         <div className="flex items-center gap-1 sm:gap-2">
+          <ThemeToggle />
+
           {/* Help / IA Assistant Toggle */}
           <Button
             variant="ghost"
             size="icon"
             onClick={toggleChat}
-            className="h-8 w-8 sm:h-9 sm:w-9 text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-all hover:scale-110 active:scale-95"
+            className="h-8 w-8 sm:h-9 sm:w-9 text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-all hover:scale-110 active:scale-95"
             title="Asistente de Ayuda IA"
           >
-            <HelpCircle className="h-4 w-4 sm:h-5 sm:w-5 text-sky-600" />
+            <HelpCircle className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
           </Button>
 
           {/* Notifications */}
           <DropdownMenu open={isDropdownOpen} onOpenChange={handleDropdownOpenChange}>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="relative h-8 w-8 sm:h-9 sm:w-9 text-slate-600 hover:bg-slate-100 hover:text-slate-900">
+              <Button variant="ghost" size="icon" className="relative h-8 w-8 sm:h-9 sm:w-9 text-muted-foreground hover:bg-accent hover:text-accent-foreground">
                 <Bell className="h-4 w-4" />
                 {hasUnreadNotifications && (
                   <span className="absolute top-0.5 right-0.5 sm:top-1 sm:right-1 h-2 w-2 bg-red-500 rounded-full"></span>

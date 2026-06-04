@@ -37,6 +37,7 @@ import { TicketEditor, type TicketDesignSettings } from '@/components/settings/t
 import { PdfEditor } from '@/components/settings/pdf-editor'
 import { MetaConfig } from './meta-config'
 import { ZoneManager } from '../warehouses/zone-manager'
+import { useTheme } from '@/components/theme/theme-provider'
 import { cn } from '@/lib/utils'
 
 // Interfaces for custom settings structure
@@ -132,6 +133,7 @@ const regimes = [
 
 export function GeneralConfig({ settings, onSave, isLoading, initialTab = 'identity' }: GeneralConfigProps) {
   const { toast } = useToast()
+  const { theme, setTheme } = useTheme()
   
   // Custom states
   const [activeTab, setActiveTab] = useState(initialTab)
@@ -379,6 +381,21 @@ export function GeneralConfig({ settings, onSave, isLoading, initialTab = 'ident
                       <SelectContent className="rounded-xl">{currencies.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}</SelectContent>
                     </Select>
                  </div>
+              </div>
+            </div>
+            <div className="mt-8 p-8 border rounded-[2rem] bg-white shadow-sm">
+              <h3 className="font-bold flex items-center gap-2 mb-4">
+                <Settings size={18} className="text-primary" /> Apariencia
+              </h3>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-semibold text-slate-800">Modo Oscuro</p>
+                  <p className="text-xs text-slate-500 mt-0.5">Activa el tema oscuro para reducir la fatiga visual</p>
+                </div>
+                <Switch
+                  checked={theme === 'dark'}
+                  onCheckedChange={(checked) => setTheme(checked ? 'dark' : 'light')}
+                />
               </div>
             </div>
           </div>

@@ -35,7 +35,7 @@
   --app-letter-spacing-wide: 0.02em;
 }
 
-[data-theme='dark'] {
+html.dark {
   /* Shadows more subtle in dark mode */
   --app-shadow-soft: 0 18px 40px rgba(0, 0, 0, 0.4);
   --app-shadow-subtle: 0 10px 25px rgba(0, 0, 0, 0.3);

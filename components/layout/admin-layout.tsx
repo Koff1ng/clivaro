@@ -9,7 +9,7 @@ import { SidebarProvider } from '@/lib/sidebar-context'
 
 function AdminLayoutContent({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex h-screen bg-[#f7f7f8]">
+    <div className="flex h-screen bg-muted/30">
       <Sidebar />
       <div className="flex-1 flex flex-col overflow-hidden">
         <AdminHeader />
@@ -40,10 +40,10 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
 
   if (status === 'loading') {
     return (
-      <div className="flex h-screen items-center justify-center bg-white">
+      <div className="flex h-screen items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-3">
-          <div className="h-8 w-8 rounded-full border-2 border-[#10a37f] border-t-transparent animate-spin" />
-          <span className="text-sm text-[#6e6e80]">Verificando acceso...</span>
+          <div className="h-8 w-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+          <span className="text-sm text-muted-foreground">Verificando acceso...</span>
         </div>
       </div>
     )

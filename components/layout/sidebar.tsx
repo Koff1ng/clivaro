@@ -244,16 +244,14 @@ export function Sidebar() {
         data-tour="sidebar"
         className={cn(
           'fixed md:static top-0 left-0 z-50 h-screen flex flex-col border-r transition-all duration-300 ease-in-out overflow-hidden print:hidden',
-          isOnAdminRoute
-            ? 'bg-white border-[#e5e5e5] text-[#0d0d0d]'
-            : 'bg-[#0F172A] border-slate-800 text-slate-100',
+          'bg-card border-border text-foreground',
           isOpen ? 'w-56 translate-x-0' : 'w-0 -translate-x-full md:translate-x-0 md:w-16'
         )}
       >
         {isOpen && (
           <div className={cn(
             'flex items-center justify-center border-b px-4 transition-opacity duration-300 opacity-100 h-16 sm:h-16 overflow-hidden',
-            isOnAdminRoute ? 'border-[#e5e5e5]' : 'border-white/5'
+            'border-border'
           )}>
             <Link href={isOnAdminRoute ? '/admin/dashboard' : '/dashboard'} prefetch scroll={false} className="w-full flex items-center justify-center h-full">
               <Logo
@@ -283,12 +281,12 @@ export function Sidebar() {
                   const isGroupOpen = openGroups[group.key] !== false
 
                   return (
-                    <div key={group.key} className={cn("mb-2", { 'border-t pt-2 mt-2': groupIndex > 0 && !isOpen }, isOnAdminRoute ? 'border-[#e5e5e5]' : 'border-slate-800')}>
+                    <div key={group.key} className={cn("mb-2", { 'border-t pt-2 mt-2': groupIndex > 0 && !isOpen }, 'border-border')}>
                       {isOpen && (
                         <div
                           className={cn(
                             "flex items-center justify-between px-3 py-2 text-xs font-semibold uppercase tracking-wider cursor-pointer transition-colors select-none",
-                            isOnAdminRoute ? 'text-[#6e6e80] hover:text-[#0d0d0d]' : 'text-slate-400 hover:text-white'
+                            'text-muted-foreground hover:text-foreground'
                           )}
                           onClick={() => toggleGroup(group.key)}
                         >
@@ -314,8 +312,8 @@ export function Sidebar() {
                                 'flex rounded-lg font-medium transition-all duration-200 relative group',
                                 isOpen ? 'flex-row items-center gap-3 text-[13px] px-2.5 py-1.5 ml-1' : 'flex-col items-center justify-center gap-1 px-1 py-1.5',
                                 isActive
-                                  ? (isOnAdminRoute ? 'bg-[#10a37f]/10 text-[#10a37f] font-semibold' : 'bg-slate-800/80 text-white font-semibold')
-                                  : (isOnAdminRoute ? 'text-[#6e6e80] hover:bg-[#f7f7f8] hover:text-[#0d0d0d]' : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200'),
+                                  ? 'bg-primary/10 text-primary font-semibold'
+                                  : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
                               )}
                               title={!isOpen ? item.label : undefined}
                             >
@@ -483,7 +481,7 @@ export function Sidebar() {
         </nav>
 
         <div className={cn(
-          "border-t border-slate-800 p-2 sm:p-4 mt-auto",
+          "border-t border-border p-2 sm:p-4 mt-auto",
           !isOpen && "flex flex-col items-center"
         )}>
           <DropdownMenu>
@@ -492,33 +490,33 @@ export function Sidebar() {
                 data-tour="user-profile"
                 className={cn(
                   "flex items-center w-full gap-3 p-2 rounded-xl transition-all duration-200 outline-none",
-                  "hover:bg-slate-800 active:bg-slate-700 active:scale-[0.98]",
+                  "hover:bg-accent active:bg-accent active:scale-[0.98]",
                   !isOpen ? "justify-center px-0" : "px-2"
                 )}
               >
                 <div className="relative flex-shrink-0">
-                  <Avatar className="h-9 w-9 border-2 border-slate-700 shadow-lg">
+                  <Avatar className="h-9 w-9 border-2 border-border shadow-lg">
                     {session?.user?.image ? (
                       <AvatarImage src={session.user.image} alt={session.user.name || ''} />
                     ) : null}
-                    <AvatarFallback className="bg-[#0EA5E9] text-white font-bold text-sm">
+                    <AvatarFallback className="bg-primary text-primary-foreground font-bold text-sm">
                       {session?.user?.name?.charAt(0).toUpperCase() || 'U'}
                     </AvatarFallback>
                   </Avatar>
-                  <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 border-2 border-[#0F172A] rounded-full" />
+                  <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 border-2 border-background rounded-full" />
                 </div>
 
                 {isOpen && (
                   <>
                     <div className="flex flex-col items-start min-w-0 flex-1 overflow-hidden">
-                      <span className="text-sm font-semibold text-white truncate w-full tracking-tight">
+                      <span className="text-sm font-semibold text-foreground truncate w-full tracking-tight">
                         {session?.user?.name?.split(' ')[0]}
                       </span>
-                      <span className="text-[10px] sm:text-xs font-medium text-slate-400 truncate w-full uppercase tracking-widest opacity-80">
+                      <span className="text-[10px] sm:text-xs font-medium text-muted-foreground truncate w-full uppercase tracking-widest opacity-80">
                         {isOnAdminRoute ? <span className="text-amber-400">Super Admin</span> : (planName || 'Plan Gratuito')}
                       </span>
                     </div>
-                    <ChevronsUpDown className="w-4 h-4 text-slate-500 shrink-0" />
+                    <ChevronsUpDown className="w-4 h-4 text-muted-foreground shrink-0" />
                   </>
                 )}
               </button>
@@ -528,57 +526,56 @@ export function Sidebar() {
               side={isOpen ? "right" : "right"}
               align="end"
               sideOffset={isOpen ? 12 : 20}
-              className="w-64 p-2 bg-[#0F172A] border-slate-800 text-slate-100 shadow-2xl rounded-2xl backdrop-blur-xl supports-[backdrop-filter]:bg-[#0F172A]/90"
+              className="w-64 p-2 shadow-2xl rounded-2xl backdrop-blur-xl"
             >
-              <div className="px-3 py-3 mb-2 bg-slate-800/50 rounded-xl border border-slate-700/50">
-                <p className="text-xs font-medium text-slate-400 mb-1">CUENTA</p>
-                <p className="text-sm font-semibold truncate text-white">{session?.user?.email}</p>
+              <div className="px-3 py-3 mb-2 bg-muted rounded-xl border border-border">
+                <p className="text-xs font-medium text-muted-foreground mb-1">CUENTA</p>
+                <p className="text-sm font-semibold truncate text-foreground">{session?.user?.email}</p>
               </div>
 
-              <DropdownMenuSeparator className="bg-slate-800 my-2" />
-
+              <DropdownMenuSeparator className="my-2" />
 
               <div className="space-y-1">
                 <Link href="/settings">
-                  <DropdownMenuItem className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer hover:bg-slate-800 focus:bg-slate-800 focus:text-white transition-colors">
-                    <Settings className="w-4 h-4 text-slate-400" />
+                  <DropdownMenuItem className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-colors">
+                    <Settings className="w-4 h-4 text-muted-foreground" />
                     <span className="text-sm font-medium">Configuración</span>
-                    <span className="ml-auto text-[10px] text-slate-500 font-mono">Ctrl+,</span>
+                    <span className="ml-auto text-[10px] text-muted-foreground font-mono">Ctrl+,</span>
                   </DropdownMenuItem>
                 </Link>
 
                 {!isOnAdminRoute && (
                   <DropdownMenuItem
                     onClick={handleUpgradePlan}
-                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer hover:bg-slate-800 focus:bg-slate-800 focus:text-white transition-colors text-sky-400"
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-colors text-primary"
                   >
                     <Sparkles className="w-4 h-4" />
                     <span className="text-sm font-medium">Mejorar Plan</span>
                   </DropdownMenuItem>
                 )}
 
-                <DropdownMenuSeparator className="bg-slate-800 my-1" />
+                <DropdownMenuSeparator className="my-1" />
 
                 <DropdownMenuSub>
-                  <DropdownMenuSubTrigger className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer hover:bg-slate-800 focus:bg-slate-800 focus:text-white data-[state=open]:bg-slate-800 transition-colors">
-                    <HelpCircle className="w-4 h-4 text-slate-400" />
+                  <DropdownMenuSubTrigger className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer data-[state=open]:bg-accent transition-colors">
+                    <HelpCircle className="w-4 h-4 text-muted-foreground" />
                     <span className="text-sm font-medium">Más información</span>
                   </DropdownMenuSubTrigger>
                   <DropdownMenuPortal>
-                    <DropdownMenuSubContent className="w-56 bg-[#0F172A] border-slate-800 text-slate-100 shadow-2xl rounded-xl p-1.5 ml-2">
+                    <DropdownMenuSubContent className="w-56 shadow-2xl rounded-xl p-1.5 ml-2">
                       <Link href="/" target="_blank" rel="noopener noreferrer">
-                        <DropdownMenuItem className="flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer hover:bg-slate-800 focus:bg-slate-800 focus:text-white transition-colors">
+                        <DropdownMenuItem className="flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-colors">
                           <span className="text-sm">Acerca de</span>
                         </DropdownMenuItem>
                       </Link>
                       <Link href="/politica-de-privacidad" target="_blank" rel="noopener noreferrer">
-                        <DropdownMenuItem className="flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer hover:bg-slate-800 focus:bg-slate-800 focus:text-white transition-colors">
+                        <DropdownMenuItem className="flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-colors">
                           <span className="text-sm">Políticas y términos</span>
                         </DropdownMenuItem>
                       </Link>
                       <DropdownMenuItem
                         onClick={handleHelp}
-                        className="flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer hover:bg-slate-800 focus:bg-slate-800 focus:text-white transition-colors"
+                        className="flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-colors"
                       >
                         <span className="text-sm">Ayuda</span>
                       </DropdownMenuItem>
@@ -586,11 +583,11 @@ export function Sidebar() {
                   </DropdownMenuPortal>
                 </DropdownMenuSub>
 
-                <DropdownMenuSeparator className="bg-slate-800 my-1" />
+                <DropdownMenuSeparator className="my-1" />
 
                 <DropdownMenuItem
                   onClick={() => signOut()}
-                  className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer hover:bg-red-500/10 focus:bg-red-500/10 text-red-400 font-medium transition-colors"
+                  className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer hover:bg-destructive/10 focus:bg-destructive/10 text-destructive font-medium transition-colors"
                 >
                   <LogOutIcon className="w-4 h-4" />
                   <span className="text-sm">Cerrar sesión</span>
