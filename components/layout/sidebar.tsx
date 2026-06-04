@@ -105,17 +105,6 @@ export function Sidebar() {
   const isOnAdminRoute = isSuperAdmin && pathname?.startsWith('/admin') && !pathname?.startsWith('/admin/login')
   const { hasFeature: hasPlanFeature, isNewFeature, newFeatures, isLoading, planName } = useTenantPlan()
   
-  // Custom queries for module visibility
-  const { data: restaurantConfig } = useQuery({
-    queryKey: ['restaurant-config'],
-    queryFn: async () => {
-      const res = await fetch('/api/restaurant/config')
-      if (!res.ok) return null
-      return res.json()
-    },
-    staleTime: 5 * 60 * 1000 // 5 min cache
-  })
-  
   const [visitedFeatures, setVisitedFeatures] = useState<Record<string, number>>({})
 
   // Persist scroll position
@@ -236,15 +225,6 @@ export function Sidebar() {
         if (isLoading) return true
         if (!planName) return true
         return hasPlanFeature(item.planFeature as any)
-      }
-
-      // Special check for restaurant group
-      if ((item.href.startsWith('/restaurant') || item.href === '/pos/commander') && !isSuperAdmin) {
-         // Comandero and other restaurant modules should only be visible if Restaurant Mode is explicitly enabled.
-         const isRestaurantEnabled = restaurantConfig?.enableRestaurantMode === true
-         if (!isRestaurantEnabled) return false
-
-         return true 
       }
 
       return true

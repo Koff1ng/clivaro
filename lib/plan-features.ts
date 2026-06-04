@@ -161,10 +161,6 @@ export const ROUTE_FEATURES: Record<string, keyof PlanFeatures> = {
   '/accounting/fiscal-conciliator': 'manageAccounting',
   '/accounting/addons': 'manageAccounting',
   '/payroll': 'managePayroll',
-  '/restaurant': 'manageRestaurant',
-  '/restaurant/tables': 'manageRestaurant',
-  '/restaurant/orders': 'manageRestaurant',
-  '/restaurant/menu': 'manageRestaurant',
 }
 
 /**

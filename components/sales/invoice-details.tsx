@@ -79,7 +79,7 @@ export function InvoiceDetails({ invoice }: { invoice: any }) {
 
   const [isLoadingPDF, setIsLoadingPDF] = useState(false)
 
-  // (Removed dead sendToAlegraMutation — system uses Factus now)
+  // Electronic transmission is handled via Factus
 
   // Print hooks for proper dimensions
   const { print: printThermal } = useThermalPrint({ targetId: 'invoice-thermal-print', widthMm: 80 })

@@ -2,13 +2,12 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Rocket, Calendar, CheckCircle2, Minus, ExternalLink, Loader2, X, AlertTriangle, CreditCard, RefreshCw, ChevronLeft, ChevronRight, Package } from 'lucide-react'
+import { Rocket, Calendar, CheckCircle2, Minus, Loader2, X, AlertTriangle, CreditCard, RefreshCw, ChevronLeft, ChevronRight, Package } from 'lucide-react'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { useQuery } from '@tanstack/react-query'
 import { useState, useEffect } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useToast } from '@/components/ui/toast'
-import { MercadoPagoCardForm } from '@/components/subscriptions/mercado-pago-card-form'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -173,7 +172,7 @@ export function SubscriptionConfig({ settings, onSave, isLoading }: Subscription
 
   // Obtener información de la tarjeta de pago
   const getPaymentMethodInfo = () => {
-    if (!subscription?.mercadoPagoPaymentMethod) return null
+    if (!subscription?.paymentMethod) return null
 
     const methodMap: Record<string, string> = {
       'credit_card': 'Tarjeta de Crédito',
@@ -182,7 +181,7 @@ export function SubscriptionConfig({ settings, onSave, isLoading }: Subscription
       'bank_transfer': 'Transferencia Bancaria',
     }
 
-    return methodMap[subscription.mercadoPagoPaymentMethod] || subscription.mercadoPagoPaymentMethod
+    return methodMap[subscription.paymentMethod] || subscription.paymentMethod
   }
 
   const renewalDate = getRenewalDate()
@@ -316,19 +315,11 @@ export function SubscriptionConfig({ settings, onSave, isLoading }: Subscription
                           : 'Completa el pago para activar tu suscripción. Contacta al administrador si necesitas información sobre el monto.'}
                       </p>
                       {plan ? (
-                        <MercadoPagoCardForm
-                          subscriptionId={subscription.id}
-                          amount={plan.price}
-                          currency={plan.currency || 'COP'}
-                          onPaymentSuccess={() => {
-                            queryClient.invalidateQueries({ queryKey: ['tenant-plan'] })
-                            queryClient.invalidateQueries({ queryKey: ['subscription-payments'] })
-                            toast('¡Pago procesado exitosamente!', 'success')
-                          }}
-                          onPaymentError={(error) => {
-                            toast(error || 'Error al procesar el pago', 'error')
-                          }}
-                        />
+                        <div className="p-4 bg-muted rounded-lg text-center">
+                          <p className="text-sm text-muted-foreground">
+                            Completa el pago de {formatCurrency(plan.price)} {plan.currency || 'COP'} a través del procesador de pagos configurado.
+                          </p>
+                        </div>
                       ) : (
                         <div className="p-4 bg-muted rounded-lg text-center">
                           <p className="text-sm text-muted-foreground">
@@ -454,19 +445,11 @@ export function SubscriptionConfig({ settings, onSave, isLoading }: Subscription
                   Completa el pago para activar tu suscripción. Monto: <span className="font-bold">{formatCurrency(plan.price)}</span>
                 </p>
               </div>
-              <MercadoPagoCardForm
-                subscriptionId={subscription.id}
-                amount={plan.price}
-                currency={plan.currency || 'COP'}
-                onPaymentSuccess={() => {
-                  queryClient.invalidateQueries({ queryKey: ['tenant-plan'] })
-                  queryClient.invalidateQueries({ queryKey: ['subscription-payments'] })
-                  toast('¡Pago procesado exitosamente!', 'success')
-                }}
-                onPaymentError={(error) => {
-                  toast(error || 'Error al procesar el pago', 'error')
-                }}
-              />
+              <div className="p-4 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-200 dark:border-orange-800 text-center">
+                <p className="text-sm text-orange-800 dark:text-orange-200">
+                  Contacta al administrador para realizar el pago de {formatCurrency(plan.price)}.
+                </p>
+              </div>
             </div>
           )}
         </CardContent>
@@ -575,11 +558,6 @@ export function SubscriptionConfig({ settings, onSave, isLoading }: Subscription
                       <TableCell>
                         <div className="flex flex-col">
                           <span className="font-medium">{payment.planName || 'N/A'}</span>
-                          {payment.mercadoPagoStatusDetail && (
-                            <span className="text-xs text-muted-foreground mt-1">
-                              {payment.mercadoPagoStatusDetail}
-                            </span>
-                          )}
                         </div>
                       </TableCell>
                       <TableCell>
@@ -597,24 +575,7 @@ export function SubscriptionConfig({ settings, onSave, isLoading }: Subscription
                         {getPaymentStatusBadge(payment.status)}
                       </TableCell>
                       <TableCell>
-                        {payment.mercadoPagoPaymentId ? (
-                          <Button
-                            variant="link"
-                            className="h-auto p-0 text-primary text-sm"
-                            onClick={() => {
-                              // Abrir la factura de Mercado Pago en una nueva pestaña
-                              const mpUrl = process.env.NODE_ENV === 'production'
-                                ? `https://www.mercadopago.com/activities/payments/${payment.mercadoPagoPaymentId}`
-                                : `https://www.mercadopago.com.co/activities/payments/${payment.mercadoPagoPaymentId}`
-                              window.open(mpUrl, '_blank')
-                            }}
-                          >
-                            Ver factura
-                            <ExternalLink className="h-3 w-3 ml-1 inline" />
-                          </Button>
-                        ) : (
-                          <span className="text-muted-foreground text-sm">-</span>
-                        )}
+                        <span className="text-muted-foreground text-sm">-</span>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -846,23 +807,10 @@ export function SubscriptionConfig({ settings, onSave, isLoading }: Subscription
           </DialogHeader>
 
           {subscription && plan ? (
-            <div className="mt-4">
-              <MercadoPagoCardForm
-                subscriptionId={subscription.id}
-                amount={plan.price}
-                currency={plan.currency || 'COP'}
-                updateOnly={true}
-                onPaymentSuccess={() => {
-                  queryClient.invalidateQueries({ queryKey: ['tenant-plan'] })
-                  queryClient.invalidateQueries({ queryKey: ['subscription-payments'] })
-                  setShowPaymentDialog(false)
-                  setShowManageDialog(false)
-                  toast('Método de pago actualizado exitosamente', 'success')
-                }}
-                onPaymentError={(error) => {
-                  toast(error || 'Error al actualizar el método de pago', 'error')
-                }}
-              />
+            <div className="p-4 bg-muted rounded-lg text-center">
+              <p className="text-sm text-muted-foreground">
+                Utiliza el procesador de pagos configurado para gestionar tu método de pago.
+              </p>
             </div>
           ) : (
             <div className="text-center py-8 text-muted-foreground">

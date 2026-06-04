@@ -167,6 +167,7 @@ model Product {
   preferredZoneId String?
   preferredZone   WarehouseZone? @relation("PreferredZone", fields: [preferredZoneId], references: [id])
   creditNoteItems CreditNoteItem[]
+  /// @deprecated Restaurant module removed
   restaurantOrderLines TableOrderLine[] @relation("RestaurantProduct")
 }
 
@@ -194,6 +195,7 @@ model ProductVariant {
   stockMovements         StockMovement[]
   physicalInventoryItems PhysicalInventoryItem[]
   creditNoteItems        CreditNoteItem[]
+  /// @deprecated Restaurant module removed
   restaurantOrderLines   TableOrderLine[] @relation("RestaurantVariant")
 }
 
@@ -534,12 +536,17 @@ model Invoice {
   electronicSentAt        DateTime?
   electronicResponse      String?
   resolutionNumber        String?
+  /// @deprecated Alegra discontinued, use Factus
   alegraInvoiceId         String?
   createdAt               DateTime                        @default(now())
   updatedAt               DateTime                        @updatedAt
+  /// @deprecated Alegra discontinued, use Factus
   alegraId                String?                         @unique
+  /// @deprecated Alegra discontinued, use Factus
   alegraNumber            String?
+  /// @deprecated Alegra discontinued, use Factus
   alegraStatus            String?                         @default("DRAFT")
+  /// @deprecated Alegra discontinued, use Factus
   alegraUrl               String?
   createdById             String?
   updatedById             String?
@@ -626,18 +633,18 @@ model Payment {
   id                       String   @id @default(cuid())
   invoiceId                String
   amount                   Float
-  method                   String // CASH, CARD, TRANSFER, MERCADOPAGO (Snaphot/Legacy)
+  method                   String // CASH, CARD, TRANSFER (WOMPI is now the payment gateway)
   paymentMethodId          String?
   reference                String?
   notes                    String?
-  // Mercado Pago fields
-  mercadoPagoPaymentId     String? // @unique removed to fix migration error
-  mercadoPagoPreferenceId  String? // ID de la preferencia de pago
-  mercadoPagoStatus        String? // approved, pending, rejected, cancelled, refunded, charged_back
-  mercadoPagoStatusDetail  String? // Detalle del estado
-  mercadoPagoPaymentMethod String? // credit_card, debit_card, ticket, bank_transfer, etc.
-  mercadoPagoTransactionId String? // ID de la transacción
-  mercadoPagoResponse      String? // JSON con respuesta completa de MP
+  // ⬇ @deprecated MercadoPago discontinued, use Wompi
+  mercadoPagoPaymentId     String?
+  mercadoPagoPreferenceId  String?
+  mercadoPagoStatus        String?
+  mercadoPagoStatusDetail  String?
+  mercadoPagoPaymentMethod String?
+  mercadoPagoTransactionId String?
+  mercadoPagoResponse      String?
   createdAt                DateTime @default(now())
   updatedAt                DateTime @updatedAt
   createdById              String?
@@ -727,9 +734,13 @@ model CreditNote {
   issuedAt            DateTime?
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
+  /// @deprecated Alegra discontinued, use Factus
   alegraId            String?   @unique
+  /// @deprecated Alegra discontinued, use Factus
   alegraNumber        String?
+  /// @deprecated Alegra discontinued, use Factus
   alegraStatus        String?   @default("DRAFT")
+  /// @deprecated Alegra discontinued, use Factus
   alegraUrl           String?
   createdById         String?
 
@@ -1054,11 +1065,17 @@ model Tenant {
   emailConfig         TenantEmailConfig?
 
   // Restaurant Configuration
+  /// @deprecated Restaurant module removed
   restaurantConfig    RestaurantConfig? @relation("TenantToRestaurantConfig")
+  /// @deprecated Restaurant module removed
   restaurantZones     RestaurantZone[] @relation("TenantToRestaurantZones")
+  /// @deprecated Restaurant module removed
   waiterProfiles      WaiterProfile[] @relation("TenantToWaiters")
+  /// @deprecated Restaurant module removed
   tableSessions       TableSession[] @relation("TenantToSessions")
+  /// @deprecated Restaurant module removed
   tableOrders         TableOrder[] @relation("TenantToOrders")
+  /// @deprecated Restaurant module removed
   restaurantTables    RestaurantTable[] @relation("TenantToRestaurantTables")
 
   /// Tokens para "olvidé mi contraseña" (usuarios del schema tenant_*; el token vive en public)
@@ -1106,7 +1123,7 @@ model Subscription {
   endDate                  DateTime?
   trialEndDate             DateTime?
   autoRenew                Boolean   @default(true)
-  // Mercado Pago fields (legacy)
+  // ⬇ @deprecated MercadoPago discontinued, use Wompi
   mercadoPagoPaymentId     String?
   mercadoPagoPreferenceId  String?
   mercadoPagoStatus        String?
@@ -1165,7 +1182,7 @@ model TenantSettings {
   softwarePin                 String?
   technicalKey                String?
   
-  // Alegra Fields
+  // ⬇ @deprecated Alegra discontinued, use Factus
   alegraEmail                 String?
   alegraToken                 String?
   // Factus Fields
@@ -1204,17 +1221,17 @@ model TenantSettings {
   taxRegime                   String?   // 'RESPONSABLE_IVA' | 'NO_RESPONSABLE_IVA' | 'REGIMEN_SIMPLE'
   fiscalResponsibilities      String?   // JSON array: ["GRAN_CONTRIBUYENTE","AUTORRETENEDOR"]
   economicActivity            String?   // Código CIIU (ej. "4752")
-  businessType                String?   // 'RETAIL' | 'RESTAURANT' | 'SERVICES' | 'OTHER'
+  businessType                String?   // 'RETAIL' | 'SERVICES' | 'OTHER' (RESTAURANT deprecated)
   companyCity                 String?
   companyDepartment           String?
-  // Restaurant Mode
+  // ⬇ @deprecated Restaurant module removed
   enableRestaurantMode        Boolean?  @default(false)
 
-  // Mercado Pago
-  mercadoPagoAccessToken String? // Access Token de Mercado Pago
-  mercadoPagoPublicKey   String? // Public Key de Mercado Pago
-  mercadoPagoEnabled     Boolean? @default(false) // Habilitar pagos con Mercado Pago
-  mercadoPagoWebhookUrl  String? // URL del webhook configurado en MP
+  // ⬇ @deprecated MercadoPago discontinued, use Wompi
+  mercadoPagoAccessToken String?
+  mercadoPagoPublicKey   String?
+  mercadoPagoEnabled     Boolean? @default(false)
+  mercadoPagoWebhookUrl  String?
 
   // Meta (WhatsApp / Instagram)
   metaBusinessId        String? // ID del negocio en Meta
@@ -1250,8 +1267,10 @@ model ChatMessage {
 model ElectronicInvoiceProviderConfig {
   id                   String    @id @default(cuid())
   tenantId             String
-  provider             String    @default("ALEGRA")
+  provider             String    @default("FACTUS") // FACTUS (Alegra deprecated)
+  /// @deprecated Alegra discontinued, use Factus
   alegraEmail          String
+  /// @deprecated Alegra discontinued, use Factus
   alegraTokenEncrypted String
   status               String    @default("disconnected") // disconnected, connected, invalid
   lastCheckedAt        DateTime?
@@ -1266,10 +1285,11 @@ model ElectronicInvoiceTransmission {
   id               String    @id @default(cuid())
   tenantId         String
   invoiceId        String
-  provider         String    @default("ALEGRA")
-  status           String    @default("QUEUED") // NOT_CONFIGURED, QUEUED, SENT_TO_ALEGRA, ALEGRA_ACCEPTED, ALEGRA_REJECTED, ERROR
+  provider         String    @default("FACTUS") // FACTUS (Alegra deprecated)
+  status           String    @default("QUEUED") // QUEUED, SENT, ACCEPTED, REJECTED, ERROR
   attemptCount     Int       @default(0)
   lastAttemptAt    DateTime?
+  /// @deprecated Alegra discontinued, use Factus
   alegraInvoiceId  String?
   lastErrorMessage String?
   createdAt        DateTime  @default(now())
@@ -1367,9 +1387,13 @@ model Campaign {
   description   String?
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
+  /// @deprecated Alegra discontinued, use Factus
   alegraId       String?       @unique
+  /// @deprecated Alegra discontinued, use Factus
   alegraNumber   String?
+  /// @deprecated Alegra discontinued, use Factus
   alegraStatus   String?       @default("DRAFT")
+  /// @deprecated Alegra discontinued, use Factus
   alegraUrl      String?
   createdById   String?
   opportunities Opportunity[]
@@ -1830,9 +1854,10 @@ model BankStatementEntry {
 }
 
 // ============================================
-// RESTAURANT MODELS
+// RESTAURANT MODELS (DEPRECATED)
 // ============================================
 
+/// @deprecated Restaurant module removed. All models in this section are kept for data preservation only.
 model RestaurantConfig {
   id                String   @id @default(cuid())
   tenantId          String   @unique
@@ -1847,6 +1872,7 @@ model RestaurantConfig {
   tenant            Tenant   @relation("TenantToRestaurantConfig", fields: [tenantId], references: [id], onDelete: Cascade)
 }
 
+/// @deprecated Restaurant module removed
 model RestaurantZone {
   id          String   @id @default(cuid())
   tenantId    String
@@ -1860,6 +1886,7 @@ model RestaurantZone {
   tables      RestaurantTable[]
 }
 
+/// @deprecated Restaurant module removed
 model RestaurantTable {
   id        String   @id @default(cuid())
   tenantId  String
@@ -1880,6 +1907,7 @@ model RestaurantTable {
   @@index([tenantId])
 }
 
+/// @deprecated Restaurant module removed
 model WaiterProfile {
   id             String    @id @default(cuid())
   tenantId       String
@@ -1901,6 +1929,7 @@ model WaiterProfile {
   @@index([tenantId])
 }
 
+/// @deprecated Restaurant module removed
 model TableSession {
   id          String   @id @default(cuid())
   tenantId    String
@@ -1923,6 +1952,7 @@ model TableSession {
   @@index([tableId])
 }
 
+/// @deprecated Restaurant module removed
 model TableOrder {
   id          String   @id @default(cuid())
   tenantId    String
@@ -1940,6 +1970,7 @@ model TableOrder {
   @@index([sessionId])
 }
 
+/// @deprecated Restaurant module removed
 model TableOrderLine {
   id          String   @id @default(cuid())
   orderId     String

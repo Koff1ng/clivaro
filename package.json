@@ -94,7 +94,6 @@
     "jszip": "^3.10.1",
     "lucide-react": "^0.309.0",
     "mammoth": "^1.11.0",
-    "mercadopago": "^2.12.0",
     "next": "14.1.0",
     "next-auth": "^4.24.5",
     "node-thermal-printer": "^4.5.0",

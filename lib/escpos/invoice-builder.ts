@@ -97,7 +97,6 @@ const PAYMENT_LABELS: Record<string, string> = {
     TRANSFER: 'Transfer.',
     CREDIT: 'Credito',
     CHECK: 'Cheque',
-    MERCADOPAGO: 'MercadoPago',
 }
 
 /**

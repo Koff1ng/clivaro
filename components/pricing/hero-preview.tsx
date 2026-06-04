@@ -102,7 +102,6 @@ const heroFeatures = [
   'Punto de Venta (POS) con control de caja',
   'Inventario multi-bodega en tiempo real',
   'CRM con pipeline de leads y Kanban',
-  'Módulo de restaurante (mesas y pedidos)',
   'Reportes y dashboard con KPIs en vivo',
 ]
 

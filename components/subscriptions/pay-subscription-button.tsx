@@ -62,13 +62,7 @@ export function PaySubscriptionButton({
         } else {
           // Si estamos en modo prueba pero no hay sandboxInitPoint y el initPoint no es de sandbox,
           // no podemos proceder (causaría el error "Una de las partes... es de prueba")
-          const errorMsg = 'Error: No se pudo obtener la URL de pago en modo prueba. Por favor, verifica la configuración de Mercado Pago.'
-          console.error('Mercado Pago sandbox error:', {
-            hasSandboxInitPoint: !!data.sandboxInitPoint,
-            hasInitPoint: !!data.initPoint,
-            initPoint: data.initPoint,
-            isTestMode,
-          })
+          const errorMsg = 'Error: No se pudo obtener la URL de pago en modo prueba. Por favor, verifica la configuración del procesador de pagos.'
           onError?.(errorMsg)
           toast(errorMsg, 'error')
           return
@@ -79,14 +73,14 @@ export function PaySubscriptionButton({
       }
       
       if (initPoint) {
-        // Abrir el checkout de Mercado Pago en una nueva ventana
+        // Abrir el checkout en una nueva ventana
         window.open(initPoint, '_blank')
         onPaymentCreated?.(data.subscriptionId, initPoint)
         onSuccess?.()
         toast(
           isTestMode
-            ? 'Redirigiendo a Mercado Pago (Modo Prueba)...' 
-            : 'Redirigiendo a Mercado Pago...', 
+            ? 'Redirigiendo al procesador de pagos (Modo Prueba)...' 
+            : 'Redirigiendo al procesador de pagos...', 
           'success'
         )
       } else {

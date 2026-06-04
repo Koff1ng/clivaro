@@ -10,13 +10,9 @@ import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/toast'
 import { CategorySelect } from './category-select'
 import { useRouter } from 'next/navigation'
-import { Plus, Trash2, Utensils, Loader2 } from 'lucide-react'
+import { Plus, Trash2, Loader2 } from 'lucide-react'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { RecipeEditor } from './recipe-editor'
 import { UnitSelect } from './unit-select'
-import { useQuery } from '@tanstack/react-query'
-import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Info } from 'lucide-react'
 
 const productSchema = z.object({
   sku: z.string().min(1, 'SKU es requerido'),
@@ -53,17 +49,6 @@ export function ProductForm({ product, onSuccess }: { product?: any; onSuccess: 
   const [loading, setLoading] = useState(false)
   const router = useRouter()
   const { toast } = useToast()
-  const { data: settingsData } = useQuery({
-    queryKey: ['settings'],
-    queryFn: async () => {
-      const res = await fetch('/api/settings')
-      if (!res.ok) throw new Error('Failed to fetch settings')
-      const data = await res.json()
-      return data.settings
-    }
-  })
-
-  const enableRestaurantMode = settingsData?.enableRestaurantMode || false
 
   const stockLevel = product?.stockLevels?.[0]
 
@@ -338,98 +323,6 @@ export function ProductForm({ product, onSuccess }: { product?: any; onSuccess: 
           </div>
         )}
       </div>
-
-      {enableRestaurantMode && (
-        <div className="space-y-4 pt-4 border-t">
-          <Label className="text-base font-semibold">Configuración de Restaurante</Label>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-orange-50/30 dark:bg-orange-950/10 border border-orange-100 dark:border-orange-900/30 rounded-xl">
-            <div className="space-y-1">
-              <Label className="text-[10px] uppercase font-bold text-muted-foreground">Último Costo</Label>
-              <div className="text-sm font-mono font-bold text-orange-600">
-                ${(product?.lastCost || 0).toLocaleString()}
-              </div>
-            </div>
-            <div className="space-y-1">
-              <Label className="text-[10px] uppercase font-bold text-muted-foreground">Costo Promedio</Label>
-              <div className="text-sm font-mono font-bold text-blue-600">
-                ${(product?.averageCost || 0).toLocaleString()}
-              </div>
-            </div>
-            <div className="space-y-1">
-              <Label className="text-[10px] uppercase font-bold text-muted-foreground">Costo c/ Impuestos</Label>
-              <div className="text-sm font-mono font-bold text-green-600">
-                ${((watch('cost') || 0) * (1 + (watch('taxRate') || 0) / 100)).toLocaleString()}
-              </div>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="productType">Tipo de Producto</Label>
-              <select
-                id="productType"
-                {...register('productType')}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-              >
-                <option value="RETAIL">Retail (Normal)</option>
-                <option value="SERVICE">Servicio</option>
-                <option value="RAW">Insumo / Materia Prima</option>
-                <option value="PREPARED">Item Elaborado (No vendible)</option>
-                <option value="SELLABLE">Plato / Vendible con Receta</option>
-              </select>
-            </div>
-
-            <div className="flex items-center gap-2 pt-6">
-              <input
-                id="enableRecipeConsumption"
-                type="checkbox"
-                {...register('enableRecipeConsumption')}
-                className="h-4 w-4 rounded border-gray-300"
-              />
-              <Label htmlFor="enableRecipeConsumption" className="text-xs">Habilitar Receta</Label>
-            </div>
-          </div>
-
-          {watch('enableRecipeConsumption') && (
-            <div className="p-3 bg-muted/30 rounded-lg text-sm">
-              {/* ... recipe details ... */}
-              <p className="text-blue-600 font-medium">Consumo por Receta Activado</p>
-              <p className="text-muted-foreground">Al vender este producto, se descontarán sus ingredientes definidos en la receta.</p>
-
-              {product?.id ? (
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <Button variant="outline" size="sm" className="mt-2">
-                      <Utensils className="h-4 w-4 mr-2" />
-                      Editar Receta
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="max-w-3xl">
-                    <DialogHeader>
-                      <DialogTitle>Manejo de Receta (BOM)</DialogTitle>
-                      <DialogDescription>
-                        Define los ingredientes y cantidades para elaborar este producto.
-                      </DialogDescription>
-                    </DialogHeader>
-                    <RecipeEditor
-                      productId={product.id}
-                      productName={product.name}
-                    />
-                  </DialogContent>
-                </Dialog>
-              ) : (
-                <Alert className="mt-2 py-2 bg-blue-50 border-blue-200">
-                  <Info className="h-4 w-4 text-blue-600" />
-                  <AlertDescription className="text-xs text-blue-700">
-                    Guarda el producto primero para poder configurar su receta.
-                  </AlertDescription>
-                </Alert>
-              )}
-            </div>
-          )}
-        </div>
-      )}
 
       {/* Security: Variants Section */}
       <div className="space-y-4 pt-4 border-t">

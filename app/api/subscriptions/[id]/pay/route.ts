@@ -1,13 +1,12 @@
 import { NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/api-middleware'
 import { prisma } from '@/lib/db'
-import { createPaymentPreference } from '@/lib/mercadopago'
+import { createPaymentSession, generateReference } from '@/lib/wompi'
 import { logger } from '@/lib/logger'
 import { z } from 'zod'
 
 export const dynamic = 'force-dynamic'
 
-// Función helper para ejecutar consultas con retry y manejo de errores de conexión
 async function executeWithRetry<T>(
   fn: () => Promise<T>,
   maxRetries = 3,
@@ -21,17 +20,15 @@ async function executeWithRetry<T>(
       lastError = error
       const errorMessage = error?.message || String(error)
       
-      // Si es error de límite de conexiones, esperar y reintentar
       if (errorMessage.includes('MaxClientsInSessionMode') || errorMessage.includes('max clients reached')) {
         if (attempt < maxRetries - 1) {
-          const backoffDelay = Math.min(delay * Math.pow(2, attempt), 10000) // Backoff exponencial, max 10s
+          const backoffDelay = Math.min(delay * Math.pow(2, attempt), 10000)
           logger.warn(`[Subscription Pay] Límite de conexiones alcanzado, reintentando en ${backoffDelay}ms (intento ${attempt + 1}/${maxRetries})`)
           await new Promise(resolve => setTimeout(resolve, backoffDelay))
           continue
         }
       }
       
-      // Si no es error de conexión, lanzar inmediatamente
       throw error
     }
   }
@@ -40,7 +37,7 @@ async function executeWithRetry<T>(
 
 /**
  * POST /api/subscriptions/[id]/pay
- * Crea una preferencia de pago en Mercado Pago para una suscripción
+ * Crea una sesión de pago en Wompi para una suscripción
  */
 export async function POST(
   request: Request,
@@ -72,7 +69,6 @@ export async function POST(
       )
     }
 
-    // Obtener la suscripción
     const subscription = await executeWithRetry(() => prisma.subscription.findUnique({
       where: { id: subscriptionId },
       include: {
@@ -92,7 +88,6 @@ export async function POST(
       )
     }
 
-    // Verificar que la suscripción pertenece al tenant del usuario
     if (subscription.tenantId !== user.tenantId) {
       return NextResponse.json(
         { error: 'No tienes permiso para pagar esta suscripción' },
@@ -100,19 +95,15 @@ export async function POST(
       )
     }
 
-    // Verificar que Mercado Pago está configurado (usando credenciales globales de Clivaro)
-    // Limpiar espacios y saltos de línea del token
-    const mercadoPagoAccessToken = process.env.MERCADOPAGO_ACCESS_TOKEN?.trim()
-    const mercadoPagoPublicKey = process.env.MERCADOPAGO_PUBLIC_KEY?.trim()
+    const wompiPublicKey = process.env.NEXT_PUBLIC_WOMPI_PUBLIC_KEY || process.env.WOMPI_PUBLIC_KEY
     
-    if (!mercadoPagoAccessToken) {
+    if (!wompiPublicKey) {
       return NextResponse.json(
-        { error: 'Mercado Pago no está configurado. Contacta al administrador.' },
+        { error: 'Wompi no está configurado. Contacta al administrador.' },
         { status: 500 }
       )
     }
 
-    // Verificar que la suscripción necesita pago
     if (subscription.status === 'active') {
       const now = new Date()
       const endDate = subscription.endDate ? new Date(subscription.endDate) : null
@@ -125,75 +116,47 @@ export async function POST(
       }
     }
 
-    // Calcular el monto a pagar
     const amount = subscription.plan.price
-
-    // Crear la preferencia de pago
+    const currency = subscription.plan.currency || 'COP'
     const baseUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://clivaro.vercel.app'
-    const tenantSlug = subscription.tenant.slug
+    const reference = generateReference(user.tenantId)
 
-    // Construir la URL del webhook explícitamente
-    const webhookUrl = `${baseUrl}/api/payments/mercadopago/webhook`
-
-    const preference = await createPaymentPreference(
-      {
-        accessToken: mercadoPagoAccessToken,
-        publicKey: mercadoPagoPublicKey || undefined,
-      },
-      {
-        title: `Suscripción ${subscription.plan.name}`,
-        description: `Pago de suscripción ${subscription.plan.name} - ${subscription.plan.interval === 'monthly' ? 'Mensual' : 'Anual'}`,
-        amount: amount,
-        currency: subscription.plan.currency || 'COP',
-        subscriptionId: subscription.id,
-        customerEmail: subscription.tenant.email || undefined,
-        customerName: subscription.tenant.name,
-        backUrls: {
-          success: `${baseUrl}/settings?tab=subscription&payment=success`,
-          failure: `${baseUrl}/settings?tab=subscription&payment=failure`,
-          pending: `${baseUrl}/settings?tab=subscription&payment=pending`,
-        },
-        autoReturn: 'approved',
-        externalReference: subscription.id,
-        notificationUrl: webhookUrl, // Proporcionar explícitamente la URL del webhook
-      }
+    const paymentSession = createPaymentSession(
+      reference,
+      Math.round(amount * 100),
+      `${baseUrl}/settings?tab=subscription&payment=wompi&ref=${reference}`,
+      currency
     )
 
-    // Actualizar la suscripción con la información del pago
-    const updatedSubscription = await executeWithRetry(() => prisma.subscription.update({
+    await executeWithRetry(() => prisma.subscription.update({
       where: { id: subscription.id },
       data: {
-        mercadoPagoPreferenceId: preference.preferenceId,
-        mercadoPagoStatus: 'pending',
+        wompiReference: reference,
+        wompiStatus: 'PENDING',
         status: 'pending_payment',
       },
     }))
 
-    logger.info('Mercado Pago subscription payment preference created', {
+    logger.info('Wompi subscription payment session created', {
       subscriptionId: subscription.id,
-      preferenceId: preference.preferenceId,
-      amount: amount,
+      reference,
+      amount,
       planName: subscription.plan.name,
     })
 
     return NextResponse.json({
       success: true,
       subscriptionId: subscription.id,
-      preferenceId: preference.preferenceId,
-      initPoint: preference.initPoint,
-      sandboxInitPoint: preference.sandboxInitPoint,
-      isTestMode: preference.isTestMode || false,
-      publicKey: mercadoPagoPublicKey || undefined,
+      ...paymentSession,
     })
   } catch (error: any) {
-    logger.error('Error creating Mercado Pago subscription payment', error, {
+    logger.error('Error creating Wompi subscription payment', error, {
       endpoint: '/api/subscriptions/[id]/pay',
       method: 'POST',
     })
     return NextResponse.json(
-      { error: 'Error al crear preferencia de pago', details: error?.message || String(error) },
+      { error: 'Error al crear sesión de pago', details: error?.message || String(error) },
       { status: 500 }
     )
   }
 }
-

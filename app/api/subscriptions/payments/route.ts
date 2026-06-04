@@ -1,13 +1,11 @@
 import { NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/api-middleware'
 import { prisma } from '@/lib/db'
-import { getTenantPrisma } from '@/lib/tenant-db'
 import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
 import { safeErrorMessage } from '@/lib/safe-error'
 
-// Función helper para ejecutar consultas con retry y manejo de errores de conexión
 async function executeWithRetry<T>(
   fn: () => Promise<T>,
   maxRetries = 5,
@@ -21,17 +19,15 @@ async function executeWithRetry<T>(
       lastError = error
       const errorMessage = error?.message || String(error)
       
-      // Si es error de límite de conexiones, esperar y reintentar
       if (errorMessage.includes('MaxClientsInSessionMode') || errorMessage.includes('max clients reached')) {
         if (attempt < maxRetries - 1) {
-          const backoffDelay = Math.min(delay * Math.pow(2, attempt), 15000) // Backoff exponencial, max 15s
+          const backoffDelay = Math.min(delay * Math.pow(2, attempt), 15000)
           logger.warn(`[Subscription Payments] Límite de conexiones alcanzado, reintentando en ${backoffDelay}ms (intento ${attempt + 1}/${maxRetries})`)
           await new Promise(resolve => setTimeout(resolve, backoffDelay))
           continue
         }
       }
       
-      // Si no es error de conexión, lanzar inmediatamente
       throw error
     }
   }
@@ -63,29 +59,11 @@ export async function GET(request: Request) {
       )
     }
 
-    // Obtener parámetros de paginación de la URL
     const { searchParams } = new URL(request.url)
     const page = parseInt(searchParams.get('page') || '1', 10)
     const limit = parseInt(searchParams.get('limit') || '4', 10)
     const skip = (page - 1) * limit
 
-    // Obtener el tenant para acceder a su base de datos
-    const tenant = await executeWithRetry(() => prisma.tenant.findUnique({
-      where: { id: tenantId },
-      select: {
-        id: true,
-        databaseUrl: true,
-      },
-    }))
-
-    if (!tenant) {
-      return NextResponse.json(
-        { error: 'Tenant no encontrado' },
-        { status: 404 }
-      )
-    }
-
-    // Obtener la suscripción actual para obtener el plan
     const subscription = await executeWithRetry(() => prisma.subscription.findFirst({
       where: {
         tenantId: tenantId,
@@ -101,42 +79,39 @@ export async function GET(request: Request) {
             interval: true,
           },
         },
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-    }))
-
-    // Obtener el cliente Prisma del tenant para consultar la tabla Payment
-    const tenantPrisma = getTenantPrisma(tenant.databaseUrl)
-
-    // Buscar pagos de Mercado Pago en la tabla Payment del tenant
-    // Estos son los pagos históricos de suscripciones
-    const paymentRecords = await executeWithRetry(() => tenantPrisma.payment.findMany({
-      where: {
-        method: 'MERCADOPAGO',
-        mercadoPagoPaymentId: { not: null },
-      },
-      select: {
-        id: true,
-        createdAt: true,
+        wompiReference: true,
+        wompiStatus: true,
+        wompiPaymentMethod: true,
+        wompiTransactionId: true,
+        wompiResponse: true,
         updatedAt: true,
-        amount: true,
-        mercadoPagoPaymentId: true,
-        mercadoPagoStatus: true,
-        mercadoPagoStatusDetail: true,
-        mercadoPagoPaymentMethod: true,
-        mercadoPagoTransactionId: true,
-      },
-      orderBy: {
-        updatedAt: 'desc',
       },
     }))
 
-    // También obtener la suscripción actual si tiene un pago
     const subscriptionPayments: any[] = []
     if (subscription) {
-      const currentSubscription = await executeWithRetry(() => prisma.subscription.findFirst({
+      // Wompi payment (current)
+      if (subscription.wompiReference) {
+        subscriptionPayments.push({
+          id: `wompi-${subscription.id}`,
+          date: subscription.updatedAt,
+          amount: subscription.plan.price,
+          currency: subscription.plan.currency,
+          status: subscription.wompiStatus === 'APPROVED' ? 'Paid' :
+                  subscription.wompiStatus === 'DECLINED' || subscription.wompiStatus === 'VOIDED' ? 'Failed' :
+                  subscription.wompiStatus === 'ERROR' ? 'Error' : 'Pending',
+          wompiStatus: subscription.wompiStatus,
+          paymentMethod: subscription.wompiPaymentMethod,
+          transactionId: subscription.wompiTransactionId,
+          reference: subscription.wompiReference,
+          planName: subscription.plan.name,
+          interval: subscription.plan.interval,
+          provider: 'WOMPI',
+        })
+      }
+
+      // Legacy MercadoPago payments (historical only)
+      const legacySub = await executeWithRetry(() => prisma.subscription.findFirst({
         where: {
           tenantId: tenantId,
           mercadoPagoPaymentId: { not: null },
@@ -150,81 +125,34 @@ export async function GET(request: Request) {
           mercadoPagoPaymentMethod: true,
           mercadoPagoTransactionId: true,
         },
-        orderBy: {
-          updatedAt: 'desc',
-        },
       }))
 
-      if (currentSubscription) {
-        subscriptionPayments.push({
-          id: `sub-${currentSubscription.id}`,
-          date: currentSubscription.updatedAt,
-          amount: subscription.plan.price,
-          currency: subscription.plan.currency,
-          status: currentSubscription.mercadoPagoStatus === 'approved' ? 'Paid' :
-                  currentSubscription.mercadoPagoStatus === 'rejected' || currentSubscription.mercadoPagoStatus === 'cancelled' ? 'Failed' :
-                  currentSubscription.mercadoPagoStatus === 'refunded' || currentSubscription.mercadoPagoStatus === 'charged_back' ? 'Refunded' :
-                  'Pending',
-          mercadoPagoStatus: currentSubscription.mercadoPagoStatus,
-          mercadoPagoStatusDetail: currentSubscription.mercadoPagoStatusDetail,
-          paymentMethod: currentSubscription.mercadoPagoPaymentMethod,
-          transactionId: currentSubscription.mercadoPagoTransactionId,
-          mercadoPagoPaymentId: currentSubscription.mercadoPagoPaymentId,
-          planName: subscription.plan.name,
-          interval: subscription.plan.interval,
-        })
+      if (legacySub?.mercadoPagoPaymentId) {
+        const isDuplicate = subscriptionPayments.some(
+          p => p.transactionId === legacySub.mercadoPagoTransactionId
+        )
+        if (!isDuplicate) {
+          subscriptionPayments.push({
+            id: `mp-legacy-${legacySub.id}`,
+            date: legacySub.updatedAt,
+            amount: subscription.plan.price,
+            currency: subscription.plan.currency,
+            status: legacySub.mercadoPagoStatus === 'approved' ? 'Paid' :
+                    legacySub.mercadoPagoStatus === 'rejected' || legacySub.mercadoPagoStatus === 'cancelled' ? 'Failed' :
+                    legacySub.mercadoPagoStatus === 'refunded' ? 'Refunded' : 'Pending',
+            paymentMethod: legacySub.mercadoPagoPaymentMethod,
+            transactionId: legacySub.mercadoPagoTransactionId,
+            planName: subscription.plan.name,
+            interval: subscription.plan.interval,
+            provider: 'MERCADOPAGO (legacy)',
+          })
+        }
       }
     }
 
-    // Combinar pagos de Payment y suscripción, eliminando duplicados por mercadoPagoPaymentId
-    const allPaymentsMap = new Map<string, any>()
-
-    // Agregar pagos de la tabla Payment
-    paymentRecords.forEach((payment) => {
-      if (payment.mercadoPagoPaymentId) {
-        let status = 'Pending'
-        if (payment.mercadoPagoStatus === 'approved') {
-          status = 'Paid'
-        } else if (payment.mercadoPagoStatus === 'rejected' || payment.mercadoPagoStatus === 'cancelled') {
-          status = 'Failed'
-        } else if (payment.mercadoPagoStatus === 'pending' || payment.mercadoPagoStatus === 'in_process') {
-          status = 'Pending'
-        } else if (payment.mercadoPagoStatus === 'refunded' || payment.mercadoPagoStatus === 'charged_back') {
-          status = 'Refunded'
-        }
-
-        allPaymentsMap.set(payment.mercadoPagoPaymentId, {
-          id: payment.id,
-          date: payment.updatedAt || payment.createdAt,
-          amount: payment.amount,
-          currency: subscription?.plan.currency || 'COP',
-          status: status,
-          mercadoPagoStatus: payment.mercadoPagoStatus,
-          mercadoPagoStatusDetail: payment.mercadoPagoStatusDetail,
-          paymentMethod: payment.mercadoPagoPaymentMethod,
-          transactionId: payment.mercadoPagoTransactionId,
-          mercadoPagoPaymentId: payment.mercadoPagoPaymentId,
-          planName: subscription?.plan.name || 'N/A',
-          interval: subscription?.plan.interval || 'monthly',
-        })
-      }
-    })
-
-    // Agregar pagos de suscripción (solo si no están ya en el mapa)
-    subscriptionPayments.forEach((payment) => {
-      if (payment.mercadoPagoPaymentId && !allPaymentsMap.has(payment.mercadoPagoPaymentId)) {
-        allPaymentsMap.set(payment.mercadoPagoPaymentId, payment)
-      }
-    })
-
-    // Convertir a array y ordenar por fecha
-    let allPayments = Array.from(allPaymentsMap.values())
-    allPayments.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-
-    // Aplicar paginación
-    const total = allPayments.length
-    const paginatedPayments = allPayments.slice(skip, skip + limit)
-
+    subscriptionPayments.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    const total = subscriptionPayments.length
+    const paginatedPayments = subscriptionPayments.slice(skip, skip + limit)
     const totalPages = Math.ceil(total / limit)
 
     return NextResponse.json({ 
@@ -235,7 +163,6 @@ export async function GET(request: Request) {
       totalPages,
     })
   } catch (error: any) {
-    // Obtener tenantId de forma segura para logging
     let tenantId: string | undefined
     try {
       const session = await requireAuth(request)
@@ -261,4 +188,3 @@ export async function GET(request: Request) {
     )
   }
 }
-

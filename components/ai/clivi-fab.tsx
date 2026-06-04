@@ -21,7 +21,7 @@ const PAGE_CONTEXTS: Record<string, string> = {
   '/cash': 'Caja — turnos, movimientos de efectivo',
   '/crm': 'CRM — leads, pipeline, oportunidades de venta',
   '/marketing': 'Marketing — campañas de email, inbox, leads',
-  '/restaurant': 'Módulo de Restaurante — mesas, comandas, cocina',
+
   '/hr': 'Recursos Humanos — empleados, nómina',
   '/accounting': 'Contabilidad — cuentas, reportes',
   '/settings': 'Configuración — usuarios, roles, sucursales',

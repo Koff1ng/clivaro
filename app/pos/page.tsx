@@ -2,8 +2,6 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import { POSScreen } from '@/components/pos/pos-screen'
-import { CashierBillingConsole } from '@/components/restaurant/pos/cashier-console'
-import { prisma } from '@/lib/db'
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -13,22 +11,6 @@ export default async function POSPage() {
 
   if (!session) {
     redirect('/login')
-  }
-
-  const tenantId = (session.user as any)?.tenantId as string | undefined
-
-  // Check if restaurant mode is enabled for this tenant
-  let restaurantMode = false
-  if (tenantId) {
-    const settings = await prisma.tenantSettings.findUnique({
-      where: { tenantId },
-      select: { enableRestaurantMode: true },
-    })
-    restaurantMode = settings?.enableRestaurantMode ?? false
-  }
-
-  if (restaurantMode) {
-    return <CashierBillingConsole />
   }
 
   return (

@@ -52,7 +52,7 @@ export function CreditNoteDetails({ creditNoteId }: CreditNoteDetailsProps) {
             const response = await fetch(`/api/credit-notes/${creditNoteId}/transmit`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ provider: 'ALEGRA' })
+                body: JSON.stringify({ provider: 'FACTUS' })
             })
 
             if (response.ok) {

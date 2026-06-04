@@ -19,18 +19,13 @@ import {
 import { cn } from '@/lib/utils'
 import { Logo } from '@/components/ui/logo'
 
-export type FooterTemplate = 'general' | 'restaurant' | 'retail' | 'services' | 'pharmacy' | 'custom'
+export type FooterTemplate = 'general' | 'retail' | 'services' | 'pharmacy' | 'custom'
 
 export const FOOTER_TEMPLATES: Record<FooterTemplate, { label: string; description: string; text: string }> = {
     general: {
         label: 'General (Estándar)',
         description: 'Texto legal básico para cualquier tipo de negocio',
         text: 'Este documento se asimila en todos sus efectos a una letra de cambio de conformidad con el Art. 774 del código de comercio. Autorizo que en caso de incumplimiento de esta obligación sea reportado a las centrales de riesgo, se cobrarán intereses por mora.',
-    },
-    restaurant: {
-        label: 'Restaurante / Bar',
-        description: 'Incluye aviso de propina voluntaria y servicio',
-        text: 'La propina sugerida del 10% es completamente voluntaria (Ley 1935/2018). No se incluye propina en el total. Este documento se asimila en todos sus efectos a una letra de cambio (Art. 774 C.C.). Productos preparados para consumo inmediato. Aplican condiciones de higiene y manipulación de alimentos.',
     },
     retail: {
         label: 'Retail / Ferretería',

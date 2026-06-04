@@ -19,7 +19,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { PERMISSIONS } from '@/lib/permissions'
 import { InvoicePrint } from '@/components/sales/invoice-print'
 import { TaxSelector } from './tax-selector'
-import { RestaurantTableMap } from '@/components/restaurant/ui/table-map'
+
 
 interface CartItem {
   productId: string
@@ -1806,17 +1806,9 @@ export function POSScreen({ mode = 'retail', waiterData, waiterToken, preselecte
               <div className="py-10 text-center text-sm text-muted-foreground">No hay mesas disponibles para este tenant.</div>
             ) : (
               <>
-                <RestaurantTableMap
-                  tables={restaurantTables}
-                  onTableClick={(table) => {
-                    if (table.status !== 'AVAILABLE' && (!selectedTable || selectedTable.id !== table.id)) {
-                      toast(`La mesa ${table.name} no esta disponible`, 'warning')
-                      return
-                    }
-                    setSelectedTable(table)
-                    setShowTableSelector(false)
-                  }}
-                />
+                <div className="py-6 text-center text-sm text-muted-foreground">
+                  La funcionalidad de selección de mesas no está disponible.
+                </div>
                 <div className="flex justify-end">
                   <Button variant="outline" onClick={() => refetchTables()}>
                     Recargar mesas

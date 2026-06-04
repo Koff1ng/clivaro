@@ -5,7 +5,7 @@ import dynamic from 'next/dynamic'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Check, X, Zap, Building2, Rocket, TrendingUp as TrendingUpIcon, Users, Package, ShoppingCart, BarChart3, Mail, Sparkles, Database, Smartphone, Cloud, Lock, Globe, Headphones, Settings, Printer, Wallet, Truck, FileText, LayoutDashboard, MessageSquare, Calendar, Bell, Search, Shirt, Store, Wine, Hammer, Croissant, Car, BookOpen, Pill, Quote, ShieldCheck, TrendingUp, HelpCircle, MessageCircle, ArrowRight, Fingerprint, Upload, BrainCircuit, Receipt, UtensilsCrossed, Building, Gauge, Bot } from 'lucide-react'
+import { Check, X, Zap, Building2, Rocket, TrendingUp as TrendingUpIcon, Users, Package, ShoppingCart, BarChart3, Mail, Sparkles, Database, Smartphone, Cloud, Lock, Globe, Headphones, Settings, Printer, Wallet, Truck, FileText, LayoutDashboard, MessageSquare, Calendar, Bell, Search, Shirt, Store, Wine, Hammer, Croissant, Car, BookOpen, Pill, Quote, ShieldCheck, TrendingUp, HelpCircle, MessageCircle, ArrowRight, Fingerprint, Upload, BrainCircuit, Receipt, Building, Gauge, Bot } from 'lucide-react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { Logo } from '@/components/ui/logo'
@@ -92,7 +92,6 @@ const plans = [
       'Bodegas ilimitadas',
       'Contabilidad completa (PUC, Asientos, Balance)',
       'Nómina y Recursos Humanos',
-      'Módulo de Restaurante (Mesas, Pedidos)',
       '🐙 Clivi IA — acceso prioritario + reportes IA',
       'Reportes personalizados',
       'Migración de datos asistida',
@@ -130,13 +129,6 @@ const comparison = [
     clivaro: 'Incluida en todos los planes',
     winner: 'clivaro',
     icon: Receipt,
-  },
-  {
-    feature: 'Módulo de restaurante',
-    competencia: 'No disponible',
-    clivaro: 'Mesas, cocina y meseros en tiempo real',
-    winner: 'clivaro',
-    icon: UtensilsCrossed,
   },
   {
     feature: 'Recursos Humanos y nómina',
@@ -273,7 +265,6 @@ export function PricingClient() {
               { name: 'Inventario', desc: 'Multi-bodega, scanner de barcode, alertas de stock mínimo.', img: '/assets/3d/landing-inventory.png', icon: Package },
               { name: 'Facturación DIAN', desc: 'Facturación electrónica certificada, notas crédito y documentos soporte.', img: '/assets/3d/landing-billing.png', icon: FileText },
               { name: 'CRM & Marketing', desc: 'Pipeline de leads, campañas visuales y seguimiento de oportunidades.', img: '/assets/3d/landing-crm.png', icon: TrendingUpIcon },
-              { name: 'Restaurante', desc: 'Gestión de mesas, pedidos a cocina y meseros en tiempo real.', img: '/assets/3d/landing-restaurant.png', icon: Store },
               { name: 'Reportes & Analytics', desc: 'Dashboards en vivo, KPIs, análisis de ventas y rentabilidad.', img: '/assets/3d/landing-analytics.png', icon: BarChart3 },
             ].map((feat, idx) => (
               <ScrollReveal key={idx} delay={idx * 80}>

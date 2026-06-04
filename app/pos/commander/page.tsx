@@ -1,58 +1,33 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { CommanderPINLogin } from "@/components/restaurant/pos/commander-login";
-import { CommanderView } from "@/components/restaurant/pos/commander-view";
+import { useEffect } from "react";
 import { useSession } from "next-auth/react";
-import { redirect } from "next/navigation";
+import { useRouter } from "next/navigation";
 
 export default function CommanderPage() {
   const { status } = useSession();
-  const [waiter, setWaiter] = useState<{ token: string; data: any } | null>(null);
+  const router = useRouter();
 
   useEffect(() => {
     if (status === "unauthenticated") {
-      redirect("/login");
+      router.push("/login");
     }
-  }, [status]);
+  }, [status, router]);
 
   if (status === "loading") {
     return (
-      <div
-        style={{
-          height: "100vh",
-          background: "#2C1A0E",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          color: "#F5C518",
-          fontSize: 20,
-          fontWeight: 700,
-          letterSpacing: 2,
-        }}
-      >
-        Iniciando Comandero...
+      <div className="flex items-center justify-center min-h-screen">
+        <p className="text-muted-foreground">Cargando...</p>
       </div>
     );
   }
 
-  const handleLogin = (token: string, data: any) => {
-    setWaiter({ token, data });
-  };
-
-  const handleExit = () => {
-    setWaiter(null);
-  };
-
-  if (!waiter) {
-    return <CommanderPINLogin onLogin={handleLogin} />;
-  }
-
   return (
-    <CommanderView
-      waiterToken={waiter.token}
-      waiterData={waiter.data}
-      onExit={handleExit}
-    />
+    <div className="flex items-center justify-center min-h-screen">
+      <div className="text-center p-8">
+        <h1 className="text-xl font-bold mb-2">Comandero no disponible</h1>
+        <p className="text-muted-foreground">Esta funcionalidad ya no esta disponible.</p>
+      </div>
+    </div>
   );
 }

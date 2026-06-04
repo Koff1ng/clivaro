@@ -25,7 +25,6 @@ import {
   ShieldCheck,
   Warehouse,
   Database,
-  UtensilsCrossed,
   Globe,
   ChevronRight,
   LayoutDashboard,
@@ -46,7 +45,6 @@ import { PaymentMethodsConfig } from './payment-methods-config'
 import { TaxesPage } from './taxes-page'
 import { PrivacyConfig } from './privacy-config'
 import { EmailConfigTab } from './email-config-tab'
-import { RestaurantSettingsView } from './restaurant-settings-view'
 import { UnitConversionsConfig } from './unit-conversions-config'
 import { WhatsAppSettings } from '../crm/whatsapp-settings'
 import { cn } from '@/lib/utils'
@@ -154,7 +152,6 @@ export function SettingsScreen() {
       items: [
         { id: 'numbering', label: 'Folios y Prefijos', icon: Hash, desc: 'Control de documentos' },
         { id: 'printing', label: 'Impresión POS', icon: Printer, desc: 'Tickets y estaciones' },
-        { id: 'restaurant', label: 'Restaurante', icon: UtensilsCrossed, desc: 'Zonas, mesas y cocina' },
         { id: 'billing', label: 'Facturación Elect.', icon: Receipt, desc: 'Integración Factus' },
         { id: 'whatsapp', label: 'WhatsApp', icon: MessageCircle, desc: 'Conexión y mensajería' },
       ]
@@ -179,15 +176,6 @@ export function SettingsScreen() {
     }
   ]
 
-  if (isSuperAdmin) {
-    navigationGroups.push({
-      title: 'Administración Global',
-      items: [
-        { id: 'payments', label: 'Pasarela de Pagos', icon: CreditCard, desc: 'Configuración Wompi' }
-      ]
-    })
-  }
-
   const renderContent = () => {
     switch (activeSection) {
       case 'identity':
@@ -204,9 +192,6 @@ export function SettingsScreen() {
           />
         )
       
-      case 'restaurant':
-        return <RestaurantSettingsView />
-
       case 'users': return <UsersConfig />
       case 'email': return <EmailConfigTab />
       case 'billing': return (
@@ -215,23 +200,6 @@ export function SettingsScreen() {
           onSave={(data) => updateSettingsMutation.mutate(data)}
           isLoading={updateSettingsMutation.isPending}
         />
-      )
-      case 'payments': return (
-        <Card className="border-blue-200 bg-blue-50/10 backdrop-blur-sm">
-          <CardHeader>
-            <CardTitle className="text-blue-700">Mercado Pago - Administración</CardTitle>
-            <CardDescription>Credenciales globales del sistema Clivaro.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-             <div className="p-4 bg-white/50 border rounded-xl flex items-center justify-between">
-                <span className="font-medium">Estado de Conexión</span>
-                <span className="text-green-600 font-bold flex items-center gap-1">
-                   <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                   Activa
-                </span>
-             </div>
-          </CardContent>
-        </Card>
       )
       case 'subscription': return <SubscriptionCheckout />
       case 'payments-methods': return <PaymentMethodsConfig />

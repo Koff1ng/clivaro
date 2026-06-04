@@ -13,7 +13,6 @@ const DEFAULT_FLAGS = [
   { key: 'MODULE_ACCOUNTING', name: 'Contabilidad', category: 'module', description: 'Plan de cuentas, asientos contables, reportes' },
   { key: 'MODULE_PAYROLL', name: 'Nómina', category: 'module', description: 'Gestión de empleados y liquidación de nómina' },
   { key: 'MODULE_INVENTORY', name: 'Inventario Avanzado', category: 'module', description: 'Multi-almacén, zonas, inventarios físicos' },
-  { key: 'MODULE_RESTAURANT', name: 'Restaurante', category: 'module', description: 'Modo restaurante con mesas y comandero' },
   { key: 'MODULE_MARKETING', name: 'Marketing', category: 'module', description: 'Campañas de email y Meta Ads' },
   { key: 'MODULE_PURCHASES', name: 'Compras', category: 'module', description: 'Órdenes de compra y recepción de mercancía' },
   { key: 'FEATURE_ELECTRONIC_INVOICE', name: 'Facturación Electrónica', category: 'feature', description: 'Integración con DIAN vía Factus' },

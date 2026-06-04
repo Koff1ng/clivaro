@@ -1,24 +1,33 @@
 "use client";
 
-import { CashierBillingConsole } from "@/components/restaurant/pos/cashier-console";
-import { useSession } from "next-auth/react";
-import { redirect } from "next/navigation";
 import { useEffect } from "react";
+import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 
-export default function RestaurantCashierPage() {
+export default function CashierPage() {
   const { status } = useSession();
+  const router = useRouter();
 
   useEffect(() => {
     if (status === "unauthenticated") {
-      redirect("/login");
+      router.push("/login");
     }
-  }, [status]);
+  }, [status, router]);
 
-  if (status === "loading") return <div className="p-8">Cargando consola de cajero...</div>;
+  if (status === "loading") {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p className="text-muted-foreground">Cargando...</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-slate-50/50">
-      <CashierBillingConsole />
+    <div className="flex items-center justify-center min-h-screen">
+      <div className="text-center p-8">
+        <h1 className="text-xl font-bold mb-2">Cajero de Restaurante no disponible</h1>
+        <p className="text-muted-foreground">Esta funcionalidad ya no esta disponible.</p>
+      </div>
     </div>
   );
 }

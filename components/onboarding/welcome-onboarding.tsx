@@ -58,7 +58,6 @@ const WELCOME_ICONS = [
 // Business type 3D icons
 const BUSINESS_ICONS: Record<string, string> = {
   RETAIL: '/assets/3d/onboarding-store.png',
-  RESTAURANT: '/assets/3d/landing-restaurant.png',
   SERVICES: '/assets/3d/landing-crm.png',
   OTHER: '/assets/3d/landing-analytics.png',
 }
@@ -88,7 +87,6 @@ const GREETINGS = [
 
 const BUSINESS_TYPES = [
   { value: 'RETAIL', label: 'Comercio / Ferretería', description: 'Punto de venta, inventario' },
-  { value: 'RESTAURANT', label: 'Restaurante / Bar', description: 'Mesas, cocina, meseros' },
   { value: 'SERVICES', label: 'Servicios', description: 'Profesionales, consultoría' },
   { value: 'OTHER', label: 'Otro', description: 'Otro tipo de negocio' },
 ]
@@ -561,8 +559,7 @@ export function WelcomeOnboarding({ onComplete, planName, isDemo }: WelcomeOnboa
                           whileTap={{ scale: 0.97 }}
                           onClick={() => {
                             setBusinessType(bt.value)
-                            if (bt.value === 'RESTAURANT') setInvoicePrefix('FVR')
-                            else if (bt.value === 'RETAIL') setInvoicePrefix('FV')
+                            if (bt.value === 'RETAIL') setInvoicePrefix('FV')
                             else if (bt.value === 'SERVICES') setInvoicePrefix('FVS')
                           }}
                           className={`flex flex-col items-center gap-2.5 p-5 rounded-2xl border-2 transition-all duration-200 text-center ${

@@ -551,8 +551,7 @@ export async function POST(request: Request) {
         const conversionMultiplier = item.conversionMultiplier || 1
         const stockQuantity = item.quantity / conversionMultiplier
 
-        const isRestaurant = tenantSettings?.enableRestaurantMode
-        if (isRestaurant && (product as any).enableRecipeConsumption) {
+        if ((product as any).enableRecipeConsumption) {
           const ingredients = await resolveAllIngredients(tx, item.productId, stockQuantity, item.variantId || null)
           for (const ing of ingredients) {
             const enoughIngredientStock = await checkStock(

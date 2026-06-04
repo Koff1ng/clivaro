@@ -175,69 +175,6 @@ async function initializePostgresTenant(databaseUrl: string, tenantId: string, t
     await srClient.end()
   }
 
-  // Step 2.7: Sync restaurant module columns (rate-limiting, fiscal)
-  logger.info(`[STEP 2.7/4] Sincronizando campos de restaurante y fiscal en "${schemaName}"...`)
-  const restClient = new Client({ connectionString: tenantSchemaUrl })
-  try {
-    await restClient.connect()
-    await restClient.query(`SET search_path TO "${schemaName}"`)
-
-    // WaiterProfile rate-limiting columns
-    await restClient.query(`
-      DO $$ BEGIN
-        ALTER TABLE "WaiterProfile" ADD COLUMN IF NOT EXISTS "failedAttempts" INTEGER NOT NULL DEFAULT 0;
-        ALTER TABLE "WaiterProfile" ADD COLUMN IF NOT EXISTS "lockedUntil" TIMESTAMP(3);
-      EXCEPTION WHEN undefined_table THEN NULL;
-      END $$;
-    `)
-
-    // Customer fiscal field
-    await restClient.query(`
-      ALTER TABLE "Customer" ADD COLUMN IF NOT EXISTS "isRetentionAgent" BOOLEAN NOT NULL DEFAULT false;
-    `)
-
-    // Invoice tip amount
-    await restClient.query(`
-      ALTER TABLE "Invoice" ADD COLUMN IF NOT EXISTS "tipAmount" DOUBLE PRECISION NOT NULL DEFAULT 0;
-    `)
-
-    // Invoice / CreditNote — campos Alegra (deben coincidir con prisma/schema.prisma)
-    await restClient.query(`
-      ALTER TABLE "Invoice"
-        ADD COLUMN IF NOT EXISTS "alegraId" TEXT,
-        ADD COLUMN IF NOT EXISTS "alegraNumber" TEXT,
-        ADD COLUMN IF NOT EXISTS "alegraStatus" TEXT DEFAULT 'DRAFT',
-        ADD COLUMN IF NOT EXISTS "alegraUrl" TEXT;
-    `)
-    await restClient.query(`
-      CREATE UNIQUE INDEX IF NOT EXISTS "Invoice_alegraId_key" ON "Invoice" ("alegraId");
-    `)
-    await restClient.query(`
-      ALTER TABLE "CreditNote"
-        ADD COLUMN IF NOT EXISTS "alegraId" TEXT,
-        ADD COLUMN IF NOT EXISTS "alegraNumber" TEXT,
-        ADD COLUMN IF NOT EXISTS "alegraStatus" TEXT DEFAULT 'DRAFT',
-        ADD COLUMN IF NOT EXISTS "alegraUrl" TEXT;
-    `)
-    await restClient.query(`
-      CREATE UNIQUE INDEX IF NOT EXISTS "CreditNote_alegraId_key" ON "CreditNote" ("alegraId");
-    `)
-
-    // Drop pin uniqueness if it exists (two waiters CAN have same PIN)
-    await restClient.query(`
-      DO $$ BEGIN
-        DROP INDEX IF EXISTS "WaiterProfile_tenantId_pin_key";
-      END $$;
-    `)
-
-    logger.info('[STEP 2.7/4] ✓ Campos de restaurante sincronizados')
-  } catch (restErr: any) {
-    logger.warn(`[TENANT INIT] Warning during restaurant sync: ${restErr.message}`)
-  } finally {
-    await restClient.end()
-  }
-
-
   // Step 2.75: Sync HR/Payroll tables (for tenants created before HR module was added)
   logger.info(`[STEP 2.75/4] Sincronizando tablas de Nomina/RRHH en "${schemaName}"...`)
   const hrClient = new Client({ connectionString: tenantSchemaUrl })
@@ -429,19 +366,6 @@ async function initializePostgresTenant(databaseUrl: string, tenantId: string, t
         ADD COLUMN IF NOT EXISTS "factusSandbox" BOOLEAN DEFAULT true,
         ADD COLUMN IF NOT EXISTS "autoSendElectronic" BOOLEAN DEFAULT false;
     `)
-    // Restaurant mode
-    await obClient.query(`
-      ALTER TABLE "TenantSettings"
-        ADD COLUMN IF NOT EXISTS "enableRestaurantMode" BOOLEAN DEFAULT false;
-    `)
-    // MercadoPago (legacy but in schema)
-    await obClient.query(`
-      ALTER TABLE "TenantSettings"
-        ADD COLUMN IF NOT EXISTS "mercadoPagoAccessToken" TEXT,
-        ADD COLUMN IF NOT EXISTS "mercadoPagoPublicKey" TEXT,
-        ADD COLUMN IF NOT EXISTS "mercadoPagoEnabled" BOOLEAN DEFAULT false,
-        ADD COLUMN IF NOT EXISTS "mercadoPagoWebhookUrl" TEXT;
-    `)
     // Meta (WhatsApp / Instagram)
     await obClient.query(`
       ALTER TABLE "TenantSettings"
@@ -553,7 +477,6 @@ async function initializePostgresTenant(databaseUrl: string, tenantId: string, t
       'manage_returns',
       'void_invoices',
       'apply_discounts',
-      'manage_restaurant',
     ]
 
     // Define all default roles with descriptions and permissions
@@ -566,7 +489,7 @@ async function initializePostgresTenant(databaseUrl: string, tenantId: string, t
       {
         name: 'CAJERO_POS',
         description: 'Cajero de punto de venta. Puede realizar ventas, devoluciones, manejar caja y cierres de turno.',
-        permissions: ['view_dashboard', 'manage_pos', 'manage_sales', 'manage_cash', 'manage_returns', 'void_invoices', 'apply_discounts', 'manage_customers', 'manage_restaurant'],
+        permissions: ['view_dashboard', 'manage_pos', 'manage_sales', 'manage_cash', 'manage_returns', 'void_invoices', 'apply_discounts', 'manage_customers'],
       },
       {
         name: 'VENDEDOR_COMERCIAL',
@@ -588,11 +511,7 @@ async function initializePostgresTenant(databaseUrl: string, tenantId: string, t
         description: 'Gestión de personal y nómina. Manejo de empleados y liquidaciones.',
         permissions: ['view_dashboard', 'manage_payroll', 'manage_users'],
       },
-      {
-        name: 'REST_MESERO',
-        description: 'Mesero (Restaurantes). Toma de pedidos y atención en mesa.',
-        permissions: ['view_dashboard', 'manage_pos', 'manage_restaurant'],
-      },
+
     ]
 
     let adminRoleId = ''

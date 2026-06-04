@@ -10,7 +10,7 @@ import { safeErrorMessage } from '@/lib/safe-error'
 
 /**
  * GET: Returns the fiscal configuration for the current tenant.
- * Includes DIAN resolution data, numbering range status, and Alegra connection status.
+ * Includes DIAN resolution data and numbering range status.
  */
 export async function GET(request: Request) {
     const session = await requirePermission(request as any, PERMISSIONS.MANAGE_SETTINGS)
@@ -65,9 +65,6 @@ export async function GET(request: Request) {
             warnings.push(`⚠️ Quedan solo ${remainingInvoices} facturas disponibles en el rango actual.`)
         }
 
-        // Alegra connection status
-        const alegraConfigured = !!(settings.alegraEmail && settings.alegraToken)
-
         return NextResponse.json({
             fiscal: {
                 companyNit: settings.companyNit,
@@ -96,10 +93,6 @@ export async function GET(request: Request) {
                 provider: settings.electronicBillingProvider,
                 softwareId: settings.softwareId ? '****' + settings.softwareId.slice(-4) : null,
                 technicalKey: settings.technicalKey ? '****' + settings.technicalKey.slice(-4) : null,
-            },
-            alegra: {
-                configured: alegraConfigured,
-                email: settings.alegraEmail ? settings.alegraEmail.replace(/(.{2}).+(@.+)/, '$1***$2') : null,
             },
             warnings,
             status: warnings.length === 0 ? 'OK' : (rangeExhausted || resolutionExpired ? 'CRITICAL' : 'WARNING'),

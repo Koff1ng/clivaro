@@ -147,8 +147,6 @@ export async function POST(request: Request) {
       ? JSON.stringify({ defaultTaxRate: validatedData.defaultTaxRate })
       : undefined
 
-    const isRestaurant = validatedData.businessType === 'RESTAURANT'
-
     const onboardingData = {
       onboardingCompleted: true,
       onboardingUserName: validatedData.userName,
@@ -169,7 +167,6 @@ export async function POST(request: Request) {
       economicActivity: validatedData.economicActivity || undefined,
       invoicePrefix: validatedData.invoicePrefix || undefined,
       currency: validatedData.currency || undefined,
-      enableRestaurantMode: isRestaurant,
       ...(customSettingsObj ? { customSettings: customSettingsObj } : {}),
     }
 

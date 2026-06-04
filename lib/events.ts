@@ -17,26 +17,9 @@ export function getTenantBus(tenantId: string): EventEmitter {
 }
 
 /**
- * For KDS and real-time updates
- */
-export function getRestaurantEventBus(tenantId: string): EventEmitter {
-    return getTenantBus(tenantId)
-}
-
-/**
  * Emits an event to all connected clients of a tenant.
  */
-export function emitRestaurantEvent(tenantId: string, event: string, data: any) {
+export function emitTenantEvent(tenantId: string, event: string, data: any) {
     const bus = getTenantBus(tenantId)
     bus.emit(event, data)
 }
-
-/**
- * Event Types for Restaurant
- */
-export const RESTAURANT_EVENTS = {
-    TABLE_UPDATED: 'table_updated',
-    SESSION_UPDATED: 'session_updated',
-    ORDER_CREATED: 'order_created',
-    KDS_UPDATE: 'kds_update',
-} as const

@@ -38,7 +38,6 @@ import { PdfEditor } from '@/components/settings/pdf-editor'
 import { MetaConfig } from './meta-config'
 import { ZoneManager } from '../warehouses/zone-manager'
 import { cn } from '@/lib/utils'
-import { UtensilsCrossed } from 'lucide-react'
 
 // Interfaces for custom settings structure
 interface PrinterDefinition {
@@ -98,7 +97,6 @@ interface GeneralFormData {
   companyRegime: string
   companyCity: string
   companyWebsite: string
-  enableRestaurantMode: boolean
   customSettings: string
 }
 
@@ -218,7 +216,6 @@ export function GeneralConfig({ settings, onSave, isLoading, initialTab = 'ident
       companyRegime: initialCustomSettings.identity?.regime || 'Responsable de IVA',
       companyCity: initialCustomSettings.identity?.city || '',
       companyWebsite: initialCustomSettings.identity?.website || '',
-      enableRestaurantMode: settings?.enableRestaurantMode || false,
       customSettings: settings?.customSettings || '{}'
     }
   })

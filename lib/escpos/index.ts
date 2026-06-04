@@ -32,13 +32,4 @@ export {
 } from './invoice-builder'
 export type { InvoiceData, CompanyData } from './invoice-builder'
 
-export {
-    buildKitchenComanda,
-    buildRestaurantReceipt
-} from './restaurant-builder'
-export type {
-    ComandaItem,
-    RestaurantReceiptData,
-    RestaurantCompany,
-    RestaurantPrintOptions
-} from './restaurant-builder'
+
