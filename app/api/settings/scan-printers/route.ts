@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { networkInterfaces } from 'os'
 import * as net from 'net'
+import { requirePermission } from '@/lib/api-middleware'
+import { PERMISSIONS } from '@/lib/permissions'
 
 export const dynamic = 'force-dynamic'
 import { safeErrorMessage } from '@/lib/safe-error'
@@ -63,8 +65,11 @@ function getLocalSubnets(): string[] {
  * GET /api/settings/scan-printers
  * Scans local network for port 9100 (HP JetDirect / RAW)
  */
-export async function GET() {
+export async function GET(request: Request) {
     try {
+        const session = await requirePermission(request as any, PERMISSIONS.MANAGE_SETTINGS)
+        if (session instanceof NextResponse) return session
+
         const subnets = getLocalSubnets()
         const foundPrinters: string[] = []
 

@@ -24,14 +24,30 @@ export function MetaConfig() {
     const [showToken, setShowToken] = useState(false)
     const [isConnected, setIsConnected] = useState(false)
 
-    // Mock Save
+    // Save Meta credentials via settings API
     const saveMutation = useMutation({
         mutationFn: async () => {
-            await new Promise(resolve => setTimeout(resolve, 1000))
-            return true
+            const res = await fetch('/api/settings', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    metaBusinessId,
+                    metaAccessToken,
+                    whatsappPhoneNumberId,
+                    instagramAccountId,
+                }),
+            })
+            if (!res.ok) {
+                const err = await res.json()
+                throw new Error(err.error || 'Error al guardar configuración')
+            }
+            return res.json()
         },
         onSuccess: () => {
             toast('Configuración guardada correctamente', 'success')
+        },
+        onError: (err: any) => {
+            toast(err.message || 'Error al guardar', 'error')
         }
     })
 

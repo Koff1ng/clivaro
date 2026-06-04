@@ -32,12 +32,13 @@ import {
   Play,
   MessageCircle,
   GraduationCap,
+  Construction,
 } from 'lucide-react'
 import { useToast } from '@/components/ui/toast'
 import { useSession } from 'next-auth/react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { UsersConfig } from './users-config'
-import { SubscriptionCheckout } from './subscription-checkout'
+import { SubscriptionConfig } from './subscription-config'
 import { GeneralConfig } from './general-config'
 import { DataConfig } from './data-config'
 import { ElectronicBillingConfig } from './electronic-billing-config'
@@ -153,7 +154,7 @@ export function SettingsScreen() {
         { id: 'numbering', label: 'Folios y Prefijos', icon: Hash, desc: 'Control de documentos' },
         { id: 'printing', label: 'Impresión POS', icon: Printer, desc: 'Tickets y estaciones' },
         { id: 'billing', label: 'Facturación Elect.', icon: Receipt, desc: 'Integración Factus' },
-        { id: 'whatsapp', label: 'WhatsApp', icon: MessageCircle, desc: 'Conexión y mensajería' },
+        { id: 'whatsapp', label: 'WhatsApp / Meta Ads', icon: MessageCircle, desc: 'Conexión y mensajería', dev: true },
       ]
     },
     {
@@ -162,7 +163,7 @@ export function SettingsScreen() {
         { id: 'payments-methods', label: 'Métodos de Pago', icon: Wallet, desc: 'Cajas y formas de cobro' },
         { id: 'taxes', label: 'Impuestos', icon: Percent, desc: 'IVA y retenciones' },
         { id: 'warehouses', label: 'Almacenes', icon: Warehouse, desc: 'Puntos físicos de stock' },
-        { id: 'unit-conversions', label: 'Unidades de Medida', icon: ArrowLeftRight, desc: 'Conversiones para venta fraccionada' },
+        { id: 'unit-conversions', label: 'Unidades de Medida', icon: ArrowLeftRight, desc: 'Conversiones para venta fraccionada', dev: true },
       ]
     },
     {
@@ -171,12 +172,22 @@ export function SettingsScreen() {
         { id: 'subscription', label: 'Plan y Pagos', icon: CreditCard, desc: 'Estado de tu cuenta' },
         { id: 'users', label: 'Accesos y Roles', icon: Users, desc: 'Equipo y permisos' },
         { id: 'privacy', label: 'Privacidad', icon: ShieldCheck, desc: 'Seguridad y datos' },
-        { id: 'data', label: 'Backups', icon: Database, desc: 'Historial y exportación' },
+        { id: 'data', label: 'Backups', icon: Database, desc: 'Historial y exportación', dev: true },
       ]
     }
   ]
 
   const renderContent = () => {
+    const renderDevBanner = (label: string) => (
+      <div className="mb-6 p-4 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 flex items-center gap-3">
+        <Construction size={20} className="text-amber-600 dark:text-amber-400 flex-shrink-0" />
+        <div>
+          <p className="text-sm font-bold text-amber-800 dark:text-amber-300">{label} — En Desarrollo</p>
+          <p className="text-xs text-amber-600 dark:text-amber-400">Esta funcionalidad está en fase beta. Pueden presentarse comportamientos inesperados.</p>
+        </div>
+      </div>
+    )
+
     switch (activeSection) {
       case 'identity':
       case 'localization':
@@ -201,12 +212,12 @@ export function SettingsScreen() {
           isLoading={updateSettingsMutation.isPending}
         />
       )
-      case 'subscription': return <SubscriptionCheckout />
+      case 'subscription': return <SubscriptionConfig settings={settings} onSave={(data) => updateSettingsMutation.mutate(data)} isLoading={updateSettingsMutation.isPending} />
       case 'payments-methods': return <PaymentMethodsConfig />
       case 'taxes': return <TaxesPage />
-      case 'unit-conversions': return <UnitConversionsConfig />
-      case 'whatsapp': return <WhatsAppSettings />
-      case 'data': return <DataConfig settings={settings} onSave={(data) => updateSettingsMutation.mutate(data)} isLoading={updateSettingsMutation.isPending} />
+      case 'unit-conversions': return <>{renderDevBanner('Unidades de Medida')}<UnitConversionsConfig /></>
+      case 'whatsapp': return <>{renderDevBanner('WhatsApp / Meta Ads')}<WhatsAppSettings /></>
+      case 'data': return <>{renderDevBanner('Backups y Exportación')}<DataConfig settings={settings} onSave={(data) => updateSettingsMutation.mutate(data)} isLoading={updateSettingsMutation.isPending} /></>
       case 'privacy': return <PrivacyConfig />
       default: return null
     }
@@ -274,7 +285,12 @@ export function SettingsScreen() {
                       <item.icon size={18} strokeWidth={2.5} />
                     </div>
                     <div className="flex flex-col items-start gap-0.5">
-                      <span className="text-sm font-bold leading-tight tracking-tight">{item.label}</span>
+                      <span className="text-sm font-bold leading-tight tracking-tight flex items-center gap-2">
+                        {item.label}
+                        {(item as any).dev && (
+                          <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded-md bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400 tracking-widest">DEV</span>
+                        )}
+                      </span>
                       <span className={cn(
                         "text-[10px] font-medium leading-none transition-colors",
                         activeSection === item.id ? "text-muted-foreground" : "text-muted-foreground"
@@ -304,16 +320,19 @@ export function SettingsScreen() {
       {/* Nav Móvil Refactorizado */}
       <nav className="md:hidden h-16 border-t bg-card flex items-center px-4 overflow-x-auto gap-2 scrollbar-hide shadow-[0_-4px_20px_-5px_rgba(0,0,0,0.1)]">
          {navigationGroups.flatMap(g => g.items).map(item => (
-            <button
+             <button
               key={item.id}
               onClick={() => setActiveSection(item.id)}
               className={cn(
-                "flex items-center gap-2 px-4 py-2 rounded-full whitespace-nowrap text-sm font-bold transition-all",
+                "flex items-center gap-2 px-4 py-2 rounded-full whitespace-nowrap text-sm font-bold transition-all relative",
                 activeSection === item.id ? "bg-slate-900 text-white" : "bg-muted text-muted-foreground"
               )}
             >
               <item.icon size={14} />
               {item.label}
+              {(item as any).dev && (
+                <span className="text-[8px] font-black uppercase px-1 py-0.5 rounded bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400 tracking-widest">DEV</span>
+              )}
             </button>
          ))}
       </nav>

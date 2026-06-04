@@ -54,6 +54,7 @@ export async function POST(request: Request) {
             await prisma.unit.deleteMany()
             await prisma.productVariant.deleteMany()
             await prisma.product.deleteMany()
+            await prisma.paymentMethod.deleteMany()
             await prisma.customer.deleteMany()
             await prisma.supplier.deleteMany()
         })

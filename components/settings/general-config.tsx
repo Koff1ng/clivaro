@@ -450,7 +450,12 @@ export function GeneralConfig({ settings, onSave, isLoading, initialTab = 'ident
               </div>
               <Switch 
                 className="scale-125 data-[state=checked]:bg-card data-[state=checked]:text-indigo-600 border-indigo-400"
-                checked={initialCustomSettings.printing?.enabled}
+                checked={(() => {
+                  try {
+                    const cs = JSON.parse(watch('customSettings') || '{}')
+                    return cs?.printing?.enabled ?? false
+                  } catch { return false }
+                })()}
                 onCheckedChange={(c) => handlePrintingChange('enabled', c)}
               />
             </div>
@@ -688,7 +693,6 @@ export function GeneralConfig({ settings, onSave, isLoading, initialTab = 'ident
                     disabled={isLoading}
                     onClick={() => {
                       handleSubmit(onSubmit)()
-                      toast('Diseño de factura guardado correctamente', 'success')
                       setShowTicketEditor(false)
                     }}
                   >
@@ -775,7 +779,6 @@ export function GeneralConfig({ settings, onSave, isLoading, initialTab = 'ident
                     disabled={isLoading}
                     onClick={() => {
                       handleSubmit(onSubmit)()
-                      toast('Diseño de PDF guardado correctamente', 'success')
                       setShowPdfEditor(false)
                     }}
                   >

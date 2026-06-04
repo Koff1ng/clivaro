@@ -70,7 +70,7 @@ export async function POST(req: Request) {
                 for (const row of data) {
                     try {
                         const sku = row['sku'] || row['code']
-                        if (!sku) {
+                        if (!sku || sku === 'undefined' || sku === 'null') {
                             results.failed++
                             results.errors.push(`Row skipped: No SKU/code found for ${row['name'] || 'unknown'}`)
                             continue
@@ -145,7 +145,9 @@ export async function POST(req: Request) {
 
                         const issueDate = firstRow['date'] ? new Date(firstRow['date']) : new Date()
                         const status = firstRow['status'] || 'PAID'
-                        const total = parseFloat(firstRow['total'] || 0)
+                        const importSubtotal = firstRow['subtotal'] || firstRow['total'] || 0
+                        const importTotal = firstRow['total'] || importSubtotal
+                        const importTax = firstRow['tax'] !== undefined ? Number(firstRow['tax']) : (importTotal - importSubtotal)
 
                         let customerId: string | null = null
                         if (firstRow['customerTaxId']) {
@@ -187,9 +189,9 @@ export async function POST(req: Request) {
                                 customerId,
                                 issuedAt: issueDate,
                                 status: status,
-                                total: total,
-                                subtotal: total,
-                                tax: 0,
+                                total: importTotal,
+                                subtotal: importSubtotal,
+                                tax: importTax,
                                 items: {
                                     create: await Promise.all(rows.map(async (row: any) => {
                                         let productId: string | null = null

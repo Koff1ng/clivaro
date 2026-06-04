@@ -166,10 +166,10 @@ export async function POST(req: Request) {
             })
 
             if (settings) {
+                const { id, tenantId: tId, factusClientId, factusClientSecret, factusUsername, factusPassword, ...safeSettings } = settings as any
                 if (format === 'json') {
-                    result.jsonResult['settings'] = [settings]
+                    result.jsonResult['settings'] = [safeSettings]
                 } else {
-                    const { id, tenantId: tId, ...safeSettings } = settings as any
                     const ws = XLSX.utils.json_to_sheet([safeSettings])
                     XLSX.utils.book_append_sheet(result.wb, ws, "Configuracion")
                 }

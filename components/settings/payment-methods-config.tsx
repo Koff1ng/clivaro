@@ -92,11 +92,11 @@ export function PaymentMethodsConfig() {
 
     const saveMutation = useMutation({
         mutationFn: async (data: any) => {
-            const url = editingMethod
-                ? `/api/settings/payment-methods/${editingMethod.id}`
+            const url = data.id
+                ? `/api/settings/payment-methods/${data.id}`
                 : '/api/settings/payment-methods'
             const res = await fetch(url, {
-                method: editingMethod ? 'PUT' : 'POST',
+                method: data.id ? 'PUT' : 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data)
             })
@@ -164,12 +164,11 @@ export function PaymentMethodsConfig() {
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault()
         if (!name) return
-        saveMutation.mutate({ name, type, dianCode, color, icon })
+        saveMutation.mutate({ id: editingMethod?.id, name, type, dianCode, color, icon })
     }
 
     const toggleStatus = (method: PaymentMethod) => {
-        setEditingMethod(method)
-        saveMutation.mutate({ active: !method.active })
+        saveMutation.mutate({ id: method.id, active: !method.active })
     }
 
     if (isLoading) {

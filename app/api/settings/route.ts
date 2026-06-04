@@ -22,7 +22,7 @@ export const dynamic = 'force-dynamic'
  */
 export async function GET(request: Request) {
   try {
-    const session = await requirePermission(request as any, PERMISSIONS.MANAGE_USERS)
+    const session = await requirePermission(request as any, PERMISSIONS.MANAGE_SETTINGS)
     if (session instanceof NextResponse) return session
 
     const user = session.user as any
@@ -57,7 +57,7 @@ export async function GET(request: Request) {
  */
 export async function PUT(request: Request) {
   try {
-    const session = await requirePermission(request as any, PERMISSIONS.MANAGE_USERS)
+    const session = await requirePermission(request as any, PERMISSIONS.MANAGE_SETTINGS)
     if (session instanceof NextResponse) return session
 
     const tenantId = getTenantIdFromSession(session)
