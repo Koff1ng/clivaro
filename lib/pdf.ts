@@ -745,8 +745,8 @@ export async function generateInvoicePDF(invoice: InvoicePDFData): Promise<Buffe
               <table class="info-table">
                 <tr><td class="lbl">Razón Social:</td><td class="val">${companyName}</td></tr>
                 <tr><td class="lbl">NIT:</td><td class="val">${companyNit}${companyVerificationDigit ? ` - ${companyVerificationDigit}` : ''}</td></tr>
-                <tr><td class="lbl">Actividad:</td><td class="val">${companyEconomicActivity}</td></tr>
-                <tr><td class="lbl">Dirección:</td><td class="val">Colombia${companyDepartment ? ` - ${companyDepartment}` : ''}${companyCity ? ` - ${companyCity}` : ''} - ${companyAddress}</td></tr>
+                <tr><td class="lbl">Actividad:</td><td class="val">${companyEconomicActivity || ''}</td></tr>
+                <tr><td class="lbl">Dirección:</td><td class="val">${[companyDepartment, companyCity, companyAddress].filter(Boolean).join(' - ')}</td></tr>
                 <tr><td class="lbl">Teléfono:</td><td class="val">${companyPhone}</td></tr>
                 <tr><td class="lbl">E-mail:</td><td class="val" style="text-transform: none;">${companyEmail}</td></tr>
               </table>
@@ -755,11 +755,10 @@ export async function generateInvoicePDF(invoice: InvoicePDFData): Promise<Buffe
               <div style="background: #e5e7eb; border-bottom: 1px solid #000; padding: 2px 6px; font-weight: 700; font-size: 8px;">DATOS ADQUIRENTE</div>
               <table class="info-table">
                 <tr><td class="lbl">Razón Social:</td><td class="val">${invoice.customer.name}</td></tr>
-                <tr><td class="lbl">NIT:</td><td class="val">${invoice.customer.taxId || '222222222222'}</td></tr>
-                <tr><td class="lbl">Contacto:</td><td class="val"></td></tr>
-                <tr><td class="lbl">Dirección:</td><td class="val">Colombia - ${invoice.customer.address || ''}</td></tr>
-                <tr><td class="lbl">Teléfono:</td><td class="val">${invoice.customer.phone || ''}</td></tr>
-                <tr><td class="lbl">E-mail:</td><td class="val" style="text-transform: none;">${invoice.customer.email || ''}</td></tr>
+                <tr><td class="lbl">NIT:</td><td class="val">${invoice.customer.taxId || ''}</td></tr>
+                ${invoice.customer.phone ? `<tr><td class="lbl">Teléfono:</td><td class="val">${invoice.customer.phone}</td></tr>` : ''}
+                ${invoice.customer.address ? `<tr><td class="lbl">Dirección:</td><td class="val">${invoice.customer.address}</td></tr>` : ''}
+                ${invoice.customer.email ? `<tr><td class="lbl">E-mail:</td><td class="val" style="text-transform: none;">${invoice.customer.email}</td></tr>` : ''}
               </table>
            </div>
         </div>
@@ -791,12 +790,13 @@ export async function generateInvoicePDF(invoice: InvoicePDFData): Promise<Buffe
         </table>
 
         <!-- NOTAS -->
+        ${invoice.notes ? `
         <div style="border: 2px solid #000; margin-bottom: 8px;">
           <div style="background: #e5e7eb; border-bottom: 1px solid #000; padding: 2px 6px; font-weight: 700; font-size: 8px; text-align: center;">NOTAS</div>
           <div style="padding: 6px 10px; font-size: 8px; min-height: 18px;">
-            ${invoice.notes || ''}
+            ${invoice.notes}
           </div>
-        </div>
+        </div>` : ''}
 
         <!-- ITEMS TABLE -->
         <table class="grid-table" style="margin-bottom: 8px;">
@@ -847,18 +847,21 @@ export async function generateInvoicePDF(invoice: InvoicePDFData): Promise<Buffe
         <!-- TOTALES -->
         <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
            <div style="width: 45%;">
+             ${taxByRate.size > 0 ? `
              <table class="grid-table">
                <thead>
-                 <tr><th style="width: 30%;">TIPO</th><th style="width: 50%;">DESCRIPCION</th><th style="width: 20%;">VALOR</th></tr>
+                 <tr><th style="width: 30%;">TIPO</th><th style="width: 50%;">BASE IMP.</th><th style="width: 20%;">VALOR</th></tr>
                </thead>
                <tbody>
+                 ${Array.from(taxByRate.entries()).map(([rate, data]) => `
                  <tr>
-                   <td class="center" style="height: 15px;"></td>
-                   <td class="center"></td>
-                   <td class="right"></td>
-                 </tr>
+                   <td class="center" style="height: 15px;">${rate === 8 ? 'INC' : 'IVA'}</td>
+                   <td class="right">$ ${data.base.toFixed(2)}</td>
+                   <td class="right">$ ${data.tax.toFixed(2)}</td>
+                 </tr>`).join('')}
                </tbody>
              </table>
+             ` : ''}
            </div>
            <div style="width: 35%;">
              <table class="totals-table">
@@ -885,9 +888,9 @@ export async function generateInvoicePDF(invoice: InvoicePDFData): Promise<Buffe
           </thead>
           <tbody>
             <tr>
-              <td class="center" style="height: 12px;"></td>
-              <td class="center"></td>
-              <td class="center"></td>
+              <td class="center" style="height: 12px;">COP</td>
+              <td class="center">1.00</td>
+              <td class="center">$ ${(invoice.total || 0).toFixed(2)}</td>
             </tr>
           </tbody>
         </table>
