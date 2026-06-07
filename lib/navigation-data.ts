@@ -113,7 +113,7 @@ export const menuGroups: MenuGroup[] = [
         title: 'Sistema',
         key: 'system',
         items: [
-            { href: '/admin/users', label: 'Usuarios', icon: Settings2, permission: 'manage_users', planFeature: 'manageUsers' },
+            { href: '/settings?tab=users', label: 'Usuarios', icon: Settings2, permission: 'manage_users', planFeature: 'manageUsers' },
         ]
     }
 ]

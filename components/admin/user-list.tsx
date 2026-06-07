@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { UserForm } from './user-form'
 import { UserDetails } from './user-details'
 import { WaiterList } from './waiter-list'
+import { RoleList } from './role-list'
 import { formatDate } from '@/lib/utils'
 import { useToast } from '@/components/ui/toast'
 import { Search, Plus, Edit, Trash2, Eye, Mail, User as UserIcon, Shield, Loader2, Utensils } from 'lucide-react'
@@ -94,6 +95,10 @@ export function UserList() {
             <UserIcon className="h-4 w-4" />
             Usuarios
           </TabsTrigger>
+          <TabsTrigger value="roles" className="gap-2">
+            <Shield className="h-4 w-4" />
+            Roles
+          </TabsTrigger>
           <TabsTrigger value="waiters" className="gap-2">
             <Utensils className="h-4 w-4" />
             Meseros (Restaurante)
@@ -123,12 +128,10 @@ export function UserList() {
               <span className="text-sm text-muted-foreground whitespace-nowrap">Incluir inactivos</span>
             </label>
             <div className="flex gap-2 shrink-0">
-              <Link href="/admin/roles">
-                <Button variant="outline" size="sm" className="h-9">
-                  <Shield className="h-4 w-4 mr-2 text-primary" />
-                  Roles
-                </Button>
-              </Link>
+              <Button variant="outline" size="sm" className="h-9" onClick={() => setActiveTab('roles')}>
+                <Shield className="h-4 w-4 mr-2 text-primary" />
+                Roles
+              </Button>
               <Button size="sm" onClick={() => {
                 setSelectedUser(null)
                 setIsFormOpen(true)
@@ -251,6 +254,10 @@ export function UserList() {
             </Table>
           </div>
         )}
+      </TabsContent>
+
+      <TabsContent value="roles">
+        <RoleList />
       </TabsContent>
 
       <TabsContent value="waiters">

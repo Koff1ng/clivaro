@@ -290,7 +290,7 @@ export function ChatAssistant() {
                 '/accounting/accounts': 'Contabilidad -> Catálogo de Cuentas (PUC)',
                 '/accounting/vouchers': 'Contabilidad -> Comprobantes Contables',
                 '/accounting/reports': 'Contabilidad -> Centro de Reportes',
-                '/admin/users': 'Sistema -> Usuarios y Permisos',
+                '/settings?tab=users': 'Sistema -> Usuarios y Permisos',
                 '/settings': 'Sistema -> Configuración General',
             }
             return mapping[path] || path;

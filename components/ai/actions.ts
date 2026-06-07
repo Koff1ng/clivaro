@@ -192,7 +192,7 @@ Utiliza estos nombres exactos para referirte a las secciones:
   - Reportes: **Contabilidad -> Centro de Reportes** -> \`/accounting/reports\`
 
 - **Sistema:**
-  - Usuarios: **Sistema -> Usuarios** -> \`/admin/users\`
+  - Usuarios: **Sistema -> Usuarios** -> \`/settings?tab=users\`
   - Configuración General: **Sistema -> Configuración** -> \`/settings\`
 
 **PROTOCOLO DE ACCIÓN:**

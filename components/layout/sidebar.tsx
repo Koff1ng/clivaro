@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname, useRouter } from 'next/navigation'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useSession, signOut } from 'next-auth/react'
 import { useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
@@ -98,6 +98,7 @@ import {
 export function Sidebar() {
   const pathname = usePathname()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { data: session } = useSession()
   const { isOpen, toggle, toggleChat } = useSidebar()
   const userPermissions = (session?.user as any)?.permissions || []
@@ -188,13 +189,16 @@ export function Sidebar() {
     if (!pathname || !newFeatures || newFeatures.length === 0) return
     const allItems = menuGroups.flatMap(g => g.items)
     const currentFeature = allItems.find(item => {
-      const isActive = pathname === item.href || pathname?.startsWith(item.href + '/')
+      const [hrefPath, hrefQuery] = item.href.split('?')
+      const isActive = hrefQuery
+        ? pathname === hrefPath && searchParams?.get('tab') === new URLSearchParams(hrefQuery).get('tab')
+        : pathname === item.href || pathname?.startsWith(item.href + '/')
       return isActive && item.planFeature && isNewFeature(item.planFeature as any)
     })
     if (currentFeature?.planFeature) {
       handleFeatureClick(currentFeature.planFeature)
     }
-  }, [pathname, newFeatures, isNewFeature])
+  }, [pathname, searchParams, newFeatures, isNewFeature])
 
   const shouldShowNewBadge = (feature: string) => {
     if (!isNewFeature(feature as any)) return false
@@ -366,7 +370,10 @@ export function Sidebar() {
                       )}>
                         {visibleItems.map(item => {
                           const Icon = item.icon
-                          const isActive = pathname === item.href || pathname?.startsWith(item.href + '/')
+                          const [hrefPath, hrefQuery] = item.href.split('?')
+                          const isActive = hrefQuery
+                            ? pathname === hrefPath && searchParams?.get('tab') === new URLSearchParams(hrefQuery).get('tab')
+                            : pathname === item.href || pathname?.startsWith(item.href + '/')
 
                           return (
                             <Link
