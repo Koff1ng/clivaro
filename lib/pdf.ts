@@ -708,19 +708,22 @@ export async function generateInvoicePDF(invoice: InvoicePDFData): Promise<Buffe
         body { 
           font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
           line-height: 1.2;
-          color: #000;
+          color: #111;
           font-size: 8px;
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
         }
         .page {
           padding: 15px 25px;
           max-width: 210mm;
           margin: 0 auto;
         }
+        a { color: inherit; text-decoration: none; }
         
         .info-table { width: 100%; border-collapse: collapse; }
-        .info-table td { padding: 2px 6px; border: none; vertical-align: top; }
-        .info-table .lbl { font-weight: 700; width: 80px; }
-        .info-table .val { text-transform: uppercase; }
+        .info-table td { padding: 2px 6px; border: none; vertical-align: top; color: #111; }
+        .info-table .lbl { font-weight: 700; width: 80px; color: #111; }
+        .info-table .val { text-transform: uppercase; color: #111; }
 
         .grid-table { width: 100%; border-collapse: collapse; border: 2px solid #000; }
         .grid-table th { 
@@ -730,19 +733,25 @@ export async function generateInvoicePDF(invoice: InvoicePDFData): Promise<Buffe
           padding: 3px 2px; 
           text-align: center;
           font-size: 7.5px;
+          color: #111;
         }
         .grid-table td { 
           border: 1px solid #000; 
           padding: 3px 4px; 
           font-size: 8px;
+          color: #111;
         }
         .grid-table td.center { text-align: center; }
         .grid-table td.right { text-align: right; }
 
         .totals-table { width: 100%; border-collapse: collapse; border: 2px solid #000; }
-        .totals-table td { padding: 3px 6px; border: 1px solid #000; }
+        .totals-table td { padding: 3px 6px; border: 1px solid #000; color: #111; }
         .totals-table .lbl { font-weight: 700; background: #e5e7eb; width: 50%; }
         .totals-table .val { text-align: right; }
+
+        .date-table { width: 100%; border-collapse: collapse; }
+        .date-table td { border: none; padding: 1px 0; color: #111; }
+        .date-table .dlbl { font-weight: 700; width: 55%; color: #111; }
       </style>
     </head>
     <body>
@@ -759,15 +768,15 @@ export async function generateInvoicePDF(invoice: InvoicePDFData): Promise<Buffe
           </div>
           
           <!-- Right: Invoice Info -->
-          <div style="width: 50%; font-size: 8px; text-align: left; padding-left: 20px;">
-            <div style="font-size: 11px; font-weight: 700; margin-bottom: 8px;">
-              ${isElectronic ? 'FACTURA ELECTRÓNICA DE VENTA' : 'FACTURA DE VENTA'} ${invoice.number}
+          <div style="width: 50%; font-size: 8px; text-align: left; padding-left: 20px; color: #111;">
+            <div style="font-size: 11px; font-weight: 700; margin-bottom: 8px; color: #111;">
+              ${isElectronic ? 'FACTURA ELECTR\u00d3NICA DE VENTA' : 'FACTURA DE VENTA'} ${invoice.prefix ? invoice.prefix + '-' : ''}${invoice.number}
             </div>
-            <table style="width: 100%; border: none; margin: 0; padding: 0;">
-              <tr><td style="border: none; padding: 1px 0; font-weight: 700;">Fecha de Exp.:</td><td style="border: none; padding: 1px 0;">${formatDateOnly(invoice.issuedAt)}</td></tr>
-              <tr><td style="border: none; padding: 1px 0; font-weight: 700;">Hora de Exp.:</td><td style="border: none; padding: 1px 0;">${formatTimeOnly(invoice.issuedAt)}</td></tr>
-              <tr><td style="border: none; padding: 1px 0; font-weight: 700;">Fecha de Ven.:</td><td style="border: none; padding: 1px 0;">${formatDateOnly(invoice.dueDate) || formatDateOnly(invoice.issuedAt)}</td></tr>
-              <tr><td style="border: none; padding: 1px 0; font-weight: 700;">Fecha y hora de validación.:</td><td style="border: none; padding: 1px 0;">${formatDateTime(invoice.issuedAt)}</td></tr>
+            <table class="date-table">
+              <tr><td class="dlbl">Fecha de Exp.:</td><td>${formatDateOnly(invoice.issuedAt)}</td></tr>
+              <tr><td class="dlbl">Hora de Exp.:</td><td>${formatTimeOnly(invoice.issuedAt)}</td></tr>
+              <tr><td class="dlbl">Fecha de Ven.:</td><td>${formatDateOnly(invoice.dueDate) || formatDateOnly(invoice.issuedAt)}</td></tr>
+              <tr><td class="dlbl">Fecha y hora de validaci\u00f3n.:</td><td>${formatDateTime(invoice.issuedAt)}</td></tr>
             </table>
           </div>
         </div>
@@ -828,7 +837,7 @@ export async function generateInvoicePDF(invoice: InvoicePDFData): Promise<Buffe
               <td class="center"></td>
               <td class="center">${medioPago}</td>
               <td class="center">${paymentForm}</td>
-              <td class="right" style="font-weight: 700;">$ ${invoice.total || 0}</td>
+              <td class="right" style="font-weight: 700;">$ ${formatCurrency(invoice.total || 0)}</td>
             </tr>
           </tbody>
         </table>
@@ -868,24 +877,24 @@ export async function generateInvoicePDF(invoice: InvoicePDFData): Promise<Buffe
               const lineBase = (typeof item.subtotal === 'number' && item.subtotal > 0)
                 ? item.subtotal
                 : item.unitPrice * item.quantity * (1 - (item.discount || 0) / 100)
-              const lineTaxAmt = lineBase * ((item.taxRate || 0) / 100)
+              const lineTaxAmt = Math.round(lineBase * ((item.taxRate || 0) / 100) * 100) / 100
               // lineTotal = pre-tax base + tax (correct total per line)
-              const lineTotal = lineBase + lineTaxAmt
+              const lineTotal = Math.round((lineBase + lineTaxAmt) * 100) / 100
               const taxName = item.taxRate === 8 ? 'INC' : (item.taxRate > 0 ? 'IVA' : '')
               return `
               <tr>
                 <td class="center">${idx + 1}</td>
-                <td class="center">${item.quantity.toFixed(1)}</td>
+                <td class="center">${item.quantity % 1 === 0 ? item.quantity.toFixed(0) : item.quantity.toFixed(2)}</td>
                 <td class="center">${item.product.sku || ''}</td>
-                <td class="center">94</td>
+                <td class="center">Und</td>
                 <td>${item.product.name.toUpperCase()}</td>
-                <td class="right">${item.unitPrice.toFixed(2)}</td>
-                <td class="right">${lineBase.toFixed(2)}</td>
+                <td class="right">$ ${formatCurrency(item.unitPrice)}</td>
+                <td class="right">$ ${formatCurrency(lineBase)}</td>
                 <td class="center">${taxName}</td>
-                <td class="center">${item.taxRate || 0}</td>
-                <td class="right">$ ${lineTaxAmt.toFixed(2)}</td>
-                <td class="right">${item.discount > 0 ? item.discount.toFixed(2) : '0.00'}</td>
-                <td class="right">${lineTotal.toFixed(2)}</td>
+                <td class="center">${item.taxRate || 0}%</td>
+                <td class="right">$ ${formatCurrency(lineTaxAmt)}</td>
+                <td class="right">${item.discount > 0 ? item.discount.toFixed(1) + '%' : '-'}</td>
+                <td class="right">$ ${formatCurrency(lineTotal)}</td>
               </tr>`
             }).join('')}
           </tbody>
@@ -897,14 +906,14 @@ export async function generateInvoicePDF(invoice: InvoicePDFData): Promise<Buffe
              ${taxByRate.size > 0 ? `
              <table class="grid-table">
                <thead>
-                 <tr><th style="width: 30%;">TIPO</th><th style="width: 50%;">BASE IMP.</th><th style="width: 20%;">VALOR</th></tr>
+                 <tr><th style="width: 15%;">TIPO</th><th style="width: 55%;">DESCRIPCI\u00d3N</th><th style="width: 30%;">VALOR IMP.</th></tr>
                </thead>
                <tbody>
                  ${Array.from(taxByRate.entries()).map(([rate, data]) => `
                  <tr>
-                   <td class="center" style="height: 15px;">${rate === 8 ? 'INC' : 'IVA'}</td>
-                   <td class="right">$ ${data.base.toFixed(2)}</td>
-                   <td class="right">$ ${data.tax.toFixed(2)}</td>
+                   <td class="center">${rate === 8 ? 'INC' : 'IVA'}</td>
+                   <td class="center">${rate === 8 ? 'INC' : 'IVA'} ${rate}% s/ $ ${formatCurrency(data.base)}</td>
+                   <td class="right">$ ${formatCurrency(data.tax)}</td>
                  </tr>`).join('')}
                </tbody>
              </table>
@@ -912,14 +921,14 @@ export async function generateInvoicePDF(invoice: InvoicePDFData): Promise<Buffe
            </div>
            <div style="width: 35%;">
              <table class="totals-table">
-               <tr><td class="lbl">SubTotal</td><td class="val">$ ${(invoice.subtotal || 0).toFixed(2)}</td></tr>
-               <tr><td class="lbl">Total Imp.</td><td class="val">$ ${(invoice.tax || 0).toFixed(2)}</td></tr>
+               <tr><td class="lbl">SubTotal</td><td class="val">$ ${formatCurrency(invoice.subtotal || 0)}</td></tr>
+               <tr><td class="lbl">Total Imp.</td><td class="val">$ ${formatCurrency(invoice.tax || 0)}</td></tr>
                <tr><td class="lbl" style="font-weight: normal;">Retiva</td><td class="val">$ 0.00</td></tr>
                <tr><td class="lbl" style="font-weight: normal;">Reteica</td><td class="val">$ 0.00</td></tr>
                <tr><td class="lbl" style="font-weight: normal;">ReteRenta</td><td class="val">$ 0.00</td></tr>
                <tr><td class="lbl">Cargos</td><td class="val">$ 0.00</td></tr>
-               <tr><td class="lbl">Descuentos</td><td class="val">$ ${(invoice.discount || 0).toFixed(2)}</td></tr>
-               <tr><td class="lbl">Valor Total</td><td class="val" style="font-weight: 700;">$ ${(invoice.total || 0).toFixed(2)}</td></tr>
+               <tr><td class="lbl">Descuentos</td><td class="val">$ ${formatCurrency(invoice.discount || 0)}</td></tr>
+               <tr><td class="lbl" style="background:#d1d5db;">Valor Total</td><td class="val" style="font-weight: 700; font-size: 9px;">$ ${formatCurrency(invoice.total || 0)}</td></tr>
              </table>
            </div>
         </div>
@@ -937,7 +946,7 @@ export async function generateInvoicePDF(invoice: InvoicePDFData): Promise<Buffe
             <tr>
               <td class="center" style="height: 12px;">COP</td>
               <td class="center">1.00</td>
-              <td class="center">$ ${(invoice.total || 0).toFixed(2)}</td>
+              <td class="center">$ ${formatCurrency(invoice.total || 0)}</td>
             </tr>
           </tbody>
         </table>
