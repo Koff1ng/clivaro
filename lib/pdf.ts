@@ -571,6 +571,41 @@ function numberToWordsCOP(n: number): string {
   return result.charAt(0).toUpperCase() + result.slice(1)
 }
 
+// Helper: fetch a remote image URL and convert to base64 data URI for embedding in HTML
+async function fetchImageAsBase64(url: string): Promise<string> {
+  try {
+    if (!url) return ''
+    if (url.startsWith('data:')) return url
+    // Try local filesystem first
+    try {
+      let localPath: string | null = null
+      if (url.startsWith('/')) localPath = url
+      else if (url.includes('localhost') || url.includes('127.0.0.1')) {
+        const u = new URL(url); localPath = u.pathname
+      }
+      if (localPath) {
+        const filePath2 = process.cwd() + '/public' + localPath
+        if (fs.existsSync(filePath2)) {
+          const buf = fs.readFileSync(filePath2)
+          const ext = filePath2.split('.').pop()?.toLowerCase() || 'png'
+          const mimeMap: Record<string, string> = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', svg: 'image/svg+xml', webp: 'image/webp', gif: 'image/gif' }
+          return 'data:' + (mimeMap[ext] || 'image/png') + ';base64,' + buf.toString('base64')
+        }
+      }
+    } catch (_) {}
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), 15000)
+    try {
+      const response = await fetch(url, { signal: controller.signal })
+      clearTimeout(timer)
+      if (!response.ok) { logger.warn('[PDF] Logo fetch failed: ' + response.status); return '' }
+      const ct = response.headers.get('content-type') || 'image/png'
+      const ab = await response.arrayBuffer()
+      return 'data:' + ct + ';base64,' + Buffer.from(ab).toString('base64')
+    } catch (e: any) { clearTimeout(timer); logger.warn('[PDF] Logo fetch error: ' + (e?.message || e)); return '' }
+  } catch (e: any) { logger.warn('[PDF] fetchImageAsBase64 error: ' + (e?.message || e)); return '' }
+}
+
 export async function generateInvoicePDF(invoice: InvoicePDFData): Promise<Buffer> {
   // Company information from arguments or environment
   const companyName = invoice.company?.name || process.env.COMPANY_NAME || process.env.NEXT_PUBLIC_COMPANY_NAME || 'Empresa'
@@ -580,7 +615,9 @@ export async function generateInvoicePDF(invoice: InvoicePDFData): Promise<Buffe
   const companyEmail = invoice.company?.email || process.env.COMPANY_EMAIL || process.env.NEXT_PUBLIC_COMPANY_EMAIL || ''
   const companyNit = invoice.company?.nit || process.env.COMPANY_NIT || process.env.NEXT_PUBLIC_COMPANY_TAX_ID || ''
   const companyRegime = invoice.company?.regime || process.env.COMPANY_REGIME || 'Responsable de IVA'
-  const companyLogo = invoice.company?.logo || ''
+  const rawLogo = invoice.company?.logo || ''
+  // Convert logo URL to base64 data URI so Puppeteer renders it reliably
+  const companyLogo = rawLogo ? await fetchImageAsBase64(rawLogo) : ''
   const companyCommercialName = invoice.company?.commercialName || companyName
   const companyVerificationDigit = invoice.company?.verificationDigit || ''
   const companyFiscalResponsibilities = invoice.company?.fiscalResponsibilities || 'NO SOMOS GRANDES CONTRIBUYENTES. NO SOMOS AUTORRETENEDORES.'
@@ -605,12 +642,16 @@ export async function generateInvoicePDF(invoice: InvoicePDFData): Promise<Buffe
   // SON: total in words
   const totalInWords = numberToWordsCOP(invoice.total || 0)
 
-  // IVA breakdown by rate
+  // IVA breakdown by rate - only rates > 0
+  // item.subtotal = pre-tax base (unitPrice * qty * (1 - discount%))
   const taxByRate = new Map<number, { base: number; tax: number }>()
   for (const item of invoice.items || []) {
     const rate = typeof item.taxRate === 'number' ? item.taxRate : 0
-    const base = (item.unitPrice || 0) * (item.quantity || 0) * (1 - (item.discount || 0) / 100)
-    const itemTax = base * (rate / 100)
+    if (rate <= 0) continue
+    const base = (typeof item.subtotal === 'number' && item.subtotal > 0)
+      ? Math.round(item.subtotal * 100) / 100
+      : Math.round((item.unitPrice || 0) * (item.quantity || 0) * (1 - (item.discount || 0) / 100) * 100) / 100
+    const itemTax = Math.round(base * (rate / 100) * 100) / 100
     const prev = taxByRate.get(rate) || { base: 0, tax: 0 }
     taxByRate.set(rate, { base: prev.base + base, tax: prev.tax + itemTax })
   }
@@ -710,8 +751,11 @@ export async function generateInvoicePDF(invoice: InvoicePDFData): Promise<Buffe
         <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
           <!-- Left: Logo & Company Name -->
           <div style="width: 45%; text-align: center; padding-top: 10px;">
-            ${companyLogo ? `<img src="${companyLogo}" style="max-width: 140px; max-height: 50px; object-fit: contain; margin-bottom: 8px;" />` : ''}
-            <div style="font-size: 14px; font-weight: 700; letter-spacing: 0.5px;">${companyCommercialName.toUpperCase()}</div>
+            ${companyLogo
+              ? `<img src="${companyLogo}" style="max-width: 160px; max-height: 70px; object-fit: contain; margin-bottom: 6px; display: block; margin-left: auto; margin-right: auto;" />`
+              : `<div style="font-size: 16px; font-weight: 800; margin-bottom: 4px;">${companyCommercialName.toUpperCase()}</div>`
+            }
+            ${companyLogo ? `<div style="font-size: 10px; font-weight: 700; color: #444;">${companyCommercialName.toUpperCase()}</div>` : ''}
           </div>
           
           <!-- Right: Invoice Info -->
@@ -790,13 +834,12 @@ export async function generateInvoicePDF(invoice: InvoicePDFData): Promise<Buffe
         </table>
 
         <!-- NOTAS -->
-        ${invoice.notes ? `
         <div style="border: 2px solid #000; margin-bottom: 8px;">
           <div style="background: #e5e7eb; border-bottom: 1px solid #000; padding: 2px 6px; font-weight: 700; font-size: 8px; text-align: center;">NOTAS</div>
           <div style="padding: 6px 10px; font-size: 8px; min-height: 18px;">
-            ${invoice.notes}
+            ${invoice.notes || ''}
           </div>
-        </div>` : ''}
+        </div>
 
         <!-- ITEMS TABLE -->
         <table class="grid-table" style="margin-bottom: 8px;">
@@ -821,9 +864,13 @@ export async function generateInvoicePDF(invoice: InvoicePDFData): Promise<Buffe
           </thead>
           <tbody>
             ${invoice.items.map((item, idx) => {
-              const lineBase = item.unitPrice * item.quantity * (1 - (item.discount || 0) / 100)
+              // lineBase = pre-tax amount. Use item.subtotal (stored pre-tax base) if available
+              const lineBase = (typeof item.subtotal === 'number' && item.subtotal > 0)
+                ? item.subtotal
+                : item.unitPrice * item.quantity * (1 - (item.discount || 0) / 100)
               const lineTaxAmt = lineBase * ((item.taxRate || 0) / 100)
-              const lineTotal = item.subtotal + lineTaxAmt
+              // lineTotal = pre-tax base + tax (correct total per line)
+              const lineTotal = lineBase + lineTaxAmt
               const taxName = item.taxRate === 8 ? 'INC' : (item.taxRate > 0 ? 'IVA' : '')
               return `
               <tr>
