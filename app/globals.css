@@ -221,9 +221,8 @@
     --accent-foreground: 222 47% 11%;
     --destructive: 0 63% 50%;
     --destructive-foreground: 0 0% 100%;
-    --border: 215 28% 17%;
-    /* Slate 800 */
-    --input: 215 28% 17%;
+    --border: 215 28% 22%;     /* Slate 750 — slightly more visible */
+    --input: 215 28% 20%;      /* A touch lighter than --card for legibility */
     --ring: 199 89% 60%;
     /* Sky 400 */
   }
@@ -317,6 +316,29 @@
 .dark * {
   scrollbar-color: #374151 transparent;
   /* Gris oscuro para modo oscuro */
+}
+
+/* ============================================================
+   SELECT NATIVO — Dark mode fix
+   El <select> nativo del navegador ignora las variables CSS
+   y usa blanco por defecto. Estas reglas lo corrigen.
+   ============================================================ */
+.dark select,
+.dark select option {
+  background-color: hsl(215 28% 17%) !important; /* --card dark */
+  color: hsl(210 40% 98%) !important;            /* --foreground dark */
+}
+
+.dark select:focus {
+  outline-color: hsl(199 89% 60%); /* --ring dark */
+}
+
+/* Combobox / select wrappers de shadcn que usan input nativo */
+.dark [data-radix-select-trigger],
+.dark [role="combobox"] {
+  background-color: hsl(215 28% 17%);
+  color: hsl(210 40% 98%);
+  border-color: hsl(215 28% 25%);
 }
 
 /* Estilos de impresión para contenido tipo tirilla (ticket). 

@@ -355,7 +355,7 @@ export function Sidebar() {
                       {/* Group Header - Only visible when Open */}
                       {isOpen && (
                         <div
-                          className="flex items-center justify-between px-3 py-2 text-xs font-semibold text-slate-400 uppercase tracking-wider cursor-pointer hover:text-white transition-colors select-none"
+                          className="flex items-center justify-between px-3 py-2 text-xs font-semibold text-muted-foreground/80 uppercase tracking-wider cursor-pointer hover:text-foreground transition-colors select-none"
                           onClick={() => toggleGroup(group.key)}
                         >
                           <span>{group.title}</span>
@@ -400,8 +400,8 @@ export function Sidebar() {
                                 'flex rounded-lg font-medium transition-all duration-200 relative group',
                                 isOpen ? 'flex-row items-center gap-3 text-[13px] px-2.5 py-1.5 ml-1' : 'flex-col items-center justify-center gap-1 px-1 py-1.5',
                                 isActive
-                                  ? 'bg-slate-800/80 text-white font-semibold'
-                                  : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200',
+                                  ? 'bg-primary/15 text-primary font-semibold dark:bg-slate-800/80 dark:text-white'
+                                  : 'text-foreground/60 hover:bg-accent/50 hover:text-foreground dark:text-slate-400 dark:hover:bg-slate-800/50 dark:hover:text-slate-200',
                               )}
                               title={!isOpen ? item.label : undefined}
                             >
@@ -441,7 +441,7 @@ export function Sidebar() {
                     className={cn(
                       'flex w-full rounded-lg font-medium transition-colors relative group text-left',
                       isOpen ? 'flex-row items-center gap-3 text-sm px-3 py-2 ml-1' : 'flex-col items-center justify-center gap-1 px-1 py-2',
-                      'text-slate-500 hover:bg-slate-800 hover:text-slate-300'
+                      'text-foreground/50 hover:bg-accent/50 hover:text-foreground dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-slate-300'
                     )}
                     title={!isOpen ? 'Ayuda' : undefined}
                   >
