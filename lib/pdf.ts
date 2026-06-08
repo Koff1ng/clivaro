@@ -616,8 +616,10 @@ export async function generateInvoicePDF(invoice: InvoicePDFData): Promise<Buffe
   const companyNit = invoice.company?.nit || process.env.COMPANY_NIT || process.env.NEXT_PUBLIC_COMPANY_TAX_ID || ''
   const companyRegime = invoice.company?.regime || process.env.COMPANY_REGIME || 'Responsable de IVA'
   const rawLogo = invoice.company?.logo || ''
+  logger.info(`[PDF] Logo rawUrl: ${rawLogo ? rawLogo.substring(0, 100) : '(vacío)'}`)
   // Convert logo URL to base64 data URI so Puppeteer renders it reliably
   const companyLogo = rawLogo ? await fetchImageAsBase64(rawLogo) : ''
+  logger.info(`[PDF] Logo base64: ${companyLogo ? `OK (${Math.round(companyLogo.length / 1024)}KB)` : 'VACÍO ❌ — no aparecerá en PDF'}`)
   const companyCommercialName = invoice.company?.commercialName || companyName
   const companyVerificationDigit = invoice.company?.verificationDigit || ''
   const companyFiscalResponsibilities = invoice.company?.fiscalResponsibilities || 'NO SOMOS GRANDES CONTRIBUYENTES. NO SOMOS AUTORRETENEDORES.'
