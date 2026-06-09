@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { requirePermission } from '@/lib/api-middleware'
 import { PERMISSIONS } from '@/lib/permissions'
 import { withTenantRead, getTenantIdFromSession } from '@/lib/tenancy'
+import { prisma } from '@/lib/db'  // Master DB — TenantSettings lives here
 import { generateInvoicePDF } from '@/lib/pdf'
 import { logger } from '@/lib/logger'
 
@@ -20,8 +21,9 @@ export async function GET(
   try {
     const resolvedParams = await params
 
-    const result = await withTenantRead(tenantId, async (prisma) => {
-      const invoice = await prisma.invoice.findUnique({
+    // 1. Invoice from TENANT DB (tenant-specific data)
+    const invoice = await withTenantRead(tenantId, async (tenantPrisma) => {
+      const inv = await tenantPrisma.invoice.findUnique({
         where: { id: resolvedParams.id },
         include: {
           customer: { select: { name: true, email: true, phone: true, address: true, taxId: true } },
@@ -33,17 +35,18 @@ export async function GET(
           },
         },
       })
-
-      if (!invoice) throw new Error('Factura no encontrada')
-
-      const settings = await prisma.tenantSettings.findUnique({
-        where: { tenantId }
-      })
-
-      return { invoice, settings }
+      if (!inv) throw new Error('Factura no encontrada')
+      return inv
     })
 
-    const { invoice, settings } = result
+    // 2. TenantSettings from MASTER DB — company identity, logo, resolution, etc.
+    //    NOTE: TenantSettings is stored ONLY in the master database (public schema).
+    //    Using the tenant's own prisma (withTenantRead) would always return null here.
+    const settings = await prisma.tenantSettings.findUnique({
+      where: { tenantId }
+    })
+
+    logger.info(`[PDF] Settings para tenant ${tenantId}: companyName=${settings?.companyName || '(vacío)'}, hasCustomSettings=${!!settings?.customSettings}`)
 
     let regime = 'Responsable de IVA'
     let customIdentity: any = {}
@@ -123,4 +126,3 @@ export async function GET(
     return NextResponse.json({ error: 'Error al generar PDF', details: safeErrorMessage(error) }, { status: 500 })
   }
 }
-
