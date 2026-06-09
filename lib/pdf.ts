@@ -622,9 +622,29 @@ export async function generateInvoicePDF(invoice: InvoicePDFData): Promise<Buffe
   logger.info(`[PDF] Logo base64: ${companyLogo ? `OK (${Math.round(companyLogo.length / 1024)}KB)` : 'VACÍO ❌ — no aparecerá en PDF'}`)
   const companyCommercialName = invoice.company?.commercialName || companyName
   const companyVerificationDigit = invoice.company?.verificationDigit || ''
-  const companyFiscalResponsibilities = invoice.company?.fiscalResponsibilities || 'NO SOMOS GRANDES CONTRIBUYENTES. NO SOMOS AUTORRETENEDORES.'
+  // Parse fiscalResponsibilities: may be a JSON array string like ["GRAN_CONTRIBUYENTE"]
+  const companyFiscalResponsibilities = (() => {
+    const raw = invoice.company?.fiscalResponsibilities || ''
+    if (!raw) return 'NO SOMOS GRANDES CONTRIBUYENTES. NO SOMOS AUTORRETENEDORES.'
+    try {
+      const arr = JSON.parse(raw)
+      if (Array.isArray(arr) && arr.length > 0) {
+        const labelMap: Record<string, string> = {
+          GRAN_CONTRIBUYENTE: 'GRAN CONTRIBUYENTE',
+          AUTORRETENEDOR: 'AUTORRETENEDOR',
+          NO_RESPONSABLE_IVA: 'NO RESPONSABLE DE IVA',
+          AGENTE_RETENEDOR: 'AGENTE RETENEDOR',
+          REGIMEN_SIMPLE: 'RÉGIMEN SIMPLE DE TRIBUTACIÓN',
+        }
+        return arr.map((r: string) => labelMap[r] || r).join(' - ')
+      }
+    } catch { /* not JSON, use raw */ }
+    return raw
+  })()
   const companyEconomicActivity = invoice.company?.economicActivity || ''
   const companyDepartment = invoice.company?.department || ''
+  // Helper: format COP without symbol (formatCurrency already includes $)
+  const fmt = (n: number) => formatCurrency(n)
 
   // DIAN Resolution info
   const resolutionNumber = invoice.company?.resolutionNumber || process.env.DIAN_RESOLUTION_NUMBER || ''
@@ -772,13 +792,20 @@ export async function generateInvoicePDF(invoice: InvoicePDFData): Promise<Buffe
           <!-- Right: Invoice Info -->
           <div style="width: 50%; font-size: 8px; text-align: left; padding-left: 20px; color: #111;">
             <div style="font-size: 11px; font-weight: 700; margin-bottom: 8px; color: #111;">
-              ${isElectronic ? 'FACTURA ELECTR\u00d3NICA DE VENTA' : 'FACTURA DE VENTA'} ${invoice.prefix ? invoice.prefix + '-' : ''}${invoice.number}
+              ${isElectronic ? 'FACTURA ELECTR\u00d3NICA DE VENTA' : 'FACTURA DE VENTA'} ${
+                (() => {
+                  const num = String(invoice.number || '')
+                  const pfx = invoice.prefix ? String(invoice.prefix) + '-' : ''
+                  // Avoid doubling: only prepend prefix if number doesn't already start with it
+                  return (pfx && !num.startsWith(pfx)) ? pfx + num : num
+                })()
+              }
             </div>
             <table class="date-table">
-              <tr><td class="dlbl">Fecha de Exp.:</td><td>${formatDateOnly(invoice.issuedAt)}</td></tr>
-              <tr><td class="dlbl">Hora de Exp.:</td><td>${formatTimeOnly(invoice.issuedAt)}</td></tr>
-              <tr><td class="dlbl">Fecha de Ven.:</td><td>${formatDateOnly(invoice.dueDate) || formatDateOnly(invoice.issuedAt)}</td></tr>
-              <tr><td class="dlbl">Fecha y hora de validaci\u00f3n.:</td><td>${formatDateTime(invoice.issuedAt)}</td></tr>
+              <tr><td class="dlbl">Fecha de Exp.:</td><td style="color:#111 !important">${formatDateOnly(invoice.issuedAt)}</td></tr>
+              <tr><td class="dlbl">Hora de Exp.:</td><td style="color:#111 !important">${formatTimeOnly(invoice.issuedAt)}</td></tr>
+              <tr><td class="dlbl">Fecha de Ven.:</td><td style="color:#111 !important">${formatDateOnly(invoice.dueDate) || formatDateOnly(invoice.issuedAt)}</td></tr>
+              <tr><td class="dlbl">Fecha y hora de validaci\u00f3n.:</td><td style="color:#111 !important">${formatDateTime(invoice.issuedAt)}</td></tr>
             </table>
           </div>
         </div>
@@ -839,7 +866,7 @@ export async function generateInvoicePDF(invoice: InvoicePDFData): Promise<Buffe
               <td class="center"></td>
               <td class="center">${medioPago}</td>
               <td class="center">${paymentForm}</td>
-              <td class="right" style="font-weight: 700;">$ ${formatCurrency(invoice.total || 0)}</td>
+              <td class="right" style="font-weight: 700;">${fmt(invoice.total || 0)}</td>
             </tr>
           </tbody>
         </table>
@@ -890,13 +917,13 @@ export async function generateInvoicePDF(invoice: InvoicePDFData): Promise<Buffe
                 <td class="center">${item.product.sku || ''}</td>
                 <td class="center">Und</td>
                 <td>${item.product.name.toUpperCase()}</td>
-                <td class="right">$ ${formatCurrency(item.unitPrice)}</td>
-                <td class="right">$ ${formatCurrency(lineBase)}</td>
+                <td class="right">${fmt(item.unitPrice)}</td>
+                <td class="right">${fmt(lineBase)}</td>
                 <td class="center">${taxName}</td>
                 <td class="center">${item.taxRate || 0}%</td>
-                <td class="right">$ ${formatCurrency(lineTaxAmt)}</td>
+                <td class="right">${fmt(lineTaxAmt)}</td>
                 <td class="right">${item.discount > 0 ? item.discount.toFixed(1) + '%' : '-'}</td>
-                <td class="right">$ ${formatCurrency(lineTotal)}</td>
+                <td class="right">${fmt(lineTotal)}</td>
               </tr>`
             }).join('')}
           </tbody>
@@ -914,8 +941,8 @@ export async function generateInvoicePDF(invoice: InvoicePDFData): Promise<Buffe
                  ${Array.from(taxByRate.entries()).map(([rate, data]) => `
                  <tr>
                    <td class="center">${rate === 8 ? 'INC' : 'IVA'}</td>
-                   <td class="center">${rate === 8 ? 'INC' : 'IVA'} ${rate}% s/ $ ${formatCurrency(data.base)}</td>
-                   <td class="right">$ ${formatCurrency(data.tax)}</td>
+                   <td class="center">${rate === 8 ? 'INC' : 'IVA'} ${rate}% s/ ${fmt(data.base)}</td>
+                   <td class="right">${fmt(data.tax)}</td>
                  </tr>`).join('')}
                </tbody>
              </table>
@@ -923,14 +950,14 @@ export async function generateInvoicePDF(invoice: InvoicePDFData): Promise<Buffe
            </div>
            <div style="width: 35%;">
              <table class="totals-table">
-               <tr><td class="lbl">SubTotal</td><td class="val">$ ${formatCurrency(invoice.subtotal || 0)}</td></tr>
-               <tr><td class="lbl">Total Imp.</td><td class="val">$ ${formatCurrency(invoice.tax || 0)}</td></tr>
-               <tr><td class="lbl" style="font-weight: normal;">Retiva</td><td class="val">$ 0.00</td></tr>
-               <tr><td class="lbl" style="font-weight: normal;">Reteica</td><td class="val">$ 0.00</td></tr>
-               <tr><td class="lbl" style="font-weight: normal;">ReteRenta</td><td class="val">$ 0.00</td></tr>
-               <tr><td class="lbl">Cargos</td><td class="val">$ 0.00</td></tr>
-               <tr><td class="lbl">Descuentos</td><td class="val">$ ${formatCurrency(invoice.discount || 0)}</td></tr>
-               <tr><td class="lbl" style="background:#d1d5db;">Valor Total</td><td class="val" style="font-weight: 700; font-size: 9px;">$ ${formatCurrency(invoice.total || 0)}</td></tr>
+               <tr><td class="lbl">SubTotal</td><td class="val">${fmt(invoice.subtotal || 0)}</td></tr>
+               <tr><td class="lbl">Total Imp.</td><td class="val">${fmt(invoice.tax || 0)}</td></tr>
+               <tr><td class="lbl" style="font-weight: normal;">Retiva</td><td class="val">$0</td></tr>
+               <tr><td class="lbl" style="font-weight: normal;">Reteica</td><td class="val">$0</td></tr>
+               <tr><td class="lbl" style="font-weight: normal;">ReteRenta</td><td class="val">$0</td></tr>
+               <tr><td class="lbl">Cargos</td><td class="val">$0</td></tr>
+               <tr><td class="lbl">Descuentos</td><td class="val">${fmt(invoice.discount || 0)}</td></tr>
+               <tr><td class="lbl" style="background:#d1d5db;">Valor Total</td><td class="val" style="font-weight: 700; font-size: 9px;">${fmt(invoice.total || 0)}</td></tr>
              </table>
            </div>
         </div>
@@ -948,7 +975,7 @@ export async function generateInvoicePDF(invoice: InvoicePDFData): Promise<Buffe
             <tr>
               <td class="center" style="height: 12px;">COP</td>
               <td class="center">1.00</td>
-              <td class="center">$ ${formatCurrency(invoice.total || 0)}</td>
+              <td class="center">${fmt(invoice.total || 0)}</td>
             </tr>
           </tbody>
         </table>
